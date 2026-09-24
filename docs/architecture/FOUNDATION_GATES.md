@@ -1,6 +1,6 @@
 # Platform Foundation Gates
 
-Status: planning gate  
+Status: active  
 Date: 2026-09-24
 
 ## Purpose
@@ -11,154 +11,179 @@ This is not a request to overdesign the platform. Each gate should be resolved o
 
 ## Gate 1 — Runtime and deployment topology
 
-Decide:
-- where production runs;
-- supported operating system/runtime;
-- whether the application is intranet-only, internet-accessible, or hybrid;
-- reverse-proxy/TLS boundary;
-- process/container strategy;
-- development/staging/production separation.
+Status: **DECIDED (baseline)**
 
-Acceptance:
-- supported and maintainable production runtime;
-- no dependency on an unsupported OS as an unexamined default;
-- deploy/rollback path can be documented.
+Decision:
+- HP ProLiant ML350 as initial physical host;
+- Linux VM;
+- Ubuntu Server LTS;
+- Docker Engine + Docker Compose;
+- Cloudflare DNS/WAF/Tunnel;
+- React static assets delivered from Cloudflare Workers;
+- controlled production deployment;
+- single-host availability accepted for v1.
+
+Still pending:
+- exact VM sizing after ML350 inventory;
+- final DEV/STAGING/PROD topology;
+- UPS/network failover capabilities.
+
+Reference:
+- ADR-004.
 
 ## Gate 2 — Application stack
 
-Decide:
-- frontend framework/build tool;
-- backend/application API strategy;
-- monorepo/workspace organization;
-- schema validation approach;
-- test stack.
+Status: **DECIDED**
 
-Acceptance:
-- suitable for a modular monolith;
-- strong typing/contracts where practical;
-- low operational overhead;
-- good agent/tooling support;
-- no unnecessary framework proliferation.
+Decision:
+- React;
+- TypeScript;
+- Vite;
+- modular monolith;
+- Supabase Self-Hosted for backend/data platform;
+- GitHub Actions for CI/CD.
+
+Reference:
+- ADR-001;
+- ADR-004.
 
 ## Gate 3 — Database
 
-Decision baseline already established:
-- relational model is required;
-- PostgreSQL is the primary candidate.
+Status: **DECIDED (baseline)**
 
-Finalize:
-- hosting;
-- migration tool;
-- connection/pooling strategy;
-- backup mechanism;
-- authorization enforcement boundary;
-- development/test database workflow.
-
-Acceptance:
-- automated backup possible;
+Decision:
+- PostgreSQL;
+- Supabase Self-Hosted;
 - incremental migrations;
-- fixed-precision financial values supported;
-- no shared production database credentials in frontend code.
+- fixed-precision financial values;
+- private database boundary;
+- logical backup + physical/base backup + WAL archiving/PITR;
+- off-site backup destination.
+
+Still pending:
+- exact backup tool (pgBackRest, WAL-G or equivalent);
+- retention/RPO/RTO;
+- database resource sizing;
+- exact migration framework/conventions in the application repository.
 
 ## Gate 4 — Authentication and authorization
 
-Finalize:
-- identity provider/session implementation;
-- profile lifecycle;
-- roles as permission bundles;
-- granular permission evaluation;
-- unit/sector scope representation;
-- trusted enforcement layer;
-- administrator model.
+Status: **PARTIALLY DECIDED**
 
-Acceptance:
+Decision:
+- Supabase Auth;
 - default deny;
-- deactivation/revocation possible;
-- module navigation reflects permissions;
-- server/database rejects unauthorized direct access.
+- roles are reusable permission bundles;
+- granular permissions;
+- unit/sector organizational scope;
+- server/database trusted enforcement;
+- permission-driven navigation.
+
+Still pending:
+- exact schema for roles/permissions/scopes;
+- exact first permission catalog;
+- administrator/superuser semantics;
+- invitation/account lifecycle UX.
 
 ## Gate 5 — Organizational Core
 
-Define minimum Core entities:
+Status: **CONCEPTUALLY DECIDED**
+
+Minimum Core:
 - users/profiles;
 - units;
 - sectors;
 - roles;
 - permissions;
-- user access scope.
+- user organizational scope;
+- system audit-log capability.
 
-Acceptance:
-- Audit can reference canonical Unit;
-- later modules do not need private copies of Unit/User;
-- deleting/deactivating a Unit cannot accidentally destroy unrelated module history.
+Still pending:
+- physical schema;
+- deactivation/retention behavior;
+- initial seed/migration process for units/sectors.
 
 ## Gate 6 — Files and attachments
 
-Decide:
-- storage provider/location;
-- metadata model;
-- file size/type policy;
-- private download flow;
-- object naming;
-- deletion/retention behavior;
-- backup/restore.
+Status: **DECIDED (baseline)**
 
-Acceptance:
-- no public-by-default sensitive files;
-- authorization occurs before access;
-- binary storage is recoverable together with metadata.
+Decision:
+- Supabase Storage API;
+- Cloudflare R2 preferred as production S3-compatible backend;
+- database stores metadata/references, not arbitrary file blobs;
+- private authorized access;
+- file restore/retention handled independently from database backup.
+
+Still pending:
+- bucket/object-key convention;
+- maximum sizes/types by module;
+- retention/versioning policy;
+- malware/unsafe-file controls where justified.
 
 ## Gate 7 — System audit log
 
-Define:
+Status: **TO DESIGN BEFORE PRODUCTION**
+
+Need:
 - event model;
 - actor;
 - timestamp;
 - entity/module/action;
-- before/after strategy for sensitive mutations;
+- before/after strategy;
 - retention;
-- access permission.
-
-Acceptance:
-- permission changes and sensitive administrative mutations are traceable;
-- secrets are never stored in audit payloads.
+- privileged read permission.
 
 ## Gate 8 — Backup and disaster recovery
 
-Define:
-- database backup cadence/retention;
-- file backup cadence/retention;
-- off-host/off-failure-domain copy;
-- restore procedure;
-- RPO/RTO targets appropriate to the business;
-- restore-test schedule.
+Status: **BASELINE DECIDED; IMPLEMENTATION PENDING**
 
-Acceptance:
-- complete platform can be rebuilt on replacement infrastructure;
-- a restore test can be performed without touching production.
+Decision:
+- automated backups;
+- local recovery copy where useful;
+- off-site copies;
+- logical PostgreSQL backups;
+- base backup + WAL/PITR;
+- periodic restore drills;
+- Ansible for reproducible recovery.
+
+Still pending:
+- tool choice;
+- storage destination/account;
+- retention;
+- RPO/RTO;
+- restore-test cadence;
+- final runbook.
 
 ## Gate 9 — Observability and operations
 
-Define minimum:
-- structured application logs;
-- error tracking strategy;
-- health checks;
-- backup-failure visibility;
-- disk/storage/database monitoring;
-- production incident/rollback procedure.
+Status: **BASELINE DECIDED; IMPLEMENTATION PENDING**
 
-Acceptance:
-- failures do not depend solely on a user reporting that a screen stopped working.
+Minimum:
+- host metrics;
+- container health/restarts;
+- PostgreSQL connections/storage/backup health;
+- Supabase service health;
+- Cloudflare Tunnel health;
+- backup/WAL archive failures;
+- frontend error telemetry with privacy review;
+- health checks and rollback procedure.
+
+Tooling remains intentionally open.
 
 ## Gate 10 — First-module contract
 
-Before migrating Audit, approve:
-- `docs/modules/audit/AUDIT_SOURCE_OF_TRUTH.md`;
-- `docs/modules/audit/MIGRATION_MAP.md`;
-- Action Plans ownership;
-- first Audit permissions;
-- platform-vs-Audit responsibilities;
-- explicit decisions for reopen/history export;
+Status: **IN PROGRESS**
+
+Already defined:
+- Audit source of truth;
+- Audit migration map;
+- transversal Action Plans ownership.
+
+Still pending:
+- explicit reopen behavior;
+- unit-history export decision;
+- first Audit permission catalog;
+- Core schema required by Audit;
 - first implementation brief.
 
 ## What does not need to be designed now
@@ -171,13 +196,17 @@ Do not block Audit on:
 - Fleet schema;
 - every future notification;
 - microservices;
-- a generic workflow engine;
+- Kubernetes;
+- multi-node HA;
+- blue/green deployment;
+- generic workflow engine;
 - speculative integrations.
-
-Those decisions belong to their modules when they become concrete.
 
 ## Implementation start condition
 
-The first platform-code brief may be issued once Gates 1–6 and the Audit-specific portion of Gate 10 are sufficiently resolved.
+The first platform-code brief may be issued once:
+- Gate 4 has an implementable v1 schema;
+- Gate 5 has an implementable Core schema;
+- the Audit-specific portion of Gate 10 is resolved.
 
-Gates 7–9 need a concrete baseline before production, but their complete operational maturity can evolve incrementally before broad rollout.
+Infrastructure implementation details for Gates 7–9 must have a minimum production baseline before production rollout, but they do not block creation of the application foundation.
