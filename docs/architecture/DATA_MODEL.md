@@ -1,134 +1,224 @@
 # Core Data Model
 
+Status: accepted logical v1 model  
+Decision reference: ADR-005
+
 ## Purpose
 
-This document defines ownership and relationships, not a final SQL schema.
+Define Core ownership and the initial physical model required before Audit enters the platform.
 
-Physical tables and migrations will be specified only after the platform stack and first foundation brief are approved.
+Domain modules own their business records. Core owns stable company-wide identities, organization and authorization.
 
-## Core-owned concepts
+## Database schema boundaries
 
-### User identity
+Initial schemas:
 
-Represents authenticated identity and its platform profile.
+```text
+auth          Supabase-owned identity
+core          platform Core
+private       non-exposed security/internal helpers
+audit         Quality Audit module
+action_plans  transversal Action Plans module
+```
 
-Core should own:
-- identity reference;
-- display/profile information required by the platform;
-- active/inactive state;
-- authorization assignments.
+Future business modules get their own schema when implemented.
 
-Do not duplicate platform users per module.
+Custom exposed schemas must use explicit grants and RLS.
 
-### Organizational Unit
+## Core relationships
 
-Canonical representation of a company unit/branch/location used across modules.
+```text
+auth.users
+    |
+    1:1
+    v
+core.profiles
+    |
+    +-------------------------+
+    |                         |
+    v                         v
+core.user_role_assignments   historical created_by/updated_by
+    |
+    +--> core.roles
+    |       |
+    |       v
+    |   core.role_permissions
+    |       |
+    |       v
+    |   core.permissions
+    |
+    +--> scope
+          | global
+          | unit -> core.units
+          | sector -> core.units + core.sectors
 
-Modules that need a unit reference should use the Core identity of that unit instead of maintaining private copies.
+core.units
+    |
+    v
+core.unit_sectors
+    ^
+    |
+core.sectors
+```
 
-Module-specific aliases used during import may exist inside import/mapping logic without becoming another source of truth for units.
+## core.profiles
 
-### Sector
+- `id uuid` PK/FK to `auth.users.id`;
+- `display_name text not null`;
+- `active boolean not null default true`;
+- `created_at timestamptz`;
+- `updated_at timestamptz`.
 
-Optional organizational subdivision.
+Optional HR/profile attributes are not added without a concrete product need.
 
-Not every module must use sectors. A module can reference a Core sector when business rules require it.
+## core.units
 
-### Role and Permission
+- `id uuid`;
+- `code text unique`;
+- `name text not null`;
+- `active boolean not null default true`;
+- created/updated timestamps;
+- actor metadata.
 
-Canonical authorization definitions described in AUTHORIZATION.md.
+Normal lifecycle is deactivate/reactivate.
 
-### User Scope
+## core.sectors
 
-Associates a user/role/access assignment with allowed organizational scope.
+- `id uuid`;
+- `code text unique`;
+- `name text not null`;
+- `active boolean not null default true`;
+- created/updated timestamps.
 
-Exact physical representation remains open until authorization requirements are tested against the selected database/auth stack.
+## core.unit_sectors
 
-### Attachment metadata
+- `unit_id uuid`;
+- `sector_id uuid`;
+- composite unique/primary key.
 
-Common capability for controlled file references when shared storage behavior is established.
+Used to validate sector availability within a unit.
 
-A module remains owner of the business entity to which an attachment belongs.
+## core.permissions
 
-### System Audit Event
+Stable natural key:
+- `key text primary key`.
 
-Records security/operational mutations distinct from the business module Quality Audit.
+Additional fields:
+- `domain text`;
+- `resource text`;
+- `action text`;
+- `description text`;
+- `active boolean`.
 
-## Domain ownership
+## core.roles
 
-Each business module owns its business records and invariants.
+- `id uuid`;
+- `key text unique`;
+- `name text`;
+- `description text`;
+- `system boolean`;
+- `active boolean`;
+- timestamps.
 
-Examples:
+## core.role_permissions
 
-Audit owns:
-- inspections;
-- checklist answers;
-- quality audit-specific records.
+- `role_id uuid`;
+- `permission_key text`;
+- composite PK/unique.
 
-Fleet owns:
-- vehicles;
-- fleet expenses;
-- mileage/import rules.
+## core.user_role_assignments
 
-Contracts owns:
-- contracts;
-- adjustments;
-- contract-domain pending items.
+- `id uuid`;
+- `user_id uuid`;
+- `role_id uuid`;
+- `scope_type` = global/unit/sector;
+- nullable `unit_id`;
+- nullable `sector_id`;
+- `active boolean`;
+- `granted_by uuid`;
+- timestamps.
 
-ABC owns:
-- import batches;
-- items;
-- price history/classification logic.
+Use check constraints for valid scope shapes and uniqueness to avoid duplicate effective assignments.
 
-Core must not absorb business entities simply because dashboards want to aggregate them.
+## core.system_audit_log
 
-## Cross-module references
+Append-oriented platform audit trail:
+- `id uuid`;
+- `occurred_at timestamptz`;
+- nullable `actor_user_id`;
+- `module text`;
+- `action text`;
+- `entity_type text`;
+- `entity_id text`;
+- nullable `unit_id`;
+- nullable `sector_id`;
+- nullable `before_data jsonb`;
+- nullable `after_data jsonb`;
+- `metadata jsonb`;
+- nullable correlation/request identifier.
 
-Prefer stable IDs to duplicated master data.
-
-A business module may reference Core entities such as:
-- unit_id;
-- sector_id;
-- created_by / updated_by identity.
-
-Cross-module business-to-business references must be justified by a use case and designed through a public contract, not ad-hoc foreign keys to internal tables by default.
+Authenticated clients must not have ordinary write/delete privileges.
 
 ## IDs
 
-Identifier strategy is intentionally not finalized. UUIDs are a strong candidate for globally unique records, but the physical choice belongs in the database foundation decision.
+Use UUIDs for entity identifiers unless a domain has a strong reason for another technical key.
+
+Stable business codes remain separate from UUID identifiers.
 
 ## Time
 
-Persist timestamps consistently with timezone-aware semantics where supported.
+Use `timestamptz` for instants/audit timestamps.
 
-Business dates that are truly date-only should not be forced into timestamp semantics.
+Use PostgreSQL `date` for business dates that do not represent an instant.
 
 ## Money
 
-Financial modules must not use floating-point arithmetic for currency.
+Use PostgreSQL fixed-precision `numeric` for currency.
 
-Use fixed-precision decimal/numeric semantics in the final data model and deterministic rounding rules documented by each domain.
+Never use floating-point storage/arithmetic as the authoritative financial representation.
+
+Each financial module documents rounding semantics.
+
+## Attachments
+
+Binary bytes are stored through Supabase Storage/R2.
+
+Business/database records store controlled metadata and ownership references.
+
+Do not create one universal polymorphic attachment table until concrete cross-module use proves it beneficial. Each module may own attachment metadata while following a shared storage contract.
 
 ## Imported source data
 
-Imported spreadsheets/files must be treated as external input.
-
-For import-heavy modules, distinguish:
+Import-heavy modules distinguish:
 - source/import batch;
-- validation results;
-- normalized business data;
-- mapping/aliases;
+- validation result;
+- normalized data;
+- mapping aliases;
 - audit metadata.
 
-Never overwrite historical data silently just because a new spreadsheet was imported.
+New imports must not silently rewrite historical source data.
+
+## Delete policy
+
+Prefer preservation of referenced history.
+
+Core profiles, units, sectors and roles are normally deactivated.
+
+Business-domain physical deletion rules must be explicit per module.
+
+Never cascade-delete all platform history because a Core unit/user was removed from an administrative screen.
+
+## System audit vs Quality Audit
+
+`core.system_audit_log` is an operational/security trail.
+
+It is completely separate from the business concept:
+`Qualidade > Auditorias`.
 
 ## Migrations
 
-- append-only migration history after application to shared environments;
-- explicit data migration steps;
-- backup/recovery plan for destructive transformations;
-- migration validated outside production first.
-
-## Data retention
-
-Retention periods are not defined yet. Contractual, financial, quality and audit-log retention requirements must be identified before automatic deletion policies are implemented.
+- append-only after application to a shared environment;
+- one source-controlled migration history;
+- destructive changes require explicit recovery planning;
+- test migrations outside production;
+- validate RLS and grants after schema changes.
