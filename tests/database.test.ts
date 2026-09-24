@@ -264,6 +264,38 @@ describe.sequential("PostgreSQL Core migration and RLS", () => {
     );
     expect(rows[0].id).toBeTruthy();
   });
+  it("requires revocation authority to change another user's active state", async () => {
+    await login(ids.empty);
+    const setActive = async (id: string, active: boolean) =>
+      (
+        await db.query(
+          "update core.profiles set active=$1 where id=$2 returning id",
+          [active, id],
+        )
+      ).rows;
+    // Limited manager cannot hold the permissions assigned to these users.
+    expect(await setActive(ids.admin, false)).toEqual([]);
+    expect(await setActive(ids.user, false)).toEqual([]);
+    // A user without active assignments can be managed.
+    expect(await setActive(ids.inactive, true)).toHaveLength(1);
+    expect(await setActive(ids.inactive, false)).toHaveLength(1);
+    await login(ids.admin);
+    expect(await check("admin.user.manage")).toBe(true);
+  });
+  it("keeps assignments of a deactivated role revocable", async () => {
+    await db.exec("reset role");
+    await db.exec(
+      `insert into core.roles(key,name) values ('retired','Retired'); insert into core.role_permissions select id,'action_plan.read' from core.roles where key='retired'; insert into core.user_role_assignments(user_id,role_id,scope_type) select '${ids.user}',id,'global' from core.roles where key='retired'; update core.roles set active=false where key='retired';`,
+    );
+    await login(ids.admin);
+    expect(
+      (
+        await db.query(
+          "update core.user_role_assignments set active=false where role_id=(select id from core.roles where key='retired') returning id",
+        )
+      ).rows,
+    ).toHaveLength(1);
+  });
   it("atomically saves role composition and rejects stale edits or protected roles", async () => {
     await login(ids.admin);
     const id = (
