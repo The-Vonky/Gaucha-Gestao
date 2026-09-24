@@ -15,7 +15,7 @@ import { UsersPage } from "../core/admin/UsersPage";
 import { RolesPage } from "../core/admin/RolesPage";
 import { PermissionsPage } from "../core/admin/PermissionsPage";
 import { LogsPage } from "../core/admin/LogsPage";
-import { AuditEntry } from "../modules/audit/AuditEntry";
+import { AuditModule } from "../modules/audit/AuditModule";
 import { Modal, Notice, PageTitle } from "../shared/ui";
 import { destinations, visibleNavigation } from "./navigation";
 function Logout() {
@@ -152,7 +152,7 @@ function Shell() {
     document.getElementById("main")?.focus();
   }, [location.pathname]);
   const pages: Record<string, ReactNode> = {
-    "/audit": <AuditEntry />,
+    "/audit": <AuditModule />,
     "/admin/users": <UsersPage />,
     "/admin/roles": <RolesPage />,
     "/admin/permissions": <PermissionsPage />,
@@ -197,7 +197,7 @@ function Shell() {
             {destinations.map((d) => (
               <Route
                 key={d.path}
-                path={d.path}
+                path={d.nested ? `${d.path}/*` : d.path}
                 element={<Guard path={d.path}>{pages[d.path]}</Guard>}
               />
             ))}

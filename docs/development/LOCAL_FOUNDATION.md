@@ -24,7 +24,7 @@ supabase db reset
 ```
 
 `db reset` apaga somente o banco local; não use `--linked` nem uma URL remota.
-O arquivo `supabase/config.toml` expõe `core`, mantém `private` fora da Data API
+O arquivo `supabase/config.toml` expõe `core` e `audit`, mantém `private` e `audit_private` fora da Data API
 e desabilita cadastro público. Não provisiona produção.
 
 1. No Auth do Studio **local**, crie/confirme uma identidade administrativa
@@ -55,7 +55,8 @@ concede acesso na tela Usuários. Recuperação de senha também usa o fluxo do 
 - Unidades/setores inativos preservam leitura histórica; não aceitam novos vínculos.
 - Atualizações usam `version`; a composição de papéis é substituída atomicamente.
 - Desvincular setor referenciado por atribuição é bloqueado, inclusive para preservar histórico.
-- Audit é apenas uma entrada protegida; inspeções e planos de ação não foram migrados.
+- Audit v1 opera o checklist canônico de 158 critérios por unidade (criação, preenchimento,
+  finalização e reabertura via RPCs confiáveis). Planos de ação e evidências não foram implementados.
 
 ## Testes de banco
 

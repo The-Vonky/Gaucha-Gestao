@@ -13,6 +13,8 @@ export type Destination = {
   group: (typeof groups)[number];
   permissions: string[];
   scope: "global" | "any";
+  /** The destination owns sub-routes below its path. */
+  nested?: boolean;
 };
 export const destinations: Destination[] = [
   {
@@ -21,6 +23,7 @@ export const destinations: Destination[] = [
     group: "Qualidade",
     permissions: ["audit.inspection.read"],
     scope: "any",
+    nested: true,
   },
   {
     path: "/admin/users",
