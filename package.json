@@ -12,6 +12,7 @@
     "dev": "npm run dev -w apps/web",
     "typecheck": "npm run typecheck -w apps/web",
     "build": "npm run build -w apps/web",
+    "verify:build": "node scripts/verify-build.mjs",
     "test": "vitest run",
     "test:rls": "vitest run tests/database.test.ts",
     "lint": "eslint ."
