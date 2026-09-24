@@ -136,19 +136,36 @@ The Audit system remains the priority. This repository must not delay completion
 
 The first platform implementation brief will define the minimum foundation needed to host Audit as module #1 without overbuilding capabilities required only by later modules.
 
-## Decisions intentionally not finalized yet
+## Selected platform stack
 
-The following require explicit evaluation before implementation:
+The production baseline is now accepted in `docs/decisions/ADR-004-platform-stack.md`.
 
-- final web/backend framework;
-- authentication provider/implementation;
-- database hosting model;
-- object/file storage implementation;
-- physical server/VM/container topology;
-- operating system;
-- reverse proxy;
-- CI/CD and deployment topology;
-- observability stack;
-- disaster-recovery targets.
+Selected direction:
+- React + TypeScript + Vite;
+- Cloudflare Workers Static Assets for the frontend;
+- Supabase Self-Hosted;
+- PostgreSQL/Auth/PostgREST/Realtime/Storage;
+- Cloudflare R2 as preferred production object storage;
+- Ubuntu Server LTS VM on the HP ProLiant ML350;
+- Docker Compose;
+- Cloudflare DNS/WAF/Tunnel;
+- GitHub Actions;
+- automated backups, WAL/PITR, restore testing and Ansible-based recovery.
 
-Do not infer these choices from one standalone system.
+These choices are no longer open design questions unless ADR-004 is explicitly superseded.
+
+## Decisions still intentionally open
+
+The following remain to be resolved at implementation/detail level:
+
+- exact RBAC/organizational-scope schema;
+- initial permission catalog;
+- exact Core physical schema;
+- exact backup/PITR tool and retention;
+- RPO/RTO;
+- monitoring/observability tooling;
+- file size/type/retention policies;
+- exact DEV/STAGING/PROD layout;
+- VM sizing and RAID choice after physical ML350 inventory.
+
+Do not reopen the accepted platform stack while solving one of these implementation details.
