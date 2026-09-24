@@ -68,7 +68,7 @@ Still pending:
 
 ## Gate 4 — Authentication and authorization
 
-Status: **PARTIALLY DECIDED**
+Status: **DECIDED FOR V1**
 
 Decision:
 - Supabase Auth;
@@ -79,29 +79,37 @@ Decision:
 - server/database trusted enforcement;
 - permission-driven navigation.
 
+Decision:
+- Supabase Auth identity;
+- Core profile activation state;
+- multiple scoped role assignments per user;
+- role -> permission bundles;
+- scope on each role assignment: global/unit/sector;
+- first Audit/Action Plan/Administration permission catalog;
+- Platform Administrator as privileged global role;
+- database/RLS enforcement.
+
 Still pending:
-- exact schema for roles/permissions/scopes;
-- exact first permission catalog;
-- administrator/superuser semantics;
-- invitation/account lifecycle UX.
+- detailed invitation/account-administration UX.
 
 ## Gate 5 — Organizational Core
 
-Status: **CONCEPTUALLY DECIDED**
+Status: **DECIDED FOR V1**
 
-Minimum Core:
-- users/profiles;
-- units;
-- sectors;
-- roles;
-- permissions;
-- user organizational scope;
-- system audit-log capability.
+Decision:
+- `core.profiles`;
+- `core.units`;
+- `core.sectors`;
+- `core.unit_sectors`;
+- `core.permissions`;
+- `core.roles`;
+- `core.role_permissions`;
+- `core.user_role_assignments`;
+- `core.system_audit_log`;
+- deactivation instead of ordinary hard deletion for referenced Core entities;
+- UUID technical IDs and stable business codes where applicable.
 
-Still pending:
-- physical schema;
-- deactivation/retention behavior;
-- initial seed/migration process for units/sectors.
+Physical migrations are authorized by `docs/briefs/PLATFORM_FOUNDATION_V1.md`.
 
 ## Gate 6 — Files and attachments
 
@@ -172,19 +180,20 @@ Tooling remains intentionally open.
 
 ## Gate 10 — First-module contract
 
-Status: **IN PROGRESS**
+Status: **MOSTLY RESOLVED**
 
 Already defined:
 - Audit source of truth;
 - Audit migration map;
-- transversal Action Plans ownership.
-
-Still pending:
-- explicit reopen behavior;
-- unit-history export decision;
+- transversal Action Plans ownership;
 - first Audit permission catalog;
 - Core schema required by Audit;
-- first implementation brief.
+- platform foundation implementation brief.
+
+Still pending before Audit business implementation:
+- explicit reopen behavior;
+- unit-history export decision;
+- Audit module implementation brief.
 
 ## What does not need to be designed now
 
@@ -204,9 +213,9 @@ Do not block Audit on:
 
 ## Implementation start condition
 
-The first platform-code brief may be issued once:
-- Gate 4 has an implementable v1 schema;
-- Gate 5 has an implementable Core schema;
-- the Audit-specific portion of Gate 10 is resolved.
+The first platform-code brief has now been issued:
+- `docs/briefs/PLATFORM_FOUNDATION_V1.md`.
+
+Platform foundation implementation may begin without migrating Audit business tables/data.
 
 Infrastructure implementation details for Gates 7–9 must have a minimum production baseline before production rollout, but they do not block creation of the application foundation.
