@@ -36,3 +36,7 @@ Thumbs.db
 *.backup
 *.dump
 *.sql.gz
+
+# Supabase CLI local state
+supabase/.branches/
+supabase/.temp/

@@ -19,4 +19,5 @@ site_url = "http://localhost:5173"
 additional_redirect_urls = ["http://localhost:5173"]
 enable_signup = false
 [auth.email]
-enable_signup = false
+# Enables the email/password provider for login. Public sign-up stays disabled by [auth].
+enable_signup = true
