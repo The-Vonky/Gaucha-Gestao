@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+dist/
+build/
+coverage/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Runtime/local data
+*.db
+*.sqlite
+*.sqlite3
+*.log
+tmp/
+temp/
+
+# Tooling
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.wrangler/
+
+# Local backups/dumps
+*.bak
+*.backup
+*.dump
+*.sql.gz
