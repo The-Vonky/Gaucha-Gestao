@@ -1,160 +1,218 @@
 # Authorization Model
 
+Status: accepted v1 model  
+Decision reference: ADR-005
+
 ## Goal
 
-Support users who need different modules, different actions and different organizational scopes without creating one hard-coded role for every job title.
+Give each person only the capabilities and organizational data required for their work, without hard-coding job titles into application logic.
 
-## Model
+## Authorization equation
 
-Authorization is composed from three concepts:
+```text
+ACCESS
+=
+authenticated identity
++ active Core profile
++ role permission
++ role-assignment scope
++ row/domain rule
+```
 
-1. Permission — what operation may be performed.
-2. Role — reusable collection of permissions.
-3. Scope — where the permission applies.
+Missing or ambiguous authorization means deny.
 
-Conceptually:
+## Identity
 
-~~~
-User
--> one or more Roles
--> Permissions
-+
-User organizational scope
--> Units / sectors
-~~~
+Supabase Auth authenticates the user.
 
-Access is granted only when both permission and required scope are satisfied.
+`auth.users.id` maps one-to-one to `core.profiles.id`.
 
-## Permission naming
+Authentication does not imply business access.
 
-Use stable capability-oriented permissions rather than screen names.
+A valid session with an inactive Core profile receives no application data access.
+
+## Roles and permissions
+
+A Permission describes one capability.
 
 Pattern:
 
-~~~
+```text
 domain.resource.action
-~~~
+```
+
+A Role is only a reusable bundle of permissions.
+
+Application code checks permissions, not role names.
+
+Correct:
+
+```text
+can('audit.inspection.finalize')
+```
+
+Incorrect:
+
+```text
+role === 'qualidade'
+```
+
+## Scoped role assignments
+
+Users can have multiple roles and each assignment carries its own scope.
 
 Examples:
 
-~~~
-audit.inspection.read
-audit.inspection.write
-audit.inspection.finalize
+```text
+Ana
+└── Quality @ global
 
-action_plan.read
-action_plan.write
-action_plan.verify
+Bruno
+├── Quality @ CMD
+└── Fleet @ Matriz
 
-iso.record.read
-iso.record.write
+Carla
+└── Quality Viewer @ HRAD / Nutrition sector
+```
 
-sales.dashboard.read
-sales.import.execute
+This prevents permissions from inheriting unrelated organizational scope.
 
-satisfaction.dashboard.read
-satisfaction.survey.manage
+## Scope types
 
-meeting.booking.read
-meeting.booking.manage
+### global
 
-fleet.dashboard.read
-fleet.expense.write
-fleet.import.execute
+Permission applies to all applicable organizational records.
 
-pxr.dashboard.read
-pxr.import.execute
+### unit
 
-abc.dashboard.read
-abc.import.execute
+Permission applies only to records belonging to the assigned unit.
 
-contracts.contract.read
-contracts.contract.write
+### sector
 
-admin.user.manage
-admin.role.manage
-~~~
+Permission applies only to records belonging to the specified sector inside the specified unit.
 
-The exact catalog will be introduced incrementally with modules. Do not create every speculative permission on day one.
+A global assignment covers unit/sector records. A unit assignment covers resources in that unit but does not automatically cover another unit.
 
-## Roles
+## First permission catalog
 
-Roles provide convenient defaults, not hard-coded application branches.
+Audit:
+- `audit.inspection.read`
+- `audit.inspection.create`
+- `audit.inspection.edit`
+- `audit.inspection.finalize`
+- `audit.inspection.reopen`
+- `audit.inspection.export`
 
-Initial role templates may include examples such as:
-- platform administrator;
-- director/executive;
-- quality;
-- transport;
-- viewer.
+Action Plans:
+- `action_plan.read`
+- `action_plan.create_manual`
+- `action_plan.write`
+- `action_plan.verify`
 
-Role names must not be relied upon as authorization checks if a permission can express the requirement.
+Administration:
+- `admin.user.read`
+- `admin.user.manage`
+- `admin.role.read`
+- `admin.role.manage`
+- `admin.unit.read`
+- `admin.unit.manage`
+- `admin.sector.read`
+- `admin.sector.manage`
+- `admin.audit_log.read`
 
-Prefer:
+Do not create future module permissions before those modules are implemented.
 
-~~~
-can("fleet.expense.write")
-~~~
+## Navigation
 
-over:
+Navigation is derived from effective permissions.
 
-~~~
-role === "transport"
-~~~
+A navigation group is hidden if the user has no permission that unlocks any child destination.
 
-## Organizational scope
+Navigation filtering is UX only. Database/server enforcement remains authoritative.
 
-Permissions can be constrained by organizational access.
+## Database enforcement
 
-Potential dimensions:
-- all units;
-- selected units;
-- sector where applicable.
+Every table reachable through the Data API has:
+- explicit grants;
+- RLS enabled;
+- policies based on Core permission/scope helpers.
 
-Example:
+Initial schemas exposed to the client are expected to include:
+- `core`;
+- `audit`;
+- `action_plans`.
 
-~~~
-User A
-permission: audit.inspection.read
-scope: CMD, HRAD
-~~~
+Sensitive internal helper routines should live in a non-exposed schema such as `private`.
 
-User A must not access an inspection from another unit merely by guessing/changing an ID.
+## Authorization helpers
 
-## Default deny
+Conceptual helpers:
 
-When authorization data is absent, ambiguous or cannot be evaluated, access is denied.
+```text
+is_active_user()
 
-New modules must not become visible to every authenticated user by accident.
+has_global_permission(permission)
 
-## Enforcement
+has_unit_permission(permission, unit_id)
 
-At least two levels should normally exist:
+has_scoped_permission(permission, unit_id, sector_id)
+```
 
-1. UI/navigation — avoid offering inaccessible actions.
-2. Trusted enforcement layer — API/server/database policy validates access independently.
+Helpers are implemented and tested once rather than rewriting complex EXISTS clauses throughout every module.
 
-The trusted layer is authoritative.
+If SECURITY DEFINER is necessary, use a fixed search path and narrowly granted execution.
 
-## Administrative access
+## Resource rules
 
-Administrative capabilities must be explicit permissions. Administrator must not become an undocumented bypass scattered through code.
+A table with `unit_id` uses unit-scoped permission checks.
 
-If a true platform-superuser mechanism exists, it must be intentionally designed, logged and tightly limited.
+A table with `unit_id` + `sector_id` uses scoped checks.
 
-## Data export
+A truly platform-global administrative operation requires a global administrative assignment where appropriate.
 
-Export permissions require the same or stricter data-scope checks as normal reading. Export endpoints must not bypass unit/sector restrictions.
+Modules may add domain invariants in addition to Core authorization. Authorization does not replace business validation.
 
-## Auditability
+## Exports and attachments
 
-Changes to roles, permissions and user scope should be recorded in the system audit log.
+Export never bypasses read scope.
 
-## Open decisions
+An attachment inherits authorization from its owning business entity plus the relevant write/delete capability.
 
-Before implementation we still need to define:
-- identity/auth provider;
-- whether multiple roles per user are needed in v1;
-- exact unit/sector scope representation;
-- permission caching strategy;
-- database-level enforcement capabilities of the selected stack.
+Knowing an object key or entity ID must not grant access.
+
+## Realtime
+
+Realtime subscriptions must not become an authorization bypass.
+
+Subscriptions and resulting row access must respect the same RLS/data-scope model used by ordinary reads.
+
+## Administration
+
+Role, permission and scope changes:
+- require explicit administrative permission;
+- are audited;
+- cannot rely only on UI hiding;
+- preserve historical actor identifiers.
+
+The Platform Administrator is implemented as a privileged role with a global assignment, not scattered `if admin` bypasses.
+
+## Lifecycle
+
+Users and organizational units are normally deactivated, not deleted, once referenced by history.
+
+Deactivation prevents new operational use while preserving auditability and historical joins.
+
+## Testing requirements
+
+Authorization tests must include:
+- inactive user denied;
+- no role denied;
+- permission absent denied;
+- global grant succeeds;
+- correct unit grant succeeds;
+- different unit denied;
+- sector grant succeeds only for matching unit/sector;
+- role with one module does not unlock another;
+- direct guessed IDs do not bypass scope;
+- export respects scope;
+- administrative mutations are audited.
