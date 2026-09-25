@@ -1,10 +1,12 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { formatDate, today } from "../../shared/dates";
 import { useResource } from "../../shared/useResource";
 import { Confirm, Form, Modal, Notice, PageTitle } from "../../shared/ui";
 import * as api from "./api";
+import { EvidenceList, EvidenceUpload } from "./PlanEvidence";
+import { listEvidence, removeEvidence } from "./evidence";
 import {
   EFFECTIVENESS_LABELS,
   isOverdue,
@@ -13,7 +15,7 @@ import {
 } from "./lifecycle";
 import { originLabel, PlanBadges } from "./PlanBadges";
 import { PlanFields, readPlanValues } from "./PlanFields";
-import type { Effectiveness, Plan, PlanStatus } from "./types";
+import type { Effectiveness, Evidence, Plan, PlanStatus } from "./types";
 const TRANSITIONS: Record<PlanStatus, { to: PlanStatus; label: string }[]> = {
   pending: [
     { to: "in_progress", label: "Iniciar execução" },
@@ -39,6 +41,10 @@ export function ActionPlanPage() {
   const { planId = "" } = useParams();
   const auth = useAuth();
   const r = useResource(useCallback(() => api.plan(planId), [planId]));
+  const evidence = useResource(
+    useCallback(() => listEvidence(planId), [planId]),
+  );
+  const [removing, setRemoving] = useState<Evidence>();
   const [editing, setEditing] = useState(false);
   const [transition, setTransition] = useState<PlanStatus>();
   const [verifying, setVerifying] = useState(false);
@@ -79,6 +85,28 @@ export function ActionPlanPage() {
   const canVerify =
     auth.can("action_plan.verify", scope) && plan.status === "completed";
   const missing = missingForExecution(plan);
+  // Execution evidence follows write and freezes at verification; verification evidence
+  // follows verify and only the open round (not yet recorded) can change.
+  const canExecutionEvidence = canWrite;
+  const canVerificationEvidence = auth.can("action_plan.verify", scope);
+  const openRound = plan.verification_round + 1;
+  const rows = evidence.data ?? [];
+  const execution = rows.filter((e) => e.kind === "execution");
+  const round = (n: number) =>
+    rows.filter((e) => e.kind === "verification" && e.verification_round === n);
+  const withEvidence = (render: () => ReactNode) =>
+    evidence.loading ? (
+      <p className="muted" role="status">
+        Carregando evidências…
+      </p>
+    ) : evidence.error ? (
+      <Notice error>
+        Não foi possível carregar as evidências.{" "}
+        <button onClick={evidence.reload}>Recarregar evidências</button>
+      </Notice>
+    ) : (
+      render()
+    );
   return (
     <>
       <nav className="breadcrumb" aria-label="Trilha">
@@ -200,6 +228,24 @@ export function ActionPlanPage() {
           )}
         </dl>
       </section>
+      <section className="ap-section">
+        <h2>Evidências da execução</h2>
+        {withEvidence(() => (
+          <>
+            <EvidenceList
+              rows={execution}
+              onRemove={canExecutionEvidence ? setRemoving : undefined}
+            />
+            {canExecutionEvidence && (
+              <EvidenceUpload
+                planId={plan.id}
+                kind="execution"
+                onUploaded={evidence.reload}
+              />
+            )}
+          </>
+        ))}
+      </section>
       <PlannedVerification plan={plan} />
       <section className="ap-section">
         <h2>Verificação realizada</h2>
@@ -224,6 +270,48 @@ export function ActionPlanPage() {
             </Field>
           </dl>
         )}
+      </section>
+      <section className="ap-section">
+        <h2>Evidências da verificação</h2>
+        {withEvidence(() => (
+          <>
+            <h3>
+              {verified ? "Para a próxima verificação" : "Para a verificação"}
+            </h3>
+            <EvidenceList
+              rows={round(openRound)}
+              onRemove={canVerificationEvidence ? setRemoving : undefined}
+            />
+            {canVerificationEvidence &&
+              (plan.status === "completed" ? (
+                <EvidenceUpload
+                  planId={plan.id}
+                  kind="verification"
+                  onUploaded={evidence.reload}
+                />
+              ) : (
+                <p className="muted">
+                  Evidências da verificação podem ser anexadas após a conclusão
+                  do plano.
+                </p>
+              ))}
+            {Array.from(
+              { length: plan.verification_round },
+              (_, i) => plan.verification_round - i,
+            ).map((n) => (
+              <Fragment key={n}>
+                <h3>
+                  Verificação nº {n}
+                  {n === plan.verification_round ? " (atual)" : ""}
+                </h3>
+                <EvidenceList
+                  rows={round(n)}
+                  empty="Nenhuma evidência anexada a esta verificação."
+                />
+              </Fragment>
+            ))}
+          </>
+        ))}
       </section>
       {editing && (
         <Modal title="Editar planejamento" onClose={() => setEditing(false)}>
@@ -253,6 +341,17 @@ export function ActionPlanPage() {
       {verifying && (
         <Modal title="Verificar eficácia" onClose={() => setVerifying(false)}>
           <PlannedVerification plan={plan} />
+          <section className="ap-section">
+            <h2>Evidências desta verificação</h2>
+            {withEvidence(() => (
+              <>
+                <h3>Execução</h3>
+                <EvidenceList rows={execution} />
+                <h3>Verificação</h3>
+                <EvidenceList rows={round(openRound)} />
+              </>
+            ))}
+          </section>
           <Form
             onCancel={() => setVerifying(false)}
             onSave={async (data) => {
@@ -300,6 +399,17 @@ export function ActionPlanPage() {
             </label>
           </Form>
         </Modal>
+      )}
+      {removing && (
+        <Confirm
+          title="Remover evidência"
+          description={`"${removing.original_name}" deixará de ficar disponível neste plano. A remoção fica registrada no histórico.`}
+          onClose={() => setRemoving(undefined)}
+          onConfirm={async () => {
+            await removeEvidence(removing.id);
+            evidence.reload();
+          }}
+        />
       )}
     </>
   );

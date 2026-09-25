@@ -9,7 +9,7 @@ import type {
   PlanSummary,
   PlanValues,
 } from "./types";
-function db() {
+export function db() {
   if (!client) throw new Error("Configuração de desenvolvimento indisponível.");
   return (
     client as unknown as SupabaseClient<ActionPlansDatabase, "action_plans">

@@ -19,6 +19,11 @@ const required = {
     "verify_plan",
     "Planos de ação desta auditoria",
   ],
+  "Action Plan evidence": [
+    "begin_evidence_upload",
+    "confirm_evidence_upload",
+    "action-plan-evidence",
+  ],
   "Core administration": ["save_role", "my_access"],
 };
 // Key material only; supabase-js itself contains the bare "sb_secret_" prefix check.
