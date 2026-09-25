@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { createServer } from "node:net";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import pg from "pg";
 import { chromium } from "playwright";
 
@@ -9,6 +12,7 @@ import { chromium } from "playwright";
 const config = JSON.parse(
   execFileSync("npx", ["--yes", "supabase@2.117.0", "status", "-o", "json"], {
     encoding: "utf8",
+    shell: process.platform === "win32",
   }),
 );
 for (const url of [config.API_URL, config.DB_URL])
@@ -86,6 +90,11 @@ try {
     "empty",
     "inactive",
     "race",
+    "raceUpdate",
+    "raceStatus",
+    "raceVerify",
+    "raceHold",
+    "raceHoldWriter",
   ]) {
     const email = `${name}-${randomUUID()}@example.test`;
     const admin = await fetch(`${config.API_URL}/auth/v1/admin/users`, {
@@ -125,6 +134,8 @@ try {
     all: ["read", "create_manual", "write", "verify"],
     writer: ["read", "write"],
     verifier: ["read", "verify"],
+    "race-status": ["read", "write"],
+    "race-verify": ["read", "verify"],
   })) {
     const role = (
       await db.query(
@@ -146,6 +157,11 @@ try {
     ["verifier", "review-verifier", "unit", A, null],
     ["inactive", "quality", "global", null, null],
     ["race", "quality", "unit", A, null],
+    ["raceUpdate", "review-writer", "unit", A, null],
+    ["raceStatus", "review-race-status", "unit", A, null],
+    ["raceVerify", "review-race-verify", "unit", A, null],
+    ["raceHold", "quality", "unit", A, null],
+    ["raceHoldWriter", "review-writer", "unit", A, null],
     ["audit", "auditor", "unit", A, null],
   ]) {
     // Audit-only role is isolated from Action Plan permissions.
@@ -394,80 +410,286 @@ try {
   console.log(
     "PASS Audit AP/NAT/null sync, history and verification preservation, write/verify, simultaneous stale writes/verifications, duplicate prevention, system audit",
   );
-  // Hold a unit row while an authorized creator waits, then revoke its profile.
-  const locker = new pg.Client({ connectionString: config.DB_URL });
-  const caller = new pg.Client({
-    connectionString: config.DB_URL,
-    application_name: "action-plan-revocation",
-  });
-  await locker.connect();
-  await caller.connect();
-  try {
-    await locker.query("begin");
-    await locker.query("update core.units set name=name where id=$1", [A]);
-    await caller.query("set role authenticated");
-    await caller.query("select set_config('request.jwt.claim.sub',$1,false)", [
-      users.race,
+  // Authorization races: a caller waits on a row lock while its access is revoked
+  // (0006 checked permissions before the wait), and a revocation must wait for an
+  // operation that has already been authorized.
+  const outcome = (query) =>
+    query.then(
+      () => ({ allowed: true }),
+      (error) => ({ allowed: false, code: error.code }),
+    );
+  async function session(name, user) {
+    const c = new pg.Client({
+      connectionString: config.DB_URL,
+      application_name: name,
+    });
+    await c.connect();
+    await c.query("set role authenticated");
+    await c.query("select set_config('request.jwt.claim.sub',$1,false)", [
+      users[user],
     ]);
-    const creating = caller
-      .query(
-        "select action_plans.create_manual_plan($1,null,'Revoked during lock wait')",
-        [A],
-      )
-      .then(
-        () => ({ allowed: true }),
-        (error) => ({ allowed: false, code: error.code }),
-      );
-    await waitForLock("action-plan-revocation");
-    await locker.query("update core.profiles set active=false where id=$1", [
-      users.race,
-    ]);
-    await locker.query("commit");
-    const outcome = await creating;
-    if (
-      existsSync(
-        "supabase/migrations/202609250007_action_plans_authorization.sql",
-      )
-    )
-      assert.deepEqual(outcome, { allowed: false, code: "42501" });
-    else {
-      assert.equal(outcome.allowed, true);
-      console.log(
-        "REPRODUCED: published 0006 allows creation after profile revocation while waiting for unit lock",
-      );
-    }
-  } finally {
-    await locker.query("rollback");
-    await locker.end();
-    await caller.end();
+    return c;
   }
-  // Browser runs against actual local Auth + Data API, including mobile layouts.
-  const server = spawn("npm", ["run", "dev", "--", "--host", "127.0.0.1"], {
-    env: {
-      ...process.env,
-      VITE_SUPABASE_URL: config.API_URL,
-      VITE_SUPABASE_PUBLISHABLE_KEY: config.ANON_KEY,
-    },
-    stdio: "ignore",
+  async function whileWaiting(user, hold, call, revoke) {
+    const locker = new pg.Client({ connectionString: config.DB_URL });
+    await locker.connect();
+    const caller = await session("action-plan-caller", user);
+    try {
+      await locker.query("begin");
+      await locker.query(...hold);
+      const result = outcome(caller.query(...call));
+      await waitForLock("action-plan-caller");
+      if (revoke) await locker.query(...revoke);
+      await locker.query("commit");
+      return await result;
+    } finally {
+      await locker.end();
+      await caller.end();
+    }
+  }
+  async function revocationWaits(user, call, revoke) {
+    const caller = await session("action-plan-holder", user);
+    const revoker = new pg.Client({
+      connectionString: config.DB_URL,
+      application_name: "action-plan-revoker",
+    });
+    await revoker.connect();
+    try {
+      await caller.query("begin");
+      assert.deepEqual(await outcome(caller.query(...call)), { allowed: true });
+      const revoking = revoker.query(...revoke);
+      await waitForLock("action-plan-revoker");
+      await caller.query("commit");
+      await revoking;
+    } finally {
+      await caller.end();
+      await revoker.end();
+    }
+  }
+  const version = async (id) =>
+    (await db.query("select version from action_plans.plans where id=$1", [id]))
+      .rows[0].version;
+  const holdPlan = (id) => [
+    "select 1 from action_plans.plans where id=$1 for update",
+    [id],
+  ];
+  const updateCall = async (id) => [
+    "select action_plans.update_plan($1,$2,'Corrida','Corrigir','Revisar','Equipe',current_date,'Sem falhas',null,null,'Inspeção')",
+    [id, await version(id)],
+  ];
+  const statusCall = async (id, s) => [
+    "select action_plans.set_plan_status($1,$2,$3)",
+    [id, await version(id), s],
+  ];
+  const verifyCall = async (id) => [
+    "select action_plans.verify_plan($1,$2,'effective',current_date,'Critério atendido')",
+    [id, await version(id)],
+  ];
+  const denial = { allowed: false, code: "42501" };
+  const fill = async (id) =>
+    ok(
+      await rpc("update_plan", "global", {
+        ...values,
+        p_id: id,
+        p_version: await version(id),
+      }),
+    );
+  // create_manual_plan: profile deactivated while waiting on the unit lock.
+  const createCall = [
+    "select action_plans.create_manual_plan($1,null,'Revoked during lock wait')",
+    [A],
+  ];
+  const holdUnit = ["update core.units set name=name where id=$1", [A]];
+  assert.deepEqual(await whileWaiting("race", holdUnit, createCall), {
+    allowed: true,
   });
+  assert.deepEqual(
+    await whileWaiting("race", holdUnit, createCall, [
+      "update core.profiles set active=false where id=$1",
+      [users.race],
+    ]),
+    denial,
+  );
+  // update_plan: assignment revoked while waiting on the plan lock.
+  const updated = await manual("global");
+  assert.deepEqual(
+    await whileWaiting(
+      "raceUpdate",
+      holdPlan(updated),
+      await updateCall(updated),
+    ),
+    { allowed: true },
+  );
+  assert.deepEqual(
+    await whileWaiting(
+      "raceUpdate",
+      holdPlan(updated),
+      await updateCall(updated),
+      [
+        "update core.user_role_assignments set active=false where user_id=$1",
+        [users.raceUpdate],
+      ],
+    ),
+    denial,
+  );
+  // set_plan_status: role deactivated while waiting on the plan lock.
+  const progressed = await manual("global");
+  await fill(progressed);
+  assert.deepEqual(
+    await whileWaiting(
+      "raceStatus",
+      holdPlan(progressed),
+      await statusCall(progressed, "in_progress"),
+    ),
+    { allowed: true },
+  );
+  assert.deepEqual(
+    await whileWaiting(
+      "raceStatus",
+      holdPlan(progressed),
+      await statusCall(progressed, "completed"),
+      ["update core.roles set active=false where key='review-race-status'"],
+    ),
+    denial,
+  );
+  assert.equal((await get(progressed)).status, "in_progress");
+  // verify_plan: permission removed from the role while waiting on the plan lock.
+  const verified = await manual("global");
+  await fill(verified);
+  for (const s of ["in_progress", "completed"])
+    ok(
+      await rpc("set_plan_status", "global", {
+        p_id: verified,
+        p_version: await version(verified),
+        p_status: s,
+      }),
+    );
+  assert.deepEqual(
+    await whileWaiting(
+      "raceVerify",
+      holdPlan(verified),
+      await verifyCall(verified),
+    ),
+    { allowed: true },
+  );
+  const beforeReverify = await version(verified);
+  assert.deepEqual(
+    await whileWaiting(
+      "raceVerify",
+      holdPlan(verified),
+      await verifyCall(verified),
+      [
+        "delete from core.role_permissions where permission_key='action_plan.verify' and role_id=(select id from core.roles where key='review-race-verify')",
+      ],
+    ),
+    denial,
+  );
+  assert.equal(await version(verified), beforeReverify);
+  // An already-authorized operation holds the caller's authorization rows until commit.
+  await revocationWaits("raceHold", createCall, [
+    "update core.profiles set active=false where id=$1",
+    [users.raceHold],
+  ]);
+  const held = await manual("global");
+  await revocationWaits("raceHoldWriter", await updateCall(held), [
+    "update core.user_role_assignments set active=false where user_id=$1",
+    [users.raceHoldWriter],
+  ]);
+  const held2 = await session("action-plan-after", "raceHoldWriter");
+  try {
+    assert.deepEqual(
+      await outcome(held2.query(...(await updateCall(held)))),
+      denial,
+    );
+  } finally {
+    await held2.end();
+  }
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int n from action_plans.plans where improvement_point='Revoked during lock wait'",
+      )
+    ).rows[0].n,
+    2,
+  );
+  console.log(
+    "PASS revocation during lock wait denied for create/update/status/verify; revocation waits for authorized in-flight create/update",
+  );
+  // Browser runs against actual local Auth + Data API on the real production bundle,
+  // served from a temporary directory so apps/web/dist is untouched.
+  const port = await new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+  const origin = `http://127.0.0.1:${port}`;
+  const outDir = mkdtempSync(join(tmpdir(), "action-plans-e2e-"));
+  const vite = (args, stdio) =>
+    spawn(
+      process.execPath,
+      [resolve("node_modules/vite/bin/vite.js"), ...args],
+      {
+        cwd: "apps/web",
+        env: {
+          ...process.env,
+          VITE_SUPABASE_URL: config.API_URL,
+          VITE_SUPABASE_PUBLISHABLE_KEY: config.ANON_KEY,
+        },
+        stdio,
+      },
+    );
+  const build = vite(["build", "--outDir", outDir, "--emptyOutDir"], "inherit");
+  const code = await new Promise((r) => build.on("exit", r));
+  assert.equal(code, 0, "vite build failed");
+  const server = vite(
+    [
+      "preview",
+      "--outDir",
+      outDir,
+      "--host",
+      "127.0.0.1",
+      "--port",
+      String(port),
+      "--strictPort",
+    ],
+    ["ignore", "pipe", "pipe"],
+  );
+  let serverLog = "";
+  let exited = null;
+  server.stdout.on("data", (d) => (serverLog += d));
+  server.stderr.on("data", (d) => (serverLog += d));
+  server.on("exit", (c) => (exited = c ?? "signal"));
   let browser;
   try {
-    for (let n = 0; n < 100; n++) {
+    // Readiness: the preview server answers the SPA shell on the exact origin used below.
+    const deadline = Date.now() + 60000;
+    for (;;) {
+      if (exited !== null)
+        throw Error(`Preview server exited (${exited}):\n${serverLog}`);
       try {
-        if ((await fetch("http://127.0.0.1:5173")).ok) break;
-      } catch { /* Vite is still starting. */ }
+        const res = await fetch(origin);
+        if (res.ok && (await res.text()).includes('id="root"')) break;
+      } catch {
+        /* Not listening yet. */
+      }
+      if (Date.now() > deadline)
+        throw Error(`Preview server not ready at ${origin}:\n${serverLog}`);
       await new Promise((r) => setTimeout(r, 100));
     }
     browser = await chromium.launch();
     const page = await browser.newPage({
       viewport: { width: 375, height: 812 },
     });
-    await page.goto("http://127.0.0.1:5173");
+    await page.goto(origin);
     await page.getByLabel(/E-mail/i).fill(users.globalEmail);
     await page.getByLabel(/Senha/i).fill(password);
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
     await page
-      .getByRole("link", { name: "Planos de Ação", exact: true })
+      // The mobile sidebar is collapsed; the permission-driven Home entry is visible.
+      .getByRole("heading", { level: 2, name: "Planos de Ação", exact: true })
       .waitFor();
     for (const route of [
       "/action-plans",
@@ -475,7 +697,7 @@ try {
       `/action-plans/${source}`,
       `/action-plans/${unitPlan}`,
     ]) {
-      await page.goto(`http://127.0.0.1:5173${route}`);
+      await page.goto(`${origin}${route}`);
       await page.locator("h1").waitFor();
       await page
         .getByText("Carregando", { exact: false })
@@ -487,7 +709,7 @@ try {
         `Mobile overflow: ${route}`,
       );
     }
-    await page.goto("http://127.0.0.1:5173/action-plans");
+    await page.goto(`${origin}/action-plans`);
     await page.getByRole("button", { name: /Novo plano/i }).click();
     await page.getByRole("dialog").waitFor();
     assert.ok(
@@ -500,14 +722,20 @@ try {
     );
   } finally {
     await browser?.close();
-    server.kill("SIGTERM");
+    server.kill();
+    rmSync(outDir, { recursive: true, force: true });
   }
+  await db.query("drop database if exists action_plan_sql_review");
   await db.query("create database action_plan_sql_review");
   const sqlUrl = new URL(config.DB_URL);
   sqlUrl.pathname = "/action_plan_sql_review";
   execFileSync(
-    "npx",
-    ["vitest", "run", "tests/action-plans-database.test.ts"],
+    process.execPath,
+    [
+      "node_modules/vitest/vitest.mjs",
+      "run",
+      "tests/action-plans-database.test.ts",
+    ],
     {
       env: { ...process.env, ACTION_PLANS_TEST_DATABASE_URL: sqlUrl.href },
       stdio: "inherit",
