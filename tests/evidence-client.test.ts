@@ -191,6 +191,24 @@ describe("evidence Storage contract", () => {
     const confirm = await finishUpload(attempt).catch((e: unknown) => e);
     expect(retryable(confirm)).toBe(true);
     expect(evidenceMessage(confirm)).toMatch(/Verifique sua conexão/);
+    // The lost confirm had committed: the object is no longer insertable (Storage answers
+    // 403, not 409), so the retry must go straight to the idempotent confirm.
+    http.mockReset();
+    http.mockImplementation(async (url: string) =>
+      url.includes("/storage/")
+        ? respond(
+            {
+              statusCode: "403",
+              error: "Unauthorized",
+              message: "new row violates row-level security policy",
+            },
+            400,
+          )
+        : new Response(null, { status: 204 }),
+    );
+    await finishUpload(attempt);
+    expect(http).toHaveBeenCalledTimes(1);
+    expect(http.mock.calls[0][0]).toContain("confirm_evidence_upload");
   });
   it("signs for 60 seconds and sets the download name with single encoding", async () => {
     http.mockImplementation(async (_url: string, init: RequestInit) => {

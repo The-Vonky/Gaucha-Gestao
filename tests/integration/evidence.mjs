@@ -258,6 +258,12 @@ try {
   assert.equal(object.metadata.cacheControl, "max-age=0");
   assert.deepEqual(await list("writer", main), []);
   must(await confirm("writer", first.evidence_id));
+  // After confirm the key is no longer insertable (403, not 409): a client retrying a lost
+  // confirm response must skip the upload and repeat only the idempotent confirm.
+  assert.match(
+    (await upload("writer", first.object_key)).error?.message ?? "",
+    /row-level security/,
+  );
   must(await confirm("writer", first.evidence_id));
   const [row] = await list("unit", main);
   assert.equal(row.original_name, name);

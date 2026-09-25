@@ -143,7 +143,13 @@ export async function listEvidence(planId: string): Promise<Evidence[]> {
   return data ?? [];
 }
 /** An upload in progress; kept so a network failure can be retried with the same id. */
-export type Attempt = { evidenceId: string; key: string; body: Blob };
+export type Attempt = {
+  evidenceId: string;
+  key: string;
+  body: Blob;
+  /** Storage holds the object; a retry only needs the (idempotent) confirm. */
+  uploaded?: boolean;
+};
 export async function beginUpload(
   planId: string,
   kind: EvidenceKind,
@@ -171,10 +177,14 @@ const alreadyStored = (e: unknown) =>
 /** Uploads (write-once; an existing object from a lost response is accepted) then confirms. */
 export async function finishUpload(a: Attempt) {
   if (!client) throw new Error("Configuração de desenvolvimento indisponível.");
-  const { error } = await client.storage
-    .from(BUCKET)
-    .upload(a.key, a.body, { upsert: false, cacheControl: "0" });
-  if (error && !alreadyStored(error)) throw error;
+  if (!a.uploaded) {
+    const { error } = await client.storage
+      .from(BUCKET)
+      .upload(a.key, a.body, { upsert: false, cacheControl: "0" });
+    if (error && !alreadyStored(error)) throw error;
+    // A confirm that committed before its response was lost makes the key uninsertable.
+    a.uploaded = true;
+  }
   const confirm = await db().rpc("confirm_evidence_upload", {
     p_evidence: a.evidenceId,
   });
