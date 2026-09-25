@@ -1,6 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
+import { STORAGE_STUB } from "./storage-stub";
 let db: PGlite;
 const ids = {
   admin: "00000000-0000-0000-0000-000000000001",
@@ -36,6 +37,7 @@ beforeAll(async () => {
  create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}');
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
  grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;`);
+  await db.exec(STORAGE_STUB);
   for (const file of readdirSync("supabase/migrations").sort())
     await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
   await db.exec(`insert into auth.users(id,email,email_confirmed_at) values ('${ids.admin}','admin@example.test',now()),('${ids.user}','user@example.test',now()),('${ids.empty}','empty@example.test',now()),('${ids.inactive}','inactive@example.test',now()); select private.bootstrap_administrator('${ids.admin}');
