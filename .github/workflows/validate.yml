@@ -24,3 +24,19 @@ jobs:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci-build-placeholder
       - run: npm run verify:build
+  action-plans-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Disposable local services only; no linked project or deployment credentials.
+      - run: npx --yes supabase@2.117.0 start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - run: node tests/integration/action-plans.mjs
+      - if: always()
+        run: npx --yes supabase@2.117.0 stop --no-backup

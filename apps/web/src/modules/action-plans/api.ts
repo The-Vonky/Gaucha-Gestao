@@ -31,18 +31,40 @@ function args(v: PlanValues) {
 export async function summaries(
   filter: { p_plan?: string; p_inspection?: string } = {},
 ): Promise<PlanSummary[]> {
-  const { data, error } = await db().rpc("plan_summaries", filter);
-  if (error) throw error;
-  return data ?? [];
+  // Newest first and never deleted: a plan created between pages only shifts
+  // earlier rows forward, so a repeated row is dropped and none is lost.
+  const rows = new Map<string, PlanSummary>();
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await db()
+      .rpc("plan_summaries", filter)
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    for (const row of data ?? [])
+      if (!rows.has(row.plan.id)) rows.set(row.plan.id, row);
+    if (!data || data.length < pageSize) return [...rows.values()];
+  }
 }
 export async function plan(id: string) {
   const [row] = await summaries({ p_plan: id });
   return row ?? null;
 }
 export async function creationScopes(): Promise<CreationScope[]> {
-  const { data, error } = await db().rpc("creation_scopes");
-  if (error) throw error;
-  return data ?? [];
+  const rows: CreationScope[] = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await db()
+      .rpc("creation_scopes")
+      // Display order by name, with ids making each page boundary unique.
+      .order("unit_name")
+      .order("unit_id")
+      .order("sector_name", { nullsFirst: true })
+      .order("sector_id", { nullsFirst: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) return rows;
+  }
 }
 export async function createManual(
   unit: string,
