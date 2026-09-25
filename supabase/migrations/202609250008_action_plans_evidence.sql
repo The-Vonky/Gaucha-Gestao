@@ -162,7 +162,8 @@ begin
  select * into e from action_plans.evidence where id=p_evidence for update;
  if e.created_by is distinct from auth.uid() then raise exception 'Forbidden' using errcode='42501'; end if;
  if e.status='available' then return; end if;
- if e.status<>'pending' or e.created_at<=now()-interval '1 hour' then raise exception 'Upload expired' using errcode='55000'; end if;
+ -- Decision time, not transaction start: the lock wait above must not extend the window.
+ if e.status<>'pending' or e.created_at<=clock_timestamp()-interval '1 hour' then raise exception 'Upload expired' using errcode='55000'; end if;
  perform action_plans_private.check_evidence_change(p,e.kind,e.verification_round,true);
  select o.metadata into m from storage.objects o
  where o.bucket_id='action-plan-evidence' and o.name=e.object_key and o.owner_id=auth.uid()::text;

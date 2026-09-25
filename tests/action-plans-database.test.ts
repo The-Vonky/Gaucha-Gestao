@@ -998,6 +998,27 @@ describe.sequential("Action Plan evidence", () => {
       /Upload expired/,
     );
   });
+  it("expires pending uploads at decision time, not at transaction start", async () => {
+    const id = await completedPlan();
+    const b = await beginEvidence(id);
+    await storeObject(b.object_key, users.unitA);
+    await asOwner(() =>
+      db.exec(`alter table action_plans.evidence disable trigger guard_evidence;
+ update action_plans.evidence set created_at=now()-interval '1 hour'+interval '2 seconds' where id='${b.evidence_id}';
+ alter table action_plans.evidence enable trigger guard_evidence;`),
+    );
+    // A confirm whose transaction started inside the window but waited on the plan lock
+    // past it must see the upload as expired.
+    await db.exec("begin");
+    try {
+      await db.query("select pg_sleep(2.5)");
+      await expect(confirmEvidence(b.evidence_id)).rejects.toThrow(
+        /Upload expired/,
+      );
+    } finally {
+      await db.exec("rollback");
+    }
+  });
   it("removes logically and idempotently; removed evidence is hidden and audited once", async () => {
     const id = await completedPlan();
     await login(users.writer);
