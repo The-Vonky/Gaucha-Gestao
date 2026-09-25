@@ -895,6 +895,13 @@ dialog::backdrop {
   font-size: 0.9rem;
   margin: 16px 0 0;
 }
+/* Actions move below long file names instead of overflowing narrow screens. */
+.evidence-list li {
+  flex-wrap: wrap;
+}
+.evidence-list .row-actions {
+  min-width: 0;
+}
 .file-input,
 .visually-hidden {
   position: absolute;

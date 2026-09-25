@@ -48,7 +48,7 @@ export function EvidenceList({
 }) {
   if (!rows.length) return <p className="muted">{empty}</p>;
   return (
-    <ul className="record-list">
+    <ul className="record-list evidence-list">
       {rows.map((e) => (
         <li key={e.id}>
           <div>
