@@ -119,7 +119,7 @@ One column, added by migration 0008:
 |---|---|---|
 | `verification_round` | `integer not null default 0` | number of verifications recorded for the plan; `check (verification_round >= 0 and (verification_round = 0) = (effectiveness is null))` |
 
-- Incremented by 1 inside `verify_plan` on every verification and re-verification (the function is replaced in 0008 with the same signature and grants; all other behavior unchanged).
+- Incremented by 1 inside `verify_plan` on every verification and re-verification (the function is replaced in 0008 with the signature described in "Binding the verification to the confirmed evidence set" below; all other behavior unchanged).
 - Never client-writable (no direct UPDATE grant exists; `update_plan`/`set_plan_status` do not touch it).
 - Deterministic backfill for plans already verified before 0008: the number of `verify`/`re_verify` events for that plan in `core.system_audit_log` (`module = 'action_plans'`, `entity_type = 'plan'`), with a minimum of 1 when `effectiveness is not null`; `0` otherwise. No evidence exists before 0008, so the backfill only aligns future round numbers with the audit trail.
 
@@ -194,6 +194,17 @@ Decision: bind each verification evidence to a **verification round** — the sm
 - `verify_plan` records the open round: it increments `plans.verification_round` in the same transaction that writes the verification fields. From that moment the round's evidence is closed and immutable.
 - After a verification, new verification evidence belongs to the next round and becomes the basis of a possible re-verification. Existing evidence of earlier rounds is never moved, re-labeled or removed through the app.
 - A pending upload whose round closed before confirmation is rejected at confirm (round no longer open) and becomes an orphan handled by reconciliation.
+
+### Binding the verification to the confirmed evidence set
+
+Decision (closed 2026-09-25, before merge): **the effectiveness verification is bound atomically, in the database, to the evidence set the verifier confirmed.** A frontend re-read before submitting is UX only; it leaves a window in which another user's confirm/remove would silently change the round being closed, because evidence mutations do not change `plans.version`.
+
+- Signature: `action_plans.verify_plan(p_id uuid, p_version integer, p_effectiveness text, p_verified_on date, p_notes text, p_expected_evidence_ids uuid[])`. No default.
+- Migration 0008 **drops** the 0006 signature `verify_plan(uuid, integer, text, date, text)` and creates only the new one; after 0008 no overload can verify without the expected set. `execute` only to `authenticated`.
+- `p_expected_evidence_ids` = the ids of the evidence the verification form showed as belonging to this verification: every `available` `execution` evidence of the plan plus every `available` `verification` evidence of the open round (`plans.verification_round + 1`). An empty array means "no evidence"; `null` is rejected (`23514`).
+- In the same transaction, while holding the plan row lock (`lock_plan`: plan `for update` → authorization → version), `verify_plan` reads that set, and compares it with the expected ids as sets (sorted, distinct; order and repetition do not matter, a `null` element never matches). If they differ it aborts with `40001` `Evidence set changed`; only if they are equal does it write the verification and increment the round.
+- Because every evidence confirm/remove takes the same plan lock, the compared set is exactly the set the round freezes.
+- UI: on `Evidence set changed` the form stays open, reloads the evidence and asks the verifier to review it and save again.
 
 Historical traceability:
 
@@ -415,7 +426,7 @@ Placement in the plan detail (`ActionPlanPage`):
 - **"Evidências da verificação"** inside/after "Verificação realizada", grouped by round:
   - open round, labeled "Para a próxima verificação" (or "Para a verificação" when never verified) — the only group with add/remove;
   - recorded rounds, labeled "Verificação nº n", newest first, read-only; the current round shows next to the current verification data;
-- the verification form shows the execution evidence and the open-round verification evidence, next to the criterion and expected evidence, so the verifier sees exactly what this verification will be bound to.
+- the verification form shows the execution evidence and the open-round verification evidence, next to the criterion and expected evidence, so the verifier sees exactly what this verification will be bound to; the shown ids are sent to `verify_plan`, which rejects the verification if the set changed (section 3).
 
 Each section:
 
@@ -508,6 +519,7 @@ Do not claim any of these passed unless executed.
 19d. verify or re-verify without any evidence succeeds (evidence optional); completing a plan without evidence succeeds.
 19e. backfill: plans verified before 0008 get the audit-event count (minimum 1); unverified plans get 0.
 19f. existing Action Plan tests (verification, re-verification, stale version, `plan_summaries`) still pass with the replaced `verify_plan` and the new column.
+19g. evidence-set binding: the 0006 `verify_plan` signature no longer exists; identical set verifies; evidence added or removed between the read and `verify_plan` → `40001`; same ids in another order verify; duplicates or ids of another round/plan cannot stand in for the actual set; `null` rejected; re-verification applies the same rule; verification without evidence passes an empty array.
 
 ### Concurrency (real Postgres sessions)
 
@@ -552,7 +564,7 @@ Do not claim any of these passed unless executed.
 - **Simultaneous uploads**: independent rows and keys; the plan lock is held only for the short begin/confirm transactions, never during byte transfer.
 - **Concurrent removal**: evidence row lock; second remover sees `removed` → idempotent no-op.
 - **Duplicate retry**: the client keeps `evidence_id` for the whole attempt; Storage "already exists" → confirm; confirm is idempotent. A retried begin only creates another pending row that expires.
-- **Verification race**: `verify_plan` locks the plan `for update` and increments the round; evidence begin/confirm/remove take the same lock and recheck the open round, so an evidence change is either part of the round being recorded or is rejected after it.
+- **Verification race**: `verify_plan` locks the plan `for update` and increments the round; evidence begin/confirm/remove take the same lock and recheck the open round, so an evidence change is either rejected after it or committed before it — in which case the verification no longer matches the expected set and fails with `40001` unless the verifier confirmed that change.
 - No optimistic `version` on evidence: rows are append/remove only, never edited.
 
 ## 14. Out of scope (v1)
@@ -577,7 +589,7 @@ Do not create placeholders for these.
 ## 15. Migrations
 
 - Start at **`<date>0008_action_plans_evidence.sql`** or later. Migrations 0001–0007 are immutable.
-- One migration is expected: `plans.verification_round` column + deterministic backfill + constraint; `create or replace` of `action_plans.verify_plan` (same signature/grants, adds the increment); evidence table + constraints/indexes, RLS/grants, bucket row, `storage.objects` policies, RPCs, private helpers (policy predicates, logging, reconciliation).
+- One migration is expected: `plans.verification_round` column + deterministic backfill + constraint; `drop` of the 0006 `action_plans.verify_plan(uuid,integer,text,date,text)` and creation of `verify_plan(..., p_expected_evidence_ids uuid[])` (adds the increment and the evidence-set check; `execute` only to `authenticated`); evidence table + constraints/indexes, RLS/grants, bucket row, `storage.objects` policies, RPCs, private helpers (policy predicates, logging, reconciliation).
 - Validate that `plan_summaries` (which returns the `action_plans.plans` row type) and the frontend types handle the new column.
 - Validate from zero on local Supabase **with `storage-api` running**, confirming that the migration's references to `storage.buckets`/`storage.objects` resolve and that the function owner can read `storage.objects`.
 - No production migration execution.
@@ -600,6 +612,7 @@ Before evidence reaches production:
 4. **EXIF/GPS:** original bytes preserved; the application does not extract, index or copy EXIF/GPS; stripping out of scope; documented as a known privacy risk.
 5. **Limits:** 10 MiB per file; 20 active evidence items per plan (section 8 semantics).
 6. **Verification evidence:** bound to verification rounds; closed rounds immutable (section 3).
+7. **Verification ↔ evidence set:** a verification is recorded only if the evidence set the verifier confirmed equals, atomically under the plan lock, the set the round freezes (section 3).
 
 No open product decisions remain for v1.
 
