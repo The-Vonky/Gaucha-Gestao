@@ -8,6 +8,14 @@ export const groups = [
   "Transporte",
   "Administração",
 ] as const;
+/** Static presentation copy for each area (product copy, not data). */
+export const groupDescriptions: Partial<
+  Record<(typeof groups)[number], string>
+> = {
+  Qualidade:
+    "Auditorias do checklist geral e o ciclo das ações corretivas, da execução à verificação de eficácia.",
+  Administração: "Acessos, estrutura organizacional e registros do sistema.",
+};
 export type Destination = {
   path: string;
   label: string;

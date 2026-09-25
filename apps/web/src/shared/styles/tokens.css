@@ -34,22 +34,32 @@
   --brand-orange-900: #773a0b;
   --brand-orange-950: #451d01;
 
-  /* ---------- Neutrals (charcoal of the wordmark, faint green cast) ---------- */
+  /* ---------- Neutrals: warm "linen" greys and the wordmark charcoal ---------- */
   --neutral-0: #ffffff;
-  --neutral-25: #fbfbfa;
-  --neutral-50: #f6f7f5;
-  --neutral-100: #eef0ed;
-  --neutral-200: #e2e5e1;
-  --neutral-300: #cdd2cc;
-  --neutral-400: #8c948d; /* form control borders (≥3:1) */
-  --neutral-500: #7b837c;
-  --neutral-600: #5e665f; /* secondary text (5.9:1) */
-  --neutral-700: #474e48;
-  --neutral-800: #2f3531;
-  --neutral-900: #1e2320;
-  --neutral-950: #121513;
+  --neutral-25: #fbfaf7;
+  --neutral-50: #f4f2ec; /* work surface */
+  --neutral-100: #ebe8e0;
+  --neutral-200: #dfdbd1;
+  --neutral-300: #cbc6b9;
+  --neutral-400: #8f8a7d; /* form control borders (3.4:1 on white) */
+  --neutral-500: #7a7568;
+  --neutral-600: #5c584d; /* secondary text (6.3:1 on work surface) */
+  --neutral-700: #454239;
+  --neutral-800: #2f2d27;
+  --neutral-900: #1f1e1a;
+  --neutral-950: #141310;
 
-  /* ---------- Signature gradients (≤10% of any screen) ---------- */
+  /* ---------- Brand surface: institutional deep green (navigation, login) ---------- */
+  --brand-surface: #0f2c1e;
+  --brand-surface-raised: #18382a;
+  --brand-surface-line: rgb(255 255 255 / 0.08);
+  --brand-surface-hover: rgb(255 255 255 / 0.06);
+  --brand-surface-active: rgb(255 255 255 / 0.11);
+  --on-brand: #f3f1ea; /* 13:1 on brand surface */
+  --on-brand-muted: #a9b6ad; /* 7.1:1 */
+  --on-brand-accent: var(--brand-orange-300);
+
+  /* ---------- Brand gradients (identity pieces, never on controls or text) ---------- */
   --gradient-orange: linear-gradient(135deg, #fbb900 0%, #ee8100 100%);
   --gradient-green: linear-gradient(135deg, #1ba14a 0%, #a6cf5e 100%);
   --gradient-brand: linear-gradient(
@@ -70,7 +80,7 @@
   --color-surface: var(--neutral-0);
   --color-surface-subtle: var(--neutral-25);
   --color-surface-sunken: var(--neutral-100);
-  --color-surface-brand: var(--brand-green-950);
+  --color-surface-brand: var(--brand-surface);
   --color-text: var(--neutral-900);
   --color-text-secondary: var(--neutral-600);
   --color-text-disabled: var(--neutral-500);
@@ -90,7 +100,7 @@
   --color-selected-text: var(--brand-green-800);
   --color-hover-bg: var(--neutral-100);
   --color-pressed-bg: var(--neutral-200);
-  --color-focus: var(--brand-orange-600);
+  --color-focus: var(--brand-orange-700); /* ≥3:1 on light surfaces */
 
   /* ---------- Semantic status (independent from brand) ---------- */
   --success: #1c7c43;
@@ -118,25 +128,27 @@
   --font-sans:
     "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
     BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Display: DIN-style Bahnschrift (Windows 10+) → DIN Alternate (macOS) →
+     system. Operational, compact and excellent for numerals. */
   --font-display:
-    "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system,
-    BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+    Bahnschrift, "DIN Alternate", "Segoe UI Variable Display", "Segoe UI",
+    system-ui, -apple-system, Roboto, Arial, sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas,
     monospace;
 
-  --text-display: 600 2.25rem/1.1 var(--font-display);
-  --text-page-title: 650 1.625rem/1.2 var(--font-display);
-  --text-section-title: 650 1.125rem/1.35 var(--font-sans);
-  --text-card-title: 600 1rem/1.4 var(--font-sans);
+  --text-display: 600 3rem/1 var(--font-display);
+  --text-page-title: 600 1.75rem/1.15 var(--font-display);
+  --text-section-title: 600 1.1875rem/1.3 var(--font-display);
+  --text-card-title: 600 1.0625rem/1.3 var(--font-display);
   --text-body: 400 0.9375rem/1.55 var(--font-sans);
   --text-body-sm: 400 0.8125rem/1.5 var(--font-sans);
   --text-label: 600 0.8125rem/1.35 var(--font-sans);
   --text-caption: 400 0.75rem/1.4 var(--font-sans);
-  --text-overline: 650 0.6875rem/1.3 var(--font-sans);
-  --text-kpi: 650 1.75rem/1.1 var(--font-display);
-  --tracking-display: -0.025em;
-  --tracking-title: -0.015em;
-  --tracking-overline: 0.08em;
+  --text-overline: 600 0.6875rem/1.3 var(--font-display);
+  --text-kpi: 600 2rem/1 var(--font-display);
+  --tracking-display: -0.02em;
+  --tracking-title: -0.01em;
+  --tracking-overline: 0.12em;
 
   /* ---------- Spacing (4px base) ---------- */
   --space-0: 0;
@@ -157,14 +169,15 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  --radius-2xl: 24px; /* brand panels, login card */
   --radius-full: 999px; /* dots, avatars, progress tracks only */
 
   /* ---------- Elevation ---------- */
-  --shadow-xs: 0 1px 2px rgb(18 21 19 / 0.05);
-  --shadow-sm: 0 1px 2px rgb(18 21 19 / 0.04), 0 2px 6px rgb(18 21 19 / 0.04);
-  --shadow-md: 0 1px 2px rgb(18 21 19 / 0.04),
-    0 8px 20px -6px rgb(18 21 19 / 0.1);
-  --shadow-lg: 0 24px 56px -12px rgb(18 21 19 / 0.28);
+  --shadow-xs: 0 1px 2px rgb(31 30 26 / 0.05);
+  --shadow-sm: 0 1px 2px rgb(31 30 26 / 0.04), 0 2px 6px rgb(31 30 26 / 0.04);
+  --shadow-md: 0 1px 2px rgb(31 30 26 / 0.04),
+    0 8px 20px -6px rgb(31 30 26 / 0.1);
+  --shadow-lg: 0 24px 56px -12px rgb(31 30 26 / 0.28);
   --focus-ring: 0 0 0 2px var(--neutral-0), 0 0 0 4px var(--color-focus);
 
   /* ---------- Layers ---------- */
@@ -186,8 +199,8 @@
   /* ---------- Layout ---------- */
   /* Breakpoints (media queries cannot read custom properties):
      sm < 600px · md 600–1023px · lg ≥ 1024px · xl ≥ 1440px */
-  --sidebar-width: 256px;
-  --header-height: 60px;
+  --sidebar-width: 248px;
+  --header-height: 56px;
   --content-max: 1440px;
   --control-height: 40px;
   --control-height-sm: 32px;

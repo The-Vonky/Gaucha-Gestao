@@ -19,8 +19,8 @@ Branch: `feat/quality-ui-v1`
 
 ## 1. Principles
 
-1. **90 % functional, 10 % signature.** Clean, neutral working surfaces; brand color and gradients appear only in signature places (shell hairline, active indicator, avatar ring, hero, loaders, empty states, KPI accents).
-2. **Recognizably Gaúcha without the logo.** Identity comes from the green/orange pairing, the loop/plate geometry and the orange focus ring — not from repeating the logo. The full logo appears only on the login screen.
+1. **Brand navigation vs. work surface.** Identity lives on a permanent deep-green brand surface (navigation, login, mobile bar); work happens on a light, warm, dense surface. Brand presence may exceed 10 % of the screen as long as work areas stay dense and legible. Rejected: light "SaaS template" sidebar, generic hero, cards and borders everywhere.
+2. **The "elos" are the structure.** The two connected loops of the mark (orange/gold + green/lime, each closed by a plate) are the proprietary geometry: used whole, at architectural scale, as the composition of brand surfaces — never as scattered circles or ornament. The full logo appears only on the login card.
 3. **Brand ≠ status.** Brand tokens never communicate state. Status always has its own semantic token plus text/icon; color is never the only signal.
 4. **Density with air.** Operational screens (158 criteria, plan queue) favor compact rows, strong alignment and typographic hierarchy over large cards.
 5. **Real data only.** No invented KPIs, charts or placeholders presented as data. Every number shown must come from an existing API.
@@ -34,13 +34,14 @@ Source file: `apps/web/src/shared/styles/tokens.css`.
 | --- | --- | --- |
 | Gaúcha Green | `--brand-green-50 … 950`, `--brand-lime-300/400` | 500 `#2a9f4c` logo green (graphics only) · **600 `#1f8540` primary action (4.7:1 on white)** · 700 links/selected text · 950 brand surface |
 | Gaúcha Orange | `--brand-orange-50 … 950` | 400 `#fbb022` gold · 500 `#f39200` logo orange (graphics only) · **600 `#d67500` focus ring** · 700 orange text (4.8:1) |
-| Neutrals | `--neutral-0 … 950` | 50 app background · 200 borders · 400 control borders (≥3:1) · 600 secondary text (5.9:1) · 900 primary text · 950 charcoal |
+| Neutrals (warm "linen") | `--neutral-0 … 950` | 50 `#f4f2ec` work surface · 200 borders · 400 control borders (3.4:1) · 600 secondary text (6.3:1) · 900 primary text · 950 charcoal |
+| Brand surface | `--brand-surface`, `-raised`, `-line`, `-hover`, `-active`, `--on-brand(-muted/-accent)` | `#0f2c1e` deep institutional green for navigation and login; off-white text 13:1, muted 7.1:1; orange-300 accent and focus ring on it |
 
 Pure logo colors (500) are for graphics, gradients and large marks only; text and controls use the darker steps.
 
 ### Role tokens
 
-`--color-bg`, `--color-surface(-subtle|-sunken|-brand)`, `--color-text(-secondary|-disabled|-inverse)`, `--color-border(-strong|-control)`, `--color-link(-hover)`, `--color-action(-hover|-active|-text)`, `--color-selected-bg/-text`, `--color-hover-bg`, `--color-pressed-bg`, `--color-focus`.
+`--color-bg`, `--color-surface(-subtle|-sunken|-brand)`, `--color-text(-secondary|-disabled|-inverse)`, `--color-border(-strong|-control)`, `--color-link(-hover)`, `--color-action(-hover|-active|-text)`, `--color-selected-bg/-text`, `--color-hover-bg`, `--color-pressed-bg`, `--color-focus` (orange-700 on light surfaces, orange-300 on the brand surface).
 
 ### Semantic status (independent from brand)
 
@@ -52,13 +53,13 @@ Pure logo colors (500) are for graphics, gradients and large marks only; text an
 | `--info` | draft / in progress, informational notices |
 | `--neutral` | NAP, no data, inactive, removed |
 
-### Gradients (signature only)
+### Brand gradients
 
-`--gradient-orange`, `--gradient-green`, `--gradient-brand` (orange→green→lime, horizontal), `--gradient-indicator` (vertical, active nav marker). Allowed: shell hairline, active indicator, avatar ring, module hero, loaders, empty states, special indicators and charts. Forbidden: buttons, card fills, large saturated areas, gradient text, glows.
+`--gradient-orange`, `--gradient-green` (the loops of the mark), `--gradient-brand` (orange→green→lime: mobile bar hairline, avatar ring). Never on buttons, card fills, text or glows.
 
 ## 3. Typography
 
-System stack, no web-font dependency: `Segoe UI Variable` (the corporate Windows fleet) → `system-ui`/SF → Roboto. Display sizes use the "Display" optical variant where available.
+Two system faces, no web-font dependency. **Display** (`--font-display`): Bahnschrift, the DIN-style variable face shipped with Windows 10+ (→ DIN Alternate on macOS → system). It gives headings, overlines, labels of brand surfaces and numerals an operational, industrial character with excellent figures. **Text** (`--font-sans`): Segoe UI Variable Text → system-ui. Overlines use the display face in uppercase with +0.12em tracking.
 
 | Token | Spec | Use |
 | --- | --- | --- |
@@ -114,14 +115,14 @@ Not planned unless a real reuse appears: Tooltip, Dropdown, Tabs, Radio group, C
 
 ## 6. App Shell
 
-- **Desktop (≥1024):** 256 px light sidebar with a 3 px brand gradient hairline on top; brand lockup (mark + "Gaúcha / GESTÃO"); permission-driven navigation from `app/navigation.ts` (unchanged rules); each destination has an icon and static description. Selected item: subtle green background, semibold, green icon and a 3 px orange→green indicator. Footer: "Gaúcha Alimentação · Plataforma corporativa" under a short brand-gradient accent.
-- **Header:** sticky, translucent white, 60 px; breadcrumbs `Início / Grupo / Destino` derived from navigation; user avatar (initials, brand-gradient ring), name and "Sair".
-- **Tablet/Mobile (<1024):** sidebar removed; header with menu button, compact mark and avatar; navigation opens a modal `Drawer` (focus trap, Escape, backdrop click closes, closes on navigation) that also holds the user and "Sair". Breadcrumbs hidden below 600 px; "Sair" becomes icon-only in the header.
+- **Desktop (≥1024):** 248 px **dark brand surface** sidebar (`--brand-surface` #0f2c1e with a faint green light at the top). Brand lockup (mark + "Gaúcha / GESTÃO" with the orange accent); permission-driven navigation from `app/navigation.ts` (unchanged rules). Items in off-white; hover `--brand-surface-hover`; active = lighter surface, white semibold, orange icon and a small orange bar. The loops, in the surface's own ink (4.5 % white), sit under the navigation. Base: user card (avatar with brand ring, name, e-mail, icon "Sair").
+- **Header:** sticky, translucent work-surface colour, 56 px; breadcrumbs `Início • Grupo • Destino` with orange dot separators. No identity duplication: the user lives in the navigation.
+- **Tablet/Mobile (<1024):** the header becomes the brand bar (dark surface + 2 px brand gradient hairline): menu, lockup, breadcrumbs (≥600 px) and avatar. Navigation opens a dark `Drawer` (focus trap, Escape, backdrop click, closes on navigation) holding the menu and the user card with "Sair".
 - Route change scrolls to top and focuses `main` without scrolling it under the sticky header.
-- **Home:** compact hero with the real date, greeting and the areas released to the user (group + destination count, derived from permissions); line-art mark watermark. Operational areas use **featured** cards (icon tile, arrow, title anchored low, plate-rim corner, accent hairline on hover); Administração uses **compact** rows. Accent per group: Qualidade green, Administração neutral, future operational modules orange. No KPIs until a real source exists. No permissions → `EmptyState` (mark on a "plate" halo) showing the signed-in e-mail to hand to the administration.
-- **Login:** cohesive brand block (mark, eyebrow, title, tagline) on green-950, line-art mark anchored low-right, footer "Gaúcha Alimentação · Uso interno"; the form side keeps the official logo. Mobile stacks a compact brand band over the form.
-- **Brand motif (`BrandArcs`):** the mark redrawn as thin line art — both loops, plates with a rim and a dotted orbit echo — with constant 1–1.5 px strokes. Never filled, never behind body text.
-- **BrandMark sizes:** sidebar/drawer 36 · mobile header 30 · login 56 (44 mobile) · states 48 · loader 56 · empty state 44.
+- **Home (launchpad):** no hero. A short head (date, "Áreas de trabalho", user name and number of released modules — derived from permissions). Each operational area is a **domain panel**: tinted surface (Qualidade green, future areas orange), large display name with an orange accent, static description, the loops rising from under the name, and **module tiles** (dark-surface icon with orange glyph, display title, description, "Abrir"). **Administração** is secondary: one dense surface with divided rows. No KPIs until a real source exists. No permissions → compact `EmptyState` (mark on a small plate, signed-in e-mail to hand to the administration).
+- **Login:** full-bleed brand surface; the two loops at architectural scale (lower-left, the green loop and plate passing behind the card) structure an asymmetric composition: lockup + headline + tagline top-left, light login card on the right with the official logo at real size, footer "Gaúcha Alimentação · Uso interno". At 375 px the loops rise behind the card between the headline and the form.
+- **Brand motif:** `BrandMark` itself — colour for the mark and the login, `tone="mono"` in the surface's ink for the sidebar and domain panels, with a thinner `weight` at large scale. Hidden where it cannot read whole (stacked domain panel).
+- **BrandMark sizes:** sidebar/drawer 34 · mobile bar 28 · login lockup 40 (34 mobile) · states 48 · loader 56 · empty state 34.
 
 ## 7. Responsiveness
 

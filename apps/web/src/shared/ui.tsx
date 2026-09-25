@@ -97,9 +97,11 @@ export function EmptyState({
       <span className="empty-halo">
         <BrandMark className="empty-mark" />
       </span>
-      <h2>{title}</h2>
-      <p>{children}</p>
-      {actions && <div className="actions">{actions}</div>}
+      <div className="empty-body">
+        <h2>{title}</h2>
+        <p>{children}</p>
+        {actions && <div className="actions">{actions}</div>}
+      </div>
     </section>
   );
 }
@@ -108,10 +110,12 @@ export function Drawer({
   label,
   children,
   onClose,
+  className = "",
 }: {
   label: string;
   children: ReactNode;
   onClose: () => void;
+  className?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -122,7 +126,7 @@ export function Drawer({
   return (
     <dialog
       ref={ref}
-      className="drawer"
+      className={`drawer ${className}`.trim()}
       aria-label={label}
       onCancel={(e) => {
         e.preventDefault();

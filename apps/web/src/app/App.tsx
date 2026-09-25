@@ -17,7 +17,7 @@ import { PermissionsPage } from "../core/admin/PermissionsPage";
 import { LogsPage } from "../core/admin/LogsPage";
 import { AuditModule } from "../modules/audit/AuditModule";
 import { ActionPlansModule } from "../modules/action-plans/ActionPlansModule";
-import { BrandArcs, BrandMark, Loader } from "../shared/brand";
+import { BrandMark, Loader } from "../shared/brand";
 import { Icon } from "../shared/icons";
 import {
   Drawer,
@@ -28,6 +28,7 @@ import {
 } from "../shared/ui";
 import {
   destinations,
+  groupDescriptions,
   visibleNavigation,
   type Destination,
 } from "./navigation";
@@ -183,6 +184,20 @@ function Breadcrumbs({ current }: { current?: Destination }) {
     </nav>
   );
 }
+function UserCard() {
+  const auth = useAuth();
+  const name = auth.profile?.display_name;
+  return (
+    <div className="user-card">
+      <Avatar name={name} />
+      <span className="user-id">
+        <strong>{name}</strong>
+        <small>{auth.session?.user.email}</small>
+      </span>
+      <Logout compact />
+    </div>
+  );
+}
 function Home() {
   const auth = useAuth();
   const entries = visibleNavigation(!!auth.profile?.active, auth.grants);
@@ -191,65 +206,84 @@ function Home() {
     day: "numeric",
     month: "long",
   });
+  const modules = entries.reduce((n, g) => n + g.destinations.length, 0);
+  const domains = entries.filter((g) => g.group !== "Administração");
+  const admin = entries.find((g) => g.group === "Administração");
   return (
     <>
-      <section className="home-hero">
-        <BrandArcs />
-        <div>
-          <p className="eyebrow">{today}</p>
-          <h1>Olá, {auth.profile?.display_name}</h1>
-          <p>Selecione uma área para continuar.</p>
-          {entries.length > 0 && (
-            <ul className="hero-groups" aria-label="Áreas liberadas">
-              {entries.map((g) => (
-                <li key={g.group} data-group={g.group}>
-                  {g.group}
-                  <span className="numeric">{g.destinations.length}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
+      <header className="launch-head">
+        <p className="eyebrow">{today}</p>
+        <h1>Áreas de trabalho</h1>
+        <p>
+          {auth.profile?.display_name} ·{" "}
+          <span className="numeric">
+            {modules === 1
+              ? "1 módulo liberado"
+              : `${modules} módulos liberados`}
+          </span>
+        </p>
+      </header>
       {!entries.length ? (
         <EmptyState title="Nenhuma área liberada">
-          Sua conta ainda não possui permissões para as áreas disponíveis.
-          Solicite uma atribuição à administração informando o e-mail{" "}
+          Sua conta ainda não possui permissões. Solicite uma atribuição à
+          administração informando o e-mail{" "}
           <strong>{auth.session?.user.email}</strong>.
         </EmptyState>
       ) : (
-        entries.map((g) => (
-          <section className="home-group" key={g.group} aria-label={g.group}>
-            <p className="eyebrow">{g.group}</p>
-            <div
-              className={
-                g.group === "Administração"
-                  ? "entry-grid compact"
-                  : "entry-grid featured"
-              }
+        <>
+          {domains.map((g) => (
+            <section
+              className="domain"
+              data-group={g.group}
+              key={g.group}
+              aria-label={g.group}
             >
-              {g.destinations.map((d) => (
-                <Link
-                  className="entry-card"
-                  data-group={g.group}
-                  key={d.path}
-                  to={d.path}
-                >
-                  <span className="entry-icon">
-                    <Icon name={d.icon} />
-                  </span>
-                  <div className="entry-text">
+              <BrandMark tone="mono" weight={1.6} className="domain-loops" />
+              <div className="domain-intro">
+                <p className="domain-name">{g.group}</p>
+                {groupDescriptions[g.group] && (
+                  <p className="domain-text">{groupDescriptions[g.group]}</p>
+                )}
+              </div>
+              <div className="domain-modules">
+                {g.destinations.map((d) => (
+                  <Link className="module-tile" key={d.path} to={d.path}>
+                    <span className="module-icon">
+                      <Icon name={d.icon} />
+                    </span>
                     <h2>{d.label}</h2>
                     <p>{d.description}</p>
-                  </div>
-                  <span className="entry-arrow">
-                    <Icon name="arrowRight" />
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        ))
+                    <span className="module-open" aria-hidden="true">
+                      Abrir <Icon name="arrowRight" />
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ))}
+          {admin && (
+            <section className="admin-area" aria-label={admin.group}>
+              <div className="admin-head">
+                <p className="eyebrow">{admin.group}</p>
+                <p>{groupDescriptions[admin.group]}</p>
+              </div>
+              <ul className="admin-list">
+                {admin.destinations.map((d) => (
+                  <li key={d.path}>
+                    <Link to={d.path}>
+                      <Icon name={d.icon} />
+                      <div>
+                        <h2>{d.label}</h2>
+                        <small>{d.description}</small>
+                      </div>
+                      <Icon name="chevronRight" className="icon admin-go" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
       )}
     </>
   );
@@ -298,7 +332,6 @@ function Shell() {
       location.pathname === d.path ||
       location.pathname.startsWith(`${d.path}/`),
   );
-  const name = auth.profile?.display_name;
   return (
     <div className="layout">
       <a className="skip" href="#main">
@@ -307,10 +340,8 @@ function Shell() {
       <aside className="sidebar">
         <Brand />
         <Menu />
-        <div className="sidebar-foot">
-          <span>Gaúcha Alimentação</span>
-          <small>Plataforma corporativa</small>
-        </div>
+        <BrandMark tone="mono" weight={1.6} className="sidebar-loops" />
+        <UserCard />
       </aside>
       <div className="workspace">
         <header className="topbar">
@@ -328,14 +359,14 @@ function Shell() {
             aria-label="Gaúcha Gestão — Início"
           >
             <BrandMark />
-            <span>Gestão</span>
+            <span className="brand-name">
+              Gaúcha<small>Gestão</small>
+            </span>
           </Link>
           <Breadcrumbs current={current} />
-          <div className="account">
-            <Avatar name={name} />
-            <span className="account-name">{name}</span>
-            <Logout compact />
-          </div>
+          <span className="topbar-avatar">
+            <Avatar name={auth.profile?.display_name} />
+          </span>
         </header>
         <main id="main" tabIndex={-1}>
           <Routes>
@@ -366,7 +397,11 @@ function Shell() {
         </main>
       </div>
       {drawer && (
-        <Drawer label="Navegação" onClose={() => setDrawer(false)}>
+        <Drawer
+          label="Navegação"
+          className="nav-drawer"
+          onClose={() => setDrawer(false)}
+        >
           <div className="drawer-head">
             <Brand />
             <IconButton
@@ -378,11 +413,7 @@ function Shell() {
             />
           </div>
           <Menu onNavigate={() => setDrawer(false)} />
-          <div className="drawer-foot">
-            <Avatar name={name} />
-            <span className="account-name">{name}</span>
-            <Logout compact />
-          </div>
+          <UserCard />
         </Drawer>
       )}
     </div>
