@@ -94,7 +94,9 @@ export function EmptyState({
 }) {
   return (
     <section className="empty-state">
-      <BrandMark className="empty-mark" />
+      <span className="empty-halo">
+        <BrandMark className="empty-mark" />
+      </span>
       <h2>{title}</h2>
       <p>{children}</p>
       {actions && <div className="actions">{actions}</div>}

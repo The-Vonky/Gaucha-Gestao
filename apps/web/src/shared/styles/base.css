@@ -646,30 +646,52 @@ dialog::backdrop {
 
 /* ---------- Empty state ---------- */
 .empty-state {
-  position: relative;
   display: grid;
   justify-items: center;
   text-align: center;
   gap: var(--space-2);
-  padding: var(--space-10) var(--space-6);
-  border: 1px dashed var(--color-border-strong);
+  padding: var(--space-12) var(--space-6);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  background:
+    radial-gradient(
+      50% 70% at 50% 0%,
+      var(--brand-green-50) 0%,
+      transparent 75%
+    ),
+    var(--color-surface);
+}
+/* The mark sits on a "plate": a white disc with a rim, echoing the logo. */
+.empty-halo {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-full);
   background: var(--color-surface);
-  overflow: hidden;
+  box-shadow:
+    0 0 0 1px var(--color-border),
+    0 0 0 10px var(--neutral-25),
+    0 0 0 11px var(--color-border),
+    var(--shadow-sm);
 }
 .empty-state .empty-mark {
-  width: 64px;
+  width: 44px;
   height: auto;
-  margin-bottom: var(--space-2);
-  opacity: 0.9;
 }
 .empty-state h2 {
   margin: 0;
 }
 .empty-state p {
-  max-width: 46ch;
+  max-width: 48ch;
   margin: 0;
   color: var(--color-text-secondary);
+}
+.empty-state strong {
+  color: var(--color-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .empty-state .actions {
   justify-content: center;

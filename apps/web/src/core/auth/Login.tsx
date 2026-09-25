@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { client } from "../client";
 import { Notice } from "../../shared/ui";
 import { BrandArcs, BrandMark } from "../../shared/brand";
+import { Icon } from "../../shared/icons";
 import logo from "../../assets/gaucha-alimentacao-logo.png";
 export function Login() {
   const [busy, setBusy] = useState(false);
@@ -30,14 +31,18 @@ export function Login() {
     <main className="login">
       <section className="login-brand">
         <BrandArcs />
-        <BrandMark />
-        <p className="eyebrow">Plataforma corporativa</p>
-        <h1>
-          Gaúcha{" "}
-          <br />
-          Gestão
-        </h1>
-        <p>Um só lugar para a gestão da nossa operação.</p>
+        <div className="login-brand-body">
+          <BrandMark />
+          <p className="eyebrow">Plataforma corporativa</p>
+          <h1>
+            Gaúcha <br />
+            Gestão
+          </h1>
+          <p className="login-tagline">
+            Um só lugar para a gestão da nossa operação.
+          </p>
+        </div>
+        <p className="login-brand-foot">Gaúcha Alimentação · Uso interno</p>
       </section>
       <section className="login-form">
         <img className="login-logo" src={logo} alt="Gaúcha Alimentação" />
@@ -66,10 +71,11 @@ export function Login() {
             {error && <Notice error>{error}</Notice>}
             <button className="primary" type="submit">
               {busy ? "Entrando…" : "Entrar"}
+              {!busy && <Icon name="arrowRight" />}
             </button>
           </fieldset>
         </form>
-        <p className="muted">
+        <p className="muted login-help">
           Precisa de acesso ou redefinição de senha? Fale com a administração.
         </p>
       </section>

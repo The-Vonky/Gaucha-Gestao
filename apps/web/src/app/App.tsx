@@ -19,8 +19,18 @@ import { AuditModule } from "../modules/audit/AuditModule";
 import { ActionPlansModule } from "../modules/action-plans/ActionPlansModule";
 import { BrandArcs, BrandMark, Loader } from "../shared/brand";
 import { Icon } from "../shared/icons";
-import { Drawer, EmptyState, IconButton, Notice, PageTitle } from "../shared/ui";
-import { destinations, visibleNavigation, type Destination } from "./navigation";
+import {
+  Drawer,
+  EmptyState,
+  IconButton,
+  Notice,
+  PageTitle,
+} from "../shared/ui";
+import {
+  destinations,
+  visibleNavigation,
+  type Destination,
+} from "./navigation";
 import "./shell.css";
 function Logout({ compact = false }: { compact?: boolean }) {
   const [error, setError] = useState(false);
@@ -149,7 +159,11 @@ function Breadcrumbs({ current }: { current?: Destination }) {
     <nav className="crumbs" aria-label="Você está em">
       <ol>
         <li>
-          {current ? <Link to="/">Início</Link> : <span aria-current="page">Início</span>}
+          {current ? (
+            <Link to="/">Início</Link>
+          ) : (
+            <span aria-current="page">Início</span>
+          )}
         </li>
         {current && (
           <>
@@ -185,18 +199,35 @@ function Home() {
           <p className="eyebrow">{today}</p>
           <h1>Olá, {auth.profile?.display_name}</h1>
           <p>Selecione uma área para continuar.</p>
+          {entries.length > 0 && (
+            <ul className="hero-groups" aria-label="Áreas liberadas">
+              {entries.map((g) => (
+                <li key={g.group} data-group={g.group}>
+                  {g.group}
+                  <span className="numeric">{g.destinations.length}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
       {!entries.length ? (
         <EmptyState title="Nenhuma área liberada">
           Sua conta ainda não possui permissões para as áreas disponíveis.
-          Solicite uma atribuição à administração.
+          Solicite uma atribuição à administração informando o e-mail{" "}
+          <strong>{auth.session?.user.email}</strong>.
         </EmptyState>
       ) : (
         entries.map((g) => (
           <section className="home-group" key={g.group} aria-label={g.group}>
             <p className="eyebrow">{g.group}</p>
-            <div className="entry-grid">
+            <div
+              className={
+                g.group === "Administração"
+                  ? "entry-grid compact"
+                  : "entry-grid featured"
+              }
+            >
               {g.destinations.map((d) => (
                 <Link
                   className="entry-card"
@@ -211,7 +242,9 @@ function Home() {
                     <h2>{d.label}</h2>
                     <p>{d.description}</p>
                   </div>
-                  <Icon name="arrowRight" className="icon entry-arrow" />
+                  <span className="entry-arrow">
+                    <Icon name="arrowRight" />
+                  </span>
                 </Link>
               ))}
             </div>
@@ -262,7 +295,8 @@ function Shell() {
   };
   const current = destinations.find(
     (d) =>
-      location.pathname === d.path || location.pathname.startsWith(`${d.path}/`),
+      location.pathname === d.path ||
+      location.pathname.startsWith(`${d.path}/`),
   );
   const name = auth.profile?.display_name;
   return (
@@ -274,7 +308,6 @@ function Shell() {
         <Brand />
         <Menu />
         <div className="sidebar-foot">
-          <BrandArcs />
           <span>Gaúcha Alimentação</span>
           <small>Plataforma corporativa</small>
         </div>
@@ -289,7 +322,11 @@ function Shell() {
             aria-expanded={drawer}
             onClick={() => setDrawer(true)}
           />
-          <Link className="topbar-brand" to="/" aria-label="Gaúcha Gestão — Início">
+          <Link
+            className="topbar-brand"
+            to="/"
+            aria-label="Gaúcha Gestão — Início"
+          >
             <BrandMark />
             <span>Gestão</span>
           </Link>

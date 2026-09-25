@@ -114,12 +114,14 @@ Not planned unless a real reuse appears: Tooltip, Dropdown, Tabs, Radio group, C
 
 ## 6. App Shell
 
-- **Desktop (≥1024):** 256 px light sidebar with a 3 px brand gradient hairline on top; brand lockup (mark + "Gaúcha / GESTÃO"); permission-driven navigation from `app/navigation.ts` (unchanged rules); each destination has an icon and static description. Selected item: subtle green background, semibold, green icon and a 3 px orange→green indicator. Footer: "Gaúcha Alimentação · Plataforma corporativa" with a faint arc watermark.
+- **Desktop (≥1024):** 256 px light sidebar with a 3 px brand gradient hairline on top; brand lockup (mark + "Gaúcha / GESTÃO"); permission-driven navigation from `app/navigation.ts` (unchanged rules); each destination has an icon and static description. Selected item: subtle green background, semibold, green icon and a 3 px orange→green indicator. Footer: "Gaúcha Alimentação · Plataforma corporativa" under a short brand-gradient accent.
 - **Header:** sticky, translucent white, 60 px; breadcrumbs `Início / Grupo / Destino` derived from navigation; user avatar (initials, brand-gradient ring), name and "Sair".
 - **Tablet/Mobile (<1024):** sidebar removed; header with menu button, compact mark and avatar; navigation opens a modal `Drawer` (focus trap, Escape, backdrop click closes, closes on navigation) that also holds the user and "Sair". Breadcrumbs hidden below 600 px; "Sair" becomes icon-only in the header.
 - Route change scrolls to top and focuses `main` without scrolling it under the sticky header.
-- **Home:** hero with the real date and greeting, arc watermark; modules grouped by area; card = accent icon tile + title (`h2`) + description + arrow. Accent per group: Qualidade green, Administração neutral, future operational modules orange. No KPIs until a real source exists. No permissions → `EmptyState`.
-- **Login:** brand panel (green-950, arcs, mark, "Gaúcha Gestão") + form with the official logo. Mobile stacks a compact brand band over the form.
+- **Home:** compact hero with the real date, greeting and the areas released to the user (group + destination count, derived from permissions); line-art mark watermark. Operational areas use **featured** cards (icon tile, arrow, title anchored low, plate-rim corner, accent hairline on hover); Administração uses **compact** rows. Accent per group: Qualidade green, Administração neutral, future operational modules orange. No KPIs until a real source exists. No permissions → `EmptyState` (mark on a "plate" halo) showing the signed-in e-mail to hand to the administration.
+- **Login:** cohesive brand block (mark, eyebrow, title, tagline) on green-950, line-art mark anchored low-right, footer "Gaúcha Alimentação · Uso interno"; the form side keeps the official logo. Mobile stacks a compact brand band over the form.
+- **Brand motif (`BrandArcs`):** the mark redrawn as thin line art — both loops, plates with a rim and a dotted orbit echo — with constant 1–1.5 px strokes. Never filled, never behind body text.
+- **BrandMark sizes:** sidebar/drawer 36 · mobile header 30 · login 56 (44 mobile) · states 48 · loader 56 · empty state 44.
 
 ## 7. Responsiveness
 
