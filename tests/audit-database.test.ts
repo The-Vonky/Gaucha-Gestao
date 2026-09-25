@@ -211,6 +211,12 @@ describe.sequential("Audit domain database", () => {
         [id],
       ),
     ).toEqual({ action: "create", module: "audit", unit_id: A });
+    // A template used by an inspection cannot gain content either.
+    await expect(
+      db.query(
+        "insert into audit.checklist_items(template_version,key,section_key,position,number,text) values ('checklist-geral-2026-09-22-v1','item-162','section-09',159,162,'x')",
+      ),
+    ).rejects.toThrow(/in use/);
   });
   it("rejects creation for inactive or out-of-scope units without partial rows", async () => {
     await login(users.global);
