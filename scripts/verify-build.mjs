@@ -13,6 +13,12 @@ const required = {
     "reopen_inspection",
     "Nova auditoria",
   ],
+  "Action Plans module": [
+    "create_manual_plan",
+    "set_plan_status",
+    "verify_plan",
+    "Planos de ação desta auditoria",
+  ],
   "Core administration": ["save_role", "my_access"],
 };
 // Key material only; supabase-js itself contains the bare "sb_secret_" prefix check.
@@ -28,5 +34,5 @@ if (errors.length) {
   process.exit(1);
 }
 console.log(
-  "Bundle contains the application (Audit + Core) and no privileged keys.",
+  "Bundle contains the application (Audit, Action Plans, Core) and no privileged keys.",
 );

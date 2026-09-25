@@ -11,6 +11,8 @@ export function message(error: unknown): string {
     return "Este vínculo possui referências. Preserve-o para manter o histórico.";
   if (code === "23514" || code === "22P02")
     return "Confira os campos e o escopo. Usuário, perfil, unidade e setor precisam estar ativos.";
+  if (code === "55000")
+    return "Esta operação não é permitida no estado atual do registro.";
   if (code === "42501")
     return "Você não tem permissão para esta operação. Atualize seu acesso.";
   return "Não foi possível concluir a operação. Verifique sua conexão e tente novamente.";

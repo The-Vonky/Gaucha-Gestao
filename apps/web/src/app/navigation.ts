@@ -26,6 +26,14 @@ export const destinations: Destination[] = [
     nested: true,
   },
   {
+    path: "/action-plans",
+    label: "Planos de Ação",
+    group: "Qualidade",
+    permissions: ["action_plan.read"],
+    scope: "any",
+    nested: true,
+  },
+  {
     path: "/admin/users",
     label: "Usuários",
     group: "Administração",

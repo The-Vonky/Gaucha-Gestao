@@ -143,6 +143,13 @@ export function InspectionPage() {
           )}
         </div>
       </section>
+      {auth.can("action_plan.read", scope) && (
+        <p>
+          <Link to={`/action-plans?inspection=${summary.id}`}>
+            Planos de ação desta auditoria
+          </Link>
+        </p>
+      )}
       {stale && (
         <Notice error>
           Esta auditoria foi alterada em outra sessão.{" "}

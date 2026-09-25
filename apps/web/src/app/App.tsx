@@ -16,6 +16,7 @@ import { RolesPage } from "../core/admin/RolesPage";
 import { PermissionsPage } from "../core/admin/PermissionsPage";
 import { LogsPage } from "../core/admin/LogsPage";
 import { AuditModule } from "../modules/audit/AuditModule";
+import { ActionPlansModule } from "../modules/action-plans/ActionPlansModule";
 import { Modal, Notice, PageTitle } from "../shared/ui";
 import { destinations, visibleNavigation } from "./navigation";
 function Logout() {
@@ -153,6 +154,7 @@ function Shell() {
   }, [location.pathname]);
   const pages: Record<string, ReactNode> = {
     "/audit": <AuditModule />,
+    "/action-plans": <ActionPlansModule />,
     "/admin/users": <UsersPage />,
     "/admin/roles": <RolesPage />,
     "/admin/permissions": <PermissionsPage />,
