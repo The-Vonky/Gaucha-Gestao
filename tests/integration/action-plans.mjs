@@ -308,6 +308,7 @@ try {
     p_effectiveness: "effective",
     p_verified_on: today,
     p_notes: "Critério atendido",
+    p_expected_evidence_ids: [],
   };
   denied(await rpc("verify_plan", "writer", verification));
   ok(await rpc("verify_plan", "verifier", verification));
@@ -482,7 +483,7 @@ try {
     [id, await version(id), s],
   ];
   const verifyCall = async (id) => [
-    "select action_plans.verify_plan($1,$2,'effective',current_date,'Critério atendido')",
+    "select action_plans.verify_plan($1,$2,'effective',current_date,'Critério atendido','{}')",
     [id, await version(id)],
   ];
   const denial = { allowed: false, code: "42501" };

@@ -98,6 +98,8 @@ export async function setStatus(row: Plan, status: PlanStatus) {
 export async function verify(
   row: Plan,
   values: { effectiveness: Effectiveness; verified_on: string; notes: string },
+  /** Ids of the evidence shown as this verification's basis; the database rejects a mismatch. */
+  evidenceIds: string[],
 ) {
   const { error } = await db().rpc("verify_plan", {
     p_id: row.id,
@@ -105,6 +107,7 @@ export async function verify(
     p_effectiveness: values.effectiveness,
     p_verified_on: values.verified_on,
     p_notes: values.notes,
+    p_expected_evidence_ids: evidenceIds,
   });
   if (error) throw error;
 }

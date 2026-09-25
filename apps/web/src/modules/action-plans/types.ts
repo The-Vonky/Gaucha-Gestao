@@ -119,6 +119,7 @@ export type ActionPlansDatabase = {
           p_effectiveness: Effectiveness;
           p_verified_on: string;
           p_notes: string;
+          p_expected_evidence_ids: string[];
         };
         Returns: undefined;
       };

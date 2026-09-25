@@ -104,13 +104,15 @@ async function plan(unit = A, sector = null, status = "completed") {
     );
   return id;
 }
-const verify = async (u, id) =>
+/** Verifies against the evidence ids the verifier confirmed (the round's expected set). */
+const verify = async (u, id, evidence) =>
   ap(u).rpc("verify_plan", {
     p_id: id,
     p_version: await version(id),
     p_effectiveness: "effective",
     p_verified_on: values.p_due_date,
     p_notes: "Critério atendido",
+    p_expected_evidence_ids: evidence.map((e) => e.evidence_id),
   });
 const report = async (planId) =>
   (
@@ -462,7 +464,23 @@ try {
   const rounds = await plan();
   const execution = await attach("writer", rounds, "execution");
   const r1 = await attach("verifier", rounds, "verification");
-  must(await verify("verifier", rounds));
+  // The pre-0008 five-argument call no longer resolves to any function.
+  assert.ok(
+    (
+      await ap("verifier").rpc("verify_plan", {
+        p_id: rounds,
+        p_version: await version(rounds),
+        p_effectiveness: "effective",
+        p_verified_on: values.p_due_date,
+        p_notes: "Sem conjunto",
+      })
+    ).error,
+  );
+  assert.equal(
+    (await verify("verifier", rounds, [execution])).error?.code,
+    "40001",
+  );
+  must(await verify("verifier", rounds, [r1, execution]));
   const r2 = await attach("verifier", rounds, "verification");
   assert.equal(
     (
@@ -480,7 +498,11 @@ try {
     ).error?.message,
     "Verified plan is locked",
   );
-  must(await verify("verifier", rounds));
+  assert.equal(
+    (await verify("verifier", rounds, [execution, r1])).error?.message,
+    "Evidence set changed",
+  );
+  must(await verify("verifier", rounds, [execution, r2]));
   assert.deepEqual(
     (await list("unit", rounds)).map((e) => [e.id, e.verification_round]),
     [
@@ -506,10 +528,15 @@ try {
   );
 
   // Concurrency with real PostgreSQL sessions.
-  const verifySql = async (id) => [
-    "select action_plans.verify_plan($1,$2,'effective',current_date,'Corrida')",
-    [id, await version(id)],
+  const verifySql = async (id, evidence) => [
+    "select action_plans.verify_plan($1,$2,'effective',current_date,'Corrida',$3::uuid[])",
+    [id, await version(id), evidence.map((e) => e.evidence_id)],
   ];
+  const changed = {
+    allowed: false,
+    code: "40001",
+    message: "Evidence set changed",
+  };
   const confirmSql = (id) => [
     "select action_plans.confirm_evidence_upload($1)",
     [id],
@@ -528,7 +555,7 @@ try {
   const exDone = await attach("writer", vr);
   let [held, waited] = await race(
     "verifier",
-    await verifySql(vr),
+    await verifySql(vr, [exDone]),
     "writer",
     confirmSql(exPending.evidence_id),
   );
@@ -547,7 +574,19 @@ try {
     ).error?.message,
     "Verified plan is locked",
   );
-  // Evidence change commits first: the verification waits and then records it in its round.
+  // Verification commits first: the waiting removal fails.
+  const vrRemove = await plan();
+  const kept = await attach("writer", vrRemove);
+  [held, waited] = await race(
+    "verifier",
+    await verifySql(vrRemove, [kept]),
+    "writer",
+    removeSql(kept.evidence_id),
+  );
+  assert.deepEqual(held, { allowed: true });
+  assert.equal(waited.message, "Verified plan is locked");
+  // Confirm commits while the verification waits on the plan lock: the verifier saw no
+  // evidence, so the verification is rejected atomically and nothing is recorded.
   const vr2 = await plan();
   const vr2Pending = await begin("verifier", vr2, "verification");
   must(await upload("verifier", vr2Pending.object_key));
@@ -555,13 +594,34 @@ try {
     "verifier",
     confirmSql(vr2Pending.evidence_id),
     "verifier",
-    await verifySql(vr2),
+    await verifySql(vr2, []),
   );
-  assert.deepEqual([held, waited], [{ allowed: true }, { allowed: true }]);
+  assert.deepEqual([held, waited], [{ allowed: true }, changed]);
+  assert.equal(
+    (
+      await db.query(
+        "select verification_round from action_plans.plans where id=$1",
+        [vr2],
+      )
+    ).rows[0].verification_round,
+    0,
+  );
+  must(await verify("verifier", vr2, [vr2Pending]));
   assert.deepEqual(
     (await list("unit", vr2)).map((e) => e.verification_round),
     [1],
   );
+  // Removal commits while the verification waits: the verifier relied on the removed file.
+  const vr3 = await plan();
+  const relied = await attach("verifier", vr3, "verification");
+  [held, waited] = await race(
+    "verifier",
+    removeSql(relied.evidence_id),
+    "verifier",
+    await verifySql(vr3, [relied]),
+  );
+  assert.deepEqual([held, waited], [{ allowed: true }, changed]);
+  must(await verify("verifier", vr3, []));
   // Concurrent removal: one removes, the other is an idempotent no-op; one audit event.
   const rm = await attach("writer", await plan());
   [held, waited] = await race(
@@ -626,7 +686,7 @@ try {
   );
   assert.equal(await version(shared), 3);
   console.log(
-    "PASS verify serializes with confirm/remove, idempotent concurrent removal, limit under concurrent begins, revocation during lock wait, simultaneous uploads",
+    "PASS verify serializes with confirm/remove and rejects (40001) an evidence set changed while it waited, idempotent concurrent removal, limit under concurrent begins, revocation during lock wait, simultaneous uploads",
   );
 
   // Browser: real bundle, real Auth/Data API/Storage, 375px.
@@ -763,8 +823,27 @@ try {
       [["verification", 1]],
     );
     await noOverflow("verification evidence");
+    // Verify through the UI: the form sends the ids it shows and the database accepts them.
+    await page.getByRole("button", { name: "Verificar eficácia" }).click();
+    const form = page.getByRole("dialog");
+    await form.getByText("verificacao.pdf").waitFor();
+    await noOverflow("verification form");
+    await form.getByLabel("Eficaz", { exact: true }).check();
+    await form.getByLabel(/Análise/).fill("Critério atendido");
+    await form.getByRole("button", { name: "Salvar" }).click();
+    await form.waitFor({ state: "hidden" });
+    await page.getByText("Verificação nº 1 (atual)").waitFor();
+    assert.equal(
+      (
+        await db.query(
+          "select verification_round from action_plans.plans where id=$1",
+          [uiPlan],
+        )
+      ).rows[0].verification_round,
+      1,
+    );
     console.log(
-      "PASS browser at 375px: attach (execution/verification), client rejection of spoofed PNG and XLS, attachment download with original name, removal dialog, no horizontal overflow",
+      "PASS browser at 375px: attach (execution/verification), client rejection of spoofed PNG and XLS, attachment download with original name, removal dialog, verification bound to the shown evidence, no horizontal overflow",
     );
   } finally {
     await browser?.close();

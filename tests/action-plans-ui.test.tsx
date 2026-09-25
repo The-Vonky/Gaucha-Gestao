@@ -469,10 +469,29 @@ describe("Action Plan evidence UI", () => {
         "medicao.pdf",
       ),
     );
-    // Confirming again after reviewing the current set records it.
+    // Saving again sends exactly the reviewed set; the database is the authority and a
+    // change it detects keeps the form open with the evidence reloaded.
+    api.verify.mockRejectedValueOnce({
+      code: "40001",
+      message: "Evidence set changed",
+    });
+    const loads = ev.listEvidence.mock.calls.length;
     await user.click(screen.getByText("Salvar"));
     await waitFor(() => expect(api.verify).toHaveBeenCalledTimes(1));
     expect(api.verify.mock.calls[0][0]).toMatchObject({ id: "p1", version: 3 });
+    expect(api.verify.mock.calls[0][2]).toEqual(["x"]);
+    await waitFor(() =>
+      expect(ev.listEvidence.mock.calls.length).toBe(loads + 2),
+    );
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(
+      screen.getByText(/As evidências desta verificação mudaram/),
+    ).toBeTruthy();
+    expect(api.plan).toHaveBeenCalledTimes(1);
+    await user.click(await screen.findByText("Salvar"));
+    await waitFor(() => expect(api.verify).toHaveBeenCalledTimes(2));
+    expect(api.verify.mock.calls[1][2]).toEqual(["x"]);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
   it("uploads one file, keeps a failed attempt for retry and reloads the list", async () => {
     auth.grants = grants("read", "write");

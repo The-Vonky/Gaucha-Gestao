@@ -107,7 +107,10 @@ describe("Evidence migration backfill", () => {
       );
   });
   it("continues the round sequence on the next re-verification", async () => {
-    await verify(thrice, before[thrice].version);
+    await as(
+      "select action_plans.verify_plan($1,$2,'effective','2026-09-20','ok','{}')",
+      [thrice, before[thrice].version],
+    );
     expect(
       await one(
         "select verification_round,(select after_data->>'verification_round' from core.system_audit_log where entity_id=$1::text and action='re_verify' order by occurred_at desc limit 1) logged from action_plans.plans where id=$1::uuid",

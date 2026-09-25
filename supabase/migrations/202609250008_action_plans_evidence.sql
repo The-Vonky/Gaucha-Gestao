@@ -15,10 +15,14 @@ alter table action_plans.plans enable trigger touch_plan;
 alter table action_plans.plans add constraint plans_verification_round
  check(verification_round>=0 and (verification_round=0)=(effectiveness is null));
 
--- Same signature/grants as 0006; recording a verification also closes its evidence round.
-create or replace function action_plans.verify_plan(p_id uuid,p_version integer,p_effectiveness text,p_verified_on date,p_notes text) returns void
+-- Replaces 0006's verify_plan. The five-argument signature is dropped (not overloaded) so no
+-- function can record a verification without naming the evidence set the verifier confirmed.
+-- Recording a verification also closes its evidence round.
+drop function action_plans.verify_plan(uuid,integer,text,date,text);
+create function action_plans.verify_plan(p_id uuid,p_version integer,p_effectiveness text,p_verified_on date,p_notes text,
+ p_expected_evidence_ids uuid[]) returns void
 language plpgsql security definer set search_path='' as $$
-declare b action_plans.plans; r action_plans.plans;
+declare b action_plans.plans; r action_plans.plans; actual uuid[]; expected uuid[];
 begin
  b=action_plans_private.lock_plan(p_id,p_version,'action_plan.verify',true);
  if b.status<>'completed' then raise exception 'Only completed plans can be verified' using errcode='23514'; end if;
@@ -26,6 +30,15 @@ begin
  if p_verified_on is null or p_verified_on>current_date+1 or coalesce(btrim(p_notes),'')='' then
   raise exception 'Verification date and analysis are required' using errcode='23514';
  end if;
+ if p_expected_evidence_ids is null then raise exception 'Expected evidence set is required' using errcode='23514'; end if;
+ -- Every evidence confirm/remove takes this plan lock, so under it this is exactly the set the
+ -- round freezes: available execution evidence plus available evidence of the open round.
+ -- Compared as sets (sorted, distinct): order and repetition are irrelevant; nulls never match.
+ select coalesce(array_agg(e.id order by e.id),'{}') into actual from action_plans.evidence e
+ where e.plan_id=p_id and e.status='available'
+  and (e.kind='execution' or e.verification_round=b.verification_round+1);
+ select coalesce(array_agg(distinct x order by x),'{}') into expected from unnest(p_expected_evidence_ids) x;
+ if actual is distinct from expected then raise exception 'Evidence set changed' using errcode='40001'; end if;
  update action_plans.plans set effectiveness=p_effectiveness,verified_on=p_verified_on,verification_notes=btrim(p_notes),
   verified_by=auth.uid(),verified_at=clock_timestamp(),source_reactivated_after_verification=false,
   verification_round=verification_round+1
@@ -256,9 +269,11 @@ revoke all on function action_plans_private.evidence_file_error(text,text,bigint
  action_plans_private.can_upload_evidence_object(text),action_plans_private.can_read_evidence_object(text),
  action_plans_private.evidence_reconciliation(),
  action_plans.begin_evidence_upload(uuid,text,text,text,bigint),action_plans.confirm_evidence_upload(uuid),
- action_plans.remove_evidence(uuid),action_plans.plan_evidence(uuid) from public,anon,authenticated;
+ action_plans.remove_evidence(uuid),action_plans.plan_evidence(uuid),
+ action_plans.verify_plan(uuid,integer,text,date,text,uuid[]) from public,anon,authenticated;
 grant usage on schema action_plans_private to authenticated;
 grant execute on function action_plans_private.can_upload_evidence_object(text),action_plans_private.can_read_evidence_object(text) to authenticated;
 grant execute on function action_plans.begin_evidence_upload(uuid,text,text,text,bigint),action_plans.confirm_evidence_upload(uuid),
- action_plans.remove_evidence(uuid),action_plans.plan_evidence(uuid) to authenticated;
+ action_plans.remove_evidence(uuid),action_plans.plan_evidence(uuid),
+ action_plans.verify_plan(uuid,integer,text,date,text,uuid[]) to authenticated;
 commit;

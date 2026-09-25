@@ -29,6 +29,10 @@ const TRANSITIONS: Record<PlanStatus, { to: PlanStatus; label: string }[]> = {
 };
 const isConflict = (e: unknown) =>
   (e as { code?: string } | null)?.code === "40001";
+/** verify_plan found a different evidence set than the one the verifier confirmed. */
+const evidenceSetChanged = (e: unknown) =>
+  isConflict(e) &&
+  /Evidence set changed/.test(String((e as { message?: unknown }).message));
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
@@ -56,7 +60,7 @@ export function ActionPlanPage() {
     try {
       await run();
     } catch (e) {
-      if (!isConflict(e)) throw e;
+      if (!isConflict(e) || evidenceSetChanged(e)) throw e;
       setConflict(true);
     }
     r.reload();
@@ -102,8 +106,7 @@ export function ActionPlanPage() {
         (e) => e.kind === "execution" || e.verification_round === openRound,
       )
       .map((e) => e.id)
-      .sort()
-      .join();
+      .sort();
   const withEvidence = (render: () => ReactNode) =>
     evidence.loading ? (
       <p className="muted" role="status">
@@ -372,23 +375,34 @@ export function ActionPlanPage() {
           <Form
             onCancel={() => setVerifying(false)}
             onSave={async (data) => {
-              // Evidence changes do not bump plans.version, so the set shown in this form
-              // is re-checked right before recording the verification that freezes it.
-              const current = await listEvidence(plan.id);
-              if (evidence.loading || boundTo(current) !== boundTo(rows)) {
+              // The database binds the verification to the ids shown here and rejects it
+              // if the set changed; the re-read only warns earlier.
+              const shown = boundTo(rows);
+              const changed = () => {
                 setEvidenceChanged(true);
                 evidence.reload();
-                return;
+              };
+              const current = await listEvidence(plan.id);
+              if (evidence.loading || boundTo(current).join() !== shown.join())
+                return changed();
+              try {
+                await mutate(() =>
+                  api.verify(
+                    plan,
+                    {
+                      effectiveness: String(
+                        data.get("effectiveness"),
+                      ) as Effectiveness,
+                      verified_on: String(data.get("verified_on")),
+                      notes: String(data.get("notes")).trim(),
+                    },
+                    shown,
+                  ),
+                );
+              } catch (e) {
+                if (evidenceSetChanged(e)) return changed();
+                throw e;
               }
-              await mutate(() =>
-                api.verify(plan, {
-                  effectiveness: String(
-                    data.get("effectiveness"),
-                  ) as Effectiveness,
-                  verified_on: String(data.get("verified_on")),
-                  notes: String(data.get("notes")).trim(),
-                }),
-              );
               evidence.reload();
               setVerifying(false);
             }}

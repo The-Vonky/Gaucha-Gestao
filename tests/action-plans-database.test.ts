@@ -155,13 +155,15 @@ const verify = (
   result = "effective",
   notes: string | null = "Sem reincidência no período",
   date: string | null = "2026-09-20",
+  evidence: (string | null)[] | null = [],
 ) =>
-  db.query("select action_plans.verify_plan($1,$2,$3,$4,$5)", [
+  db.query("select action_plans.verify_plan($1,$2,$3,$4,$5,$6)", [
     id,
     version,
     result,
     date,
     notes,
+    evidence,
   ]);
 beforeAll(async () => {
   db = process.env.ACTION_PLANS_TEST_DATABASE_URL
@@ -1071,7 +1073,10 @@ describe.sequential("Action Plan evidence", () => {
     const r1 = await attach(id, users.verifier, "verification");
     const r1Pending = await beginEvidence(id, "verification");
     await storeObject(r1Pending.object_key, users.verifier);
-    await verify(id, 3);
+    await verify(id, 3, undefined, undefined, undefined, [
+      ex.evidence_id,
+      r1.evidence_id,
+    ]);
     expect(await round()).toBe(1);
     expect((await plan(id)).version).toBe(4);
     await login(users.writer);
@@ -1095,13 +1100,18 @@ describe.sequential("Action Plan evidence", () => {
     expect((await evidenceRow(r2.evidence_id)).verification_round).toBe(2);
     await removeEvidence(r2.evidence_id);
     const r2b = await attach(id, users.verifier, "verification");
-    await verify(id, 4, "effective", "Reverificado");
+    await verify(id, 4, "effective", "Reverificado", undefined, [
+      ex.evidence_id,
+      r2b.evidence_id,
+    ]);
     expect(await round()).toBe(2);
     await expect(removeEvidence(r2b.evidence_id)).rejects.toThrow(
       /round is closed/,
     );
     // Re-verification without new evidence is allowed (evidence is optional).
-    await verify(id, 5, "ineffective", "Sem anexos novos");
+    await verify(id, 5, "ineffective", "Sem anexos novos", undefined, [
+      ex.evidence_id,
+    ]);
     expect(
       (await listEvidence(id)).map((e) => [e.kind, e.verification_round]),
     ).toEqual([
@@ -1136,6 +1146,89 @@ describe.sequential("Action Plan evidence", () => {
         ),
       ).rejects.toThrow(/plans_verification_round/),
     );
+  });
+  it("binds the verification atomically to the evidence set the verifier confirmed", async () => {
+    await db.exec("reset role");
+    // Only the six-argument function exists: nothing can verify without the expected set.
+    expect(
+      await rows(
+        `select pg_get_function_identity_arguments(p.oid) args,has_function_privilege('authenticated',p.oid,'execute') auth,
+         has_function_privilege('anon',p.oid,'execute') anon from pg_proc p where p.oid in
+         (select oid from pg_proc where proname='verify_plan' and pronamespace='action_plans'::regnamespace)`,
+      ),
+    ).toEqual([
+      {
+        args: "p_id uuid, p_version integer, p_effectiveness text, p_verified_on date, p_notes text, p_expected_evidence_ids uuid[]",
+        auth: true,
+        anon: false,
+      },
+    ]);
+    expect(
+      await one(
+        "select to_regprocedure('action_plans.verify_plan(uuid,integer,text,date,text)') old",
+      ),
+    ).toEqual({ old: null });
+    const id = await completedPlan();
+    const other = await completedPlan();
+    await login(users.writer);
+    const a = await attach(id, users.writer, "execution");
+    await login(users.verifier);
+    const b = await attach(id, users.verifier, "verification");
+    const foreign = await attach(other, users.verifier, "verification");
+    const pending = await beginEvidence(id, "verification");
+    const changed = { code: "40001", message: "Evidence set changed" };
+    const unchanged = async () =>
+      expect(await plan(id)).toMatchObject({
+        version: 3,
+        verification_round: 0,
+        effectiveness: null,
+      });
+    const check = (evidence: (string | null)[] | null, v = 3) =>
+      verify(id, v, undefined, undefined, undefined, evidence);
+    await expect(check(null)).rejects.toThrow(
+      /Expected evidence set is required/,
+    );
+    // The verifier saw {a}; b was confirmed afterwards.
+    await expect(check([a.evidence_id])).rejects.toMatchObject(changed);
+    // The verifier saw {a,b,c}; c was removed afterwards.
+    await login(users.writer);
+    const c = await attach(id, users.writer, "execution");
+    await removeEvidence(c.evidence_id);
+    await login(users.verifier);
+    await expect(
+      check([a.evidence_id, b.evidence_id, c.evidence_id]),
+    ).rejects.toMatchObject(changed);
+    // Duplicates, pending, null and other plans' ids cannot stand in for the actual set.
+    for (const wrong of [
+      [a.evidence_id, a.evidence_id],
+      [a.evidence_id, pending.evidence_id],
+      [a.evidence_id, foreign.evidence_id],
+      [a.evidence_id, b.evidence_id, foreign.evidence_id],
+      [a.evidence_id, null],
+      [a.evidence_id, b.evidence_id, null],
+      [],
+    ])
+      await expect(check(wrong)).rejects.toMatchObject(changed);
+    await unchanged();
+    // Same set in another order (and repeated) verifies.
+    await check([b.evidence_id, a.evidence_id, b.evidence_id]);
+    expect(await plan(id)).toMatchObject({
+      version: 4,
+      verification_round: 1,
+      effectiveness: "effective",
+    });
+    // Re-verification applies the same rule to execution + the new open round.
+    const r2 = await attach(id, users.verifier, "verification");
+    for (const wrong of [
+      [a.evidence_id],
+      [a.evidence_id, b.evidence_id],
+      [a.evidence_id, b.evidence_id, r2.evidence_id],
+      [r2.evidence_id],
+    ])
+      await expect(check(wrong, 4)).rejects.toMatchObject(changed);
+    expect((await plan(id)).verification_round).toBe(1);
+    await check([r2.evidence_id, a.evidence_id], 4);
+    expect((await plan(id)).verification_round).toBe(2);
   });
   it("allows completion and verification without any evidence", async () => {
     const id = await completedPlan();
