@@ -48,6 +48,7 @@ export function ActionPlanPage() {
   const [editing, setEditing] = useState(false);
   const [transition, setTransition] = useState<PlanStatus>();
   const [verifying, setVerifying] = useState(false);
+  const [evidenceChanged, setEvidenceChanged] = useState(false);
   const [conflict, setConflict] = useState(false);
   /** Stale writes reload the latest server state instead of overwriting it. */
   async function mutate(run: () => Promise<void>) {
@@ -94,6 +95,15 @@ export function ActionPlanPage() {
   const execution = rows.filter((e) => e.kind === "execution");
   const round = (n: number) =>
     rows.filter((e) => e.kind === "verification" && e.verification_round === n);
+  // What verify_plan freezes: execution evidence and the open verification round.
+  const boundTo = (list: Evidence[]) =>
+    list
+      .filter(
+        (e) => e.kind === "execution" || e.verification_round === openRound,
+      )
+      .map((e) => e.id)
+      .sort()
+      .join();
   const withEvidence = (render: () => ReactNode) =>
     evidence.loading ? (
       <p className="muted" role="status">
@@ -134,7 +144,14 @@ export function ActionPlanPage() {
               </button>
             ))}
           {canVerify && (
-            <button className="primary" onClick={() => setVerifying(true)}>
+            <button
+              className="primary"
+              onClick={() => {
+                evidence.reload();
+                setEvidenceChanged(false);
+                setVerifying(true);
+              }}
+            >
               {verified ? "Reverificar eficácia" : "Verificar eficácia"}
             </button>
           )}
@@ -355,6 +372,14 @@ export function ActionPlanPage() {
           <Form
             onCancel={() => setVerifying(false)}
             onSave={async (data) => {
+              // Evidence changes do not bump plans.version, so the set shown in this form
+              // is re-checked right before recording the verification that freezes it.
+              const current = await listEvidence(plan.id);
+              if (evidence.loading || boundTo(current) !== boundTo(rows)) {
+                setEvidenceChanged(true);
+                evidence.reload();
+                return;
+              }
               await mutate(() =>
                 api.verify(plan, {
                   effectiveness: String(
@@ -364,9 +389,16 @@ export function ActionPlanPage() {
                   notes: String(data.get("notes")).trim(),
                 }),
               );
+              evidence.reload();
               setVerifying(false);
             }}
           >
+            {evidenceChanged && (
+              <Notice error>
+                As evidências desta verificação mudaram enquanto o formulário
+                estava aberto. Revise a lista atualizada e salve novamente.
+              </Notice>
+            )}
             <fieldset className="ap-result">
               <legend>Resultado (obrigatório)</legend>
               {(Object.keys(EFFECTIVENESS_LABELS) as Effectiveness[]).map(

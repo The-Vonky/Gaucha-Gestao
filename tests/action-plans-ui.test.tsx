@@ -434,6 +434,46 @@ describe("Action Plan evidence UI", () => {
     expect(screen.getByText("Para a verificação")).toBeTruthy();
     expect(screen.queryByText("Anexar evidência da verificação")).toBeNull();
   });
+  it("verifies only against the evidence set the verifier is shown", async () => {
+    auth.grants = grants("read", "verify");
+    const completed = plan({ status: "completed", version: 3 });
+    api.plan.mockResolvedValue(summary(completed));
+    api.verify.mockResolvedValue(undefined);
+    const x = evidence({ id: "x", original_name: "execucao.pdf" });
+    const y = evidence({
+      id: "y",
+      kind: "verification",
+      verification_round: 1,
+      original_name: "medicao.pdf",
+    });
+    ev.listEvidence.mockResolvedValue([x]);
+    open("/action-plans/p1");
+    expect(await screen.findByText("execucao.pdf")).toBeTruthy();
+    // Another verifier attached Y after this page loaded: opening the form shows it.
+    ev.listEvidence.mockResolvedValue([x, y]);
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Verificar eficácia"));
+    const dialog = screen.getByRole("dialog");
+    await waitFor(() => expect(dialog.textContent).toContain("medicao.pdf"));
+    await user.click(screen.getByLabelText("Eficaz"));
+    await user.type(screen.getByLabelText(/Análise/), "Critério atendido");
+    // Y is removed while the form is open: the verification is not recorded.
+    ev.listEvidence.mockResolvedValue([x]);
+    await user.click(screen.getByText("Salvar"));
+    expect(
+      await screen.findByText(/As evidências desta verificação mudaram/),
+    ).toBeTruthy();
+    expect(api.verify).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getByRole("dialog").textContent).not.toContain(
+        "medicao.pdf",
+      ),
+    );
+    // Confirming again after reviewing the current set records it.
+    await user.click(screen.getByText("Salvar"));
+    await waitFor(() => expect(api.verify).toHaveBeenCalledTimes(1));
+    expect(api.verify.mock.calls[0][0]).toMatchObject({ id: "p1", version: 3 });
+  });
   it("uploads one file, keeps a failed attempt for retry and reloads the list", async () => {
     auth.grants = grants("read", "write");
     api.plan.mockResolvedValue(summary(plan()));
