@@ -440,7 +440,11 @@ describe("Action Plan evidence UI", () => {
     const attempt = { evidenceId: "e9", key: "p1/e9", body: new Blob(["x"]) };
     ev.beginUpload.mockResolvedValue(attempt);
     ev.finishUpload
-      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      // The shape PostgREST gives a lost confirm response (no server code).
+      .mockRejectedValueOnce({
+        message: "TypeError: Failed to fetch",
+        code: "",
+      })
       .mockResolvedValueOnce(undefined);
     open("/action-plans/p1");
     await screen.findAllByText("Nenhuma evidência anexada.");

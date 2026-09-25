@@ -174,6 +174,24 @@ describe("evidence Storage contract", () => {
     expect(retryable(error)).toBe(false);
     expect(http).toHaveBeenCalledTimes(1);
   });
+  it("keeps real supabase-js network failures of upload and confirm retryable", async () => {
+    const attempt = { evidenceId: "e1", key: "p1/e1", body: new Blob(["x"]) };
+    // Storage request never reaches the server.
+    http.mockRejectedValue(new TypeError("Failed to fetch"));
+    const upload = await finishUpload(attempt).catch((e: unknown) => e);
+    expect(retryable(upload)).toBe(true);
+    expect(evidenceMessage(upload)).toMatch(/Verifique sua conexão/);
+    // Object stored, but the confirm request (or its response) is lost.
+    http.mockReset();
+    http.mockImplementation(async (url: string) => {
+      if (url.includes("/storage/"))
+        return respond({ Key: "action-plan-evidence/p1/e1", Id: "o1" });
+      throw new TypeError("Failed to fetch");
+    });
+    const confirm = await finishUpload(attempt).catch((e: unknown) => e);
+    expect(retryable(confirm)).toBe(true);
+    expect(evidenceMessage(confirm)).toMatch(/Verifique sua conexão/);
+  });
   it("signs for 60 seconds and sets the download name with single encoding", async () => {
     http.mockImplementation(async (_url: string, init: RequestInit) => {
       expect(JSON.parse(String(init.body))).toEqual({ expiresIn: 60 });

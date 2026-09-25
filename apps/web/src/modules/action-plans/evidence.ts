@@ -207,10 +207,11 @@ export function openDownload(url: string) {
 }
 /** Network failures keep the attempt for retry; server/Storage rejections do not. */
 export function retryable(e: unknown) {
-  return (
-    !(e instanceof EvidenceFileError) &&
-    !(typeof e === "object" && e !== null && ("code" in e || "statusCode" in e))
-  );
+  if (e instanceof EvidenceFileError) return false;
+  // supabase-js reports network failures without a server code/status (PostgREST: code "";
+  // Storage: StorageUnknownError with an undefined statusCode).
+  const r = (e ?? {}) as { code?: unknown; statusCode?: unknown };
+  return !r.code && !r.statusCode;
 }
 const MESSAGES: [RegExp, string][] = [
   [
