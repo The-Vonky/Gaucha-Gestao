@@ -1,7 +1,12 @@
+import { Postgres } from "./integration/postgres.mjs";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { STORAGE_STUB } from "./storage-stub";
+import {
+  classify,
+  conformity,
+} from "../apps/web/src/modules/audit/scoring";
 const catalog = JSON.parse(
   readFileSync("docs/reference/AUDIT_CHECKLIST_V1.json", "utf8"),
 ) as {
@@ -76,7 +81,9 @@ async function answerAll(
   );
 }
 beforeAll(async () => {
-  db = new PGlite();
+  db = process.env.AUDIT_TEST_DATABASE_URL
+    ? (new Postgres(process.env.AUDIT_TEST_DATABASE_URL) as unknown as PGlite)
+    : new PGlite();
   // Minimal Supabase Auth contract; real PostgreSQL roles, grants, triggers and RLS.
   await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
  create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}');
@@ -211,6 +218,12 @@ describe.sequential("Audit domain database", () => {
         [id],
       ),
     ).toEqual({ action: "create", module: "audit", unit_id: A });
+    // A template used by an inspection cannot gain content either.
+    await expect(
+      db.query(
+        "insert into audit.checklist_items(template_version,key,section_key,position,number,text) values ('checklist-geral-2026-09-22-v1','item-162','section-09',159,162,'x')",
+      ),
+    ).rejects.toThrow(/in use/);
   });
   it("rejects creation for inactive or out-of-scope units without partial rows", async () => {
     await login(users.global);
@@ -374,6 +387,28 @@ describe.sequential("Audit domain database", () => {
       (await one<{ c: null }>("select audit_private.conformity(0,0,0) c")).c,
     ).toBeNull();
   });
+  it("matches scoring.ts for every AT/AP/NAT tally of the checklist", async () => {
+    await db.exec("reset role");
+    // Every (AT, AP, NAT) with AT+AP+NAT <= 158; NAP/unanswered are the remainder.
+    const { c, s } = await one<{ c: string; s: string }>(
+      `select string_agg(coalesce(left(audit_private.classify(x.v),1),'-'),'' order by at,ap,nat) c,
+       string_agg(to_char(x.v,'FM990.000000000'),',' order by at,ap,nat) filter(where at+ap+nat=158) s
+       from generate_series(0,158) at, generate_series(0,158) ap, generate_series(0,158) nat,
+       lateral (select audit_private.conformity(at,ap,nat) v) x where at+ap+nat<=158`,
+    );
+    let classes = "";
+    const scores: string[] = [];
+    for (let at = 0; at <= 158; at++)
+      for (let ap = 0; at + ap <= 158; ap++)
+        for (let nat = 0; at + ap + nat <= 158; nat++) {
+          const score = conformity({ total: 158, answered: 0, at, ap, nat, nap: 0 });
+          classes += classify(score)?.[0] ?? "-";
+          if (at + ap + nat === 158) scores.push(score!.toFixed(9));
+        }
+    expect(classes.length).toBe(682640);
+    expect(c === classes).toBe(true);
+    expect(s).toBe(scores.join(","));
+  }, 120000);
   it("denies anonymous, inactive and unassigned users", async () => {
     await login("", "anon");
     for (const sql of [
