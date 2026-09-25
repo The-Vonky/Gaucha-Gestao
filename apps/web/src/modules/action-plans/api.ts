@@ -31,18 +31,34 @@ function args(v: PlanValues) {
 export async function summaries(
   filter: { p_plan?: string; p_inspection?: string } = {},
 ): Promise<PlanSummary[]> {
-  const { data, error } = await db().rpc("plan_summaries", filter);
-  if (error) throw error;
-  return data ?? [];
+  const rows: PlanSummary[] = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await db()
+      .rpc("plan_summaries", filter)
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) return rows;
+  }
 }
 export async function plan(id: string) {
   const [row] = await summaries({ p_plan: id });
   return row ?? null;
 }
 export async function creationScopes(): Promise<CreationScope[]> {
-  const { data, error } = await db().rpc("creation_scopes");
-  if (error) throw error;
-  return data ?? [];
+  const rows: CreationScope[] = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await db()
+      .rpc("creation_scopes")
+      .order("unit_id")
+      .order("sector_id", { nullsFirst: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) return rows;
+  }
 }
 export async function createManual(
   unit: string,
