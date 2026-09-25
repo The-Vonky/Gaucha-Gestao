@@ -2095,12 +2095,10 @@ try {
     await four
       .getByText("alterado em outra sessão", { exact: false })
       .waitFor();
-    assert.equal(
-      await four
-        .getByRole("button", { name: "Não se aplica (NAP)" })
-        .getAttribute("aria-pressed"),
-      "true",
-    );
+    // The conflict state is shown before the reloaded server value arrives.
+    await four
+      .locator('button[aria-label="Não se aplica (NAP)"][aria-pressed="true"]')
+      .waitFor();
     assert.equal((await answerRow(uiInspection, "item-004")).response, "NAP");
     // Lifecycle changes while a save is waiting on the parent lock: conflict, then stale page.
     const locker = new pg.Client({ connectionString: config.DB_URL });
