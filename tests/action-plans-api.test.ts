@@ -37,6 +37,9 @@ describe("Action Plan API pagination", () => {
     }));
     http.mockImplementation(async (url: string) => {
       const u = new URL(url);
+      expect(u.searchParams.get("order")).toBe(
+        "unit_name.asc,unit_id.asc,sector_name.asc.nullsfirst,sector_id.asc.nullsfirst",
+      );
       const offset = Number(u.searchParams.get("offset") ?? 0);
       const limit = Math.min(Number(u.searchParams.get("limit") ?? 1000), 1000);
       return new Response(JSON.stringify(rows.slice(offset, offset + limit)), {
@@ -44,6 +47,22 @@ describe("Action Plan API pagination", () => {
       });
     });
     expect(await creationScopes()).toEqual(rows);
+  });
+  it("drops a plan repeated when a new plan shifts the next page", async () => {
+    const first = Array.from({ length: 500 }, (_, i) => ({
+      plan: { id: String(i) },
+    }));
+    const json = (body: unknown) =>
+      new Response(JSON.stringify(body), {
+        headers: { "Content-Type": "application/json" },
+      });
+    http.mockResolvedValueOnce(json(first));
+    http.mockResolvedValueOnce(json([first[499], { plan: { id: "500" } }]));
+    const result = await summaries();
+    expect(result.map((r) => r.plan.id)).toEqual([
+      ...first.map((r) => r.plan.id),
+      "500",
+    ]);
   });
   it("reports a later-page failure rather than presenting incomplete totals", async () => {
     http.mockResolvedValueOnce(
