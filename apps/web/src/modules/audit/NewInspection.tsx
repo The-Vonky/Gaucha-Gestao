@@ -1,14 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
+import { today } from "../../shared/dates";
 import { Form, Modal, Notice } from "../../shared/ui";
 import * as api from "./api";
 import type { AuditUnit } from "./types";
-function today() {
-  const d = new Date();
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 10);
-}
 export function NewInspection({
   units,
   unitId,

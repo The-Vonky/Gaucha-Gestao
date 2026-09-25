@@ -16,9 +16,7 @@ export function tallyOf(s: InspectionSummary): Tally {
     nap: s.nap_count,
   };
 }
-export function formatDate(date: string | null) {
-  return date ? new Date(`${date}T00:00:00`).toLocaleDateString("pt-BR") : "—";
-}
+export { formatDate } from "../../shared/dates";
 export function Progress({
   answered,
   total,
