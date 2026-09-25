@@ -1,4 +1,5 @@
 import { can, hasAnyScope, type AccessGrant } from "../core/auth/permissions";
+import type { IconName } from "../shared/icons";
 export const groups = [
   "Qualidade",
   "Custos",
@@ -10,6 +11,9 @@ export const groups = [
 export type Destination = {
   path: string;
   label: string;
+  /** Short, static description of the area (product copy, not data). */
+  description: string;
+  icon: IconName;
   group: (typeof groups)[number];
   permissions: string[];
   scope: "global" | "any";
@@ -20,6 +24,8 @@ export const destinations: Destination[] = [
   {
     path: "/audit",
     label: "Auditorias",
+    description: "Inspeções do checklist geral por unidade.",
+    icon: "audit",
     group: "Qualidade",
     permissions: ["audit.inspection.read"],
     scope: "any",
@@ -28,6 +34,8 @@ export const destinations: Destination[] = [
   {
     path: "/action-plans",
     label: "Planos de Ação",
+    description: "Ações corretivas, execução e verificação de eficácia.",
+    icon: "actionPlan",
     group: "Qualidade",
     permissions: ["action_plan.read"],
     scope: "any",
@@ -36,6 +44,8 @@ export const destinations: Destination[] = [
   {
     path: "/admin/users",
     label: "Usuários",
+    description: "Contas, situação e atribuições de acesso.",
+    icon: "users",
     group: "Administração",
     permissions: ["admin.user.read", "admin.user.manage"],
     scope: "global",
@@ -43,6 +53,8 @@ export const destinations: Destination[] = [
   {
     path: "/admin/roles",
     label: "Perfis de acesso",
+    description: "Perfis e seus conjuntos de permissões.",
+    icon: "roles",
     group: "Administração",
     permissions: ["admin.role.read", "admin.role.manage"],
     scope: "global",
@@ -50,6 +62,8 @@ export const destinations: Destination[] = [
   {
     path: "/admin/permissions",
     label: "Permissões",
+    description: "Catálogo de permissões da plataforma.",
+    icon: "permissions",
     group: "Administração",
     permissions: ["admin.role.read", "admin.role.manage"],
     scope: "global",
@@ -57,6 +71,8 @@ export const destinations: Destination[] = [
   {
     path: "/admin/units",
     label: "Unidades",
+    description: "Unidades operacionais e seus setores.",
+    icon: "units",
     group: "Administração",
     permissions: ["admin.unit.read", "admin.unit.manage"],
     scope: "any",
@@ -64,6 +80,8 @@ export const destinations: Destination[] = [
   {
     path: "/admin/sectors",
     label: "Setores",
+    description: "Setores corporativos da organização.",
+    icon: "sectors",
     group: "Administração",
     permissions: ["admin.sector.read", "admin.sector.manage"],
     scope: "global",
@@ -71,6 +89,8 @@ export const destinations: Destination[] = [
   {
     path: "/admin/logs",
     label: "Logs do sistema",
+    description: "Registro das alterações sensíveis.",
+    icon: "logs",
     group: "Administração",
     permissions: ["admin.audit_log.read"],
     scope: "any",

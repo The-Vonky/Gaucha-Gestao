@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { client } from "../client";
 import { Notice } from "../../shared/ui";
+import { BrandArcs, BrandMark } from "../../shared/brand";
+import logo from "../../assets/gaucha-alimentacao-logo.png";
 export function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -27,16 +29,18 @@ export function Login() {
   return (
     <main className="login">
       <section className="login-brand">
-        <span className="brand-mark">G</span>
+        <BrandArcs />
+        <BrandMark />
         <p className="eyebrow">Plataforma corporativa</p>
         <h1>
-          Gaúcha
+          Gaúcha{" "}
           <br />
           Gestão
         </h1>
         <p>Um só lugar para a gestão da nossa operação.</p>
       </section>
       <section className="login-form">
+        <img className="login-logo" src={logo} alt="Gaúcha Alimentação" />
         <h2>Acesse sua conta</h2>
         <p>Use o acesso fornecido pela administração.</p>
         <form onSubmit={(e) => void submit(e)}>

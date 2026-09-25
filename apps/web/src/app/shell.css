@@ -1,0 +1,653 @@
+/* App Shell, Login and Home (Quality UI v1). */
+
+/* ---------- Brand pieces ---------- */
+.brand-mark {
+  width: 40px;
+  height: auto;
+  flex-shrink: 0;
+}
+.state-mark {
+  width: 56px;
+  height: auto;
+}
+.brand-arcs .arc-orange {
+  stroke: var(--brand-orange-400);
+}
+.brand-arcs .arc-green {
+  stroke: var(--brand-green-500);
+}
+.brand-arcs .arc-dot-orange {
+  fill: var(--brand-orange-500);
+}
+.brand-arcs .arc-dot-green {
+  fill: var(--brand-lime-400);
+}
+
+/* ---------- Layout ---------- */
+.layout {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+}
+.workspace {
+  min-width: 0;
+}
+main#main {
+  padding: var(--space-8) var(--space-10) var(--space-16);
+  max-width: var(--content-max);
+  margin: 0 auto;
+  outline: none;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5) var(--space-3) var(--space-3);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+}
+/* Signature: the orange→green loop as a hairline on top of the navigation. */
+.sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--gradient-brand);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-2) var(--space-5);
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+}
+.brand:hover {
+  color: var(--color-text);
+}
+.brand-name {
+  font: 700 1.125rem/1.05 var(--font-display);
+  letter-spacing: -0.02em;
+}
+.brand-name small {
+  font: var(--text-overline);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--brand-green-700);
+  margin-top: 3px;
+}
+
+/* ---------- Navigation menu (sidebar and drawer) ---------- */
+.menu {
+  flex: 1;
+}
+.menu section {
+  margin-top: var(--space-5);
+}
+.menu h2 {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin: 0 var(--space-3) var(--space-2);
+}
+.menu a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 38px;
+  padding: 0 var(--space-3);
+  margin: 2px 0;
+  border-radius: var(--radius-md);
+  color: var(--neutral-700);
+  font-weight: 500;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+.menu a .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--neutral-500);
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+.menu a:hover {
+  background: var(--color-hover-bg);
+  color: var(--neutral-900);
+}
+.menu a.active {
+  background: var(--color-selected-bg);
+  color: var(--color-selected-text);
+  font-weight: 600;
+}
+.menu a.active .icon {
+  color: var(--brand-green-600);
+}
+.menu a.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: var(--gradient-indicator);
+  transform: translateY(-50%);
+}
+
+.sidebar-foot {
+  position: relative;
+  overflow: hidden;
+  margin: var(--space-6) calc(-1 * var(--space-3)) calc(-1 * var(--space-3));
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--neutral-800);
+}
+.sidebar-foot .brand-arcs {
+  position: absolute;
+  right: -48px;
+  bottom: -70px;
+  width: 170px;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+/* ---------- Top bar ---------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--header-height);
+  padding: 0 var(--space-10);
+  background: rgb(255 255 255 / 0.88);
+  backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid var(--color-border);
+}
+.mobile-menu,
+.topbar-brand {
+  display: none;
+}
+.topbar-brand {
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  color: var(--color-text);
+  font: 700 1rem/1 var(--font-display);
+  letter-spacing: -0.01em;
+}
+.topbar-brand .brand-mark {
+  width: 34px;
+}
+.crumbs {
+  min-width: 0;
+}
+.crumbs ol {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.crumbs li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.crumbs li + li::before {
+  content: "/";
+  color: var(--neutral-300);
+}
+.crumbs a {
+  color: inherit;
+  text-decoration: none;
+}
+.crumbs a:hover {
+  color: var(--color-link);
+  text-decoration: underline;
+}
+.crumbs [aria-current="page"] {
+  color: var(--color-text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  min-width: 0;
+}
+.account-name {
+  font: var(--text-label);
+  color: var(--neutral-800);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 2px solid transparent;
+  border-radius: var(--radius-full);
+  background:
+    linear-gradient(var(--brand-green-50), var(--brand-green-50)) padding-box,
+    var(--gradient-brand) border-box;
+  color: var(--brand-green-800);
+  font: 700 0.6875rem/1 var(--font-sans);
+  letter-spacing: 0.02em;
+}
+.logout {
+  color: var(--neutral-700);
+}
+.logout .icon {
+  width: 18px;
+  height: 18px;
+}
+.logout-error {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: var(--z-toast);
+  width: max-content;
+  max-width: 260px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  background: var(--danger-bg);
+  color: var(--danger);
+  font: var(--text-body-sm);
+  box-shadow: var(--shadow-md);
+}
+
+/* ---------- Drawer (mobile/tablet navigation) ---------- */
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-3) var(--space-2) var(--space-3);
+  border-top: 3px solid transparent;
+  border-image: var(--gradient-brand) 1;
+}
+.drawer-head .brand {
+  padding-bottom: var(--space-1);
+}
+.drawer .menu {
+  overflow-y: auto;
+  padding: 0 var(--space-3) var(--space-4);
+}
+.drawer .menu a {
+  min-height: var(--touch-target);
+  font-size: 0.9375rem;
+}
+.drawer-foot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-subtle);
+}
+.drawer-foot .account-name {
+  flex: 1;
+}
+.drawer-foot .logout-error {
+  top: auto;
+  bottom: calc(100% + var(--space-2));
+}
+
+/* ---------- Home ---------- */
+.home-hero {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: var(--space-8);
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(
+      90% 140% at 100% 0%,
+      var(--brand-orange-50) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      70% 120% at 80% 110%,
+      var(--brand-green-50) 0%,
+      transparent 60%
+    ),
+    var(--color-surface);
+}
+.home-hero > div {
+  position: relative;
+  max-width: 60ch;
+}
+.home-hero .eyebrow::first-letter {
+  text-transform: uppercase;
+}
+.home-hero .eyebrow {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.home-hero h1 {
+  font: var(--text-display);
+  font-size: 2rem;
+  letter-spacing: var(--tracking-display);
+  margin-bottom: var(--space-2);
+}
+.home-hero p:last-child {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+.home-hero .brand-arcs {
+  position: absolute;
+  right: -30px;
+  top: 50%;
+  width: 280px;
+  transform: translateY(-50%);
+  opacity: 0.16;
+  pointer-events: none;
+}
+.home-group {
+  margin-bottom: var(--space-8);
+}
+.home-group > .eyebrow {
+  margin-bottom: var(--space-3);
+}
+.entry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: var(--space-3);
+}
+.entry-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  text-decoration: none;
+  box-shadow: var(--shadow-xs);
+  transition:
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+.entry-card:hover {
+  color: var(--color-text);
+  border-color: var(--brand-green-300);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.entry-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  /* Default accent for future operational modules: Gaúcha orange. */
+  background: var(--brand-orange-50);
+  color: var(--brand-orange-700);
+  box-shadow: inset 0 0 0 1px var(--brand-orange-100);
+}
+.entry-icon .icon {
+  width: 22px;
+  height: 22px;
+}
+.entry-card[data-group="Qualidade"] .entry-icon {
+  background: var(--brand-green-50);
+  color: var(--brand-green-700);
+  box-shadow: inset 0 0 0 1px var(--brand-green-100);
+}
+.entry-card[data-group="Administração"] .entry-icon {
+  background: var(--neutral-100);
+  color: var(--neutral-800);
+  box-shadow: inset 0 0 0 1px var(--neutral-200);
+}
+.entry-text h2 {
+  font: var(--text-card-title);
+  margin: 0 0 2px;
+}
+.entry-text p {
+  margin: 0;
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
+}
+.entry-arrow {
+  color: var(--neutral-400);
+  transition:
+    transform var(--duration-base) var(--ease-standard),
+    color var(--duration-base) var(--ease-standard);
+}
+.entry-card:hover .entry-arrow {
+  color: var(--brand-green-600);
+  transform: translateX(3px);
+}
+
+/* ---------- Login ---------- */
+.login {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  background: var(--color-surface);
+}
+.login-brand {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(32px, 7vw, 112px);
+  background:
+    radial-gradient(
+      80% 60% at 0% 100%,
+      rgb(31 133 64 / 0.35) 0%,
+      transparent 70%
+    ),
+    var(--brand-green-950);
+  color: var(--neutral-0);
+}
+.login-brand::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 4px;
+  background: var(--gradient-brand);
+}
+.login-brand > * {
+  position: relative;
+}
+.login-brand .brand-arcs {
+  position: absolute;
+  right: -120px;
+  bottom: -110px;
+  width: 520px;
+  opacity: 0.16;
+}
+/* On the dark brand surface the loops stay in the green family (orange would muddy). */
+.login-brand .brand-arcs .arc-orange {
+  stroke: var(--brand-lime-300);
+}
+.login-brand .brand-arcs .arc-dot-orange {
+  fill: var(--brand-orange-400);
+}
+.login-brand .brand-mark {
+  width: 72px;
+  margin-bottom: var(--space-12);
+}
+.login-brand .eyebrow {
+  color: var(--brand-green-200);
+}
+.login-brand h1 {
+  font: var(--text-display);
+  font-size: clamp(2.5rem, 5vw, 4.25rem);
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  margin: 0;
+}
+.login-brand p:last-child {
+  max-width: 340px;
+  margin: var(--space-6) 0 0;
+  color: var(--brand-green-100);
+}
+.login-form {
+  width: 100%;
+  max-width: 440px;
+  margin: auto;
+  padding: var(--space-10);
+}
+.login-logo {
+  display: block;
+  width: 208px;
+  height: auto;
+  margin-bottom: var(--space-10);
+}
+.login-form h2 {
+  font: var(--text-page-title);
+  letter-spacing: var(--tracking-title);
+  margin-bottom: var(--space-1);
+}
+.login-form > p {
+  color: var(--color-text-secondary);
+}
+.login-form form {
+  margin: var(--space-8) 0;
+}
+.login-form button.primary {
+  width: 100%;
+  min-height: var(--touch-target);
+  margin-top: var(--space-2);
+}
+
+/* ---------- Tablet & mobile ---------- */
+@media (max-width: 1023px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sidebar {
+    display: none;
+  }
+  .mobile-menu,
+  .topbar-brand {
+    display: inline-flex;
+  }
+  .topbar {
+    padding: 0 var(--space-4) 0 var(--space-2);
+  }
+  .topbar::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 2px;
+    background: var(--gradient-brand);
+  }
+  .crumbs {
+    margin-left: var(--space-3);
+    padding-left: var(--space-4);
+    border-left: 1px solid var(--color-border);
+  }
+  main#main {
+    padding: var(--space-6) var(--space-6) var(--space-12);
+  }
+}
+@media (max-width: 767px) {
+  .login {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+  .login-brand {
+    padding: var(--space-8) var(--space-6);
+  }
+  .login-brand .brand-mark {
+    width: 52px;
+    margin-bottom: var(--space-5);
+  }
+  .login-brand h1 {
+    font-size: 2.25rem;
+  }
+  .login-brand h1 br,
+  .login-brand p:last-child {
+    display: none;
+  }
+  .login-brand .brand-arcs {
+    width: 300px;
+    right: -90px;
+    bottom: -120px;
+  }
+  .login-form {
+    padding: var(--space-8) var(--space-6);
+  }
+  .login-logo {
+    width: 140px;
+    margin-bottom: var(--space-6);
+  }
+}
+@media (max-width: 599px) {
+  .crumbs,
+  .account .account-name {
+    display: none;
+  }
+  .topbar .logout span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .topbar .logout {
+    width: var(--touch-target);
+    padding: 0;
+  }
+  main#main {
+    padding: var(--space-5) var(--space-4) var(--space-12);
+  }
+  .home-hero {
+    padding: var(--space-6) var(--space-5);
+    margin-bottom: var(--space-6);
+  }
+  .home-hero h1 {
+    font-size: 1.5rem;
+  }
+  .home-hero .brand-arcs {
+    width: 180px;
+    right: -70px;
+    opacity: 0.12;
+  }
+  .entry-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .entry-card {
+    padding: var(--space-4);
+  }
+}
