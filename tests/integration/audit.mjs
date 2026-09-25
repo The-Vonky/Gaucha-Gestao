@@ -549,6 +549,153 @@ try {
     "PASS create: atomic 158 answers, actor/responsible, dates, inactive/missing/foreign/sector units, template states, used template immutable",
   );
 
+  // First template use vs catalog INSERT on real sessions. The FK checks only take FOR KEY
+  // SHARE, which does not serialize them; the template row is the explicit mutex.
+  async function raceTemplate(itemCount, items) {
+    const v = `race-${randomUUID().slice(0, 8)}`;
+    await db.query(
+      "insert into audit.checklist_templates(version,name,item_count) values ($1,'Race',$2)",
+      [v, itemCount],
+    );
+    await db.query(
+      "insert into audit.checklist_sections(template_version,key,position,name) values ($1,'section-01',1,'S')",
+      [v],
+    );
+    for (let i = 1; i <= items; i++)
+      await db.query(
+        "insert into audit.checklist_items(template_version,key,section_key,position,number,text) values ($1,$2,'section-01',$3,$3,'x')",
+        [v, `item-${String(i).padStart(3, "0")}`, i],
+      );
+    await db.query(
+      "update audit.checklist_templates set active=false where active",
+    );
+    await db.query(
+      "update audit.checklist_templates set active=true where version=$1",
+      [v],
+    );
+    return v;
+  }
+  const addItem = (v) => [
+    "insert into audit.checklist_items(template_version,key,section_key,position,number,text) values ($1,'item-099','section-01',99,99,'y')",
+    [v],
+  ];
+  const addSection = (v) => [
+    "insert into audit.checklist_sections(template_version,key,position,name) values ($1,'section-02',2,'S2')",
+    [v],
+  ];
+  const catalogState = async (v) =>
+    (
+      await db.query(
+        `select t.item_count,(select count(*)::int from audit.checklist_items where template_version=t.version) items,
+         (select count(*)::int from audit.checklist_sections where template_version=t.version) sections,
+         array(select (select count(*)::int from audit.inspection_answers a where a.inspection_id=i.id)
+          from audit.inspections i where i.template_version=t.version) answers
+         from audit.checklist_templates t where t.version=$1`,
+        [v],
+      )
+    ).rows[0];
+  try {
+    // First use wins: the catalog insert waits, then fails because the template is in use.
+    for (const [label, add, expected] of [
+      ["item", addItem, { items: 1, sections: 1 }],
+      ["section", addSection, { items: 1, sections: 1 }],
+    ]) {
+      const v = await raceTemplate(1, 1);
+      const t1 = await session("template-first-use", "global");
+      const t2 = new pg.Client({
+        connectionString: config.DB_URL,
+        application_name: "template-catalog",
+      });
+      await t2.connect();
+      try {
+        await t1.query("begin");
+        await t1.query("select audit.create_inspection($1,'2026-09-18')", [A]);
+        await t2.query("begin");
+        const insert = outcome(t2.query(...add(v)));
+        await waitForLock("template-catalog");
+        await t1.query("commit");
+        assert.deepEqual(
+          await insert,
+          { allowed: false, code: "55000" },
+          label,
+        );
+        await t2.query("rollback");
+      } finally {
+        await t1.end();
+        await t2.end();
+      }
+      assert.deepEqual(await catalogState(v), {
+        item_count: 1,
+        ...expected,
+        answers: [1],
+      });
+    }
+    // Catalog mutation wins: create waits and then materializes the committed item set;
+    // with a mismatching item_count it fails without partial rows.
+    for (const [itemCount, expected] of [
+      [2, { item_count: 2, items: 2, sections: 1, answers: [2] }],
+      [1, { item_count: 1, items: 2, sections: 1, answers: [] }],
+    ]) {
+      const v = await raceTemplate(itemCount, 1);
+      const t1 = await session("template-first-use", "global");
+      const t2 = new pg.Client({ connectionString: config.DB_URL });
+      await t2.connect();
+      try {
+        await t2.query("begin");
+        await t2.query(...addItem(v));
+        const created = outcome(
+          t1.query("select audit.create_inspection($1,'2026-09-18')", [A]),
+        );
+        await waitForLock("template-first-use");
+        await t2.query("commit");
+        assert.deepEqual(
+          await created,
+          expected.answers.length
+            ? { allowed: true, rows: 1 }
+            : { allowed: false, code: "55000" },
+        );
+      } finally {
+        await t1.end();
+        await t2.end();
+      }
+      assert.deepEqual(await catalogState(v), expected);
+    }
+    // Concurrent first uses do not block each other (FOR SHARE is compatible).
+    const v = await raceTemplate(1, 1);
+    const [c1, c2] = [
+      await session("template-c1", "global"),
+      await session("template-c2", "global"),
+    ];
+    try {
+      await c1.query("begin");
+      await c2.query("begin");
+      await c1.query("select audit.create_inspection($1,'2026-09-18')", [A]);
+      await c2.query("select audit.create_inspection($1,'2026-09-18')", [A]);
+      await c1.query("commit");
+      await c2.query("commit");
+    } finally {
+      await c1.end();
+      await c2.end();
+    }
+    assert.deepEqual((await catalogState(v)).answers, [1, 1]);
+  } finally {
+    await db.query(
+      "update audit.checklist_templates set active=false where active",
+    );
+    await db.query(
+      "update audit.checklist_templates set active=true where version=$1",
+      [VERSION],
+    );
+  }
+  const canonical = await catalogState(VERSION);
+  assert.deepEqual(
+    [canonical.item_count, canonical.items, canonical.sections],
+    [158, 158, 9],
+  );
+  console.log(
+    "PASS template mutex on real sessions: first use makes item/section inserts wait then fail; a pending insert makes create wait and use the committed set; concurrent creates proceed",
+  );
+
   // ---------------------------------------------------------------- RLS / sparse permissions
   const b = await create("unitB", B);
   const visible = async (user, id) =>

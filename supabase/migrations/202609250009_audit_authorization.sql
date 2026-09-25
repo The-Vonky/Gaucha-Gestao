@@ -35,7 +35,9 @@ begin
  perform audit_private.authorize('audit.inspection.create',p_unit);
  perform 1 from core.units where id=p_unit and active;
  if not found then raise exception 'Inactive unit' using errcode='23514'; end if;
- select * into t from audit.checklist_templates where active;
+ -- Template row FOR SHARE until commit: mutually exclusive with catalog inserts (0010), so the
+ -- answers below always materialize the complete, final item set of the template.
+ select * into t from audit.checklist_templates where active for share;
  if not found then raise exception 'No active checklist template' using errcode='55000'; end if;
  insert into audit.inspections(unit_id,template_version,applied_on,previous_visit_on,responsible_id)
  values(p_unit,t.version,coalesce(p_applied_on,current_date),p_previous_visit_on,auth.uid()) returning * into r;
