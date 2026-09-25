@@ -1,10 +1,12 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { formatDate, today } from "../../shared/dates";
 import { useResource } from "../../shared/useResource";
 import { Confirm, Form, Modal, Notice, PageTitle } from "../../shared/ui";
 import * as api from "./api";
+import { EvidenceList, EvidenceUpload } from "./PlanEvidence";
+import { listEvidence, removeEvidence } from "./evidence";
 import {
   EFFECTIVENESS_LABELS,
   isOverdue,
@@ -13,7 +15,7 @@ import {
 } from "./lifecycle";
 import { originLabel, PlanBadges } from "./PlanBadges";
 import { PlanFields, readPlanValues } from "./PlanFields";
-import type { Effectiveness, Plan, PlanStatus } from "./types";
+import type { Effectiveness, Evidence, Plan, PlanStatus } from "./types";
 const TRANSITIONS: Record<PlanStatus, { to: PlanStatus; label: string }[]> = {
   pending: [
     { to: "in_progress", label: "Iniciar execução" },
@@ -27,6 +29,10 @@ const TRANSITIONS: Record<PlanStatus, { to: PlanStatus; label: string }[]> = {
 };
 const isConflict = (e: unknown) =>
   (e as { code?: string } | null)?.code === "40001";
+/** verify_plan found a different evidence set than the one the verifier confirmed. */
+const evidenceSetChanged = (e: unknown) =>
+  isConflict(e) &&
+  /Evidence set changed/.test(String((e as { message?: unknown }).message));
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
@@ -39,9 +45,14 @@ export function ActionPlanPage() {
   const { planId = "" } = useParams();
   const auth = useAuth();
   const r = useResource(useCallback(() => api.plan(planId), [planId]));
+  const evidence = useResource(
+    useCallback(() => listEvidence(planId), [planId]),
+  );
+  const [removing, setRemoving] = useState<Evidence>();
   const [editing, setEditing] = useState(false);
   const [transition, setTransition] = useState<PlanStatus>();
   const [verifying, setVerifying] = useState(false);
+  const [evidenceChanged, setEvidenceChanged] = useState(false);
   const [conflict, setConflict] = useState(false);
   /** Stale writes reload the latest server state instead of overwriting it. */
   async function mutate(run: () => Promise<void>) {
@@ -49,7 +60,7 @@ export function ActionPlanPage() {
     try {
       await run();
     } catch (e) {
-      if (!isConflict(e)) throw e;
+      if (!isConflict(e) || evidenceSetChanged(e)) throw e;
       setConflict(true);
     }
     r.reload();
@@ -79,6 +90,36 @@ export function ActionPlanPage() {
   const canVerify =
     auth.can("action_plan.verify", scope) && plan.status === "completed";
   const missing = missingForExecution(plan);
+  // Execution evidence follows write and freezes at verification; verification evidence
+  // follows verify and only the open round (not yet recorded) can change.
+  const canExecutionEvidence = canWrite;
+  const canVerificationEvidence = auth.can("action_plan.verify", scope);
+  const openRound = plan.verification_round + 1;
+  const rows = evidence.data ?? [];
+  const execution = rows.filter((e) => e.kind === "execution");
+  const round = (n: number) =>
+    rows.filter((e) => e.kind === "verification" && e.verification_round === n);
+  // What verify_plan freezes: execution evidence and the open verification round.
+  const boundTo = (list: Evidence[]) =>
+    list
+      .filter(
+        (e) => e.kind === "execution" || e.verification_round === openRound,
+      )
+      .map((e) => e.id)
+      .sort();
+  const withEvidence = (render: () => ReactNode) =>
+    evidence.loading ? (
+      <p className="muted" role="status">
+        Carregando evidências…
+      </p>
+    ) : evidence.error ? (
+      <Notice error>
+        Não foi possível carregar as evidências.{" "}
+        <button onClick={evidence.reload}>Recarregar evidências</button>
+      </Notice>
+    ) : (
+      render()
+    );
   return (
     <>
       <nav className="breadcrumb" aria-label="Trilha">
@@ -106,7 +147,14 @@ export function ActionPlanPage() {
               </button>
             ))}
           {canVerify && (
-            <button className="primary" onClick={() => setVerifying(true)}>
+            <button
+              className="primary"
+              onClick={() => {
+                evidence.reload();
+                setEvidenceChanged(false);
+                setVerifying(true);
+              }}
+            >
               {verified ? "Reverificar eficácia" : "Verificar eficácia"}
             </button>
           )}
@@ -200,6 +248,24 @@ export function ActionPlanPage() {
           )}
         </dl>
       </section>
+      <section className="ap-section">
+        <h2>Evidências da execução</h2>
+        {withEvidence(() => (
+          <>
+            <EvidenceList
+              rows={execution}
+              onRemove={canExecutionEvidence ? setRemoving : undefined}
+            />
+            {canExecutionEvidence && (
+              <EvidenceUpload
+                planId={plan.id}
+                kind="execution"
+                onUploaded={evidence.reload}
+              />
+            )}
+          </>
+        ))}
+      </section>
       <PlannedVerification plan={plan} />
       <section className="ap-section">
         <h2>Verificação realizada</h2>
@@ -224,6 +290,48 @@ export function ActionPlanPage() {
             </Field>
           </dl>
         )}
+      </section>
+      <section className="ap-section">
+        <h2>Evidências da verificação</h2>
+        {withEvidence(() => (
+          <>
+            <h3>
+              {verified ? "Para a próxima verificação" : "Para a verificação"}
+            </h3>
+            <EvidenceList
+              rows={round(openRound)}
+              onRemove={canVerificationEvidence ? setRemoving : undefined}
+            />
+            {canVerificationEvidence &&
+              (plan.status === "completed" ? (
+                <EvidenceUpload
+                  planId={plan.id}
+                  kind="verification"
+                  onUploaded={evidence.reload}
+                />
+              ) : (
+                <p className="muted">
+                  Evidências da verificação podem ser anexadas após a conclusão
+                  do plano.
+                </p>
+              ))}
+            {Array.from(
+              { length: plan.verification_round },
+              (_, i) => plan.verification_round - i,
+            ).map((n) => (
+              <Fragment key={n}>
+                <h3>
+                  Verificação nº {n}
+                  {n === plan.verification_round ? " (atual)" : ""}
+                </h3>
+                <EvidenceList
+                  rows={round(n)}
+                  empty="Nenhuma evidência anexada a esta verificação."
+                />
+              </Fragment>
+            ))}
+          </>
+        ))}
       </section>
       {editing && (
         <Modal title="Editar planejamento" onClose={() => setEditing(false)}>
@@ -253,21 +361,58 @@ export function ActionPlanPage() {
       {verifying && (
         <Modal title="Verificar eficácia" onClose={() => setVerifying(false)}>
           <PlannedVerification plan={plan} />
+          <section className="ap-section">
+            <h2>Evidências desta verificação</h2>
+            {withEvidence(() => (
+              <>
+                <h3>Execução</h3>
+                <EvidenceList rows={execution} />
+                <h3>Verificação</h3>
+                <EvidenceList rows={round(openRound)} />
+              </>
+            ))}
+          </section>
           <Form
             onCancel={() => setVerifying(false)}
             onSave={async (data) => {
-              await mutate(() =>
-                api.verify(plan, {
-                  effectiveness: String(
-                    data.get("effectiveness"),
-                  ) as Effectiveness,
-                  verified_on: String(data.get("verified_on")),
-                  notes: String(data.get("notes")).trim(),
-                }),
-              );
+              // The database binds the verification to the ids shown here and rejects it
+              // if the set changed; the re-read only warns earlier.
+              const shown = boundTo(rows);
+              const changed = () => {
+                setEvidenceChanged(true);
+                evidence.reload();
+              };
+              const current = await listEvidence(plan.id);
+              if (evidence.loading || boundTo(current).join() !== shown.join())
+                return changed();
+              try {
+                await mutate(() =>
+                  api.verify(
+                    plan,
+                    {
+                      effectiveness: String(
+                        data.get("effectiveness"),
+                      ) as Effectiveness,
+                      verified_on: String(data.get("verified_on")),
+                      notes: String(data.get("notes")).trim(),
+                    },
+                    shown,
+                  ),
+                );
+              } catch (e) {
+                if (evidenceSetChanged(e)) return changed();
+                throw e;
+              }
+              evidence.reload();
               setVerifying(false);
             }}
           >
+            {evidenceChanged && (
+              <Notice error>
+                As evidências desta verificação mudaram enquanto o formulário
+                estava aberto. Revise a lista atualizada e salve novamente.
+              </Notice>
+            )}
             <fieldset className="ap-result">
               <legend>Resultado (obrigatório)</legend>
               {(Object.keys(EFFECTIVENESS_LABELS) as Effectiveness[]).map(
@@ -300,6 +445,17 @@ export function ActionPlanPage() {
             </label>
           </Form>
         </Modal>
+      )}
+      {removing && (
+        <Confirm
+          title="Remover evidência"
+          description={`"${removing.original_name}" deixará de ficar disponível neste plano. A remoção fica registrada no histórico.`}
+          onClose={() => setRemoving(undefined)}
+          onConfirm={async () => {
+            await removeEvidence(removing.id);
+            evidence.reload();
+          }}
+        />
       )}
     </>
   );

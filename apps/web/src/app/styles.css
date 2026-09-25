@@ -891,6 +891,26 @@ dialog::backdrop {
 .ap-result {
   margin-bottom: 1rem;
 }
+.ap-section h3 {
+  font-size: 0.9rem;
+  margin: 16px 0 0;
+}
+/* Actions move below long file names instead of overflowing narrow screens. */
+.evidence-list li {
+  flex-wrap: wrap;
+}
+.evidence-list .row-actions {
+  min-width: 0;
+}
+.file-input,
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 @media (max-width: 900px) {
   .audit-layout {
     grid-template-columns: 1fr;

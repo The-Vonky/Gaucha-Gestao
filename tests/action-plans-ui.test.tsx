@@ -13,6 +13,7 @@ import {
   queueRank,
 } from "../apps/web/src/modules/action-plans/lifecycle";
 import type {
+  Evidence,
   Plan,
   PlanSummary,
 } from "../apps/web/src/modules/action-plans/types";
@@ -26,6 +27,18 @@ const api = vi.hoisted(() => ({
   verify: vi.fn(),
 }));
 vi.mock("../apps/web/src/modules/action-plans/api", () => api);
+const ev = vi.hoisted(() => ({
+  listEvidence: vi.fn(),
+  removeEvidence: vi.fn(),
+  beginUpload: vi.fn(),
+  finishUpload: vi.fn(),
+  downloadUrl: vi.fn(),
+  openDownload: vi.fn(),
+}));
+vi.mock("../apps/web/src/modules/action-plans/evidence", async (original) => ({
+  ...(await original<object>()),
+  ...ev,
+}));
 const auth = vi.hoisted(() => ({ grants: [] as AccessGrant[] }));
 vi.mock("../apps/web/src/core/auth/AuthProvider", () => ({
   useAuth: () => ({
@@ -51,11 +64,13 @@ beforeAll(() => {
   HTMLDialogElement.prototype.close = function () {
     this.removeAttribute("open");
   };
+  ev.listEvidence.mockResolvedValue([]);
 });
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   auth.grants = [];
+  ev.listEvidence.mockResolvedValue([]);
 });
 function plan(over: Partial<Plan> = {}): Plan {
   return {
@@ -86,6 +101,7 @@ function plan(over: Partial<Plan> = {}): Plan {
     verified_at: null,
     completed_by: null,
     completed_at: null,
+    verification_round: 0,
     version: 1,
     created_at: "",
     updated_at: "",
@@ -315,5 +331,251 @@ describe("action plans UI", () => {
     api.plan.mockResolvedValue(null);
     open("/action-plans/unknown");
     expect(await screen.findByText("Plano de ação indisponível")).toBeTruthy();
+  });
+});
+const evidence = (over: Partial<Evidence> = {}): Evidence => ({
+  id: "e1",
+  plan_id: "p1",
+  kind: "execution",
+  verification_round: null,
+  object_key: "p1/e1",
+  original_name: "laudo.pdf",
+  content_type: "application/pdf",
+  size_bytes: 2 * 1024 * 1024,
+  created_by: "u1",
+  uploaded_by_name: "Ana",
+  uploaded_at: "2026-09-25T10:00:00Z",
+  ...over,
+});
+const verifiedPlan = (round: number) =>
+  plan({
+    status: "completed",
+    completed_at: "2026-09-21T10:00:00Z",
+    effectiveness: "effective",
+    verified_on: "2026-09-22",
+    verification_notes: "Sem reincidência",
+    verified_at: "2026-09-22T10:00:00Z",
+    verification_round: round,
+  });
+const fileInput = () =>
+  document.querySelector('input[type="file"]') as HTMLInputElement;
+describe("Action Plan evidence UI", () => {
+  it("lets write change execution evidence only before verification", async () => {
+    auth.grants = grants("read", "write");
+    api.plan.mockResolvedValue(summary(plan()));
+    ev.listEvidence.mockResolvedValue([evidence()]);
+    open("/action-plans/p1");
+    expect(await screen.findByText("laudo.pdf")).toBeTruthy();
+    expect(screen.getByText(/PDF · 2 MB · Ana/)).toBeTruthy();
+    expect(screen.getByText("Anexar evidência da execução")).toBeTruthy();
+    expect(screen.getByLabelText("Remover laudo.pdf")).toBeTruthy();
+    expect(screen.queryByText("Anexar evidência da verificação")).toBeNull();
+    expect(fileInput().accept).toContain(".pdf");
+    expect(fileInput().accept).not.toMatch(/\.xls,|\.doc,|heic|svg|zip/);
+    cleanup();
+    api.plan.mockResolvedValue(summary(verifiedPlan(1)));
+    open("/action-plans/p1");
+    expect(await screen.findByText("laudo.pdf")).toBeTruthy();
+    expect(screen.queryByText("Anexar evidência da execução")).toBeNull();
+    expect(screen.queryByLabelText("Remover laudo.pdf")).toBeNull();
+    cleanup();
+    auth.grants = grants("read");
+    api.plan.mockResolvedValue(summary(plan()));
+    open("/action-plans/p1");
+    expect(await screen.findByText("laudo.pdf")).toBeTruthy();
+    expect(screen.getByText("Baixar")).toBeTruthy();
+    expect(screen.queryByText(/Anexar evidência/)).toBeNull();
+    expect(screen.queryByText("Remover")).toBeNull();
+  });
+  it("groups verification evidence by round and only the open round can change", async () => {
+    auth.grants = grants("read", "verify");
+    api.plan.mockResolvedValue(summary(verifiedPlan(2)));
+    const round = (id: string, n: number) =>
+      evidence({
+        id,
+        kind: "verification",
+        verification_round: n,
+        original_name: `${id}.pdf`,
+      });
+    ev.listEvidence.mockResolvedValue([
+      evidence({ id: "x", original_name: "execucao.pdf" }),
+      round("v1", 1),
+      round("v2", 2),
+      round("v3", 3),
+    ]);
+    open("/action-plans/p1");
+    expect(await screen.findByText("v3.pdf")).toBeTruthy();
+    expect(
+      screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
+    ).toEqual([
+      "Para a próxima verificação",
+      "Verificação nº 2 (atual)",
+      "Verificação nº 1",
+    ]);
+    expect(screen.getByLabelText("Remover v3.pdf")).toBeTruthy();
+    for (const name of ["v1.pdf", "v2.pdf", "execucao.pdf"])
+      expect(screen.queryByLabelText(`Remover ${name}`)).toBeNull();
+    expect(screen.getByText("Anexar evidência da verificação")).toBeTruthy();
+    // The verification form shows the material this verification will be bound to.
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Reverificar eficácia"));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.textContent).toContain("Evidências desta verificação");
+    expect(dialog.textContent).toContain("execucao.pdf");
+    expect(dialog.textContent).toContain("v3.pdf");
+    expect(dialog.textContent).not.toContain("v2.pdf");
+    cleanup();
+    api.plan.mockResolvedValue(summary(plan({ status: "in_progress" })));
+    ev.listEvidence.mockResolvedValue([]);
+    open("/action-plans/p1");
+    expect(
+      await screen.findByText(/podem ser anexadas após a conclusão/),
+    ).toBeTruthy();
+    expect(screen.getByText("Para a verificação")).toBeTruthy();
+    expect(screen.queryByText("Anexar evidência da verificação")).toBeNull();
+  });
+  it("verifies only against the evidence set the verifier is shown", async () => {
+    auth.grants = grants("read", "verify");
+    const completed = plan({ status: "completed", version: 3 });
+    api.plan.mockResolvedValue(summary(completed));
+    api.verify.mockResolvedValue(undefined);
+    const x = evidence({ id: "x", original_name: "execucao.pdf" });
+    const y = evidence({
+      id: "y",
+      kind: "verification",
+      verification_round: 1,
+      original_name: "medicao.pdf",
+    });
+    ev.listEvidence.mockResolvedValue([x]);
+    open("/action-plans/p1");
+    expect(await screen.findByText("execucao.pdf")).toBeTruthy();
+    // Another verifier attached Y after this page loaded: opening the form shows it.
+    ev.listEvidence.mockResolvedValue([x, y]);
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Verificar eficácia"));
+    const dialog = screen.getByRole("dialog");
+    await waitFor(() => expect(dialog.textContent).toContain("medicao.pdf"));
+    await user.click(screen.getByLabelText("Eficaz"));
+    await user.type(screen.getByLabelText(/Análise/), "Critério atendido");
+    // Y is removed while the form is open: the verification is not recorded.
+    ev.listEvidence.mockResolvedValue([x]);
+    await user.click(screen.getByText("Salvar"));
+    expect(
+      await screen.findByText(/As evidências desta verificação mudaram/),
+    ).toBeTruthy();
+    expect(api.verify).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getByRole("dialog").textContent).not.toContain(
+        "medicao.pdf",
+      ),
+    );
+    // Saving again sends exactly the reviewed set; the database is the authority and a
+    // change it detects keeps the form open with the evidence reloaded.
+    api.verify.mockRejectedValueOnce({
+      code: "40001",
+      message: "Evidence set changed",
+    });
+    const loads = ev.listEvidence.mock.calls.length;
+    await user.click(screen.getByText("Salvar"));
+    await waitFor(() => expect(api.verify).toHaveBeenCalledTimes(1));
+    expect(api.verify.mock.calls[0][0]).toMatchObject({ id: "p1", version: 3 });
+    expect(api.verify.mock.calls[0][2]).toEqual(["x"]);
+    await waitFor(() =>
+      expect(ev.listEvidence.mock.calls.length).toBe(loads + 2),
+    );
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(
+      screen.getByText(/As evidências desta verificação mudaram/),
+    ).toBeTruthy();
+    expect(api.plan).toHaveBeenCalledTimes(1);
+    await user.click(await screen.findByText("Salvar"));
+    await waitFor(() => expect(api.verify).toHaveBeenCalledTimes(2));
+    expect(api.verify.mock.calls[1][2]).toEqual(["x"]);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+  it("uploads one file, keeps a failed attempt for retry and reloads the list", async () => {
+    auth.grants = grants("read", "write");
+    api.plan.mockResolvedValue(summary(plan()));
+    const attempt = { evidenceId: "e9", key: "p1/e9", body: new Blob(["x"]) };
+    ev.beginUpload.mockResolvedValue(attempt);
+    ev.finishUpload
+      // The shape PostgREST gives a lost confirm response (no server code).
+      .mockRejectedValueOnce({
+        message: "TypeError: Failed to fetch",
+        code: "",
+      })
+      .mockResolvedValueOnce(undefined);
+    open("/action-plans/p1");
+    await screen.findAllByText("Nenhuma evidência anexada.");
+    const user = userEvent.setup();
+    const file = new File(["%PDF-1.4"], "laudo.pdf", {
+      type: "application/pdf",
+    });
+    await user.upload(fileInput(), file);
+    expect(ev.beginUpload).toHaveBeenCalledWith("p1", "execution", file);
+    expect(await screen.findByText(/Verifique sua conexão/)).toBeTruthy();
+    await user.click(screen.getByText("Tentar novamente"));
+    await waitFor(() => expect(ev.finishUpload).toHaveBeenCalledTimes(2));
+    expect(ev.finishUpload).toHaveBeenLastCalledWith(attempt);
+    expect(ev.beginUpload).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(ev.listEvidence).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText("Tentar novamente")).toBeNull();
+  });
+  it("shows a specific message and no retry when the server rejects the upload", async () => {
+    auth.grants = grants("read", "write");
+    api.plan.mockResolvedValue(summary(plan()));
+    ev.beginUpload.mockRejectedValue({
+      code: "23514",
+      message: "Evidence limit reached",
+    });
+    open("/action-plans/p1");
+    await screen.findAllByText("Nenhuma evidência anexada.");
+    await userEvent.setup().upload(fileInput(), new File(["x"], "a.pdf"));
+    expect(await screen.findByText(/Limite de 20 evidências/)).toBeTruthy();
+    expect(screen.queryByText("Tentar novamente")).toBeNull();
+  });
+  it("removes only after an application dialog, never a native confirm", async () => {
+    const native = vi.spyOn(window, "confirm");
+    auth.grants = grants("read", "write");
+    api.plan.mockResolvedValue(summary(plan()));
+    ev.listEvidence.mockResolvedValue([evidence()]);
+    ev.removeEvidence.mockResolvedValue(undefined);
+    open("/action-plans/p1");
+    const user = userEvent.setup();
+    await user.click(await screen.findByLabelText("Remover laudo.pdf"));
+    expect(screen.getByRole("dialog").textContent).toContain(
+      "Remover evidência",
+    );
+    expect(ev.removeEvidence).not.toHaveBeenCalled();
+    await user.click(screen.getByText("Confirmar"));
+    await waitFor(() => expect(ev.removeEvidence).toHaveBeenCalledWith("e1"));
+    await waitFor(() => expect(ev.listEvidence).toHaveBeenCalledTimes(2));
+    expect(native).not.toHaveBeenCalled();
+  });
+  it("downloads through a short-lived URL requested on click", async () => {
+    auth.grants = grants("read");
+    api.plan.mockResolvedValue(summary(plan()));
+    const row = evidence();
+    ev.listEvidence.mockResolvedValue([row]);
+    ev.downloadUrl
+      .mockResolvedValueOnce("https://storage.test/signed")
+      .mockRejectedValueOnce(new Error("Object not found"));
+    open("/action-plans/p1");
+    const user = userEvent.setup();
+    await user.click(await screen.findByText("Baixar"));
+    expect(ev.downloadUrl).toHaveBeenCalledWith(row);
+    expect(ev.openDownload).toHaveBeenCalledWith("https://storage.test/signed");
+    await user.click(screen.getByText("Baixar"));
+    expect(await screen.findByText("Arquivo indisponível.")).toBeTruthy();
+  });
+  it("shows evidence loading and error states without hiding the plan", async () => {
+    auth.grants = grants("read");
+    api.plan.mockResolvedValue(summary(plan()));
+    ev.listEvidence.mockRejectedValue(new Error("offline"));
+    open("/action-plans/p1");
+    expect(
+      await screen.findAllByText(/Não foi possível carregar as evidências/),
+    ).toHaveLength(2);
+    expect(screen.getByText("Telas danificadas")).toBeTruthy();
   });
 });

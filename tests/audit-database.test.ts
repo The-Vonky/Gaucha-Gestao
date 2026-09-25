@@ -1,6 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { STORAGE_STUB } from "./storage-stub";
 const catalog = JSON.parse(
   readFileSync("docs/reference/AUDIT_CHECKLIST_V1.json", "utf8"),
 ) as {
@@ -81,6 +82,7 @@ beforeAll(async () => {
  create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}');
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
  grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;`);
+  await db.exec(STORAGE_STUB);
   for (const file of readdirSync("supabase/migrations").sort())
     await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
   const values = Object.values(users)

@@ -28,6 +28,8 @@ export type Plan = {
   verified_at: string | null;
   completed_by: string | null;
   completed_at: string | null;
+  /** Number of recorded verifications; the open evidence round is this + 1. */
+  verification_round: number;
   version: number;
   created_at: string;
   updated_at: string;
@@ -40,6 +42,21 @@ export type PlanSummary = {
   item_number: number | null;
   verified_by_name: string | null;
   completed_by_name: string | null;
+};
+export type EvidenceKind = "execution" | "verification";
+export type Evidence = {
+  id: string;
+  plan_id: string;
+  kind: EvidenceKind;
+  /** Null for execution evidence; the verification it supports otherwise. */
+  verification_round: number | null;
+  object_key: string;
+  original_name: string;
+  content_type: string;
+  size_bytes: number;
+  created_by: string;
+  uploaded_by_name: string;
+  uploaded_at: string;
 };
 export type CreationScope = {
   unit_id: string;
@@ -102,9 +119,26 @@ export type ActionPlansDatabase = {
           p_effectiveness: Effectiveness;
           p_verified_on: string;
           p_notes: string;
+          p_expected_evidence_ids: string[];
         };
         Returns: undefined;
       };
+      plan_evidence: { Args: { p_plan: string }; Returns: Evidence[] };
+      begin_evidence_upload: {
+        Args: {
+          p_plan: string;
+          p_kind: EvidenceKind;
+          p_original_name: string;
+          p_content_type: string;
+          p_size: number;
+        };
+        Returns: { evidence_id: string; object_key: string }[];
+      };
+      confirm_evidence_upload: {
+        Args: { p_evidence: string };
+        Returns: undefined;
+      };
+      remove_evidence: { Args: { p_evidence: string }; Returns: undefined };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
