@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { client } from "../client";
 import { Notice } from "../../shared/ui";
+import { BrandMark } from "../../shared/brand";
+import { Icon } from "../../shared/icons";
+import logo from "../../assets/gaucha-alimentacao-logo.png";
 export function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -26,18 +29,23 @@ export function Login() {
   }
   return (
     <main className="login">
-      <section className="login-brand">
-        <span className="brand-mark">G</span>
-        <p className="eyebrow">Plataforma corporativa</p>
-        <h1>
-          Gaúcha
-          <br />
-          Gestão
-        </h1>
-        <p>Um só lugar para a gestão da nossa operação.</p>
+      {/* The two "elos" of the mark at architectural scale: the composition's structure. */}
+      <BrandMark className="login-loops" weight={2.6} />
+      <section className="login-intro">
+        <p className="login-lockup">
+          <BrandMark />
+          <span className="brand-name">
+            Gaúcha<small>Gestão</small>
+          </span>
+        </p>
+        <h1>Um só lugar para a gestão da nossa operação.</h1>
+        <p className="login-tagline">
+          Plataforma corporativa da Gaúcha Alimentação.
+        </p>
       </section>
-      <section className="login-form">
-        <h2>Acesse sua conta</h2>
+      <section className="login-card" aria-labelledby="login-title">
+        <img className="login-logo" src={logo} alt="Gaúcha Alimentação" />
+        <h2 id="login-title">Acesse sua conta</h2>
         <p>Use o acesso fornecido pela administração.</p>
         <form onSubmit={(e) => void submit(e)}>
           <fieldset disabled={busy}>
@@ -62,13 +70,15 @@ export function Login() {
             {error && <Notice error>{error}</Notice>}
             <button className="primary" type="submit">
               {busy ? "Entrando…" : "Entrar"}
+              {!busy && <Icon name="arrowRight" />}
             </button>
           </fieldset>
         </form>
-        <p className="muted">
+        <p className="muted login-help">
           Precisa de acesso ou redefinição de senha? Fale com a administração.
         </p>
       </section>
+      <p className="login-foot">Gaúcha Alimentação · Uso interno</p>
     </main>
   );
 }

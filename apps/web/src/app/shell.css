@@ -1,0 +1,894 @@
+/*
+ * App Shell, Login and Home — "Elos" direction (Quality UI v1).
+ * Brand navigation lives on the deep institutional green; work stays on a
+ * light, warm surface. The two connected loops of the mark are the structure
+ * of brand surfaces, never scattered decoration.
+ */
+
+/* ---------- Brand pieces ---------- */
+/* BrandMark sizes: sidebar/drawer 34 · mobile header 28 · login lockup 40 ·
+   states 48 · loader 56 · empty state 34. */
+.brand-mark {
+  width: 34px;
+  height: auto;
+  flex-shrink: 0;
+}
+.state-mark {
+  width: 48px;
+  height: auto;
+}
+.brand-name {
+  display: block;
+  font: 600 1.125rem/1 var(--font-display);
+  letter-spacing: 0;
+  color: var(--on-brand);
+}
+.brand-name small {
+  display: block;
+  margin-top: 4px;
+  font: 600 0.625rem/1 var(--font-display);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--on-brand-accent);
+}
+
+/* ---------- Layout ---------- */
+.layout {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+}
+.workspace {
+  min-width: 0;
+}
+main#main {
+  padding: var(--space-8) var(--space-10) var(--space-16);
+  max-width: var(--content-max);
+  margin: 0 auto;
+  outline: none;
+}
+
+/* ---------- Brand navigation surface (sidebar + drawer) ---------- */
+.sidebar,
+.nav-drawer {
+  --color-focus: var(--brand-orange-300);
+  background:
+    radial-gradient(
+      120% 45% at 0% 0%,
+      rgb(42 159 76 / 0.16) 0%,
+      transparent 65%
+    ),
+    var(--brand-surface);
+  color: var(--on-brand);
+}
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5) var(--space-3) var(--space-3);
+  overflow: hidden;
+}
+/* The loops, in the surface's own ink, anchored under the navigation. */
+.sidebar-loops {
+  position: absolute;
+  left: -140px;
+  bottom: 56px;
+  width: 520px;
+  height: auto;
+  color: rgb(255 255 255 / 0.045);
+  pointer-events: none;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-2) var(--space-5);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--brand-surface-line);
+  border-radius: 0;
+  text-decoration: none;
+}
+
+.menu {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.15) transparent;
+}
+.menu section {
+  margin-top: var(--space-5);
+}
+.menu h2 {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--on-brand-muted);
+  margin: 0 var(--space-3) var(--space-2);
+}
+.menu a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 38px;
+  padding: 0 var(--space-3);
+  margin: 2px 0;
+  border-radius: var(--radius-md);
+  color: rgb(243 241 234 / 0.8);
+  font-weight: 500;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+.menu a .icon {
+  width: 18px;
+  height: 18px;
+  color: rgb(243 241 234 / 0.55);
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+.menu a:hover {
+  background: var(--brand-surface-hover);
+  color: var(--on-brand);
+}
+.menu a:hover .icon {
+  color: rgb(243 241 234 / 0.85);
+}
+.menu a:focus-visible {
+  outline-offset: -2px;
+}
+.menu a.active {
+  background: var(--brand-surface-active);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05);
+  color: #fff;
+  font-weight: 600;
+}
+.menu a.active .icon {
+  color: var(--brand-orange-300);
+}
+.menu a.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  background: var(--brand-orange-400);
+}
+
+/* Identity block at the base of the navigation. */
+.user-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--brand-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--brand-surface-line);
+}
+.user-id {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+.user-id strong,
+.user-id small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-id strong {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--on-brand);
+}
+.user-id small {
+  color: var(--on-brand-muted);
+}
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 2px solid transparent;
+  border-radius: var(--radius-full);
+  background:
+    linear-gradient(var(--brand-surface-raised), var(--brand-surface-raised))
+      padding-box,
+    var(--gradient-brand) border-box;
+  color: var(--on-brand);
+  font: 600 0.75rem/1 var(--font-display);
+  letter-spacing: 0.04em;
+}
+/* Buttons on the brand surface. */
+.sidebar button.ghost,
+.nav-drawer button.ghost,
+.topbar button.ghost {
+  color: var(--on-brand-muted);
+}
+.sidebar button.ghost:hover:not(:disabled),
+.nav-drawer button.ghost:hover:not(:disabled),
+.topbar button.ghost:hover:not(:disabled) {
+  background: var(--brand-surface-hover);
+  color: var(--on-brand);
+}
+.user-card .logout {
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+.user-card .logout .icon {
+  width: 18px;
+  height: 18px;
+}
+.user-card .logout span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.logout-error {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + var(--space-2));
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  background: var(--danger-bg);
+  color: var(--danger);
+  font: var(--text-body-sm);
+  box-shadow: var(--shadow-md);
+}
+
+/* ---------- Work surface header ---------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--header-height);
+  padding: 0 var(--space-10);
+  background: rgb(244 242 236 / 0.86);
+  backdrop-filter: saturate(1.3) blur(10px);
+  border-bottom: 1px solid var(--color-border);
+}
+.mobile-menu,
+.topbar-brand,
+.topbar-avatar {
+  display: none;
+}
+.crumbs {
+  min-width: 0;
+}
+.crumbs ol {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.crumbs li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.crumbs li + li::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--brand-orange-400);
+  opacity: 0.8;
+}
+.crumbs a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+.crumbs a:hover {
+  color: var(--color-link);
+}
+.crumbs [aria-current="page"] {
+  color: var(--color-text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Drawer (mobile/tablet navigation) ---------- */
+.nav-drawer {
+  border: 0;
+  width: min(320px, calc(100% - 40px));
+}
+.nav-drawer[open] {
+  padding: 0 var(--space-3) var(--space-3);
+}
+.nav-drawer .drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--brand-surface-line);
+}
+.nav-drawer .drawer-head .brand {
+  border: 0;
+  margin: 0;
+  padding-bottom: var(--space-4);
+}
+.nav-drawer .drawer-head .icon-button {
+  margin-bottom: var(--space-3);
+}
+.nav-drawer .menu a {
+  min-height: var(--touch-target);
+  font-size: 0.9375rem;
+}
+.nav-drawer .user-card .logout {
+  width: var(--touch-target);
+  min-height: var(--touch-target);
+}
+
+/* ---------- Home: launchpad ---------- */
+.launch-head {
+  margin-bottom: var(--space-6);
+}
+.launch-head .eyebrow {
+  margin-bottom: var(--space-2);
+}
+.launch-head .eyebrow::first-letter {
+  text-transform: uppercase;
+}
+.launch-head h1 {
+  font: var(--text-page-title);
+  font-size: 2rem;
+  letter-spacing: var(--tracking-title);
+  margin-bottom: var(--space-1);
+}
+.launch-head p:last-child {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+/* An operational domain is a place, not a card grid. */
+.domain {
+  --domain-bg: linear-gradient(
+    115deg,
+    var(--brand-orange-100) 0%,
+    var(--brand-orange-50) 70%
+  );
+  --domain-ink: var(--brand-orange-900);
+  --domain-text: var(--brand-orange-900);
+  --domain-loops: var(--brand-orange-200);
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(200px, 290px) minmax(0, 1fr);
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
+  padding: var(--space-8);
+  border-radius: var(--radius-2xl);
+  background: var(--domain-bg);
+}
+.domain[data-group="Qualidade"] {
+  --domain-bg: linear-gradient(
+    115deg,
+    #d5ecd9 0%,
+    var(--brand-green-50) 62%,
+    #f1f5e4 100%
+  );
+  --domain-ink: var(--brand-green-900);
+  --domain-text: var(--brand-green-800);
+  --domain-loops: rgb(31 133 64 / 0.16);
+}
+/* The loops rise from under the domain name, in the domain's own tint. */
+.domain-loops {
+  position: absolute;
+  left: -170px;
+  bottom: -285px;
+  width: 660px;
+  height: auto;
+  color: var(--domain-loops);
+  pointer-events: none;
+}
+.domain-intro {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.domain-name {
+  margin: 0 0 var(--space-3);
+  font: 600 2.5rem/1 var(--font-display);
+  letter-spacing: -0.02em;
+  color: var(--domain-ink);
+}
+.domain-name::before {
+  content: "";
+  display: block;
+  width: 28px;
+  height: 4px;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--brand-orange-500);
+}
+.domain-text {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--domain-text);
+}
+.domain-modules {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+.module-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 196px;
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+  box-shadow:
+    0 1px 2px rgb(10 39 21 / 0.06),
+    0 10px 28px -14px rgb(10 39 21 / 0.28);
+  transition:
+    transform var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
+}
+.module-tile:hover {
+  color: var(--color-text);
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px rgb(10 39 21 / 0.06),
+    0 18px 36px -14px rgb(10 39 21 / 0.35);
+}
+.module-tile:active {
+  transform: translateY(0);
+}
+/* Module icons carry the navigation's identity: brand surface + orange ink. */
+.module-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--brand-surface);
+  color: var(--brand-orange-300);
+}
+.module-icon .icon {
+  width: 22px;
+  height: 22px;
+}
+.module-tile h2 {
+  margin: 0;
+  font: var(--text-card-title);
+  font-size: 1.3125rem;
+  letter-spacing: -0.01em;
+}
+.module-tile p {
+  margin: 0;
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
+}
+.module-open {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-3);
+  font: 600 0.8125rem/1 var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand-green-700);
+}
+.module-open .icon {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--duration-base) var(--ease-emphasized);
+}
+.module-tile:hover .module-open .icon {
+  transform: translateX(4px);
+}
+
+/* Administration: secondary, dense, one surface. */
+.admin-area {
+  margin-top: var(--space-2);
+}
+.admin-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.admin-head .eyebrow {
+  margin: 0;
+}
+.admin-head p:last-child {
+  margin: 0;
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
+}
+.admin-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow:
+    0 0 0 1px var(--color-border),
+    var(--shadow-xs);
+}
+.admin-list li {
+  box-shadow:
+    1px 0 0 var(--neutral-100),
+    0 1px 0 var(--neutral-100);
+}
+.admin-list a {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.admin-list a:hover {
+  background: var(--neutral-25);
+  color: var(--color-text);
+}
+.admin-list a:focus-visible {
+  outline-offset: -2px;
+}
+.admin-list a > .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--neutral-600);
+}
+.admin-list h2 {
+  margin: 0;
+  font: var(--text-card-title);
+  font-size: 0.9375rem;
+}
+.admin-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-go {
+  color: var(--neutral-400);
+  transition:
+    transform var(--duration-base) var(--ease-emphasized),
+    color var(--duration-base) var(--ease-standard);
+}
+.admin-list a:hover .admin-go {
+  color: var(--brand-green-700);
+  transform: translateX(2px);
+}
+
+/* ---------- Login ---------- */
+.login {
+  --color-focus: var(--brand-orange-300);
+  position: relative;
+  overflow: hidden;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
+  grid-template-rows: 1fr auto;
+  column-gap: clamp(32px, 7vw, 128px);
+  padding: clamp(32px, 5vw, 64px) clamp(24px, 7vw, 120px);
+  background:
+    radial-gradient(
+      70% 60% at 12% 18%,
+      rgb(42 159 76 / 0.22) 0%,
+      transparent 62%
+    ),
+    var(--brand-surface);
+  color: var(--on-brand);
+}
+/* The two loops at architectural scale: lower-left, the green one passing
+   behind the card — the composition's structure. */
+.login-loops {
+  position: absolute;
+  left: -13vw;
+  bottom: -16vw;
+  width: 92vw;
+  min-width: 1100px;
+  height: auto;
+  opacity: 0.95;
+  pointer-events: none;
+}
+.login-intro {
+  position: relative;
+  z-index: 1;
+  align-self: start;
+  max-width: 560px;
+}
+.login-lockup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 clamp(40px, 9vh, 104px);
+}
+.login-lockup .brand-mark {
+  width: 40px;
+}
+.login-intro h1 {
+  max-width: 15ch;
+  margin: 0;
+  font: 600 clamp(2.5rem, 4.1vw, 3.75rem) / 1.02 var(--font-display);
+  letter-spacing: -0.02em;
+  color: var(--on-brand);
+  text-wrap: balance;
+}
+.login-tagline {
+  margin: var(--space-5) 0 0;
+  font-size: 1.0625rem;
+  color: var(--on-brand-muted);
+}
+.login-card {
+  --color-focus: var(--brand-orange-700);
+  position: relative;
+  z-index: 1;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  padding: var(--space-10) var(--space-10) var(--space-8);
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06),
+    0 40px 80px -28px rgb(0 0 0 / 0.55);
+}
+.login-logo {
+  display: block;
+  width: 232px;
+  max-width: 100%;
+  height: auto;
+  margin-bottom: var(--space-8);
+}
+.login-card h2 {
+  font: var(--text-page-title);
+  margin-bottom: var(--space-1);
+}
+.login-card > p {
+  color: var(--color-text-secondary);
+}
+.login-card form {
+  margin: var(--space-6) 0 var(--space-5);
+}
+.login-card input {
+  min-height: 46px;
+}
+.login-card button.primary {
+  width: 100%;
+  min-height: 48px;
+  margin-top: var(--space-1);
+  font-size: 0.9375rem;
+}
+.login-card button.primary .icon {
+  width: 18px;
+  height: 18px;
+  transition: transform var(--duration-base) var(--ease-emphasized);
+}
+.login-card button.primary:hover .icon {
+  transform: translateX(3px);
+}
+.login-help {
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.login-foot {
+  position: relative;
+  z-index: 1;
+  grid-row: 2;
+  align-self: end;
+  margin: var(--space-8) 0 0;
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--on-brand-muted);
+}
+
+/* ---------- Tablet & mobile ---------- */
+@media (max-width: 1023px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sidebar {
+    display: none;
+  }
+  /* The header becomes the brand navigation bar. */
+  .topbar {
+    padding: 0 var(--space-4) 0 var(--space-2);
+    background: var(--brand-surface);
+    backdrop-filter: none;
+    border-bottom: 0;
+    --color-focus: var(--brand-orange-300);
+  }
+  .topbar::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 2px;
+    background: var(--gradient-brand);
+  }
+  .mobile-menu {
+    display: inline-flex;
+  }
+  .topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    text-decoration: none;
+  }
+  .topbar-brand .brand-mark {
+    width: 28px;
+  }
+  .topbar-brand .brand-name {
+    font-size: 1rem;
+  }
+  .topbar-brand .brand-name small {
+    font-size: 0.5625rem;
+    margin-top: 3px;
+  }
+  .crumbs {
+    margin-left: var(--space-4);
+    padding-left: var(--space-4);
+    border-left: 1px solid var(--brand-surface-line);
+  }
+  .crumbs ol {
+    color: var(--on-brand-muted);
+  }
+  .crumbs a:hover {
+    color: var(--on-brand);
+  }
+  .crumbs [aria-current="page"] {
+    color: var(--on-brand);
+  }
+  .topbar-avatar {
+    display: flex;
+    margin-left: auto;
+  }
+  main#main {
+    padding: var(--space-6) var(--space-6) var(--space-12);
+  }
+  .domain {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+  .domain-name {
+    font-size: 2rem;
+  }
+  /* Stacked, the panel has no room for the loops to read whole. */
+  .domain-loops {
+    display: none;
+  }
+  .login-foot {
+    display: none;
+  }
+  .login {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  }
+  .login-card {
+    padding: var(--space-8);
+  }
+}
+@media (max-width: 767px) {
+  .login {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    padding: var(--space-6) var(--space-4) var(--space-6);
+  }
+  /* Below the text, rising behind the card. */
+  .login-loops {
+    left: -40px;
+    bottom: auto;
+    top: 216px;
+    width: 640px;
+    min-width: 0;
+  }
+  .login-lockup {
+    margin-bottom: var(--space-10);
+  }
+  .login-lockup .brand-mark {
+    width: 34px;
+  }
+  .login-intro h1 {
+    font-size: 2rem;
+    max-width: 12ch;
+  }
+  .login-tagline {
+    margin-top: var(--space-3);
+    font-size: 0.9375rem;
+  }
+  .login-card {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: var(--space-12);
+    padding: var(--space-6) var(--space-5) var(--space-5);
+    border-radius: var(--radius-xl);
+  }
+  .login-logo {
+    width: 184px;
+    margin-bottom: var(--space-6);
+  }
+  .login-foot {
+    display: block;
+    grid-row: auto;
+    margin-top: var(--space-6);
+    text-align: center;
+  }
+}
+@media (max-width: 599px) {
+  .crumbs {
+    display: none;
+  }
+  main#main {
+    padding: var(--space-5) var(--space-4) var(--space-12);
+  }
+  .launch-head h1 {
+    font-size: 1.625rem;
+  }
+  .domain {
+    padding: var(--space-5) var(--space-4) var(--space-4);
+    margin-bottom: var(--space-6);
+    border-radius: var(--radius-xl);
+  }
+  .domain-name {
+    font-size: 1.75rem;
+    margin-bottom: var(--space-2);
+  }
+  .domain-name::before {
+    margin-bottom: var(--space-3);
+  }
+  .domain-modules {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+  .module-tile {
+    min-height: 0;
+    padding: var(--space-4);
+  }
+  .module-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: var(--space-1);
+  }
+  .admin-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

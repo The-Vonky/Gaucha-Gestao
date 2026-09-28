@@ -5,45 +5,138 @@ import {
   useId,
   useRef,
   useState,
+  type ButtonHTMLAttributes,
   type ReactNode,
   type FormEvent,
 } from "react";
 import { message } from "./errors";
+import { BrandMark } from "./brand";
+import { Icon, type IconName } from "./icons";
 const PendingContext = createContext<((value: boolean) => void) | null>(null);
+type Tone = "info" | "success" | "warning" | "error";
+const toneIcon: Record<Tone, IconName> = {
+  info: "info",
+  success: "success",
+  warning: "warning",
+  error: "error",
+};
 export function Notice({
   children,
   error = false,
+  tone = error ? "error" : "info",
 }: {
   children: ReactNode;
   error?: boolean;
+  tone?: Tone;
 }) {
   return (
-    <p
-      className={error ? "notice error" : "notice"}
-      role={error ? "alert" : "status"}
+    <div
+      className={`notice ${tone}`}
+      role={tone === "error" ? "alert" : "status"}
     >
-      {children}
-    </p>
+      <Icon name={toneIcon[tone]} />
+      <div className="notice-body">{children}</div>
+    </div>
   );
 }
 export function PageTitle({
   title,
   description,
+  eyebrow,
   children,
 }: {
   title: string;
   description: string;
+  eyebrow?: string;
   children?: ReactNode;
 }) {
   return (
     <header className="page-title">
       <div>
-        <p className="eyebrow">Gaúcha Gestão</p>
+        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
-      {children}
+      {children && <div className="page-actions">{children}</div>}
     </header>
+  );
+}
+export function IconButton({
+  icon,
+  label,
+  className = "",
+  ...props
+}: {
+  icon: IconName;
+  label: string;
+  className?: string;
+} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      className={`icon-button ${className}`.trim()}
+      {...props}
+    >
+      <Icon name={icon} />
+    </button>
+  );
+}
+export function EmptyState({
+  title,
+  children,
+  actions,
+}: {
+  title: string;
+  children: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <section className="empty-state">
+      <span className="empty-halo">
+        <BrandMark className="empty-mark" />
+      </span>
+      <div className="empty-body">
+        <h2>{title}</h2>
+        <p>{children}</p>
+        {actions && <div className="actions">{actions}</div>}
+      </div>
+    </section>
+  );
+}
+/** Modal side sheet (native dialog: focus trap, Escape and inert page). */
+export function Drawer({
+  label,
+  children,
+  onClose,
+  className = "",
+}: {
+  label: string;
+  children: ReactNode;
+  onClose: () => void;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    d?.showModal();
+    return () => d?.close();
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className={`drawer ${className}`.trim()}
+      aria-label={label}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      // A click on the dialog element itself is a click on the backdrop.
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      {children}
+    </dialog>
   );
 }
 export function Modal({
@@ -77,15 +170,14 @@ export function Modal({
     >
       <div className="dialog-head">
         <h2 id={id}>{title}</h2>
-        <button
-          type="button"
-          aria-label="Fechar"
+        <IconButton
+          icon="close"
+          label="Fechar"
+          className="ghost"
           autoFocus
           disabled={locked}
           onClick={onClose}
-        >
-          ×
-        </button>
+        />
       </div>
       <PendingContext.Provider value={setPending}>
         {children}
