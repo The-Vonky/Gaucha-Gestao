@@ -36,12 +36,18 @@ export function ChecklistItem({
   const queue = useRef(Promise.resolve());
   const ticket = useRef(0);
   const failed = useRef(false);
+  // Mirrors the textarea: text typed while a save is in flight is still unsaved when it settles.
+  const draft = useRef(row.observation);
+  const unsaved = () => failed.current || draft.current !== latest.current.observation;
   useEffect(() => {
     latest.current = row;
     // Keep text still being typed; follow the server value otherwise.
     const previous = synced.current;
     synced.current = row.observation;
-    setObservation((local) => (local === previous ? row.observation : local));
+    if (draft.current === previous) draft.current = row.observation;
+    setObservation(draft.current);
+    // A reload clears the page's pending set; unsaved text kept here must block reports again.
+    if (editable && unsaved()) onPending?.(item.key, true);
   }, [row]);
   function save(values: Partial<Pick<Answer, "response" | "observation">>) {
     const thisSave = ++ticket.current;
@@ -71,6 +77,7 @@ export function ChecklistItem({
               current.item_key,
             );
             latest.current = fresh;
+            draft.current = fresh.observation;
             setObservation(fresh.observation);
             onChange(fresh);
           } catch {
@@ -83,7 +90,7 @@ export function ChecklistItem({
           setError(message(e));
         }
       } finally {
-        if (ticket.current === thisSave && !failed.current) onPending?.(item.key, false);
+        if (ticket.current === thisSave) onPending?.(item.key, unsaved());
       }
     });
   }
@@ -140,7 +147,7 @@ export function ChecklistItem({
             placeholder={
               emphasis ? "Descreva o ponto observado (recomendado)" : ""
             }
-            onChange={(e) => { setObservation(e.target.value); onPending?.(item.key, failed.current || e.target.value !== latest.current.observation); }}
+            onChange={(e) => { draft.current = e.target.value; setObservation(e.target.value); onPending?.(item.key, unsaved()); }}
             onBlur={() => {
               if (observation !== latest.current.observation)
                 save({ observation });

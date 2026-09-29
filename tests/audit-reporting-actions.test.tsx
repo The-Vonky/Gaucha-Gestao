@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
+import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ReportingActions } from "../apps/web/src/modules/audit/reporting/ReportingActions";
+import { ChecklistItem } from "../apps/web/src/modules/audit/ChecklistItem";
+import type { Answer } from "../apps/web/src/modules/audit/types";
 
 const state = vi.hoisted(() => ({ session: true, read: true, export: true }));
 const rpc = vi.hoisted(() => ({ inspectionExport: vi.fn(), historyExport: vi.fn() }));
@@ -11,6 +14,8 @@ vi.mock("../apps/web/src/core/auth/AuthProvider", () => ({
     can: (permission: string) => permission === "audit.inspection.read" ? state.read : state.export }),
 }));
 vi.mock("../apps/web/src/modules/audit/reporting/api", () => rpc);
+const audit = vi.hoisted(() => ({ saveAnswer: vi.fn(), answer: vi.fn() }));
+vi.mock("../apps/web/src/modules/audit/api", () => audit);
 const report = { schema_version: 1, kind: "inspection", generated_at: "2026-09-29T12:00:00Z",
   display_timezone: "America/Sao_Paulo", generated_by: { id: "u", name: "Ana" },
   unit: { id: "unit", code: "A", name: "Unidade" }, record_count: 1,
@@ -60,5 +65,60 @@ describe("Report actions", () => {
     finish(report);
     await waitFor(() => expect(screen.queryByRole("status")?.textContent).toBe(""));
     expect(screen.queryByRole("dialog", { name: "Prévia de impressão" })).toBeNull();
+  });
+});
+
+describe("Checklist save state that gates reports", () => {
+  const item = { template_version: "v", key: "item-001", section_key: "s1", position: 1, number: 1, text: "Piso íntegro?" };
+  const base: Answer = { inspection_id: "i1", template_version: "v", item_key: "item-001", response: null,
+    observation: "", version: 1, updated_at: "", updated_by: null };
+  function setup() {
+    const pending = vi.fn();
+    function Host() {
+      const [row, setRow] = React.useState(base);
+      return <ChecklistItem item={item} row={row} editable onChange={setRow} onPending={pending} onConflict={() => undefined} />;
+    }
+    render(<Host />);
+    return { pending, last: () => pending.mock.calls.at(-1)?.[1] };
+  }
+  const saved = (over: Partial<Answer>) => ({ ...base, version: 2, ...over });
+  it("keeps reports blocked for text typed while an earlier save is in flight", async () => {
+    const user = userEvent.setup();
+    let finish!: (row: Answer) => void;
+    audit.saveAnswer.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }))
+      .mockImplementationOnce(async (_: Answer, values: Partial<Answer>) => saved({ version: 3, ...values }));
+    const { last } = setup();
+    const box = screen.getByRole("textbox");
+    await user.type(box, "abc");
+    expect(last()).toBe(true);
+    await user.tab();
+    await waitFor(() => expect(audit.saveAnswer).toHaveBeenCalledTimes(1));
+    await user.type(box, "d");
+    finish(saved({ observation: "abc" }));
+    await waitFor(() => expect(screen.getByText("Salvo")).toBeTruthy());
+    expect(last()).toBe(true);
+    await user.tab();
+    await waitFor(() => expect(audit.saveAnswer).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(last()).toBe(false));
+    expect(audit.saveAnswer.mock.calls[1][1]).toMatchObject({ observation: "abcd" });
+  });
+  it("does not release after a failed text save when another save succeeds, only after the text is saved", async () => {
+    const user = userEvent.setup();
+    audit.saveAnswer.mockRejectedValueOnce(Object.assign(new Error("offline"), { code: "08006" }))
+      .mockImplementationOnce(async (_: Answer, values: Partial<Answer>) => saved(values))
+      .mockImplementationOnce(async (_: Answer, values: Partial<Answer>) => saved({ response: "AT", version: 3, ...values }));
+    const { last } = setup();
+    await user.type(screen.getByRole("textbox"), "nota");
+    await user.tab();
+    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
+    expect(last()).toBe(true);
+    await user.click(screen.getByRole("button", { name: /\(AT\)/ }));
+    await waitFor(() => expect(audit.saveAnswer).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByText("Salvo")).toBeTruthy());
+    expect(last()).toBe(true);
+    await user.click(screen.getByRole("textbox"));
+    await user.tab();
+    await waitFor(() => expect(audit.saveAnswer).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(last()).toBe(false));
   });
 });
