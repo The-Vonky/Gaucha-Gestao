@@ -299,6 +299,44 @@ export function Pager({
     </nav>
   );
 }
+export type BadgeTone = "success" | "warning" | "danger" | "info" | "neutral";
+/** Semantic state label: tone + text (+ optional icon); color is never the only signal. */
+export function Badge({
+  tone = "neutral",
+  icon,
+  children,
+}: {
+  tone?: BadgeTone;
+  icon?: IconName;
+  children: ReactNode;
+}) {
+  return (
+    <span className={`badge ${tone}${icon ? " has-icon" : ""}`}>
+      {icon && <Icon name={icon} />}
+      {children}
+    </span>
+  );
+}
+/** KPI tile. Only numbers computed from existing data belong here. */
+export function Metric({
+  label,
+  value,
+  tone,
+  hint,
+}: {
+  label: string;
+  value: ReactNode;
+  tone?: BadgeTone;
+  hint?: ReactNode;
+}) {
+  return (
+    <div className={`metric${tone ? ` ${tone}` : ""}`}>
+      <span className="metric-label">{label}</span>
+      <strong className="metric-value">{value}</strong>
+      {hint && <span className="metric-hint">{hint}</span>}
+    </div>
+  );
+}
 export function Status({ active }: { active: boolean }) {
   return (
     <span className={`badge ${active ? "active" : ""}`}>
