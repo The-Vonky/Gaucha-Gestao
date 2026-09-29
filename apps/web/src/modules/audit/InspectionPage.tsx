@@ -1,13 +1,33 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { useResource } from "../../shared/useResource";
-import { Confirm, Notice, PageTitle } from "../../shared/ui";
+import { Icon } from "../../shared/icons";
+import {
+  Confirm,
+  Metric,
+  Notice,
+  PageTitle,
+  type BadgeTone,
+} from "../../shared/ui";
 import * as api from "./api";
 import { ChecklistItem } from "./ChecklistItem";
-import { formatDate, Progress, Result, StatusBadge } from "./Result";
-import { CLASSIFICATION_LABELS, evaluate, formatScore, tally } from "./scoring";
+import { formatDate, Progress, StatusBadge } from "./Result";
+import {
+  CLASSIFICATION_LABELS,
+  evaluate,
+  formatScore,
+  tally,
+  type Classification,
+} from "./scoring";
+import { SectionNav } from "./SectionNav";
 import type { Answer } from "./types";
+/** Band colors exist only for a finalized result. */
+const BAND_TONE: Record<Classification, BadgeTone> = {
+  adequate: "success",
+  partial: "warning",
+  inadequate: "danger",
+};
 export function InspectionPage() {
   const { inspectionId = "" } = useParams();
   const auth = useAuth();
@@ -31,6 +51,14 @@ export function InspectionPage() {
   const [section, setSection] = useState("");
   const [action, setAction] = useState<"finalize" | "reopen">();
   const [stale, setStale] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const moved = useRef(false);
+  useEffect(() => {
+    // Moving between sections puts keyboard/screen-reader focus on the new section.
+    if (!moved.current) return;
+    moved.current = false;
+    heading.current?.focus();
+  }, [section]);
   const loaded = useMemo(
     () => Object.fromEntries((data?.rows ?? []).map((a) => [a.item_key, a])),
     [data],
@@ -93,6 +121,11 @@ export function InspectionPage() {
   const current = sections.find((s) => s.key === section) ?? sections[0];
   const index = sections.indexOf(current);
   const sectionResult = results.sections[current.key];
+  const select = (key: string) => {
+    moved.current = true;
+    setSection(key);
+  };
+  const band = summary.final_classification;
   return (
     <>
       <nav className="breadcrumb" aria-label="Trilha">
@@ -100,56 +133,97 @@ export function InspectionPage() {
         <Link to={`/audit/units/${summary.unit_id}`}>{summary.unit_name}</Link>{" "}
         / <span>{formatDate(summary.applied_on)}</span>
       </nav>
-      <PageTitle
-        title={`Auditoria · ${summary.unit_name}`}
-        description={`Aplicação em ${formatDate(summary.applied_on)} · Responsável: ${summary.responsible_name}${summary.previous_visit_on ? ` · Visita anterior: ${formatDate(summary.previous_visit_on)}` : ""}`}
-      >
-        {draft && auth.can("audit.inspection.finalize", scope) && (
-          <button
-            className="primary"
-            disabled={remaining > 0 || stale}
-            onClick={() => setAction("finalize")}
-          >
-            Finalizar
-          </button>
-        )}
-        {!draft && auth.can("audit.inspection.reopen", scope) && (
-          <button onClick={() => setAction("reopen")}>Reabrir</button>
-        )}
-      </PageTitle>
-      <section className="audit-summary" aria-label="Resumo da auditoria">
-        <div>
-          <span className="eyebrow">Situação</span>
-          <StatusBadge status={summary.status} />
+      <header className="audit-hero">
+        <div className="audit-hero-main">
+          <p className="eyebrow">Auditoria · Checklist geral</p>
+          <h1>{summary.unit_name}</h1>
+          <ul className="audit-meta">
+            <li>
+              <StatusBadge status={summary.status} />
+            </li>
+            <li>
+              <Icon name="calendar" />
+              <span>
+                Aplicação em{" "}
+                <span className="numeric">
+                  {formatDate(summary.applied_on)}
+                </span>
+              </span>
+            </li>
+            <li>
+              <Icon name="user" />
+              <span>Responsável: {summary.responsible_name}</span>
+            </li>
+            {summary.previous_visit_on && (
+              <li>
+                <Icon name="clock" />
+                <span>
+                  Visita anterior:{" "}
+                  <span className="numeric">
+                    {formatDate(summary.previous_visit_on)}
+                  </span>
+                </span>
+              </li>
+            )}
+          </ul>
         </div>
-        <div>
-          <span className="eyebrow">Progresso</span>
-          <Progress
-            answered={overall.tally.answered}
-            total={overall.tally.total}
-          />
-        </div>
-        <div>
-          <span className="eyebrow">Conformidade</span>
+        <section className="audit-hero-kpis" aria-label="Resumo da auditoria">
+          <div className="metric audit-progress-kpi">
+            <span className="metric-label">Progresso</span>
+            <Progress
+              answered={overall.tally.answered}
+              total={overall.tally.total}
+            />
+          </div>
           {draft ? (
-            <span className="audit-result">
-              <strong>{formatScore(overall.score)}</strong>{" "}
-              {overall.score === null
-                ? "Sem dados de conformidade"
-                : "Parcial · em andamento"}
-            </span>
+            <Metric
+              label="Conformidade parcial"
+              tone="info"
+              value={formatScore(overall.score)}
+              hint={
+                overall.score === null
+                  ? "Sem dados de conformidade"
+                  : "Parcial · em andamento"
+              }
+            />
+          ) : summary.final_score === null || !band ? (
+            <Metric
+              label="Resultado final"
+              value="—"
+              hint="Sem critérios aplicáveis"
+            />
           ) : (
-            <Result summary={summary} />
+            <Metric
+              label="Resultado final"
+              tone={BAND_TONE[band]}
+              value={formatScore(summary.final_score)}
+              hint={CLASSIFICATION_LABELS[band]}
+            />
+          )}
+        </section>
+        <div className="audit-hero-actions">
+          {draft && auth.can("audit.inspection.finalize", scope) && (
+            <button
+              className="primary"
+              disabled={remaining > 0 || stale}
+              onClick={() => setAction("finalize")}
+            >
+              Finalizar
+            </button>
+          )}
+          {!draft && auth.can("audit.inspection.reopen", scope) && (
+            <button onClick={() => setAction("reopen")}>Reabrir</button>
+          )}
+          {auth.can("action_plan.read", scope) && (
+            <Link
+              className="audit-plans-link"
+              to={`/action-plans?inspection=${summary.id}`}
+            >
+              Planos de ação desta auditoria
+            </Link>
           )}
         </div>
-      </section>
-      {auth.can("action_plan.read", scope) && (
-        <p>
-          <Link to={`/action-plans?inspection=${summary.id}`}>
-            Planos de ação desta auditoria
-          </Link>
-        </p>
-      )}
+      </header>
       {stale && (
         <Notice error>
           Esta auditoria foi alterada em outra sessão.{" "}
@@ -159,7 +233,7 @@ export function InspectionPage() {
       {draft &&
         remaining > 0 &&
         auth.can("audit.inspection.finalize", scope) && (
-          <p className="muted">
+          <p className="muted audit-hint">
             Responda todos os critérios para finalizar ({remaining} restantes).
           </p>
         )}
@@ -174,55 +248,28 @@ export function InspectionPage() {
         <Notice>Você pode consultar esta auditoria, mas não editá-la.</Notice>
       )}
       <div className="audit-layout">
-        <nav className="audit-sections" aria-label="Seções do checklist">
-          <label className="audit-section-select">
-            Seção
-            <select
-              value={current.key}
-              onChange={(e) => setSection(e.target.value)}
-            >
-              {sections.map((s) => {
-                const x = results.sections[s.key];
-                return (
-                  <option key={s.key} value={s.key}>
-                    {s.position}. {s.name} ({x.tally.answered}/{x.tally.total})
-                  </option>
-                );
-              })}
-            </select>
-          </label>
-          <ol>
-            {sections.map((s) => {
-              const x = results.sections[s.key];
-              return (
-                <li key={s.key}>
-                  <button
-                    type="button"
-                    aria-current={s.key === current.key ? "true" : undefined}
-                    onClick={() => setSection(s.key)}
-                  >
-                    <span>
-                      {s.position}. {s.name}
-                    </span>
-                    <small>
-                      {x.tally.answered}/{x.tally.total} ·{" "}
-                      {formatScore(x.score)}
-                    </small>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </nav>
+        <SectionNav
+          sections={sections.map((s) => ({
+            key: s.key,
+            position: s.position,
+            name: s.name,
+            answered: results.sections[s.key].tally.answered,
+            total: results.sections[s.key].tally.total,
+          }))}
+          current={current.key}
+          answered={overall.tally.answered}
+          total={overall.tally.total}
+          onSelect={select}
+        />
         <section
           className="audit-checklist"
           aria-labelledby="audit-section-title"
         >
           <header className="audit-section-head">
-            <h2 id="audit-section-title">
+            <h2 id="audit-section-title" ref={heading} tabIndex={-1}>
               {current.position}. {current.name}
             </h2>
-            <p>
+            <p className="numeric">
               {sectionResult.tally.answered}/{sectionResult.tally.total}{" "}
               respondidos · {formatScore(sectionResult.score)}{" "}
               {sectionResult.classification
@@ -250,18 +297,18 @@ export function InspectionPage() {
                 ) : null,
               )}
           </ol>
-          <div className="actions">
+          <div className="actions audit-pager">
             <button
               type="button"
               disabled={index <= 0}
-              onClick={() => setSection(sections[index - 1].key)}
+              onClick={() => select(sections[index - 1].key)}
             >
               Seção anterior
             </button>
             <button
               type="button"
               disabled={index >= sections.length - 1}
-              onClick={() => setSection(sections[index + 1].key)}
+              onClick={() => select(sections[index + 1].key)}
             >
               Próxima seção
             </button>

@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { InspectionPage } from "../apps/web/src/modules/audit/InspectionPage";
@@ -218,6 +224,30 @@ describe("inspection page", () => {
     const nat = screen.getAllByRole("button", { name: "Não atende (NAT)" })[0];
     expect(nat.getAttribute("aria-pressed")).toBe("true");
     expect(at.getAttribute("aria-pressed")).toBe("false");
+  });
+  it("switches sections through a sheet, not a native select", async () => {
+    const user = userEvent.setup();
+    setup(summary(), [
+      answer("item-001", "AT"),
+      answer("item-002", null),
+      answer("item-003", null),
+    ]);
+    await screen.findByRole("heading", { name: "1. ESTRUTURA" });
+    expect(screen.queryByRole("combobox")).toBeNull();
+    await user.click(
+      screen.getByRole("button", {
+        name: "Seção 1 de 2: ESTRUTURA, 1 de 2 respondidos. Escolher seção",
+      }),
+    );
+    const sheet = screen.getByRole("dialog", { name: "Seções do checklist" });
+    const target = within(sheet).getByRole("button", {
+      name: "Seção 2: ESTOQUE, 0 de 1 respondidos",
+    });
+    await user.click(target);
+    const heading = await screen.findByRole("heading", { name: "2. ESTOQUE" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(heading);
+    expect(screen.getByText("Estoque limpo?")).toBeTruthy();
   });
   it("finalizes through an explicit confirmation", async () => {
     const user = userEvent.setup();

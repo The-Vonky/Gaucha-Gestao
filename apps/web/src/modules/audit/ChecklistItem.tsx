@@ -1,10 +1,17 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { message } from "../../shared/errors";
+import { Icon, type IconName } from "../../shared/icons";
 import * as api from "./api";
 import { RESPONSE_LABELS, RESPONSES, type Response } from "./scoring";
 import type { Answer, Item } from "./types";
 type SaveState = "idle" | "saving" | "saved" | "error" | "conflict";
 const CONFLICT = new Set(["PGRST116", "40001"]);
+const SAVE_ICON: Record<Exclude<SaveState, "idle">, IconName> = {
+  saving: "clock",
+  saved: "check",
+  error: "error",
+  conflict: "warning",
+};
 export function ChecklistItem({
   item,
   row,
@@ -72,7 +79,11 @@ export function ChecklistItem({
   const emphasis = row.response === "AP" || row.response === "NAT";
   const busy = state === "saving";
   return (
-    <li className="audit-item">
+    <li
+      className="audit-item"
+      data-answered={row.response ? "true" : "false"}
+      aria-busy={busy || undefined}
+    >
       <p className="audit-item-text" id={`${id}-text`}>
         <span className="audit-number">{item.number}.</span> {item.text}
       </p>
@@ -81,24 +92,28 @@ export function ChecklistItem({
         role="group"
         aria-labelledby={`${id}-text`}
       >
-        {RESPONSES.map((r: Response) => (
-          <button
-            key={r}
-            type="button"
-            className={`response ${r.toLowerCase()}`}
-            aria-pressed={row.response === r}
-            aria-label={`${RESPONSE_LABELS[r]} (${r})`}
-            title={RESPONSE_LABELS[r]}
-            // Not disabled while saving, so keyboard focus stays on the control.
-            disabled={!editable}
-            aria-disabled={busy || undefined}
-            onClick={() => {
-              if (!busy) save({ response: row.response === r ? null : r });
-            }}
-          >
-            {r}
-          </button>
-        ))}
+        {RESPONSES.map((r: Response) => {
+          const pressed = row.response === r;
+          return (
+            <button
+              key={r}
+              type="button"
+              className={`response ${r.toLowerCase()}`}
+              aria-pressed={pressed}
+              aria-label={`${RESPONSE_LABELS[r]} (${r})`}
+              title={RESPONSE_LABELS[r]}
+              // Not disabled while saving, so keyboard focus stays on the control.
+              disabled={!editable}
+              aria-disabled={busy || undefined}
+              onClick={() => {
+                if (!busy) save({ response: pressed ? null : r });
+              }}
+            >
+              {pressed && <Icon name="check" className="icon response-check" />}
+              {r}
+            </button>
+          );
+        })}
       </div>
       {editable ? (
         <label
@@ -132,6 +147,7 @@ export function ChecklistItem({
         className={`audit-save ${state}`}
         role={state === "error" || state === "conflict" ? "alert" : "status"}
       >
+        {state !== "idle" && <Icon name={SAVE_ICON[state]} />}
         {state === "saving" && "Salvando…"}
         {state === "saved" && "Salvo"}
         {state === "error" && error}

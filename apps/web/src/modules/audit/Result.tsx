@@ -1,3 +1,4 @@
+import { Badge } from "../../shared/ui";
 import {
   CLASSIFICATION_LABELS,
   evaluate,
@@ -17,6 +18,7 @@ export function tallyOf(s: InspectionSummary): Tally {
   };
 }
 export { formatDate } from "../../shared/dates";
+/** Filling only: a solid neutral bar plus the count; never a result color. */
 export function Progress({
   answered,
   total,
@@ -78,9 +80,15 @@ export function StatusBadge({
 }: {
   status: InspectionSummary["status"];
 }) {
-  return (
-    <span className={`badge ${status === "finalized" ? "active" : ""}`}>
-      {status === "finalized" ? "Finalizada" : "Em andamento"}
-    </span>
+  // Lifecycle state, not a result: drafts are info, finalized is neutral. Band
+  // colors belong only to the final classification.
+  return status === "finalized" ? (
+    <Badge tone="neutral" icon="check">
+      Finalizada
+    </Badge>
+  ) : (
+    <Badge tone="info" icon="clock">
+      Em andamento
+    </Badge>
   );
 }
