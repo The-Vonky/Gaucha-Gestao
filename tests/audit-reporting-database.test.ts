@@ -153,20 +153,20 @@ describe.sequential("Audit reporting RPCs", () => {
     for (let i = 0; i < 3; i++)
       expect(history?.records[i].delta_pp).toBeCloseTo(history!.records[i].score! - history!.records[i + 1].score!, 8);
   });
+  // Functional boundary only: these extra inspections have no answer rows, so the timing of this
+  // test says nothing about real cardinality. See tests/performance/reporting-history.mjs.
   it("returns 5000 rows in a deterministic order and rejects 5001", async () => {
     await db.exec("reset role");
     await db.query(`insert into audit.inspections(unit_id,template_version,applied_on,responsible_id,created_at)
       select $1,'checklist-geral-2026-09-22-v1','2026-09-01',$2,'2026-09-01T12:00:00Z'
       from generate_series(1,4999)`, [A, id(1)]);
     await as(1);
-    const started = performance.now();
     const data = await report("unit_history_export", [A, "2026-09-01", "2026-09-01"]);
     expect(data?.record_count).toBe(5000);
     expect(data?.records).toHaveLength(5000);
     const ordered = [...data!.records].sort((a: ReportInspection, b: ReportInspection) =>
       b.applied_on.localeCompare(a.applied_on) || b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
     expect(data?.records.map((record) => record.id)).toEqual(ordered.map((record) => record.id));
-    console.info(`Reporting 5000 PGlite: ${Math.round(performance.now() - started)}ms, ${JSON.stringify(data).length} JSON bytes`);
     await db.exec("reset role");
     await db.query("insert into audit.inspections(unit_id,template_version,applied_on,responsible_id) values($1,'checklist-geral-2026-09-22-v1','2026-09-01',$2)", [A, id(1)]);
     await as(1);
