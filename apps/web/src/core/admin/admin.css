@@ -1,0 +1,323 @@
+/*
+ * Administration screens (Quality UI v1, phase 3 Admin polish). Secondary and
+ * operational: dense divided rows, no dashboards. Values come from tokens.css.
+ */
+.adm-intro {
+  margin: calc(-1 * var(--space-3)) 0 var(--space-4);
+}
+
+/* ---------- Dense record rows ---------- */
+.adm-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.adm-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  overflow-wrap: anywhere;
+}
+.adm-row:first-child {
+  border-top: 0;
+}
+.adm-list.compact .adm-row {
+  padding: var(--space-3);
+}
+.adm-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.adm-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+}
+.adm-title strong {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.adm-meta {
+  margin: 0;
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
+}
+.adm-key {
+  margin: 0;
+}
+.adm-key code,
+.adm-id code {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.adm-id {
+  display: block;
+  min-width: 0;
+  font: var(--text-caption);
+  color: var(--color-text-secondary);
+}
+.adm-id-label {
+  font-weight: 600;
+}
+.adm-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  flex-shrink: 0;
+}
+.adm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.adm-actions .icon {
+  width: 16px;
+  height: 16px;
+}
+button.adm-danger {
+  color: var(--danger);
+}
+button.adm-danger:hover:not(:disabled) {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.adm-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  color: var(--neutral-700);
+  font: 600 0.8125rem/1 var(--font-display);
+}
+.adm-code {
+  flex: 0 0 auto;
+  max-width: 12ch;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  font: 600 0.8125rem/1.3 var(--font-mono);
+  color: var(--neutral-700);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Modal content ---------- */
+.adm-modal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: calc(-1 * var(--space-3)) 0 var(--space-4);
+  min-width: 0;
+}
+.adm-subhead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: 600 0.9375rem/1.3 var(--font-display);
+  margin: var(--space-5) 0 var(--space-2);
+}
+.adm-count {
+  min-width: 22px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  font: var(--text-caption);
+  font-weight: 650;
+  text-align: center;
+}
+.adm-group:first-of-type .adm-subhead {
+  margin-top: 0;
+}
+.adm-scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--space-4);
+  margin: 0;
+  font: var(--text-body-sm);
+}
+.adm-scope div {
+  display: flex;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.adm-scope dt {
+  flex-shrink: 0;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+}
+.adm-scope dt::after {
+  content: ":";
+}
+.adm-scope dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Role permissions (grouped by domain) ---------- */
+.adm-perm-group {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.adm-perm-group legend,
+.adm-perm-group h4 {
+  padding: 0 var(--space-1);
+  font: var(--text-label);
+}
+.adm-perm-group h4 {
+  margin: 0 0 var(--space-2);
+}
+.adm-perm-group legend code,
+.adm-perm-group h4 code {
+  margin-left: var(--space-1);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+.adm-perm {
+  min-height: var(--control-height);
+  margin: 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+}
+.adm-perm:hover {
+  background: var(--color-hover-bg);
+}
+.adm-perm:has(input:disabled) {
+  color: var(--color-text-secondary);
+}
+.adm-perm > span,
+.adm-perm-list li {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.adm-perm code,
+.adm-perm-list code {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+.adm-perm-text {
+  font-weight: 500;
+}
+.adm-perm-note {
+  font: var(--text-caption);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+.adm-perm-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.adm-perm-list li {
+  padding: var(--space-2) var(--space-1);
+  border-top: 1px solid var(--color-border);
+  font: var(--text-body-sm);
+}
+.adm-perm-list li:first-child {
+  border-top: 0;
+}
+
+/* ---------- Logs ---------- */
+.adm-filters {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+}
+.adm-filters .adm-filter-wide {
+  flex: 2 1 260px;
+}
+.adm-filter-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-self: end;
+}
+.adm-time {
+  display: grid;
+  flex: 0 0 auto;
+  min-width: 6.5rem;
+  font: var(--text-body-sm);
+}
+.adm-time span:last-child {
+  color: var(--color-text-secondary);
+}
+.adm-entity {
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
+}
+.adm-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0 0 var(--space-2);
+}
+.adm-facts dt {
+  font: var(--text-overline);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}
+.adm-facts dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+.adm-facts code {
+  word-break: break-all;
+}
+/* Raw JSON: wraps long values and scrolls inside its own region, never the page. */
+.adm-json pre {
+  max-height: 320px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 767px) {
+  .adm-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: var(--space-3);
+  }
+  /* Name/identity first; state and actions on their own line. */
+  .adm-main {
+    flex-basis: calc(100% - 52px);
+  }
+  .adm-code + .adm-main,
+  .adm-time + .adm-main {
+    flex-basis: 100%;
+  }
+  .adm-actions {
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+  .adm-filter-actions {
+    flex-basis: 100%;
+  }
+  .adm-filter-actions button {
+    flex: 1 1 0;
+  }
+}

@@ -3,16 +3,9 @@ import type { Organization } from "../types";
 import { useAuth } from "../auth/AuthProvider";
 import * as api from "./api";
 import { useResource } from "../../shared/useResource";
-import {
-  Confirm,
-  Form,
-  Modal,
-  Notice,
-  PageTitle,
-  Pager,
-  Status,
-  Table,
-} from "../../shared/ui";
+import { Icon } from "../../shared/icons";
+import { Confirm, Form, Modal, PageTitle, Pager } from "../../shared/ui";
+import { ActiveBadge, ListState } from "./parts";
 import { SectorUnits } from "./SectorUnits";
 export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
   const auth = useAuth();
@@ -31,6 +24,7 @@ export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
   return (
     <>
       <PageTitle
+        eyebrow="Administração"
         title={unit ? "Unidades" : "Setores"}
         description={
           unit
@@ -44,46 +38,64 @@ export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
           </button>
         )}
       </PageTitle>
-      {resource.loading && <Notice>Carregando…</Notice>}
-      {resource.error && (
-        <Notice error>
-          {resource.error}{" "}
-          <button onClick={resource.reload}>Tentar novamente</button>
-        </Notice>
+      <ListState
+        loading={resource.loading}
+        error={resource.error}
+        empty={!!resource.data && !resource.data.rows.length}
+        emptyText="Nenhum registro encontrado."
+        onRetry={resource.reload}
+      />
+      {resource.data && resource.data.rows.length > 0 && (
+        <ul className="adm-list" aria-label={unit ? "Unidades" : "Setores"}>
+          {resource.data.rows.map((row) => (
+            <li key={row.id} className="adm-row">
+              <span className="adm-code">
+                <span className="visually-hidden">Código </span>
+                {row.code}
+              </span>
+              <div className="adm-main">
+                <p className="adm-title">
+                  <strong>{row.name}</strong>
+                </p>
+              </div>
+              <div className="adm-state">
+                <ActiveBadge active={row.active} />
+              </div>
+              <div className="adm-actions">
+                {allowed(row) && (
+                  <>
+                    <button
+                      aria-label={`Editar ${row.name}`}
+                      onClick={() => setEdit(row)}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      className={row.active ? "ghost adm-danger" : "ghost"}
+                      aria-label={`${row.active ? "Desativar" : "Ativar"} ${row.name}`}
+                      onClick={() => setToggle(row)}
+                    >
+                      {row.active ? "Desativar" : "Ativar"}
+                    </button>
+                  </>
+                )}
+                {!unit && (
+                  <button
+                    className="ghost"
+                    aria-label={`Unidades de ${row.name}`}
+                    onClick={() => setLinks(row)}
+                  >
+                    <Icon name="units" />
+                    Unidades
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
       {resource.data && (
-        <>
-          <Table headers={["Código", "Nome", "Situação", "Ações"]}>
-            {resource.data.rows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.code}</td>
-                <td>{row.name}</td>
-                <td>
-                  <Status active={row.active} />
-                </td>
-                <td>
-                  <div className="row-actions">
-                    {allowed(row) && (
-                      <>
-                        <button onClick={() => setEdit(row)}>Editar</button>
-                        <button onClick={() => setToggle(row)}>
-                          {row.active ? "Desativar" : "Ativar"}
-                        </button>
-                      </>
-                    )}
-                    {!unit && (
-                      <button onClick={() => setLinks(row)}>Unidades</button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </Table>
-          {!resource.data.rows.length && (
-            <Notice>Nenhum registro encontrado.</Notice>
-          )}
-          <Pager page={page} count={resource.data.count} onChange={setPage} />
-        </>
+        <Pager page={page} count={resource.data.count} onChange={setPage} />
       )}
       {edit !== undefined && (
         <Modal
