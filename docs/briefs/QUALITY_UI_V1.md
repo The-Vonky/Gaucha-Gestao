@@ -1,6 +1,6 @@
 # Implementation Brief — Quality UI v1 (Gaúcha Gestão Design System)
 
-Status: PHASES 1–2 IMPLEMENTED · phase 3 Evidence UI implemented (Admin polish open)  
+Status: PHASES 1–3 IMPLEMENTED (UI only: Evidence UI and Admin polish done; Audit reporting and checklist evidence are separate work, Quality is not complete)  
 Date: 2026-09-25  
 Baseline: `main` at `8f1464be79cdf871666c713ba89b6eacfd21a769`  
 Branch: `feat/quality-ui-v1`
@@ -171,7 +171,7 @@ Preserve all current restrictions (types, size, count limits, two-phase upload, 
 
 1. **Foundation (this delivery):** tokens, global styles, Shared components, App Shell, Home, Login; module CSS only re-mapped to tokens.
 2. **Audit + Action Plans redesign** following §9–§10.
-3. **Evidence experience** following §11; then Admin screens polish.
+3. **Evidence experience** following §11; then Admin screens polish (implemented: dense rows, `Badge` status with text, system vs custom roles, consult vs edit, permissions grouped by domain, log filters and escaped JSON details; styles in `core/admin/admin.css`; validated at 375/768/1024/1440 by `tests/integration/admin.mjs`).
 
 ## Validation
 
