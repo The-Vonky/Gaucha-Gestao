@@ -34,7 +34,7 @@ async function createUser(name) {
   assert.ok(tokens[name]);
 }
 async function grant(name, permissions, scope, unit = null) {
-  const role = (await db.query("insert into core.roles(key,name) values($1,$1) returning id", [`report-${tag}-${name}-${randomUUID().slice(0, 6)}`])).rows[0].id;
+  const role = (await db.query("insert into core.roles(key,name) values($1,$1) returning id", [`report-${tag}-${name.toLowerCase()}-${randomUUID().slice(0, 6)}`])).rows[0].id;
   for (const permission of permissions) await db.query("insert into core.role_permissions(role_id,permission_key) values($1,$2)", [role, permission]);
   await db.query("insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id,sector_id) values($1,$2,$3,$4,$5)",
     [users[name], role, scope, unit, scope === "sector" ? sector : null]);
