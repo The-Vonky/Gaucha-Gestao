@@ -1,7 +1,8 @@
-import { Fragment, useCallback, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { formatDate, today } from "../../shared/dates";
+import { Icon } from "../../shared/icons";
 import { useResource } from "../../shared/useResource";
 import { Confirm, Form, Modal, Notice, PageTitle } from "../../shared/ui";
 import * as api from "./api";
@@ -126,8 +127,9 @@ export function ActionPlanPage() {
         <Link to="/action-plans">Planos de Ação</Link> / <span>Plano</span>
       </nav>
       <PageTitle
-        title="Plano de ação"
-        description={`${originLabel(plan)} · ${s.unit_name}${s.sector_name ? ` / ${s.sector_name}` : ""}`}
+        eyebrow={`Plano de ação · ${originLabel(plan)}`}
+        title={plan.improvement_point}
+        description={`${s.unit_name}${s.sector_name ? ` / ${s.sector_name}` : ""}`}
       >
         <div className="row-actions">
           {canWrite && (
@@ -160,8 +162,14 @@ export function ActionPlanPage() {
           )}
         </div>
       </PageTitle>
-      <p className="ap-point">{plan.improvement_point}</p>
-      <PlanBadges plan={plan} />
+      <div className="ap-status-strip">
+        <PlanBadges plan={plan} />
+        <p className="ap-due">
+          <Icon name="calendar" />
+          Prazo:{" "}
+          <strong className="numeric">{formatDate(plan.due_date)}</strong>
+        </p>
+      </div>
       {conflict && (
         <Notice error>
           Este plano foi alterado em outra sessão. Os dados atuais foram
@@ -192,10 +200,9 @@ export function ActionPlanPage() {
           bloqueados.
         </p>
       )}
-      <section className="ap-section">
+      <section className="ap-section ap-origin">
         <h2>Origem</h2>
         <dl className="ap-fields">
-          <Field label="Origem">{originLabel(plan)}</Field>
           <Field label="Unidade">{s.unit_name}</Field>
           {plan.sector_id && <Field label="Setor">{s.sector_name}</Field>}
           {plan.source_type === "checklist" && (
@@ -230,8 +237,8 @@ export function ActionPlanPage() {
           )}
         </dl>
       </section>
-      <section className="ap-section">
-        <h2>Planejamento e execução</h2>
+      <section className="ap-section" aria-labelledby="ap-execution">
+        <Step n={1} id="ap-execution" title="Execução" />
         <dl className="ap-fields">
           <Field label="O que fazer">{plan.action}</Field>
           <Field label="Como fazer">{plan.how_to}</Field>
@@ -247,79 +254,91 @@ export function ActionPlanPage() {
             </Field>
           )}
         </dl>
-      </section>
-      <section className="ap-section">
-        <h2>Evidências da execução</h2>
-        {withEvidence(() => (
-          <>
-            <EvidenceList
-              rows={execution}
-              onRemove={canExecutionEvidence ? setRemoving : undefined}
-            />
-            {canExecutionEvidence && (
-              <EvidenceUpload
-                planId={plan.id}
-                kind="execution"
-                onUploaded={evidence.reload}
+        <div className="ap-sub">
+          <h3>Evidências da execução</h3>
+          {withEvidence(() => (
+            <>
+              <EvidenceList
+                rows={execution}
+                onRemove={canExecutionEvidence ? setRemoving : undefined}
               />
-            )}
-          </>
-        ))}
-      </section>
-      <PlannedVerification plan={plan} />
-      <section className="ap-section">
-        <h2>Verificação realizada</h2>
-        {!verified ? (
-          <p className="muted">
-            {plan.status === "completed"
-              ? "Concluído, aguardando verificação de eficácia."
-              : "A eficácia é verificada após a conclusão do plano."}
-          </p>
-        ) : (
-          <dl className="ap-fields">
-            <Field label="Resultado">
-              {EFFECTIVENESS_LABELS[plan.effectiveness!]}
-            </Field>
-            <Field label="Data da verificação">
-              {formatDate(plan.verified_on)}
-            </Field>
-            <Field label="Análise">{plan.verification_notes}</Field>
-            <Field label="Verificado por">
-              {s.verified_by_name} ·{" "}
-              {new Date(plan.verified_at!).toLocaleString("pt-BR")}
-            </Field>
-          </dl>
-        )}
-      </section>
-      <section className="ap-section">
-        <h2>Evidências da verificação</h2>
-        {withEvidence(() => (
-          <>
-            <h3>
-              {verified ? "Para a próxima verificação" : "Para a verificação"}
-            </h3>
-            <EvidenceList
-              rows={round(openRound)}
-              onRemove={canVerificationEvidence ? setRemoving : undefined}
-            />
-            {canVerificationEvidence &&
-              (plan.status === "completed" ? (
+              {canExecutionEvidence && (
                 <EvidenceUpload
                   planId={plan.id}
-                  kind="verification"
+                  kind="execution"
                   onUploaded={evidence.reload}
                 />
-              ) : (
-                <p className="muted">
-                  Evidências da verificação podem ser anexadas após a conclusão
-                  do plano.
-                </p>
-              ))}
-            {Array.from(
+              )}
+            </>
+          ))}
+        </div>
+      </section>
+      <section className="ap-section" aria-labelledby="ap-verification">
+        <Step n={2} id="ap-verification" title="Verificação" />
+        <PlannedVerification plan={plan} />
+        <div className="ap-sub">
+          <h3>Verificação realizada</h3>
+          {!verified ? (
+            <p className="muted">
+              {plan.status === "completed"
+                ? "Concluído, aguardando verificação de eficácia."
+                : "A eficácia é verificada após a conclusão do plano."}
+            </p>
+          ) : (
+            <dl className="ap-fields">
+              <Field label="Resultado">
+                {EFFECTIVENESS_LABELS[plan.effectiveness!]}
+              </Field>
+              <Field label="Data da verificação">
+                {formatDate(plan.verified_on)}
+              </Field>
+              <Field label="Análise">{plan.verification_notes}</Field>
+              <Field label="Verificado por">
+                {s.verified_by_name} ·{" "}
+                {new Date(plan.verified_at!).toLocaleString("pt-BR")}
+              </Field>
+            </dl>
+          )}
+        </div>
+        <div className="ap-sub">
+          <h3>Evidências da verificação</h3>
+          {withEvidence(() => (
+            <>
+              <p className="ap-evidence-scope">
+                {verified ? "Para a próxima verificação" : "Para a verificação"}
+              </p>
+              <EvidenceList
+                rows={round(openRound)}
+                onRemove={canVerificationEvidence ? setRemoving : undefined}
+              />
+              {canVerificationEvidence &&
+                (plan.status === "completed" ? (
+                  <EvidenceUpload
+                    planId={plan.id}
+                    kind="verification"
+                    onUploaded={evidence.reload}
+                  />
+                ) : (
+                  <p className="muted">
+                    Evidências da verificação podem ser anexadas após a
+                    conclusão do plano.
+                  </p>
+                ))}
+            </>
+          ))}
+        </div>
+      </section>
+      <section className="ap-section" aria-labelledby="ap-history">
+        <Step n={3} id="ap-history" title="Histórico" />
+        {!plan.verification_round ? (
+          <p className="muted">Nenhuma verificação de eficácia registrada.</p>
+        ) : (
+          withEvidence(() =>
+            Array.from(
               { length: plan.verification_round },
               (_, i) => plan.verification_round - i,
             ).map((n) => (
-              <Fragment key={n}>
+              <div className="ap-sub" key={n}>
                 <h3>
                   Verificação nº {n}
                   {n === plan.verification_round ? " (atual)" : ""}
@@ -328,10 +347,10 @@ export function ActionPlanPage() {
                   rows={round(n)}
                   empty="Nenhuma evidência anexada a esta verificação."
                 />
-              </Fragment>
-            ))}
-          </>
-        ))}
+              </div>
+            )),
+          )
+        )}
       </section>
       {editing && (
         <Modal title="Editar planejamento" onClose={() => setEditing(false)}>
@@ -361,17 +380,17 @@ export function ActionPlanPage() {
       {verifying && (
         <Modal title="Verificar eficácia" onClose={() => setVerifying(false)}>
           <PlannedVerification plan={plan} />
-          <section className="ap-section">
-            <h2>Evidências desta verificação</h2>
+          <div className="ap-sub">
+            <h3>Evidências desta verificação</h3>
             {withEvidence(() => (
               <>
-                <h3>Execução</h3>
+                <h4>Execução</h4>
                 <EvidenceList rows={execution} />
-                <h3>Verificação</h3>
+                <h4>Verificação</h4>
                 <EvidenceList rows={round(openRound)} />
               </>
             ))}
-          </section>
+          </div>
           <Form
             onCancel={() => setVerifying(false)}
             onSave={async (data) => {
@@ -460,10 +479,20 @@ export function ActionPlanPage() {
     </>
   );
 }
+function Step({ n, id, title }: { n: number; id: string; title: string }) {
+  return (
+    <header className="ap-step">
+      <span className="ap-step-n numeric" aria-hidden="true">
+        {n}
+      </span>
+      <h2 id={id}>{title}</h2>
+    </header>
+  );
+}
 function PlannedVerification({ plan }: { plan: Plan }) {
   return (
-    <section className="ap-section">
-      <h2>Verificação planejada</h2>
+    <div className="ap-sub">
+      <h3>Verificação planejada</h3>
       <dl className="ap-fields">
         <Field label="Critério de eficácia">
           {plan.effectiveness_criterion}
@@ -475,6 +504,6 @@ function PlannedVerification({ plan }: { plan: Plan }) {
         </Field>
         <Field label="Evidência esperada">{plan.expected_evidence}</Field>
       </dl>
-    </section>
+    </div>
   );
 }
