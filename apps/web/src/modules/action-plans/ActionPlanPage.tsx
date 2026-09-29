@@ -50,6 +50,7 @@ export function ActionPlanPage() {
     useCallback(() => listEvidence(planId), [planId]),
   );
   const [removing, setRemoving] = useState<Evidence>();
+  const [removed, setRemoved] = useState<Evidence>();
   const [editing, setEditing] = useState(false);
   const [transition, setTransition] = useState<PlanStatus>();
   const [verifying, setVerifying] = useState(false);
@@ -271,6 +272,7 @@ export function ActionPlanPage() {
               )}
             </>
           ))}
+          {removed?.kind === "execution" && <Removed evidence={removed} />}
         </div>
       </section>
       <section className="ap-section" aria-labelledby="ap-verification">
@@ -326,6 +328,7 @@ export function ActionPlanPage() {
                 ))}
             </>
           ))}
+          {removed?.kind === "verification" && <Removed evidence={removed} />}
         </div>
       </section>
       <section className="ap-section" aria-labelledby="ap-history">
@@ -382,6 +385,9 @@ export function ActionPlanPage() {
           <PlannedVerification plan={plan} />
           <div className="ap-sub">
             <h3>Evidências desta verificação</h3>
+            <p className="muted">
+              A verificação fica vinculada exatamente a estas evidências.
+            </p>
             {withEvidence(() => (
               <>
                 <h4>Execução</h4>
@@ -472,6 +478,7 @@ export function ActionPlanPage() {
           onClose={() => setRemoving(undefined)}
           onConfirm={async () => {
             await removeEvidence(removing.id);
+            setRemoved(removing);
             evidence.reload();
           }}
         />
@@ -487,6 +494,17 @@ function Step({ n, id, title }: { n: number; id: string; title: string }) {
       </span>
       <h2 id={id}>{title}</h2>
     </header>
+  );
+}
+function Removed({ evidence }: { evidence: Evidence }) {
+  return (
+    <p className="file-removed" role="status">
+      <Icon name="trash" />
+      <span>
+        Evidência “{evidence.original_name}” removida. A remoção fica registrada
+        no histórico.
+      </span>
+    </p>
   );
 }
 function PlannedVerification({ plan }: { plan: Plan }) {

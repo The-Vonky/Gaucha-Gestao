@@ -559,10 +559,33 @@ describe("Action Plan evidence UI", () => {
     expect(await screen.findByText(/Verifique sua conexão/)).toBeTruthy();
     await user.click(screen.getByText("Tentar novamente"));
     await waitFor(() => expect(ev.finishUpload).toHaveBeenCalledTimes(2));
-    expect(ev.finishUpload).toHaveBeenLastCalledWith(attempt);
+    expect(ev.finishUpload).toHaveBeenLastCalledWith(
+      attempt,
+      expect.any(Function),
+    );
     expect(ev.beginUpload).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(ev.listEvidence).toHaveBeenCalledTimes(2));
     expect(screen.queryByText("Tentar novamente")).toBeNull();
+  });
+  it("shows the confirm step of an upload in progress", async () => {
+    auth.grants = grants("read", "write");
+    api.plan.mockResolvedValue(summary(plan()));
+    const attempt = { evidenceId: "e9", key: "p1/e9", body: new Blob(["x"]) };
+    ev.beginUpload.mockResolvedValue(attempt);
+    ev.finishUpload.mockImplementation((_: unknown, onStored: () => void) => {
+      onStored();
+      return new Promise(() => {});
+    });
+    open("/action-plans/p1");
+    await screen.findAllByText("Nenhuma evidência anexada.");
+    await userEvent
+      .setup()
+      .upload(fileInput(), new File(["%PDF-1.4"], "laudo.pdf"));
+    expect(await screen.findByText(/Confirmando envio/)).toBeTruthy();
+    expect(
+      (screen.getByText("Anexar evidência da execução") as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
   });
   it("shows a specific message and no retry when the server rejects the upload", async () => {
     auth.grants = grants("read", "write");
@@ -593,6 +616,9 @@ describe("Action Plan evidence UI", () => {
     await user.click(screen.getByText("Confirmar"));
     await waitFor(() => expect(ev.removeEvidence).toHaveBeenCalledWith("e1"));
     await waitFor(() => expect(ev.listEvidence).toHaveBeenCalledTimes(2));
+    expect(
+      await screen.findByText(/Evidência “laudo.pdf” removida/),
+    ).toBeTruthy();
     expect(native).not.toHaveBeenCalled();
   });
   it("downloads through a short-lived URL requested on click", async () => {
