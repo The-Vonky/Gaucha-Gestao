@@ -1,9 +1,17 @@
 import { useCallback } from "react";
-import type { Role } from "../types";
+import type { Permission, Role } from "../types";
 import { useAuth } from "../auth/AuthProvider";
 import { useResource } from "../../shared/useResource";
 import { Form, Modal, Notice } from "../../shared/ui";
 import * as api from "./api";
+import { ActiveBadge, domainLabel, Identifier, RoleKind } from "./parts";
+/** Permissions grouped by domain, in catalog order. */
+function byDomain(permissions: Permission[]) {
+  const groups = new Map<string, Permission[]>();
+  for (const p of permissions)
+    groups.set(p.domain, [...(groups.get(p.domain) ?? []), p]);
+  return [...groups];
+}
 export function RoleEditor({
   selected,
   onClose,
@@ -26,12 +34,29 @@ export function RoleEditor({
     }, [selected]),
   );
   const row = r.data?.role ?? null;
-  const readOnly =
-    !!row?.system ||
-    !auth.can("admin.role.manage") ||
-    !!r.data?.permission_keys.some((p) => !auth.can(p));
+  const system = !!row?.system;
+  const manage = auth.can("admin.role.manage");
+  const lacking = !!r.data?.permission_keys.some((p) => !auth.can(p));
+  const readOnly = system || !manage || lacking;
+  const granted = r.data?.permissions.filter((p) =>
+    r.data!.permission_keys.includes(p.key),
+  );
   return (
-    <Modal title={selected?.name ?? "Novo perfil"} onClose={onClose}>
+    <Modal
+      title={
+        selected
+          ? `${!r.data ? "Perfil" : readOnly ? "Consultar perfil" : "Editar perfil"} · ${selected.name}`
+          : "Novo perfil"
+      }
+      onClose={onClose}
+    >
+      {row && (
+        <p className="adm-modal-meta">
+          <RoleKind role={row} />
+          <ActiveBadge active={row.active} />
+          <Identifier label="Chave">{row.key}</Identifier>
+        </p>
+      )}
       {r.loading && <Notice>Carregando composição…</Notice>}
       {r.error && (
         <Notice error>
@@ -41,16 +66,37 @@ export function RoleEditor({
       {r.data &&
         (readOnly ? (
           <>
-            <p>Perfil protegido ou acesso somente para consulta.</p>
-            <ul>
-              {r.data.permissions
-                .filter((p) => r.data!.permission_keys.includes(p.key))
-                .map((p) => (
-                  <li key={p.key}>
-                    {p.description} <code>{p.key}</code>
-                  </li>
-                ))}
-            </ul>
+            <Notice>
+              <strong>Somente consulta.</strong>{" "}
+              {system
+                ? "Perfil de sistema protegido: sua composição é mantida pela plataforma."
+                : !manage
+                  ? "Você não tem permissão para editar perfis de acesso."
+                  : "Este perfil contém permissões que você não pode conceder."}
+            </Notice>
+            {row?.description && <p className="adm-meta">{row.description}</p>}
+            <h3 className="adm-subhead">
+              Permissões{" "}
+              <span className="adm-count numeric">{granted!.length}</span>
+            </h3>
+            {!granted!.length && (
+              <p className="muted">Nenhuma permissão neste perfil.</p>
+            )}
+            {byDomain(granted!).map(([domain, list]) => (
+              <section key={domain} className="adm-perm-group">
+                <h4>
+                  {domainLabel(domain)} <code>{domain}</code>
+                </h4>
+                <ul className="adm-perm-list">
+                  {list.map((p) => (
+                    <li key={p.key}>
+                      <span className="adm-perm-text">{p.description}</span>
+                      <code>{p.key}</code>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
           </>
         ) : (
           <Form
@@ -94,28 +140,40 @@ export function RoleEditor({
                 defaultValue={row?.description}
               />
             </label>
-            <fieldset className="permission-list">
-              <legend>Permissões</legend>
-              {r.data.permissions.map((p) => (
-                <label className="check" key={p.key}>
-                  <input
-                    type="checkbox"
-                    name="permissions"
-                    value={p.key}
-                    defaultChecked={r.data!.permission_keys.includes(p.key)}
-                    disabled={!auth.can(p.key)}
-                  />
-                  <span>
-                    {p.description}
-                    <code>{p.key}</code>
-                  </span>
-                </label>
-              ))}
-            </fieldset>
             <p className="muted">
               Somente permissões que você possui globalmente podem ser
               concedidas. Alterações afetam todos os usuários deste perfil.
             </p>
+            {byDomain(r.data.permissions).map(([domain, list]) => (
+              <fieldset key={domain} className="adm-perm-group">
+                <legend>
+                  {domainLabel(domain)} <code>{domain}</code>
+                </legend>
+                {list.map((p) => {
+                  const grantable = auth.can(p.key);
+                  return (
+                    <label className="check adm-perm" key={p.key}>
+                      <input
+                        type="checkbox"
+                        name="permissions"
+                        value={p.key}
+                        defaultChecked={r.data!.permission_keys.includes(p.key)}
+                        disabled={!grantable}
+                      />
+                      <span>
+                        <span className="adm-perm-text">{p.description}</span>
+                        <code>{p.key}</code>
+                        {!grantable && (
+                          <span className="adm-perm-note">
+                            Não concedível: você não possui esta permissão.
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  );
+                })}
+              </fieldset>
+            ))}
           </Form>
         ))}
     </Modal>

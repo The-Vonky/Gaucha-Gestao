@@ -2,8 +2,9 @@ import { useCallback, useState } from "react";
 import type { Role } from "../types";
 import { useAuth } from "../auth/AuthProvider";
 import { useResource } from "../../shared/useResource";
-import { Notice, PageTitle, Pager, Status, Table } from "../../shared/ui";
+import { PageTitle, Pager } from "../../shared/ui";
 import * as api from "./api";
+import { ActiveBadge, Identifier, ListState, RoleKind } from "./parts";
 import { RoleEditor } from "./RoleEditor";
 export function RolesPage() {
   const auth = useAuth();
@@ -14,6 +15,7 @@ export function RolesPage() {
   return (
     <>
       <PageTitle
+        eyebrow="Administração"
         title="Perfis de acesso"
         description="Conjuntos de permissões. O escopo é definido em cada atribuição ao usuário."
       >
@@ -23,37 +25,49 @@ export function RolesPage() {
           </button>
         )}
       </PageTitle>
-      {r.loading && <Notice>Carregando…</Notice>}
-      {r.error && (
-        <Notice error>
-          {r.error} <button onClick={r.reload}>Tentar novamente</button>
-        </Notice>
-      )}
-      {r.data && (
-        <>
-          <Table headers={["Perfil", "Tipo", "Situação", "Ações"]}>
-            {r.data.rows.map((row) => (
-              <tr key={row.id}>
-                <td>
-                  {row.name}
-                  <small>{row.description}</small>
-                </td>
-                <td>{row.system ? "Sistema" : "Personalizado"}</td>
-                <td>
-                  <Status active={row.active} />
-                </td>
-                <td>
-                  <button onClick={() => setEdit(row)}>
-                    {row.system || !manage ? "Inspecionar" : "Editar"}
+      <ListState
+        loading={r.loading}
+        error={r.error}
+        empty={!!r.data && !r.data.rows.length}
+        emptyText="Nenhum perfil encontrado."
+        onRetry={r.reload}
+      />
+      {r.data && r.data.rows.length > 0 && (
+        <ul className="adm-list" aria-label="Perfis de acesso">
+          {r.data.rows.map((row) => {
+            // System roles are always read-only; the editor may still turn read-only
+            // when the role holds permissions the current user lacks.
+            const consult = row.system || !manage;
+            return (
+              <li key={row.id} className="adm-row">
+                <div className="adm-main">
+                  <p className="adm-title">
+                    <strong>{row.name}</strong>
+                    <RoleKind role={row} />
+                  </p>
+                  {row.description && (
+                    <p className="adm-meta">{row.description}</p>
+                  )}
+                  <Identifier label="Chave">{row.key}</Identifier>
+                </div>
+                <div className="adm-state">
+                  <ActiveBadge active={row.active} />
+                </div>
+                <div className="adm-actions">
+                  <button
+                    className={consult ? "ghost" : undefined}
+                    aria-label={`${consult ? "Consultar" : "Editar"} ${row.name}`}
+                    onClick={() => setEdit(row)}
+                  >
+                    {consult ? "Consultar" : "Editar"}
                   </button>
-                </td>
-              </tr>
-            ))}
-          </Table>
-          {!r.data.rows.length && <Notice>Nenhum perfil encontrado.</Notice>}
-          <Pager page={page} count={r.data.count} onChange={setPage} />
-        </>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
+      {r.data && <Pager page={page} count={r.data.count} onChange={setPage} />}
       {edit !== undefined && (
         <RoleEditor
           selected={edit}
