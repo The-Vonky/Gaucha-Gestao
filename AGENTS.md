@@ -111,6 +111,9 @@ Never claim a check passed without running it.
 
 ## Current phase
 
-The repository is in architecture/foundation phase.
+Core/authorization, Audit Domain v1 (including reopen), Action Plans and Action Plan Evidence are implemented. Quality UI foundation is integrated; remaining module UX work is tracked separately.
+
+For the remaining first Quality scope, read `docs/modules/audit/QUALITY_COMPLETION_V1.md` and the relevant implementation brief. Checklist evidence and Audit export/reporting are not yet implemented. Repository implementation and CI do not constitute production readiness.
 
 Do not invent production infrastructure, choose a framework, migrate standalone systems or create speculative abstractions without an approved brief/ADR.
+

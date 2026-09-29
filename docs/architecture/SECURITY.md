@@ -29,7 +29,7 @@ Hiding a menu item or button is not authorization.
 - Shared accounts should be avoided.
 - Account lifecycle must support activation and deactivation.
 - Privileged access must be distinguishable from ordinary access.
-- Authentication implementation is not yet selected.
+- Supabase Auth is selected by ADR-004/ADR-005 and integrated with active Core profiles.
 - Password/token/session storage must use established platform mechanisms, never custom cryptography.
 
 ## Authorization
@@ -79,7 +79,7 @@ Collect only data that has a business purpose.
 
 Uploaded content is untrusted.
 
-The final storage design must define:
+Evidence/Storage v1 defines these controls for Action Plans; Audit checklist evidence has its own implementation brief. Each owning module must define:
 - allowed file types;
 - maximum size;
 - object naming;
@@ -159,3 +159,4 @@ Before broad rollout, document:
 - how a compromised credential is rotated;
 - how a bad deployment is rolled back;
 - how data is restored from backup.
+
