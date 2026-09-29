@@ -50,4 +50,15 @@ describe("Report actions", () => {
     state.session = false; view.rerender(component());
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Prévia de impressão" })).toBeNull());
   });
+  it("discards a request when an answer becomes unsaved during generation", async () => {
+    const user = userEvent.setup();
+    let finish!: (value: unknown) => void;
+    rpc.inspectionExport.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    const view = render(<ReportingActions kind="inspection" inspectionId="inspection" unitId="unit" blocked={false} />);
+    await user.click(screen.getByRole("button", { name: "Imprimir / PDF" }));
+    view.rerender(<ReportingActions kind="inspection" inspectionId="inspection" unitId="unit" blocked />);
+    finish(report);
+    await waitFor(() => expect(screen.queryByRole("status")?.textContent).toBe(""));
+    expect(screen.queryByRole("dialog", { name: "Prévia de impressão" })).toBeNull();
+  });
 });

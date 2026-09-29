@@ -33,7 +33,7 @@ Caminhos de UI abaixo são relativos a `apps/web/src/modules/`; migrations ficam
 
 Consultados os checks da baseline oficial `74f7d2be7e946a8d36f27aac3b6aba22de92cc06` antes de iniciar: `validate` e `action-plans-integration` concluídos com `success`. [Execução 36571972848](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/36571972848).
 
-O workflow inspecionado executa typecheck, lint, unit tests, build/verify:build e integrações reais locais de Action Plans, Evidence e Audit (Storage habilitado; Chromium). Na branch de reporting, `npm test` passou com 146 testes, assim como typecheck/lint/build/verify:build com variáveis públicas fictícias. Sem Docker nesta estação, as quatro integrações locais (Audit, Action Plans, Evidence, Reporting) dependem do resultado da nova CI. O resultado da baseline não é evidência da branch, teste físico de celular, restore de produção ou aceite operacional. `npm run test:rls` isoladamente roda apenas `tests/database.test.ts`.
+O workflow inspecionado executa typecheck, lint, unit tests, build/verify:build e integrações reais locais de Action Plans, Evidence e Audit (Storage habilitado; Chromium). Na branch de reporting, `npm test` passou com 147 testes, assim como typecheck/lint/build/verify:build com variáveis públicas fictícias. Sem Docker nesta estação, as quatro integrações locais (Audit, Action Plans, Evidence, Reporting) dependem do resultado da nova CI. O resultado da baseline não é evidência da branch, teste físico de celular, restore de produção ou aceite operacional. `npm run test:rls` isoladamente roda apenas `tests/database.test.ts`.
 
 ## Inconsistências documentais corrigidas
 

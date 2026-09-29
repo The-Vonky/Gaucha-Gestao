@@ -33,6 +33,14 @@ export function ReportingActions(props: Props) {
   useEffect(() => {
     if (!allowed) { setPreview(null); setBusy(false); setError(""); }
   }, [allowed, userId]);
+  useEffect(() => {
+    if (props.blocked) {
+      ++generation.current;
+      running.current = false;
+      setBusy(false);
+      setPreview(null);
+    }
+  }, [props.blocked]);
   const close = useCallback(() => { setPreview(null); queueMicrotask(() => printButton.current?.focus()); }, []);
   if (!allowed) return null;
   async function prepare(output: "excel" | "print") {
