@@ -22,6 +22,7 @@ import {
 } from "./scoring";
 import { SectionNav } from "./SectionNav";
 import type { Answer } from "./types";
+import { ReportingActions } from "./reporting/ReportingActions";
 /** Band colors exist only for a finalized result. */
 const BAND_TONE: Record<Classification, BadgeTone> = {
   adequate: "success",
@@ -51,6 +52,15 @@ export function InspectionPage() {
   const [section, setSection] = useState("");
   const [action, setAction] = useState<"finalize" | "reopen">();
   const [stale, setStale] = useState(false);
+  const [pending, setPending] = useState<Set<string>>(() => new Set());
+  const onPending = useCallback((key: string, value: boolean) => {
+    setPending((previous) => {
+      const next = new Set(previous);
+      if (value) next.add(key); else next.delete(key);
+      return next;
+    });
+  }, []);
+  useEffect(() => setPending(new Set()), [inspectionId]);
   const heading = useRef<HTMLHeadingElement>(null);
   const moved = useRef(false);
   useEffect(() => {
@@ -77,6 +87,7 @@ export function InspectionPage() {
   );
   const reload = () => {
     setStale(false);
+    setPending(new Set());
     r.reload();
   };
   const results = useMemo(() => {
@@ -202,6 +213,7 @@ export function InspectionPage() {
           )}
         </section>
         <div className="audit-hero-actions">
+          <ReportingActions kind="inspection" inspectionId={summary.id} unitId={summary.unit_id} blocked={pending.size > 0 || stale || r.loading} />
           {draft && auth.can("audit.inspection.finalize", scope) && (
             <button
               className="primary"
@@ -292,6 +304,7 @@ export function InspectionPage() {
                     row={answers[item.key]}
                     editable={editable && !stale}
                     onChange={onChange}
+                    onPending={onPending}
                     onConflict={() => void refreshSummary()}
                   />
                 ) : null,

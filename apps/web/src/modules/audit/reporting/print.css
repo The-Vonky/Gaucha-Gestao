@@ -1,0 +1,31 @@
+.report-overlay { position: fixed; inset: 0; z-index: 1000; overflow: auto; background: #eef1f4; color: #17232e; }
+.report-actions { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: .75rem; padding: .75rem max(1rem, calc((100vw - 900px)/2)); background: white; border-bottom: 1px solid #ccd3db; }
+.report-page { box-sizing: border-box; max-width: 900px; margin: 1rem auto; padding: 2rem; background: white; overflow-wrap: anywhere; white-space: normal; }
+.report-page h1 { font-size: 1.7rem; }
+.report-page h2 { font-size: 1.2rem; margin-top: 1.5rem; }
+.report-head { border-bottom: 2px solid #23394d; }
+.report-draft { text-align: center; border: 2px solid #8b5e00; color: #6c4900; padding: .75rem; font-weight: 700; letter-spacing: .08em; }
+.report-section { break-inside: auto; }
+.report-section li { padding: .55rem 0; border-bottom: 1px solid #dce1e5; break-inside: avoid; }
+.report-section li p { margin: .25rem 0; }
+.report-note { white-space: pre-wrap; overflow-wrap: anywhere; }
+.report-history { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .8rem; }
+.report-history th, .report-history td { text-align: left; vertical-align: top; padding: .4rem; border: 1px solid #cbd2d9; overflow-wrap: anywhere; }
+.report-history small { display: block; }
+@media (max-width: 600px) {
+  .report-page { width: 100%; margin: 0; padding: 1rem; }
+  .report-history { font-size: .7rem; }
+  .report-history th, .report-history td { padding: .18rem; }
+}
+@media print {
+  @page { size: auto; margin: 14mm; }
+  body > #root { display: none !important; }
+  .report-overlay { position: static; overflow: visible; background: white; }
+  .report-actions { display: none !important; }
+  .report-page { max-width: none; margin: 0; padding: 0; box-shadow: none; }
+  .report-draft { position: fixed; top: 46%; left: 12%; right: 12%; transform: rotate(-28deg); font-size: 2rem; opacity: .12; border: 0; pointer-events: none; }
+  .report-history thead { display: table-header-group; }
+  .report-history tr { break-inside: avoid; }
+  .report-section h2 { break-after: avoid; }
+  .report-section li { break-inside: avoid; }
+}

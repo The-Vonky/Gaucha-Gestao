@@ -17,12 +17,14 @@ export function ChecklistItem({
   row,
   editable,
   onChange,
+  onPending,
   onConflict,
 }: {
   item: Item;
   row: Answer;
   editable: boolean;
   onChange: (row: Answer) => void;
+  onPending?: (key: string, value: boolean) => void;
   onConflict: () => void;
 }) {
   const id = useId();
@@ -32,6 +34,8 @@ export function ChecklistItem({
   const latest = useRef(row);
   const synced = useRef(row.observation);
   const queue = useRef(Promise.resolve());
+  const ticket = useRef(0);
+  const failed = useRef(false);
   useEffect(() => {
     latest.current = row;
     // Keep text still being typed; follow the server value otherwise.
@@ -40,6 +44,8 @@ export function ChecklistItem({
     setObservation((local) => (local === previous ? row.observation : local));
   }, [row]);
   function save(values: Partial<Pick<Answer, "response" | "observation">>) {
+    const thisSave = ++ticket.current;
+    onPending?.(item.key, true);
     // Serialize this item's writes so each uses the version returned by the previous one.
     queue.current = queue.current.then(async () => {
       const current = latest.current;
@@ -51,12 +57,14 @@ export function ChecklistItem({
           ...values,
         });
         latest.current = saved;
+        failed.current = false;
         onChange(saved);
         setState("saved");
       } catch (e) {
         const code = String((e as { code?: string })?.code ?? "");
         if (CONFLICT.has(code)) {
           setState("conflict");
+          failed.current = false;
           try {
             const fresh = await api.answer(
               current.inspection_id,
@@ -70,9 +78,12 @@ export function ChecklistItem({
           }
           onConflict();
         } else {
+          failed.current = true;
           setState("error");
           setError(message(e));
         }
+      } finally {
+        if (ticket.current === thisSave && !failed.current) onPending?.(item.key, false);
       }
     });
   }
@@ -129,10 +140,11 @@ export function ChecklistItem({
             placeholder={
               emphasis ? "Descreva o ponto observado (recomendado)" : ""
             }
-            onChange={(e) => setObservation(e.target.value)}
+            onChange={(e) => { setObservation(e.target.value); onPending?.(item.key, failed.current || e.target.value !== latest.current.observation); }}
             onBlur={() => {
               if (observation !== latest.current.observation)
                 save({ observation });
+              else if (!failed.current) onPending?.(item.key, false);
             }}
           />
         </label>

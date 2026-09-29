@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import pg from "pg";
 import { chromium } from "playwright";
+import readExcelFile from "read-excel-file/node";
 
 // Audit Domain v1 against real Supabase Auth, PostgREST and PostgreSQL sessions.
 // Only the disposable Supabase CLI cluster is supported; never accept remote credentials.
@@ -2007,6 +2008,42 @@ try {
       await settle(page);
       await noOverflow(page, route);
     }
+    // The official report controls use the full scoped RPC dataset. At 375px,
+    // the dedicated print portal includes hidden checklist sections and no app chrome.
+    await page.getByRole("button", { name: "Imprimir / PDF", exact: true }).click();
+    const print = page.getByRole("dialog", { name: "Prévia de impressão" });
+    await print.waitFor();
+    assert.equal(await print.locator(".report-section").count(), 9);
+    assert.equal(await print.locator(".report-section li").count(), 158);
+    assert.equal(await print.getByText("RASCUNHO · RESULTADO PARCIAL").count(), 1);
+    await noOverflow(page, "inspection print preview 375px");
+    await page.emulateMedia({ media: "print" });
+    assert.equal(await page.locator("#root").evaluate((root) => getComputedStyle(root).display), "none");
+    assert.equal(await print.locator(".report-actions").evaluate((actions) => getComputedStyle(actions).display), "none");
+    await page.emulateMedia({ media: "screen" });
+    await page.keyboard.press("Escape");
+    await print.waitFor({ state: "detached" });
+    const [inspectionDownload] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "Exportar Excel" }).click(),
+    ]);
+    assert.match(inspectionDownload.suggestedFilename(), /^auditoria-[a-f0-9-]+-\d+\.xlsx$/);
+    assert.deepEqual((await readExcelFile(await inspectionDownload.path())).map((sheet) => sheet.sheet), ["Resumo", "Checklist", "Secoes"]);
+    await page.goto(`${origin}/audit/units/${A}`);
+    await page.getByLabel("De", { exact: true }).fill("2026-09-20");
+    await page.getByLabel("Até", { exact: true }).fill("2026-09-20");
+    const [historyDownload] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "Exportar histórico" }).click(),
+    ]);
+    assert.deepEqual((await readExcelFile(await historyDownload.path())).map((sheet) => sheet.sheet), ["Historico", "Metadados"]);
+    await page.getByRole("button", { name: "Imprimir / PDF", exact: true }).click();
+    await page.getByRole("dialog", { name: "Prévia de impressão" }).waitFor();
+    assert.ok(await page.locator(".report-history thead th").count());
+    await noOverflow(page, "history print preview 375px");
+    await page.keyboard.press("Escape");
+    await page.goto(`${origin}/audit/inspections/${uiInspection}`);
+    await settle(page);
     const itemByNumber = (p, number) =>
       p
         .locator("li.audit-item")
