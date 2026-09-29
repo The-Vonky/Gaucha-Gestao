@@ -3,8 +3,80 @@ import { database } from "../client";
 import { useAuth } from "../auth/AuthProvider";
 import type { Assignment, Profile } from "../types";
 import { useResource } from "../../shared/useResource";
-import { Confirm, Form, Modal, Notice, Status } from "../../shared/ui";
+import { Badge, Confirm, Form, Modal, Notice } from "../../shared/ui";
 import * as api from "./api";
+import { ActiveBadge, Identifier } from "./parts";
+type Described = { role: string; unit: string | null; sector: string | null };
+const SCOPE_LABELS: Record<Assignment["scope_type"], string> = {
+  global: "Global",
+  unit: "Unidade",
+  sector: "Setor na unidade",
+};
+function AssignmentGroup({
+  title,
+  rows,
+  describe,
+  onRevoke,
+}: {
+  title: string;
+  rows: Assignment[];
+  describe: (a: Assignment) => Described;
+  onRevoke?: (a: Assignment) => void;
+}) {
+  if (!rows.length) return null;
+  return (
+    <section className="adm-group" aria-label={title}>
+      <h3 className="adm-subhead">
+        {title} <span className="adm-count numeric">{rows.length}</span>
+      </h3>
+      <ul className="adm-list compact">
+        {rows.map((a) => {
+          const d = describe(a);
+          return (
+            <li key={a.id} className="adm-row">
+              <div className="adm-main">
+                <p className="adm-title">
+                  <strong>{d.role}</strong>
+                  <Badge tone="info">{SCOPE_LABELS[a.scope_type]}</Badge>
+                </p>
+                {a.scope_type === "global" ? (
+                  <p className="adm-meta">Todas as unidades e setores</p>
+                ) : (
+                  <dl className="adm-scope">
+                    <div>
+                      <dt>Unidade</dt>
+                      <dd>{d.unit}</dd>
+                    </div>
+                    {a.scope_type === "sector" && (
+                      <div>
+                        <dt>Setor</dt>
+                        <dd>{d.sector}</dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
+              </div>
+              <div className="adm-state">
+                <ActiveBadge active={a.active} on="Vigente" off="Revogada" />
+              </div>
+              {onRevoke && a.active && (
+                <div className="adm-actions">
+                  <button
+                    className="ghost adm-danger"
+                    aria-label={`Revogar ${d.role} (${SCOPE_LABELS[a.scope_type]})`}
+                    onClick={() => onRevoke(a)}
+                  >
+                    Revogar
+                  </button>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
 export function UserAssignments({
   profile,
   onClose,
@@ -44,41 +116,51 @@ export function UserAssignments({
     }, [profile.id, manage]),
   );
   const currentRole = r.data?.roles.find((x) => x.id === role);
+  const current = r.data?.assignments.filter((a) => a.active) ?? [];
+  const revoked = r.data?.assignments.filter((a) => !a.active) ?? [];
+  const name = (list: { id: string; name: string }[] = [], id: string) =>
+    list.find((x) => x.id === id)?.name;
+  // Names only resolve when the lists were loaded (manage); otherwise the id is shown.
+  const describe = (a: Assignment): Described => ({
+    role: name(r.data?.roles, a.role_id) ?? a.role_id,
+    unit: a.unit_id ? (name(r.data?.units, a.unit_id) ?? a.unit_id) : null,
+    sector: a.sector_id
+      ? (name(r.data?.sectors, a.sector_id) ?? a.sector_id)
+      : null,
+  });
   return (
     <Modal title={`Atribuições · ${profile.display_name}`} onClose={onClose}>
+      <p className="adm-modal-meta">
+        <ActiveBadge active={profile.active} />
+        <Identifier label="ID">{profile.id}</Identifier>
+      </p>
       {r.loading && <Notice>Carregando…</Notice>}
       {r.error && <Notice error>{r.error}</Notice>}
       {r.data && (
         <>
-          <ul className="record-list">
-            {r.data.assignments.map((a) => (
-              <li key={a.id}>
-                <div>
-                  <strong>
-                    {r.data!.roles.find((x) => x.id === a.role_id)?.name ??
-                      a.role_id}
-                  </strong>
-                  <p>
-                    {a.scope_type === "global"
-                      ? "Global"
-                      : `${r.data!.units.find((x) => x.id === a.unit_id)?.name ?? a.unit_id}${a.sector_id ? ` / ${r.data!.sectors.find((x) => x.id === a.sector_id)?.name ?? a.sector_id}` : ""}`}
-                  </p>
-                  <Status active={a.active} />
-                </div>
-                {manage && a.active && profile.id !== auth.profile?.id && (
-                  <button onClick={() => setRevoke(a)}>Revogar</button>
-                )}
-              </li>
-            ))}
-          </ul>
-          {!r.data.assignments.length && (
+          <AssignmentGroup
+            title="Atribuições vigentes"
+            rows={current}
+            describe={describe}
+            onRevoke={
+              manage && profile.id !== auth.profile?.id ? setRevoke : undefined
+            }
+          />
+          {!current.length && (
             <Notice>
               Sem atribuições. A conta não possui acesso operacional.
             </Notice>
           )}
+          {revoked.length > 0 && (
+            <AssignmentGroup
+              title="Revogadas (histórico)"
+              rows={revoked}
+              describe={describe}
+            />
+          )}
           {manage && profile.active && (
             <>
-              <h3>Conceder acesso</h3>
+              <h3 className="adm-subhead">Conceder acesso</h3>
               <Form
                 onCancel={onClose}
                 onSave={async (data) => {
