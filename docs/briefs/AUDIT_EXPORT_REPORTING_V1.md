@@ -1,6 +1,6 @@
 # Implementation Brief — Audit Export & Reporting v1
 
-Status: output scope approved; implementation specification for review, not implemented.  
+Status: specified content, output scope, browser-PDF semantics and 5,000-summary limit approved on 2026-09-29; not implemented. This documentation-only adjustment awaits PR review.  
 Date: 2026-09-29  
 Baseline: `main` at `3f158d36c6c087a560fd464e7c60bcdee2e7fae7`.
 
@@ -37,7 +37,7 @@ Envelope includes report schema version, generated-at UTC, requesting user ID/di
 
 Capture each envelope with one consistent database statement/snapshot, not separate client calls for summary, answers and names. Draft answers do not bump parent version, so reading inspection.version before/after alone is not a consistency proof. A narrowly scoped stable SQL report query with explicit permission predicates is appropriate; do not mark a function stable if its eventual implementation requires writes or stronger lock semantics. Database authorization evaluates at request snapshot; subsequent requests recheck grants. Revocation cannot recall bytes already delivered.
 
-Do not use `p_overview=true` or the current UI's loaded rows for history; that intentionally limits summaries. Return a single JSON envelope so PostgREST row pagination cannot silently truncate it. Proposed engineering bound: at most 5,000 inspection summaries per history export; count first in the same snapshot and fail the entire request with “Narrow the date range” if exceeded. Never silently return the first page or a partial workbook. This bound limits client memory, does not drop history: any date range within the limit can be exported. Performance validation must record maximum-size behavior before release; a different bound must be explicit in the brief/UI/tests.
+Do not use `p_overview=true` or the current UI's loaded rows for history; that intentionally limits summaries. Return a single JSON envelope so PostgREST row pagination cannot silently truncate it. Approved generation limit (2026-09-29): at most 5,000 inspection summaries per history export; count first in the same snapshot and fail the entire request with “Narrow the date range” if exceeded. Never silently return the first page or a partial workbook. This bound limits client memory, does not drop history: any date range within the limit can be exported. Performance validation must record maximum-size behavior before release; any future change to the approved bound requires a separate decision reflected in the brief/UI/tests.
 
 While building/printing, hold the dataset only in memory. Clear on logout, loss of session or closing report view. Do not persist reports in localStorage, cache API, service worker, telemetry or URLs. No report content in logs. Network failure/cancel must leave no stale file presented as current. Browser-created files use object URLs revoked after use.
 
@@ -79,6 +79,6 @@ Mobile at 375px: operable actions, long names wrap, no popup-dependent async dow
 
 Implementation sequence: incremental scoped report RPCs and data tests; typed Audit export boundary; XLSX serializer and print UI; permission/content/mobile tests and completion matrix update. Never edit old migrations or introduce an ungated export route. No scheduled reporting, email, cross-unit executive dashboard, import/portable archive, report storage or infrastructure/deploy work.
 
-## Remaining approvals
+## Approved decisions and boundaries
 
-The three output types are approved, not open questions. PR review should ratify the specified content, browser-PDF semantics and 5,000-summary bound; request any legally required signed/historical immutable report as a separate product decision. Operational retention/RPO/RTO do not become application export requirements by implication. No human approval to deploy is inferred from approval of this brief.
+The product owner explicitly approved the specified content, inspection Excel, unit-history Excel, browser print/save-as-PDF and the limit of 5,000 summaries per generation on 2026-09-29. No report-content/format/limit approval remains pending. Server-side PDF, digital signatures and report storage are excluded from v1. Any future signed/historical immutable report requires a separate product decision. Operational retention/RPO/RTO do not become application export requirements by implication. No human approval to deploy is inferred from approval of this brief.

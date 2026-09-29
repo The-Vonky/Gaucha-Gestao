@@ -1,6 +1,6 @@
 # Implementation Brief — Audit Checklist Evidence v1
 
-Status: specification for review; not implemented. Product/security choices E1–E3 below require explicit approval before implementation.  
+Status: product/security decisions E1–E3 approved on 2026-09-29; not implemented. This documentation-only adjustment awaits PR review.  
 Date: 2026-09-29  
 Baseline: `main` at `3f158d36c6c087a560fd464e7c60bcdee2e7fae7`.
 
@@ -62,7 +62,7 @@ Suggested public Audit contracts (names may follow repository conventions; seman
 
 Pending expires after one hour, checked with decision time after lock waits. Retry retains the same evidence ID; Storage “already exists” proceeds to confirm. A lost confirm response is idempotent. Pending/removed are never listed or signed. Failed/expired transfers do not become business evidence.
 
-**Proposed reopen policy (E2):** retain every existing available file, preserve removed records and audit trail, and permit new uploads/logical removal again with edit permission after reopen. Reopen alone does not grant edit. A pending upload from before finalization must be rejected even if the inspection has since reopened; begin a new attempt. No automatic restoration of removed files. Re-finalization freezes the then-current available set. Past finalized sets are recorded by evidence IDs in lifecycle audit events; physical bytes remain retained. This adds no immutable historical report/revision browser.
+**Approved reopen policy (E2, 2026-09-29):** retain every existing available file, preserve removed records and audit trail, and permit new uploads/logical removal again with `audit.inspection.edit` after reopen. Reopen alone does not grant edit. A pending upload from before finalization must be rejected even if the inspection has since reopened; begin a new attempt. No automatic restoration of removed files. Re-finalization freezes the then-current available set. Every finalization records the IDs of the evidence available at that moment in lifecycle audit events; physical bytes remain retained. This adds no immutable historical report/revision browser.
 
 Evidence is optional, independent of AT/AP/NAT/NAP/unanswered, and changing a response neither creates nor deletes evidence. Finalization does not wait for pending uploads; it warns the user and confirms only the available set. Pending transfers cannot confirm afterward.
 
@@ -76,7 +76,7 @@ Consequences to prove with two real sessions: finalize vs confirm/remove cannot 
 
 ## File rules and known limits
 
-Proposed E1: 10 MiB/file (1–10,485,760 bytes), **20 active files per criterion and 200 per inspection**. Both counts include available + non-expired pending, exclude removed/expired, and are enforced together under the inspection lock. Inspection quota bounds a 158-criterion audit to approximately 2 GiB of active files; removed bytes still consume storage. These Audit quotas are proposals, not inherited product approval from the 20-per-plan limit.
+Approved E1 (2026-09-29): evidence is optional; maximum 10 MiB/file (1–10,485,760 bytes), **10 active files per criterion and 100 per inspection**. Both counts include available + non-expired pending, exclude removed/expired, and are enforced together under the inspection lock. Inspection quota bounds a 158-criterion audit to 1,000 MiB of active files; removed bytes still consume storage. These approved Audit quotas do not change the separate 20-per-plan limit.
 
 | Extensions | Canonical MIME | Client signature check |
 | --- | --- | --- |
@@ -88,7 +88,7 @@ Proposed E1: 10 MiB/file (1–10,485,760 bytes), **20 active files per criterion
 
 RPC enforces allowlist, extension↔canonical MIME and size; bucket enforces MIME/size; confirmation verifies stored metadata. Client derives canonical MIME from allowed extension and checks bytes, not `File.type` alone. Apply Evidence v1 filename rules: NFC basename, 1–180 characters, no separators/control/bidi characters, forbidden punctuation, leading dot or trailing dot/space. Render names as escaped text.
 
-**E3 security acceptance required:** these client magic-byte checks can be bypassed. ZIP signature cannot distinguish XLSX/DOCX/macros/arbitrary ZIP content. There is no trusted byte parser or antivirus in the existing platform flow. Do not claim files are safe or server-validated by signature. Proposed reuse accepts this residual only with authenticated/scoped/audited uploaders, attachment-only download, API origin isolation, canonical non-active MIME, no preview, production nosniff/no-cache gates and endpoint protection. Preserve original bytes; do not extract EXIF/GPS, but warn that originals may contain it. If security rejects this boundary, block release of uploads and approve a separate trusted validation/quarantine design; never silently introduce a new compute service.
+**Approved E3 residual-risk acceptance for v1 (2026-09-29):** these client magic-byte checks can be bypassed. ZIP signature cannot distinguish XLSX/DOCX/macros/arbitrary ZIP content. There is no trusted byte parser or antivirus in the existing platform flow. Files remain untrusted content: do not claim they are safe, antivirus-scanned, sanitized or server-validated. The approved v1 decision explicitly accepts client-only byte validation and preservation of EXIF, only with authenticated/scoped/audited uploaders, attachment-only download, API origin isolation, canonical non-active MIME, no preview, production nosniff/no-cache gates and endpoint protection. Preserve original bytes; do not extract EXIF/GPS, but warn that originals may contain it. Trusted validation/quarantine remains a separate future evolution, outside v1; never silently introduce a new compute service. File types, size, MIME and extension restrictions remain mandatory.
 
 Reject all other extensions/MIMEs, including HEIC, SVG/HTML/scripts/executables, legacy Office and macro extensions. Browser rejection is not a security guarantee against renamed content.
 
@@ -115,8 +115,8 @@ Required future validation:
 - Chromium at 375px and desktop: real file flow, long names, keyboard/focus/labels, no mandatory horizontal scroll. Manual real iOS Safari and Android Chrome camera/gallery/files/download; reject HEIC clearly if no JPEG conversion. Record browser/device and result.
 - Existing typecheck, lint, unit/DB tests, build/verify:build and integration suites stay green. No production execution.
 
-Implementation sequence after E1–E3 approval: incremental Audit metadata/RLS/Storage contract and lifecycle binding; Audit data access + minimal UI; real integration/mobile/restore tests; update completion matrix with evidence. Completion requires every acceptance case or an explicit documented release blocker, not merely a green unit suite.
+Implementation sequence under approved E1–E3: incremental Audit metadata/RLS/Storage contract and lifecycle binding; Audit data access + minimal UI; real integration/mobile/restore tests; update completion matrix with evidence. Completion requires every acceptance case or an explicit documented release blocker, not merely a green unit suite.
 
-## Human decisions
+## Approved decisions and remaining operational gates
 
-E1: approve Audit quotas and optional evidence (recommended values above). E2: approve editing the current evidence set after reopen while retaining historical finalized-set IDs. E3: explicitly accept inherited client-only byte validation/EXIF risk, or commission trusted validation separately. Retention, purge authorization and recovery objectives require the operational owner before production. The product requirement for criterion attachments itself is already requested; these are its remaining policy choices.
+E1–E3 were explicitly approved by the product owner on 2026-09-29: optional evidence, 10 MiB/file, 10 active files/criterion and 100/inspection; editing the current set after reopen with `audit.inspection.edit`, preserving existing evidence and removed history without automatic restoration, and recording available IDs at every finalization without a historical revision browser; acceptance of client-only byte validation/EXIF risk under the controls above. No E1–E3 approval remains pending. Retention, purge authorization and recovery objectives still require the operational owner before production. This approval does not implement features or authorize production activity.
