@@ -446,6 +446,69 @@ fieldset {
   border-color: var(--info-border);
   color: var(--info);
 }
+.badge.has-icon::before {
+  content: none;
+}
+.badge .icon {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.25;
+}
+
+/* ---------- Metric (KPI tile) ---------- */
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.metric-label {
+  font: var(--text-overline);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}
+.metric-value {
+  font: var(--text-kpi);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+.metric-hint {
+  font: var(--text-caption);
+  color: var(--color-text-secondary);
+}
+/* Tone marks the tile edge and the number; the label always names the state. */
+.metric.success,
+.metric.warning,
+.metric.danger,
+.metric.info {
+  border-left-width: 3px;
+}
+.metric.success {
+  border-left-color: var(--success);
+}
+.metric.success .metric-value {
+  color: var(--success);
+}
+.metric.warning {
+  border-left-color: var(--warning-solid);
+}
+.metric.warning .metric-value {
+  color: var(--warning);
+}
+.metric.danger {
+  border-left-color: var(--danger);
+}
+.metric.danger .metric-value {
+  color: var(--danger);
+}
+.metric.info {
+  border-left-color: var(--info);
+}
 
 /* ---------- Table ---------- */
 .table-scroll {

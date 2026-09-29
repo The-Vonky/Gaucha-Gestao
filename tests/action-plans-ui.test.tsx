@@ -8,10 +8,13 @@ import { can, type AccessGrant } from "../apps/web/src/core/auth/permissions";
 import { visibleNavigation } from "../apps/web/src/app/navigation";
 import { ActionPlansModule } from "../apps/web/src/modules/action-plans/ActionPlansModule";
 import {
+  daysUntilDue,
+  isDueSoon,
   isOverdue,
   missingForExecution,
   queueRank,
 } from "../apps/web/src/modules/action-plans/lifecycle";
+import { today } from "../apps/web/src/shared/dates";
 import type {
   Evidence,
   Plan,
@@ -153,6 +156,19 @@ describe("action plan lifecycle rules", () => {
     ).toBe(false);
     expect(isOverdue(plan({ due_date: null }), "2026-09-02")).toBe(false);
   });
+  it("flags due soon only for open plans due within 7 days", () => {
+    const d = "2026-09-02";
+    expect(daysUntilDue("2026-09-09", d)).toBe(7);
+    expect(daysUntilDue("2026-08-31", d)).toBe(-2);
+    expect(isDueSoon(plan({ due_date: "2026-09-02" }), d)).toBe(true);
+    expect(isDueSoon(plan({ due_date: "2026-09-09" }), d)).toBe(true);
+    expect(isDueSoon(plan({ due_date: "2026-09-10" }), d)).toBe(false);
+    expect(isDueSoon(plan({ due_date: "2026-09-01" }), d)).toBe(false);
+    expect(isDueSoon(plan({ due_date: null }), d)).toBe(false);
+    expect(
+      isDueSoon(plan({ due_date: "2026-09-03", status: "completed" }), d),
+    ).toBe(false);
+  });
   it("lists missing planning fields before execution", () => {
     expect(missingForExecution(plan())).toEqual([]);
     expect(
@@ -219,6 +235,29 @@ describe("action plans UI", () => {
       .click(screen.getByLabelText("Incluir origens inativas"));
     expect(screen.getByText(/Histórico C/)).toBeTruthy();
     expect(screen.getByText("Origem inativa (histórico)")).toBeTruthy();
+  });
+  it("signals overdue and due-soon plans in the queue rows", async () => {
+    auth.grants = grants("read");
+    const soon = new Date(Date.parse(`${today()}T00:00:00Z`) + 2 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    api.summaries.mockResolvedValue([
+      summary(
+        plan({ id: "late", improvement_point: "A", due_date: "2020-01-01" }),
+      ),
+      summary(plan({ id: "soon", improvement_point: "B", due_date: soon })),
+    ]);
+    open("/action-plans");
+    expect(await screen.findByText(/dia\(s\) de atraso/)).toBeTruthy();
+    expect(screen.getByText("Vence em 2 dia(s)")).toBeTruthy();
+    const rows = document.querySelectorAll(".ap-row");
+    expect([...rows].map((r) => r.getAttribute("data-priority"))).toEqual([
+      "overdue",
+      "soon",
+    ]);
+    expect(
+      screen.getByText("2 plano(s) · em ordem de prioridade"),
+    ).toBeTruthy();
   });
   it("offers manual creation only with create permission", async () => {
     auth.grants = grants("read", "create_manual");
@@ -408,10 +447,14 @@ describe("Action Plan evidence UI", () => {
     expect(
       screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
     ).toEqual([
-      "Para a próxima verificação",
+      "Evidências da execução",
+      "Verificação planejada",
+      "Verificação realizada",
+      "Evidências da verificação",
       "Verificação nº 2 (atual)",
       "Verificação nº 1",
     ]);
+    expect(screen.getByText("Para a próxima verificação")).toBeTruthy();
     expect(screen.getByLabelText("Remover v3.pdf")).toBeTruthy();
     for (const name of ["v1.pdf", "v2.pdf", "execucao.pdf"])
       expect(screen.queryByLabelText(`Remover ${name}`)).toBeNull();
@@ -516,10 +559,33 @@ describe("Action Plan evidence UI", () => {
     expect(await screen.findByText(/Verifique sua conexão/)).toBeTruthy();
     await user.click(screen.getByText("Tentar novamente"));
     await waitFor(() => expect(ev.finishUpload).toHaveBeenCalledTimes(2));
-    expect(ev.finishUpload).toHaveBeenLastCalledWith(attempt);
+    expect(ev.finishUpload).toHaveBeenLastCalledWith(
+      attempt,
+      expect.any(Function),
+    );
     expect(ev.beginUpload).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(ev.listEvidence).toHaveBeenCalledTimes(2));
     expect(screen.queryByText("Tentar novamente")).toBeNull();
+  });
+  it("shows the confirm step of an upload in progress", async () => {
+    auth.grants = grants("read", "write");
+    api.plan.mockResolvedValue(summary(plan()));
+    const attempt = { evidenceId: "e9", key: "p1/e9", body: new Blob(["x"]) };
+    ev.beginUpload.mockResolvedValue(attempt);
+    ev.finishUpload.mockImplementation((_: unknown, onStored: () => void) => {
+      onStored();
+      return new Promise(() => {});
+    });
+    open("/action-plans/p1");
+    await screen.findAllByText("Nenhuma evidência anexada.");
+    await userEvent
+      .setup()
+      .upload(fileInput(), new File(["%PDF-1.4"], "laudo.pdf"));
+    expect(await screen.findByText(/Confirmando envio/)).toBeTruthy();
+    expect(
+      (screen.getByText("Anexar evidência da execução") as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
   });
   it("shows a specific message and no retry when the server rejects the upload", async () => {
     auth.grants = grants("read", "write");
@@ -550,6 +616,9 @@ describe("Action Plan evidence UI", () => {
     await user.click(screen.getByText("Confirmar"));
     await waitFor(() => expect(ev.removeEvidence).toHaveBeenCalledWith("e1"));
     await waitFor(() => expect(ev.listEvidence).toHaveBeenCalledTimes(2));
+    expect(
+      await screen.findByText(/Evidência “laudo.pdf” removida/),
+    ).toBeTruthy();
     expect(native).not.toHaveBeenCalled();
   });
   it("downloads through a short-lived URL requested on click", async () => {

@@ -1,12 +1,19 @@
-import { useCallback, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { hasAnyScope } from "../../core/auth/permissions";
 import { formatDate } from "../../shared/dates";
 import { useResource } from "../../shared/useResource";
-import { Notice, PageTitle } from "../../shared/ui";
+import { Icon } from "../../shared/icons";
+import { Metric, Notice, PageTitle } from "../../shared/ui";
 import * as api from "./api";
-import { isInactiveSource, isOverdue, queueRank } from "./lifecycle";
+import {
+  daysUntilDue,
+  isDueSoon,
+  isInactiveSource,
+  isOverdue,
+  queueRank,
+} from "./lifecycle";
 import { NewActionPlan } from "./NewActionPlan";
 import { originLabel, PlanBadges } from "./PlanBadges";
 import type { PlanSummary } from "./types";
@@ -34,6 +41,8 @@ export function ActionPlansOverview() {
   const inspection = params.get("inspection") ?? "";
   const [filters, setFilters] = useState(initial);
   const [creating, setCreating] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const moreId = useId();
   const canCreate = hasAnyScope(
     !!auth.profile?.active,
     auth.grants,
@@ -88,11 +97,28 @@ export function ActionPlansOverview() {
   ];
   const count = (fn: (x: PlanSummary) => boolean) =>
     operational.filter(fn).length;
+  const open = count(({ plan }) => plan.status !== "completed");
+  const overdue = count(({ plan }) => isOverdue(plan));
+  const awaiting = count(
+    ({ plan }) => plan.status === "completed" && !plan.effectiveness,
+  );
+  const ineffective = count(
+    ({ plan }) => !!plan.effectiveness && plan.effectiveness !== "effective",
+  );
+  const refined = [
+    filters.unit,
+    filters.sector,
+    filters.status,
+    filters.origin,
+    filters.overdue,
+    filters.history,
+  ].filter(Boolean).length;
   return (
     <>
       <PageTitle
+        eyebrow="Qualidade"
         title="Planos de Ação"
-        description="Qualidade · Fila operacional de planos de ação"
+        description="Fila operacional: o que precisa da sua atenção primeiro."
       >
         {canCreate && (
           <button className="primary" onClick={() => setCreating(true)}>
@@ -129,37 +155,29 @@ export function ActionPlansOverview() {
       {r.data && all.length > 0 && (
         <>
           <section className="ap-metrics" aria-label="Indicadores">
-            <div>
-              <strong>
-                {count(({ plan }) => plan.status !== "completed")}
-              </strong>
-              Abertos
-            </div>
-            <div>
-              <strong>{count(({ plan }) => isOverdue(plan))}</strong>
-              Atrasados
-            </div>
-            <div>
-              <strong>
-                {count(
-                  ({ plan }) =>
-                    plan.status === "completed" && !plan.effectiveness,
-                )}
-              </strong>
-              Aguardando verificação
-            </div>
-            <div>
-              <strong>
-                {count(
-                  ({ plan }) =>
-                    !!plan.effectiveness && plan.effectiveness !== "effective",
-                )}
-              </strong>
-              Ineficazes ou parciais
-            </div>
+            <Metric label="Abertos" value={open} />
+            <Metric
+              label="Atrasados"
+              value={overdue}
+              tone={overdue ? "danger" : undefined}
+            />
+            <Metric
+              label="Aguardando verificação"
+              value={awaiting}
+              tone={awaiting ? "warning" : undefined}
+            />
+            <Metric
+              label="Ineficazes ou parciais"
+              value={ineffective}
+              tone={ineffective ? "danger" : undefined}
+            />
           </section>
-          <form className="filters" onSubmit={(e) => e.preventDefault()}>
-            <label>
+          <form
+            className="filters ap-filters"
+            data-open={filtersOpen}
+            onSubmit={(e) => e.preventDefault()}
+          >
+            <label className="ap-search">
               Buscar
               <input
                 type="search"
@@ -168,96 +186,104 @@ export function ActionPlansOverview() {
                 onChange={(e) => set("search", e.target.value)}
               />
             </label>
-            <label>
-              Unidade
-              <select
-                value={filters.unit}
-                onChange={(e) => set("unit", e.target.value)}
-              >
-                <option value="">Todas</option>
-                {units.map(([id, name]) => (
-                  <option key={id} value={id}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {sectors.length > 0 && (
+            <button
+              type="button"
+              className="ap-filters-toggle"
+              aria-expanded={filtersOpen}
+              aria-controls={moreId}
+              onClick={() => setFiltersOpen((o) => !o)}
+            >
+              <Icon name="filter" />
+              Filtros
+              {refined > 0 && (
+                <span className="ap-filters-count numeric">
+                  {refined}
+                  <span className="visually-hidden"> ativo(s)</span>
+                </span>
+              )}
+            </button>
+            <div className="ap-filters-more" id={moreId}>
               <label>
-                Setor
+                Unidade
                 <select
-                  value={filters.sector}
-                  onChange={(e) => set("sector", e.target.value)}
+                  value={filters.unit}
+                  onChange={(e) => set("unit", e.target.value)}
                 >
-                  <option value="">Todos</option>
-                  {sectors.map(([id, name]) => (
+                  <option value="">Todas</option>
+                  {units.map(([id, name]) => (
                     <option key={id} value={id}>
                       {name}
                     </option>
                   ))}
                 </select>
               </label>
-            )}
-            <label>
-              Situação
-              <select
-                value={filters.status}
-                onChange={(e) => set("status", e.target.value)}
-              >
-                <option value="">Todas</option>
-                <option value="pending">Pendente</option>
-                <option value="in_progress">Em andamento</option>
-                <option value="completed">Concluído</option>
-              </select>
-            </label>
-            <label>
-              Origem
-              <select
-                value={filters.origin}
-                onChange={(e) => set("origin", e.target.value)}
-              >
-                <option value="">Todas</option>
-                <option value="checklist">Checklist</option>
-                <option value="manual">Manual</option>
-              </select>
-            </label>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={filters.overdue}
-                onChange={(e) => set("overdue", e.target.checked)}
-              />
-              <span>Somente atrasados</span>
-            </label>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={filters.history}
-                onChange={(e) => set("history", e.target.checked)}
-              />
-              <span>Incluir origens inativas</span>
-            </label>
+              {sectors.length > 0 && (
+                <label>
+                  Setor
+                  <select
+                    value={filters.sector}
+                    onChange={(e) => set("sector", e.target.value)}
+                  >
+                    <option value="">Todos</option>
+                    {sectors.map(([id, name]) => (
+                      <option key={id} value={id}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label>
+                Situação
+                <select
+                  value={filters.status}
+                  onChange={(e) => set("status", e.target.value)}
+                >
+                  <option value="">Todas</option>
+                  <option value="pending">Pendente</option>
+                  <option value="in_progress">Em andamento</option>
+                  <option value="completed">Concluído</option>
+                </select>
+              </label>
+              <label>
+                Origem
+                <select
+                  value={filters.origin}
+                  onChange={(e) => set("origin", e.target.value)}
+                >
+                  <option value="">Todas</option>
+                  <option value="checklist">Checklist</option>
+                  <option value="manual">Manual</option>
+                </select>
+              </label>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={filters.overdue}
+                  onChange={(e) => set("overdue", e.target.checked)}
+                />
+                <span>Somente atrasados</span>
+              </label>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={filters.history}
+                  onChange={(e) => set("history", e.target.checked)}
+                />
+                <span>Incluir origens inativas</span>
+              </label>
+            </div>
           </form>
-          {!visible.length && (
+          {!visible.length ? (
             <Notice>Nenhum plano corresponde aos filtros.</Notice>
+          ) : (
+            <p className="ap-queue-head numeric" role="status">
+              {visible.length} plano(s) · em ordem de prioridade
+            </p>
           )}
-          <ul className="ap-list">
+          <ul className="ap-queue">
             {visible.map((x) => (
-              <li key={x.plan.id} className="ap-card">
-                <Link to={`/action-plans/${x.plan.id}`}>
-                  {x.item_number ? `${x.item_number}. ` : ""}
-                  {x.plan.improvement_point}
-                </Link>
-                <p>
-                  {originLabel(x.plan)} · {x.unit_name}
-                  {x.sector_name ? ` / ${x.sector_name}` : ""}
-                </p>
-                <p>
-                  Responsável: {x.plan.responsible || "—"} · Prazo:{" "}
-                  {formatDate(x.plan.due_date)}
-                </p>
-                <PlanBadges plan={x.plan} />
-              </li>
+              <QueueRow key={x.plan.id} summary={x} />
             ))}
           </ul>
         </>
@@ -269,5 +295,48 @@ export function ActionPlansOverview() {
         />
       )}
     </>
+  );
+}
+function QueueRow({ summary: x }: { summary: PlanSummary }) {
+  const { plan } = x;
+  const overdue = isOverdue(plan);
+  const soon = isDueSoon(plan);
+  const days = plan.due_date ? daysUntilDue(plan.due_date) : null;
+  return (
+    <li
+      className="ap-row"
+      data-priority={overdue ? "overdue" : soon ? "soon" : undefined}
+    >
+      <div className="ap-row-main">
+        <Link className="ap-row-title" to={`/action-plans/${plan.id}`}>
+          {x.item_number ? `${x.item_number}. ` : ""}
+          {plan.improvement_point}
+        </Link>
+        <PlanBadges plan={plan} />
+        <p className="ap-row-meta">
+          <span>{originLabel(plan)}</span>
+          <span>
+            {x.unit_name}
+            {x.sector_name ? ` / ${x.sector_name}` : ""}
+          </span>
+          <span>Responsável: {plan.responsible || "—"}</span>
+        </p>
+      </div>
+      <div className="ap-row-due">
+        <span className="ap-due-label">Prazo</span>
+        <span className="ap-due-date numeric">{formatDate(plan.due_date)}</span>
+        {overdue && days !== null && (
+          <span className="ap-due-note danger numeric">
+            {-days} dia(s) de atraso
+          </span>
+        )}
+        {soon && days !== null && (
+          <span className="ap-due-note warning numeric">
+            <Icon name="clock" />
+            {days === 0 ? "Vence hoje" : `Vence em ${days} dia(s)`}
+          </span>
+        )}
+      </div>
+    </li>
   );
 }

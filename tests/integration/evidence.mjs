@@ -777,7 +777,9 @@ try {
     await inputs
       .first()
       .setInputFiles({ name: longName, mimeType: "", buffer: bytes });
-    await page.getByText(longName).waitFor();
+    // The pending item names the file while it is sent; the list row means confirmed.
+    const row = (name) => page.getByRole("listitem").filter({ hasText: name });
+    await row(longName).waitFor();
     await noOverflow("long evidence name");
     await inputs.last().setInputFiles({
       name: "foto.png",
@@ -817,7 +819,7 @@ try {
     await inputs
       .last()
       .setInputFiles({ name: "verificacao.pdf", mimeType: PDF, buffer: bytes });
-    await page.getByText("verificacao.pdf").waitFor();
+    await row("verificacao.pdf").waitFor();
     assert.deepEqual(
       (await list("unit", uiPlan)).map((e) => [e.kind, e.verification_round]),
       [["verification", 1]],

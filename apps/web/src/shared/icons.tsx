@@ -28,6 +28,21 @@ const paths = {
   warning:
     "M10.3 4.3 2.8 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0M12 9.5v4m0 3h.01",
   error: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M9 9l6 6m0-6-6 6",
+  check: "m5 12.5 4.5 4.5L19 7",
+  chevronDown: "m6 9 6 6 6-6",
+  calendar:
+    "M7 3v3m10-3v3M4 9.5h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8m-7 9a7 7 0 0 1 14 0",
+  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18m0-13v4.5l3 2",
+  filter: "M4 5h16l-6 7.5V19l-4 2v-8.5z",
+  file: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zm0 0v5h5",
+  upload:
+    "M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15",
+  download:
+    "M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15",
+  trash:
+    "M4 7h16M10 11v6m4-6v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2",
+  retry: "M20 11a8 8 0 1 0-2.34 5.66M20 4.5V11h-6.5",
 } as const;
 export type IconName = keyof typeof paths;
 export function Icon({

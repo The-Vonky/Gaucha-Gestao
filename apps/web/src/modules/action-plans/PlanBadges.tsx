@@ -1,30 +1,47 @@
+import { Badge, type BadgeTone } from "../../shared/ui";
 import {
   effectivenessState,
   isInactiveSource,
   isOverdue,
   STATUS_LABELS,
 } from "./lifecycle";
-import type { Plan } from "./types";
+import type { Plan, PlanStatus } from "./types";
+const STATUS_TONE: Record<PlanStatus, BadgeTone> = {
+  pending: "neutral",
+  in_progress: "info",
+  completed: "success",
+};
 /** Textual state badges; color is supplementary. */
 export function PlanBadges({ plan }: { plan: Plan }) {
   return (
     <span className="ap-badges">
-      <span className={`badge ${plan.status === "completed" ? "active" : ""}`}>
+      <Badge tone={STATUS_TONE[plan.status]}>
         {STATUS_LABELS[plan.status]}
-      </span>
-      {isOverdue(plan) && <span className="badge danger">Atrasado</span>}
+      </Badge>
+      {isOverdue(plan) && (
+        <Badge tone="danger" icon="warning">
+          Atrasado
+        </Badge>
+      )}
       {plan.status === "completed" && (
-        <span
-          className={`badge ${plan.effectiveness === "effective" ? "active" : plan.effectiveness ? "danger" : "warning"}`}
+        <Badge
+          // Awaiting verification and partially effective both ask for attention.
+          tone={
+            plan.effectiveness === "effective"
+              ? "success"
+              : plan.effectiveness === "ineffective"
+                ? "danger"
+                : "warning"
+          }
         >
           {effectivenessState(plan)}
-        </span>
+        </Badge>
       )}
-      {isInactiveSource(plan) && (
-        <span className="badge">Origem inativa (histórico)</span>
-      )}
+      {isInactiveSource(plan) && <Badge>Origem inativa (histórico)</Badge>}
       {plan.source_reactivated_after_verification && (
-        <span className="badge warning">Origem reativada após verificação</span>
+        <Badge tone="warning" icon="warning">
+          Origem reativada após verificação
+        </Badge>
       )}
     </span>
   );

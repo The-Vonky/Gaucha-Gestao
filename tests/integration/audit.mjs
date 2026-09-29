@@ -2063,13 +2063,35 @@ try {
       (await answerRow(uiInspection, "item-003")).observation,
       "Lâmpada queimada no estoque",
     );
-    // Section selector (mobile) and long criterion wrapping.
-    const select = page.getByRole("combobox", { name: /^Seção/ });
-    assert.ok(await select.isVisible());
-    await select.selectOption("section-08");
+    // Section picker (mobile): sticky bar opening a sheet, no native select.
+    assert.equal(
+      await page.getByRole("combobox", { name: /Seção/ }).count(),
+      0,
+    );
+    const trigger = page.getByRole("button", { name: /^Seção \d de 9/ });
+    const chooseSection = async (name) => {
+      await trigger.tap();
+      const sheet = page.getByRole("dialog", { name: "Seções do checklist" });
+      await sheet.waitFor();
+      await noOverflow(page, "section sheet");
+      await sheet.getByRole("button", { name }).tap();
+      await sheet.waitFor({ state: "detached" });
+    };
+    assert.match(
+      await trigger.getAttribute("aria-label"),
+      /^Seção 1 de 9: ESTRUTURA, 1 de 13 respondidos/,
+    );
+    const triggerBox = await trigger.boundingBox();
+    assert.ok(triggerBox.height >= 44, JSON.stringify(triggerBox));
+    await chooseSection(/^Seção 8: PREPARO DO ALIMENTO,/);
     await page
       .getByRole("heading", { name: "8. PREPARO DO ALIMENTO" })
       .waitFor();
+    // Focus moves to the chosen section heading.
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.id),
+      "audit-section-title",
+    );
     const long = itemByNumber(page, 128).locator(".audit-item-text");
     assert.ok(
       await long.evaluate(
@@ -2080,7 +2102,7 @@ try {
     );
     await noOverflow(page, "section 8");
     // Another user changes the same criterion: conflict, server value loaded, no overwrite.
-    await select.selectOption("section-01");
+    await chooseSection(/^Seção 1: ESTRUTURA,/);
     const four = itemByNumber(page, 4);
     ok(
       await patchAnswer(
@@ -2213,7 +2235,7 @@ try {
       .waitFor();
     await noOverflow(page, "unavailable inspection");
     console.log(
-      "PASS browser 375px: routes without overflow, 44px response targets, aria-pressed, keyboard, observation, section selector, long text, conflicts, lifecycle change during save, finalize/reopen dialogs, stale/revoked/unavailable states",
+      "PASS browser 375px: routes without overflow, 44px response targets, aria-pressed, keyboard, observation, section sheet (no select) with focus, long text, conflicts, lifecycle change during save, finalize/reopen dialogs, stale/revoked/unavailable states",
     );
   } finally {
     await browser?.close();

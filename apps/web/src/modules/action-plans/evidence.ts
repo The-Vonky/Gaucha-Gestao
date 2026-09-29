@@ -174,8 +174,11 @@ export async function beginUpload(
 }
 const alreadyStored = (e: unknown) =>
   (e as { statusCode?: string } | null)?.statusCode === "409";
-/** Uploads (write-once; an existing object from a lost response is accepted) then confirms. */
-export async function finishUpload(a: Attempt) {
+/**
+ * Uploads (write-once; an existing object from a lost response is accepted) then confirms.
+ * `onStored` reports the switch to the confirm step, for progress display only.
+ */
+export async function finishUpload(a: Attempt, onStored?: () => void) {
   if (!client) throw new Error("Configuração de desenvolvimento indisponível.");
   if (!a.uploaded) {
     const { error } = await client.storage
@@ -185,6 +188,7 @@ export async function finishUpload(a: Attempt) {
     // A confirm that committed before its response was lost makes the key uninsertable.
     a.uploaded = true;
   }
+  onStored?.();
   const confirm = await db().rpc("confirm_evidence_upload", {
     p_evidence: a.evidenceId,
   });

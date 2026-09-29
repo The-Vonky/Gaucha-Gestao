@@ -17,6 +17,23 @@ export function isOverdue(
 ) {
   return plan.status !== "completed" && !!plan.due_date && plan.due_date < date;
 }
+/** Days from `date` to the due date (negative when past). */
+export function daysUntilDue(due: string, date = today()) {
+  return Math.round(
+    (Date.parse(`${due}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) /
+      86_400_000,
+  );
+}
+/** Presentation cue only (never stored, never changes the queue order). */
+export const DUE_SOON_DAYS = 7;
+export function isDueSoon(
+  plan: Pick<Plan, "due_date" | "status">,
+  date = today(),
+) {
+  if (plan.status === "completed" || !plan.due_date) return false;
+  const days = daysUntilDue(plan.due_date, date);
+  return days >= 0 && days <= DUE_SOON_DAYS;
+}
 const REQUIRED: [keyof Plan, string][] = [
   ["improvement_point", "Ponto de melhoria"],
   ["action", "O que fazer"],
