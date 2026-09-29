@@ -1,14 +1,14 @@
 # Implementation Brief — Audit Export & Reporting v1
 
-Status: specified content, output scope, browser-PDF semantics and 5,000-summary limit approved on 2026-09-29; not implemented. This documentation-only adjustment awaits PR review.  
+Status: implemented on `feat/audit-export-reporting-v1` from `74f7d2be7e946a8d36f27aac3b6aba22de92cc06`; PR review, local Supabase integration and physical-device acceptance remain pending.
 Date: 2026-09-29  
-Baseline: `main` at `3f158d36c6c087a560fd464e7c60bcdee2e7fae7`.
+Baseline for this implementation: `main` at `74f7d2be7e946a8d36f27aac3b6aba22de92cc06` (Quality UI phases 2–3 included).
 
 ## Approved outcome
 
-Preserve all three outputs in first Quality scope: **inspection Excel, unit-history Excel, and browser print/save as PDF**. This product decision is closed by the 2026-09-29 task; do not drop history export or replace Excel with CSV. No application code is implemented by this PR.
+Preserve all three outputs in first Quality scope: **inspection Excel, unit-history Excel, and browser print/save as PDF**. This product decision is closed by the 2026-09-29 task; do not drop history export or replace Excel with CSV. The implementation in this branch is subject to PR review and integration gates.
 
-Read AGENTS.md, AUDIT_DOMAIN_V1.md, AUDIT_SOURCE_OF_TRUTH.md (legacy provenance), the completion matrix, ADR-001/002/004/005 and AUTHORIZATION.md/SECURITY.md. Inspect current Audit API, summaries, scoring and migrations 0004/0009/0010. Export permission is seeded in 0002, but no export implementation exists at the baseline.
+Read AGENTS.md, AUDIT_DOMAIN_V1.md, AUDIT_SOURCE_OF_TRUTH.md (legacy provenance), the completion matrix, ADR-001/002/004/005 and AUTHORIZATION.md/SECURITY.md. Inspect current Audit API, summaries, scoring and migrations 0004/0009/0010. Export permission was seeded in 0002; the implementation adds `20260929172805_audit_export_reporting_v1.sql`.
 
 ## Authorization contract
 
@@ -25,6 +25,8 @@ Chosen design: trusted **Audit database RPCs produce coherent, scoped report dat
 Why: existing React/Vite + PostgREST stack already supports SQL snapshots and scoped functions. Server authorization and scoring avoid hidden cross-unit joins and inconsistent client aggregation. Client XLSX generation/browser print require no new production runtime and keep sensitive report copies out of application storage. UI-only export of a currently visible page was rejected: it misses paginated/hidden data and cannot independently enforce export permission. A server PDF renderer adds operating cost without a v1 need.
 
 Use a maintained XLSX writer selected and reviewed during implementation (license, lockfile, security and browser memory measured). No library version is invented by this brief. Browser print produces PDF through the platform print dialog; PDF pagination/fonts may vary. No digital signature, certified immutable report or archival PDF guarantee.
+
+Implementation evidence: `write-excel-file@4.1.1` (MIT, browser and Node exports, 2026 release) writes explicit string/number cells. Its `fflate` dependency resolves to patched `0.8.3`; `npm audit --omit=dev` reports zero vulnerabilities on this lockfile. The writer is dynamically imported into a separate ~71.7 kB minified / ~20.0 kB gzip chunk in the Vite build. `read-excel-file@9.3.10` and `fflate@0.8.3` are test-only dependencies. A 5,000-row Node XLSX fixture serialized and independently reopened in ~0.5–1.6 s / ~340 kB on this runner; real browser memory and mobile save behavior require device verification. No macro, formula, hyperlink or external relationship API is used; ZIP contents are asserted in tests.
 
 ## Public data contracts and consistency
 
@@ -78,6 +80,13 @@ Mobile at 375px: operable actions, long names wrap, no popup-dependent async dow
 7. Existing typecheck/lint/tests/build/verify:build and local integration suites remain green; record new suite commands, browser/device checks and performance at the supported bound. No production changes.
 
 Implementation sequence: incremental scoped report RPCs and data tests; typed Audit export boundary; XLSX serializer and print UI; permission/content/mobile tests and completion matrix update. Never edit old migrations or introduce an ungated export route. No scheduled reporting, email, cross-unit executive dashboard, import/portable archive, report storage or infrastructure/deploy work.
+
+## Implementation and verification in this branch
+
+- `inspection_export` and `unit_history_export` are `STABLE SECURITY DEFINER` Audit RPCs with qualified relations, `search_path=''`, authenticated-only EXECUTE and independent read/export predicates against the same unit. Each envelope is assembled in one SELECT and therefore one statement snapshot. Count >5,000 raises `Narrow the date range`; 5,000 and zero produce complete envelopes.
+- `apps/web/src/modules/audit/reporting/` holds typed RPC access, XLSX sheets, safe filenames, object-URL cleanup, an in-memory print portal and action states. Inspection and history pages gate buttons in the UI; pending answer saves block inspection reports. Report data is dropped on closing the portal, losing authorization/session, changing filters or unmounting.
+- Local `npm run typecheck`, `npm run lint`, `npm test`, `npm run build` with CI public placeholders, `npm run verify:build` and `npm audit --omit=dev` passed. PGlite tested 5,000 summaries at ~2.7 MB JSON in ~4.5–7.0 seconds and 5,001 explicit failure. These timings are local process observations, not production latency guarantees.
+- `tests/integration/reporting.mjs` uses disposable local Supabase Auth/JWT/PostgREST and a PostgreSQL snapshot; the existing Audit browser integration now checks XLSX downloads and the dedicated 375px print portal. The workflow runs both after Action Plans and Evidence. This workspace has no Docker/Podman, so these local Supabase suites have not been executed here; CI results and physical iOS/Android/browser print/save acceptance remain to be recorded.
 
 ## Approved decisions and boundaries
 
