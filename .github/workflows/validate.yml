@@ -40,6 +40,7 @@ jobs:
       - run: npx --yes supabase@2.117.0 start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
       - run: node tests/integration/action-plans.mjs
       - run: node tests/integration/evidence.mjs
+      - run: node tests/integration/reporting.mjs
       - run: node tests/integration/audit.mjs
       - if: always()
         run: npx --yes supabase@2.117.0 stop --no-backup

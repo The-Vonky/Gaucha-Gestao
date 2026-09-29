@@ -1,4 +1,5 @@
 import type { Classification, Response } from "./scoring";
+import type { HistoryReport, InspectionReport } from "./reporting/types";
 export type Section = {
   template_version: string;
   key: string;
@@ -67,6 +68,8 @@ export type AuditDatabase = {
     };
     Views: Record<string, never>;
     Functions: {
+      inspection_export: { Args: { p_inspection: string }; Returns: InspectionReport };
+      unit_history_export: { Args: { p_unit: string; p_from: string | null; p_to: string | null }; Returns: HistoryReport };
       units: { Args: Record<string, never>; Returns: AuditUnit[] };
       inspection_summaries: {
         Args: { p_unit?: string; p_inspection?: string; p_overview?: boolean };

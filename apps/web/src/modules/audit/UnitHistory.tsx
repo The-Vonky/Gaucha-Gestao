@@ -6,10 +6,13 @@ import { Notice, PageTitle } from "../../shared/ui";
 import * as api from "./api";
 import { NewInspection } from "./NewInspection";
 import { Delta, formatDate, Progress, Result, StatusBadge } from "./Result";
+import { ReportingActions } from "./reporting/ReportingActions";
 export function UnitHistory() {
   const { unitId = "" } = useParams();
   const auth = useAuth();
   const [creating, setCreating] = useState(false);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const r = useResource(
     useCallback(async () => {
       const [units, rows] = await Promise.all([
@@ -51,6 +54,16 @@ export function UnitHistory() {
                 </button>
               )}
           </PageTitle>
+          {auth.can("audit.inspection.read", { unit_id: unit.id }) &&
+            auth.can("audit.inspection.export", { unit_id: unit.id }) && <section className="audit-report-filters" aria-label="Relatório do histórico">
+              <p>Filtre pela data de aplicação (limites inclusivos, até 5.000 registros). Sem datas, o relatório inclui todo o histórico.</p>
+              <div className="actions">
+                <label>De <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
+                <label>Até <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} /></label>
+              </div>
+              {from && to && from > to ? <Notice error>A data inicial deve ser anterior ou igual à final.</Notice> :
+                <ReportingActions kind="unit_history" unitId={unit.id} from={from} to={to} />}
+            </section>}
           {!r.data.rows.length && (
             <Notice>Nenhuma auditoria registrada para esta unidade.</Notice>
           )}

@@ -17,12 +17,14 @@ export function ChecklistItem({
   row,
   editable,
   onChange,
+  onPending,
   onConflict,
 }: {
   item: Item;
   row: Answer;
   editable: boolean;
   onChange: (row: Answer) => void;
+  onPending?: (key: string, value: boolean) => void;
   onConflict: () => void;
 }) {
   const id = useId();
@@ -32,14 +34,24 @@ export function ChecklistItem({
   const latest = useRef(row);
   const synced = useRef(row.observation);
   const queue = useRef(Promise.resolve());
+  const ticket = useRef(0);
+  const failed = useRef(false);
+  // Mirrors the textarea: text typed while a save is in flight is still unsaved when it settles.
+  const draft = useRef(row.observation);
+  const unsaved = () => failed.current || draft.current !== latest.current.observation;
   useEffect(() => {
     latest.current = row;
     // Keep text still being typed; follow the server value otherwise.
     const previous = synced.current;
     synced.current = row.observation;
-    setObservation((local) => (local === previous ? row.observation : local));
+    if (draft.current === previous) draft.current = row.observation;
+    setObservation(draft.current);
+    // A reload clears the page's pending set; unsaved text kept here must block reports again.
+    if (editable && unsaved()) onPending?.(item.key, true);
   }, [row]);
   function save(values: Partial<Pick<Answer, "response" | "observation">>) {
+    const thisSave = ++ticket.current;
+    onPending?.(item.key, true);
     // Serialize this item's writes so each uses the version returned by the previous one.
     queue.current = queue.current.then(async () => {
       const current = latest.current;
@@ -51,18 +63,21 @@ export function ChecklistItem({
           ...values,
         });
         latest.current = saved;
+        failed.current = false;
         onChange(saved);
         setState("saved");
       } catch (e) {
         const code = String((e as { code?: string })?.code ?? "");
         if (CONFLICT.has(code)) {
           setState("conflict");
+          failed.current = false;
           try {
             const fresh = await api.answer(
               current.inspection_id,
               current.item_key,
             );
             latest.current = fresh;
+            draft.current = fresh.observation;
             setObservation(fresh.observation);
             onChange(fresh);
           } catch {
@@ -70,9 +85,12 @@ export function ChecklistItem({
           }
           onConflict();
         } else {
+          failed.current = true;
           setState("error");
           setError(message(e));
         }
+      } finally {
+        if (ticket.current === thisSave) onPending?.(item.key, unsaved());
       }
     });
   }
@@ -129,10 +147,11 @@ export function ChecklistItem({
             placeholder={
               emphasis ? "Descreva o ponto observado (recomendado)" : ""
             }
-            onChange={(e) => setObservation(e.target.value)}
+            onChange={(e) => { draft.current = e.target.value; setObservation(e.target.value); onPending?.(item.key, unsaved()); }}
             onBlur={() => {
               if (observation !== latest.current.observation)
                 save({ observation });
+              else if (!failed.current) onPending?.(item.key, false);
             }}
           />
         </label>
