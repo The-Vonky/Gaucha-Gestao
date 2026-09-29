@@ -1,6 +1,6 @@
 # Implementation Brief — Quality UI v1 (Gaúcha Gestão Design System)
 
-Status: PHASE 1 IMPLEMENTED (foundation) · phases 2–3 open  
+Status: PHASES 1–2 IMPLEMENTED · phase 3 Evidence UI implemented (Admin polish open)  
 Date: 2026-09-25  
 Baseline: `main` at `8f1464be79cdf871666c713ba89b6eacfd21a769`  
 Branch: `feat/quality-ui-v1`
@@ -103,13 +103,13 @@ Only components that are reused exist. Phase 1 status:
 | `EmptyState` | `shared/ui.tsx` | done |
 | Badge / `Status` | CSS tones `success/warning/danger/info` + dot | done |
 | Table, Pager, filters, record list, form controls | global CSS | restyled |
-| `SegmentedControl` (AT/AP/NAT/NAP) | Audit | phase 2 |
-| `SectionNav` (desktop list + mobile sheet) | Audit | phase 2 |
-| `Progress` (neutral fill + count) | Audit, Home | phase 2 |
-| `Metric` (KPI tile) | Audit hero, Action Plans | phase 2 |
-| `StatusBadge` (domain status → semantic tone + icon) | Audit, Action Plans | phase 2 |
-| `FileItem` / upload zone | Evidence | phase 3 |
-| Toast / save confirmation | Audit autosave | phase 2 (only if the inline save state proves insufficient) |
+| `SegmentedControl` (AT/AP/NAT/NAP) | Audit (`ChecklistItem`) | done (phase 2) |
+| `SectionNav` (desktop list + mobile sheet) | Audit (`SectionNav.tsx`) | done (phase 2) |
+| `Progress` (neutral fill + count) | Audit (`Result.tsx`) | done (phase 2) |
+| `Metric` (KPI tile) | `shared/ui.tsx` — Audit hero, Action Plans | done (phase 2) |
+| `StatusBadge` (domain status → semantic tone + icon) | `Badge` in `shared/ui.tsx`; Audit `StatusBadge`, `PlanBadges` | done (phase 2) |
+| `FileItem` / upload zone | Evidence (`PlanEvidence.tsx`) | done (phase 3) |
+| Toast / save confirmation | Audit autosave | not needed: the inline save state is kept |
 
 Not planned unless a real reuse appears: Tooltip, Dropdown, Tabs, Radio group, Checkbox component (native controls are styled globally).
 
