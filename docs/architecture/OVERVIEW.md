@@ -26,7 +26,7 @@ Platform
 |   +-- users/profiles
 |   +-- units
 |   +-- sectors
-|   +-- attachments
+|   +-- shared file contract (metadata owned by modules)
 |   +-- system audit log
 |
 +-- Shared
@@ -36,6 +36,7 @@ Platform
 |
 +-- Modules
     +-- Audit
+    +-- Action Plans (transversal business module)
     +-- ISO
     +-- Sales
     +-- Satisfaction
@@ -77,7 +78,7 @@ Candidates for Core ownership:
 - organizational unit;
 - sector;
 - user scope by unit/sector;
-- attachment metadata and file access policy;
+- shared file contract; attachment metadata and entity-specific access remain module-owned (DATA_MODEL.md);
 - system audit event;
 - common application settings.
 
@@ -134,7 +135,7 @@ Before several modules are operational together, the platform needs stable found
 
 The Audit system remains the priority. This repository must not delay completion of the standalone Audit system with speculative platform work.
 
-The first platform implementation brief will define the minimum foundation needed to host Audit as module #1 without overbuilding capabilities required only by later modules.
+Platform Foundation, Audit Domain, Action Plans and Action Plan Evidence have implementations. See `docs/modules/audit/QUALITY_COMPLETION_V1.md` for the commit-pinned comparison and remaining briefs. This does not assert production rollout or standalone data migration.
 
 ## Selected platform stack
 
@@ -156,16 +157,14 @@ These choices are no longer open design questions unless ADR-004 is explicitly s
 
 ## Decisions still intentionally open
 
-The following remain to be resolved at implementation/detail level:
+RBAC/scope, the initial permission catalog and Core physical schema are decided in ADR-005 and implemented in migrations 0001–0003. Supabase Storage and the Action Plan file contract are defined by ADR-004 and Evidence/Storage v1 (migration 0008). Remaining details:
 
-- exact RBAC/organizational-scope schema;
-- initial permission catalog;
-- exact Core physical schema;
 - exact backup/PITR tool and retention;
 - RPO/RTO;
 - monitoring/observability tooling;
-- file size/type/retention policies;
+- evidence retention/purge policy; checklist-specific limits and reopen policy proposed in its new brief;
 - exact DEV/STAGING/PROD layout;
 - VM sizing and RAID choice after physical ML350 inventory.
 
 Do not reopen the accepted platform stack while solving one of these implementation details.
+

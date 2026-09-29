@@ -3,6 +3,12 @@
 Status: planning  
 Last reviewed: 2026-09-24
 
+## Platform status clarification — 2026-09-29
+
+The legacy comparisons below remain pinned to Controle_Auditoria `b916ba8`; they are not claims about current Gaúcha Gestão. Platform `main` at `3f158d3` implements reopen, generalized Action Plans and Action Plan Evidence. Checklist evidence and Audit exports remain unimplemented. See [Quality completion matrix](QUALITY_COMPLETION_V1.md).
+
+Reopen and the permission/scope model are resolved by Audit Domain v1 and ADR-005. Product has approved preserving all three outputs: inspection Excel, unit-history Excel and print/PDF, specified in [Audit Export & Reporting v1](../../briefs/AUDIT_EXPORT_REPORTING_V1.md). [Audit Checklist Evidence v1](../../briefs/AUDIT_CHECKLIST_EVIDENCE_V1.md) specifies the remaining attachment slice. Portable archives and Realtime are outside this completion v1; retention remains an operational/business decision. Do not reopen these accepted platform decisions based on the historical planning list below.
+
 ## Objective
 
 Migrate the proven Audit domain into Gaúcha Gestão without carrying forward standalone technical constraints or coupling platform-wide concepts to the Audit module.
@@ -209,3 +215,4 @@ Must be resolved explicitly:
 7. Exact retention policy for finalized inspections and evidence.
 
 None of these questions justify blocking architecture work outside their affected area.
+

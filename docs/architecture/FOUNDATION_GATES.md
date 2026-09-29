@@ -1,7 +1,9 @@
 # Platform Foundation Gates
 
 Status: active  
-Date: 2026-09-24
+Reviewed: 2026-09-29 against `3f158d36c6c087a560fd464e7c60bcdee2e7fae7`
+
+Implementation evidence and remaining Quality work: `docs/modules/audit/QUALITY_COMPLETION_V1.md`. Production entries below are repository gates, not a live infrastructure assessment.
 
 ## Purpose
 
@@ -63,8 +65,9 @@ Decision:
 Still pending:
 - exact backup tool (pgBackRest, WAL-G or equivalent);
 - retention/RPO/RTO;
-- database resource sizing;
-- exact migration framework/conventions in the application repository.
+- database resource sizing.
+
+Implemented convention: append-only SQL migrations under `supabase/migrations`, applied by local Supabase and integration CI.
 
 ## Gate 4 — Authentication and authorization
 
@@ -122,24 +125,17 @@ Decision:
 - private authorized access;
 - file restore/retention handled independently from database backup.
 
-Still pending:
-- bucket/object-key convention;
-- maximum sizes/types by module;
-- retention/versioning policy;
-- malware/unsafe-file controls where justified.
+Implemented for Action Plans: private `action-plan-evidence` bucket, UUID keys, 10 MiB files, JPEG/PNG/PDF/XLSX/DOCX, 20 active items per plan, logical removal, rounds and signed downloads (Evidence/Storage v1, migration 0008). Magic-byte checks are client-side, not server attestation.
+
+Still pending: Audit checklist evidence implementation under its separate brief; retention/purge policy and production Storage/backup/header/reconciliation gates. No universal attachment table is authorized.
 
 ## Gate 7 — System audit log
 
-Status: **TO DESIGN BEFORE PRODUCTION**
+Status: **MODEL AND APPLICATION IMPLEMENTED; OPERATIONS PENDING**
 
-Need:
-- event model;
-- actor;
-- timestamp;
-- entity/module/action;
-- before/after strategy;
-- retention;
-- privileged read permission.
+ADR-005 and migration 0001 define `core.system_audit_log`, actor/time, entity/module/action, before/after payloads, trusted writes and scoped `admin.audit_log.read`. Audit lifecycle, Action Plan changes and evidence add/remove use that capability.
+
+Still pending: operational retention, monitoring and authorized purge/runbook procedures. Do not confuse the system log with the Quality Audit business module.
 
 ## Gate 8 — Backup and disaster recovery
 
@@ -180,7 +176,7 @@ Tooling remains intentionally open.
 
 ## Gate 10 — First-module contract
 
-Status: **MOSTLY RESOLVED**
+Status: **DOMAIN CONTRACT IMPLEMENTED; COMPLETION SLICES SPECIFIED**
 
 Already defined:
 - Audit source of truth;
@@ -190,10 +186,9 @@ Already defined:
 - Core schema required by Audit;
 - platform foundation implementation brief.
 
-Still pending before Audit business implementation:
-- explicit reopen behavior;
-- unit-history export decision;
-- Audit module implementation brief.
+Resolved: `AUDIT_DOMAIN_V1.md` defines reopen and its implementation exists in migrations 0004/0009 and Audit UI. Action Plans and their evidence are also implemented.
+
+Product decision approved on 2026-09-29: preserve inspection Excel, unit-history Excel and print/PDF. Implementation remains pending under `AUDIT_EXPORT_REPORTING_V1.md`. Checklist attachments remain pending under `AUDIT_CHECKLIST_EVIDENCE_V1.md`; proposed product/security details require the approvals recorded there.
 
 ## What does not need to be designed now
 
@@ -213,9 +208,5 @@ Do not block Audit on:
 
 ## Implementation start condition
 
-The first platform-code brief has now been issued:
-- `docs/briefs/PLATFORM_FOUNDATION_V1.md`.
+Foundation and the first Quality domain slices are implemented. Remaining application work is limited by the specific briefs and the completion matrix. Gates 7–9 still require operational evidence before production rollout; this document does not authorize infrastructure changes or deploys.
 
-Platform foundation implementation may begin without migrating Audit business tables/data.
-
-Infrastructure implementation details for Gates 7–9 must have a minimum production baseline before production rollout, but they do not block creation of the application foundation.

@@ -37,6 +37,9 @@ A plataforma nasce a partir da consolidação gradual dos sistemas existentes. O
 
 ## Estado atual
 
-Este repositório está na fase de arquitetura e fundação. Não há autorização implícita para deploy ou migração de dados de produção.
+A plataforma já implementa Core/autorização, Audit v1 (incluindo reabertura), Planos de Ação e evidências de execução/verificação dos planos. A fundação visual de Qualidade também está integrada. Anexos por critério e exportações de Audit permanecem por implementar.
+
+Consulte a [matriz factual e o escopo restante de Qualidade](docs/modules/audit/QUALITY_COMPLETION_V1.md), incluindo os dois novos briefs. Implementação no repositório não comprova operação em produção. Não há autorização implícita para deploy ou migração de dados de produção.
 
 Consulte `docs/architecture/OVERVIEW.md` antes de iniciar implementação estrutural.
+

@@ -24,7 +24,7 @@ supabase db reset
 ```
 
 `db reset` apaga somente o banco local; não use `--linked` nem uma URL remota.
-O arquivo `supabase/config.toml` expõe `core` e `audit`, mantém `private` e `audit_private` fora da Data API
+O arquivo `supabase/config.toml` expõe `core`, `audit` e `action_plans`, mantém `private`, `audit_private` e `action_plans_private` fora da Data API
 e desabilita cadastro público. Não provisiona produção.
 
 1. No Auth do Studio **local**, crie/confirme uma identidade administrativa
@@ -56,7 +56,10 @@ concede acesso na tela Usuários. Recuperação de senha também usa o fluxo do 
 - Atualizações usam `version`; a composição de papéis é substituída atomicamente.
 - Desvincular setor referenciado por atribuição é bloqueado, inclusive para preservar histórico.
 - Audit v1 opera o checklist canônico de 158 critérios por unidade (criação, preenchimento,
-  finalização e reabertura via RPCs confiáveis). Planos de ação e evidências não foram implementados.
+  finalização e reabertura via RPCs confiáveis). Planos de Ação manuais e por AP/NAT,
+  execução/verificação de eficácia e evidências binárias dos planos estão implementados.
+  Anexos por critério e exportações de Audit permanecem pendentes; veja
+  `docs/modules/audit/QUALITY_COMPLETION_V1.md`.
 
 ## Testes de banco
 
@@ -65,6 +68,13 @@ com papéis `anon`/`authenticated`, contrato mínimo `auth.users`/`auth.uid()`, 
 RLS e triggers reais. Cobre negação, escopos, delegação, auditoria e concorrência
 otimista. Não simula políticas em JavaScript.
 
-Isso não substitui o teste de integração com GoTrue/PostgREST. Antes de integrar
+`test:rls` executa apenas `tests/database.test.ts`; `npm test` inclui também as suítes
+de Audit, Action Plans e Evidence. O harness de evidências usa um stub de Storage;
+isso não substitui a API real. A CI inclui `tests/integration/action-plans.mjs`,
+`evidence.mjs` e `audit.mjs` contra Supabase local com Storage e Chromium a 375px.
+Dispositivos reais iOS/Android exigem validação manual separada.
+
+Antes de integrar
 um ambiente real, valide login, convite, restauração de sessão e chamadas Data API
 com a configuração local acima. A CI executa somente validações, sem deploy.
+
