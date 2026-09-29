@@ -1,6 +1,6 @@
 # Implementation Brief — Audit Export & Reporting v1
 
-Status: implemented on `feat/audit-export-reporting-v1` from `74f7d2be7e946a8d36f27aac3b6aba22de92cc06`; PR review, local Supabase integration and physical-device acceptance remain pending.
+Status: implemented on `feat/audit-export-reporting-v1` from `74f7d2be7e946a8d36f27aac3b6aba22de92cc06`; PR review and physical-device acceptance remain pending; CI local Supabase integration passed in run 36609249581.
 Date: 2026-09-29  
 Baseline for this implementation: `main` at `74f7d2be7e946a8d36f27aac3b6aba22de92cc06` (Quality UI phases 2–3 included).
 
@@ -86,7 +86,7 @@ Implementation sequence: incremental scoped report RPCs and data tests; typed Au
 - `inspection_export` and `unit_history_export` are `STABLE SECURITY DEFINER` Audit RPCs with qualified relations, `search_path=''`, authenticated-only EXECUTE and independent read/export predicates against the same unit. Each envelope is assembled in one SELECT and therefore one statement snapshot. Count >5,000 raises `Narrow the date range`; 5,000 and zero produce complete envelopes.
 - `apps/web/src/modules/audit/reporting/` holds typed RPC access, XLSX sheets, safe filenames, object-URL cleanup, an in-memory print portal and action states. Inspection and history pages gate buttons in the UI; pending answer saves block inspection reports. Report data is dropped on closing the portal, losing authorization/session, changing filters or unmounting.
 - Local `npm run typecheck`, `npm run lint`, `npm test`, `npm run build` with CI public placeholders, `npm run verify:build` and `npm audit --omit=dev` passed. PGlite tested 5,000 summaries at ~2.7 MB JSON in ~4.5–7.0 seconds and 5,001 explicit failure. These timings are local process observations, not production latency guarantees.
-- `tests/integration/reporting.mjs` uses disposable local Supabase Auth/JWT/PostgREST and a PostgreSQL snapshot; the existing Audit browser integration now checks XLSX downloads and the dedicated 375px print portal. The workflow runs both after Action Plans and Evidence. This workspace has no Docker/Podman, so these local Supabase suites have not been executed here; CI results and physical iOS/Android/browser print/save acceptance remain to be recorded.
+- `tests/integration/reporting.mjs` uses disposable local Supabase Auth/JWT/PostgREST and a PostgreSQL snapshot; the existing Audit browser integration now checks XLSX downloads and the dedicated 375px print portal. The workflow runs both after Action Plans and Evidence. This workspace has no Docker/Podman, so the disposable local Supabase suites ran on GitHub Actions [run 36609249581](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/36609249581): Action Plans, Evidence, Reporting and Audit all passed. Physical iOS/Android and browser print/save acceptance remain to be recorded.
 
 ## Approved decisions and boundaries
 
