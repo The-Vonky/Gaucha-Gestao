@@ -2015,7 +2015,7 @@ try {
     await print.waitFor();
     assert.equal(await print.locator(".report-section").count(), 9);
     assert.equal(await print.locator(".report-section li").count(), 158);
-    assert.equal(await print.getByText("RASCUNHO · RESULTADO PARCIAL").count(), 1);
+    assert.equal(await print.locator(".report-draft").count(), 1);
     await noOverflow(page, "inspection print preview 375px");
     await page.emulateMedia({ media: "print" });
     assert.equal(await page.locator("#root").evaluate((root) => getComputedStyle(root).display), "none");
