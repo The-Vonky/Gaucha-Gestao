@@ -42,5 +42,7 @@ jobs:
       - run: node tests/integration/evidence.mjs
       - run: node tests/integration/reporting.mjs
       - run: node tests/integration/audit.mjs
+      # Admin UI at 375/768/1024/1440; adds uniquely tagged rows only, so it runs last.
+      - run: node tests/integration/admin.mjs
       - if: always()
         run: npx --yes supabase@2.117.0 stop --no-backup
