@@ -101,6 +101,12 @@ afterAll(async () => {
   await db?.close();
 });
 describe.sequential("Audit checklist evidence contract", () => {
+ it("keeps the existing Audit fixture executable", async () => {
+  await login(users.unitA);
+  const id=await create(A);
+  expect((await inspection(id)).status).toBe("draft");
+  expect((await rows("select item_key from audit.inspection_answers where inspection_id=$1",[id])).length).toBe(158);
+ });
  it("owns criterion evidence and removes the old finalization bypass", async () => {
   await db.exec("reset role");
   const r = await one<{ evidence: string | null; old: string | null; current: string | null }>(
