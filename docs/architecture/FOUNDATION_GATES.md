@@ -1,7 +1,7 @@
 # Platform Foundation Gates
 
 Status: active  
-Reviewed: 2026-09-30 against `c3f135f6026899362e1edacda3e97e922528ac8e`
+Reviewed: 2026-09-30 against `fdae41a51af284358aa9dc7804ba03f75f241ac6`
 
 Implementation evidence and remaining Quality work: `docs/modules/audit/QUALITY_COMPLETION_V1.md`. Production entries below are repository gates, not a live infrastructure assessment.
 
@@ -188,7 +188,7 @@ Already defined:
 
 Resolved: `AUDIT_DOMAIN_V1.md` defines reopen and its implementation exists in migrations 0004/0009 and Audit UI. Action Plans and their evidence are also implemented.
 
-Product decision approved on 2026-09-29: preserve inspection Excel, unit-history Excel and print/PDF. The implementation under `AUDIT_EXPORT_REPORTING_V1.md` is integrated in `main` (PR #9); physical-device acceptance remains pending. Checklist attachments under `AUDIT_CHECKLIST_EVIDENCE_V1.md` are integrated in `main` by PR #11, with post-merge CI success on `c3f135f6026899362e1edacda3e97e922528ac8e`; E1–E3 remain the accepted product/security contract. Physical/mobile and operational release gates remain pending.
+Product decision approved on 2026-09-29: preserve inspection Excel, unit-history Excel and print/PDF. The implementation under `AUDIT_EXPORT_REPORTING_V1.md` is integrated in `main` (PR #9); physical-device acceptance remains pending. Checklist attachments under `AUDIT_CHECKLIST_EVIDENCE_V1.md` are integrated in `main` by PR #11; the unit-history Data API truncation blocker is fixed by PR #13. Current post-merge CI `36747746343` passed on `fdae41a51af284358aa9dc7804ba03f75f241ac6`; E1–E3 remain the accepted product/security contract. Physical/mobile and operational release gates remain pending.
 
 ## What does not need to be designed now
 
