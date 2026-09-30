@@ -58,7 +58,8 @@ concede acesso na tela Usuários. Recuperação de senha também usa o fluxo do 
 - Audit v1 opera o checklist canônico de 158 critérios por unidade (criação, preenchimento,
   finalização e reabertura via RPCs confiáveis). Planos de Ação manuais e por AP/NAT,
   execução/verificação de eficácia e evidências binárias dos planos estão implementados.
-  Anexos por critério e exportações de Audit permanecem pendentes; veja
+  Exportação/relatórios de Audit (Excel e impressão/PDF) estão integrados; anexos por
+  critério (Checklist Evidence) permanecem pendentes; veja
   `docs/modules/audit/QUALITY_COMPLETION_V1.md`.
 
 ## Testes de banco
@@ -71,7 +72,8 @@ otimista. Não simula políticas em JavaScript.
 `test:rls` executa apenas `tests/database.test.ts`; `npm test` inclui também as suítes
 de Audit, Action Plans e Evidence. O harness de evidências usa um stub de Storage;
 isso não substitui a API real. A CI inclui `tests/integration/action-plans.mjs`,
-`evidence.mjs` e `audit.mjs` contra Supabase local com Storage e Chromium a 375px.
+`evidence.mjs`, `reporting.mjs`, `audit.mjs` e `admin.mjs` contra Supabase local com
+Storage e Chromium a 375px (Admin também a 768/1024/1440).
 Dispositivos reais iOS/Android exigem validação manual separada.
 
 Antes de integrar

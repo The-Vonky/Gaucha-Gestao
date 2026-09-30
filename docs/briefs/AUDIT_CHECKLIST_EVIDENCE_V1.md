@@ -1,12 +1,12 @@
 # Implementation Brief — Audit Checklist Evidence v1
 
-Status: product/security decisions E1–E3 approved on 2026-09-29; not implemented. This documentation-only adjustment awaits PR review.  
+Status: product/security decisions E1–E3 approved on 2026-09-29; not implemented at the baseline below.  
 Date: 2026-09-29  
-Baseline: `main` at `3f158d36c6c087a560fd464e7c60bcdee2e7fae7`.
+Baseline: implementation starts from `main` at `db35fa5088adcd98ef758cd211c80159f0ff8169` (includes Audit Export & Reporting, PR #9). The brief was originally written against `3f158d36c6c087a560fd464e7c60bcdee2e7fae7`.
 
 ## Outcome and boundaries
 
-Attach images/documents to an individual inspection criterion, list and download them with Audit read access, and logically remove them only while the inspection is editable. Preserve the 158-item catalog, scoring, response semantics and existing Action Plans contract. This document authorizes no production activity; this PR contains documentation only.
+Attach images/documents to an individual inspection criterion, list and download them with Audit read access, and logically remove them only while the inspection is editable. Preserve the 158-item catalog, scoring, response semantics and existing Action Plans contract. This document authorizes no production activity; this brief is documentation only.
 
 Read AGENTS.md, AUDIT_DOMAIN_V1.md, EVIDENCE_STORAGE_V1.md §§5–8/11/13, ADR-001/002/004/005, SECURITY.md, DATA_MODEL.md, BACKUP_RECOVERY.md and the completion matrix. Inspect Audit migrations 0004/0009/0010, `modules/audit`, and Evidence migration 0008 as a behavioral reference. Existing migrations remain immutable.
 

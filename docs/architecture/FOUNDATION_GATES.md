@@ -1,7 +1,7 @@
 # Platform Foundation Gates
 
 Status: active  
-Reviewed: 2026-09-29 against `3f158d36c6c087a560fd464e7c60bcdee2e7fae7`
+Reviewed: 2026-09-30 against `db35fa5088adcd98ef758cd211c80159f0ff8169`
 
 Implementation evidence and remaining Quality work: `docs/modules/audit/QUALITY_COMPLETION_V1.md`. Production entries below are repository gates, not a live infrastructure assessment.
 
@@ -188,7 +188,7 @@ Already defined:
 
 Resolved: `AUDIT_DOMAIN_V1.md` defines reopen and its implementation exists in migrations 0004/0009 and Audit UI. Action Plans and their evidence are also implemented.
 
-Product decision approved on 2026-09-29: preserve inspection Excel, unit-history Excel and print/PDF. Implementation remains pending under `AUDIT_EXPORT_REPORTING_V1.md`. Checklist attachments remain pending under `AUDIT_CHECKLIST_EVIDENCE_V1.md`; proposed product/security details require the approvals recorded there.
+Product decision approved on 2026-09-29: preserve inspection Excel, unit-history Excel and print/PDF. The implementation under `AUDIT_EXPORT_REPORTING_V1.md` is integrated in `main` (PR #9, merged 2026-09-29); physical-device acceptance remains pending. Checklist attachments remain unimplemented under `AUDIT_CHECKLIST_EVIDENCE_V1.md`; its product/security decisions E1–E3 were approved on 2026-09-29 as recorded there.
 
 ## What does not need to be designed now
 
