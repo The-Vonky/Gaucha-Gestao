@@ -37,7 +37,7 @@ A plataforma nasce a partir da consolidação gradual dos sistemas existentes. O
 
 ## Estado atual
 
-A plataforma já implementa Core/autorização, Audit v1 (incluindo reabertura), Planos de Ação e evidências de execução/verificação dos planos. A UI de Qualidade também está integrada, e a exportação/relatórios de Audit (Excel da auditoria, Excel do histórico e impressão/PDF pelo navegador) foi implementada na PR #9, com aceite físico/mobile ainda pendente. Anexos por critério (Checklist Evidence) permanecem por implementar. Implementação e CI não significam produção.
+A plataforma já implementa Core/autorização, Audit v1 (incluindo reabertura), Planos de Ação e evidências de execução/verificação dos planos. A UI de Qualidade também está integrada, e a exportação/relatórios de Audit (Excel da auditoria, Excel do histórico e impressão/PDF pelo navegador) foi implementada na PR #9, com aceite físico/mobile ainda pendente. Anexos por critério (Checklist Evidence) estão implementados na branch `feat/audit-checklist-evidence-v1`; validação final, aceite físico/mobile e operação permanecem separados. Consulte o [contrato e roteiro operacional](docs/modules/audit/CHECKLIST_EVIDENCE_V1.md). Implementação e CI não significam produção.
 
 Consulte a [matriz factual e o escopo restante de Qualidade](docs/modules/audit/QUALITY_COMPLETION_V1.md), incluindo os dois novos briefs. Implementação no repositório não comprova operação em produção. Não há autorização implícita para deploy ou migração de dados de produção.
 
