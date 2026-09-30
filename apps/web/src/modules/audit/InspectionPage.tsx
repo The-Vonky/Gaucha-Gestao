@@ -56,6 +56,7 @@ export function InspectionPage() {
   const [lifecycleTransition, setLifecycleTransition] = useState<{
     inspectionId: string;
     version: number;
+    from: typeof data;
   }>();
   useEffect(() => {
     if (lifecycleTransition && !r.loading &&
@@ -148,7 +149,7 @@ export function InspectionPage() {
   // A failed/manual reload preserves this guard; navigation clears it.
   if (lifecycleTransition?.inspectionId === inspectionId)
     return <Notice>Atualizando estado da auditoria…
-      {!r.loading && <button onClick={reload}>Tentar novamente</button>}
+      {!r.loading && data !== lifecycleTransition.from && <button onClick={reload}>Tentar novamente</button>}
     </Notice>;
   if (!data || !results)
     return (
@@ -406,6 +407,7 @@ export function InspectionPage() {
               setLifecycleTransition({
                 inspectionId: summary.id,
                 version: summary.version,
+                from: data,
               });
               reload();
             } catch(error) {
