@@ -122,6 +122,7 @@ try {
   async function duringExport(mutate, before, after) {
     const sessions = [];
     const queries = [];
+    let results = [];
     await db.query("select pg_advisory_lock($1::bigint)", [lockKey]);
     try {
       for (const kind of ["inspection", "unit_history"]) {
@@ -150,12 +151,13 @@ try {
       await mutate();
     } finally {
       await db.query("select pg_advisory_unlock($1::bigint)", [lockKey]);
-      const results = await Promise.all(queries);
+      results = await Promise.all(queries);
       await Promise.all(sessions.map(client => client.end()));
-      for (const result of results) {
-        if (result.error) throw result.error;
-        coherent(result.result.rows[0].result, before);
-      }
+    }
+    // Assertions stay outside cleanup so a failed mutation retains its original error.
+    for (const result of results) {
+      if (result.error) throw result.error;
+      coherent(result.result.rows[0].result, before);
     }
     coherent(allowed(await rpc("inspection_export", "both", { p_inspection: inspection })), after);
     coherent(allowed(await rpc("unit_history_export", "both", { p_unit: A, p_from: "2026-09-01", p_to: "2026-09-01" })), after);
