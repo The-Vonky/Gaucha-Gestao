@@ -52,7 +52,7 @@ async function request(path, token, body, method = "POST", schema = "audit") {
   return { status: res.status, data: text ? JSON.parse(text) : null };
 }
 const rpc = (name, user, args = {}, schema = "audit") =>
-  request(`/rest/v1/rpc/${name}`, tokens[user], args, "POST", schema);
+  request(`/rest/v1/rpc/${name}`, tokens[user], name === "finalize_inspection" ? { p_expected_evidence_ids: [], ...args } : args, "POST", schema);
 const get = (path, user) =>
   request(`/rest/v1/${path}`, tokens[user], undefined, "GET");
 const patchAnswer = (user, inspection, item, values, version) =>
@@ -1204,7 +1204,7 @@ try {
           h.after_data.finalized_by === users.unitA,
       );
     } else assert.equal(h.after_data.final_score, null);
-    assert.deepEqual(Object.keys(h.metadata), []);
+    assert.deepEqual(h.metadata, h.action === "finalize" ? { evidence_ids: [] } : {});
     previous = h;
   }
   const logKeys = new Set(history.flatMap((h) => Object.keys(h.after_data)));
@@ -1328,7 +1328,7 @@ try {
     "update audit.inspection_answers set observation='Após revogação' where inspection_id=$1 and item_key=$2 and version=1",
     [id, item],
   ];
-  const finalizeCall = (id) => ["select audit.finalize_inspection($1,1)", [id]];
+  const finalizeCall = (id) => ["select audit.finalize_inspection($1,1,'{}'::uuid[])", [id]];
   const reopenCall = (id) => ["select audit.reopen_inspection($1,2)", [id]];
   const createdBy = async (user) =>
     (
@@ -1672,7 +1672,7 @@ try {
   });
   await lifecycleRace(
     id,
-    ["select audit.finalize_inspection($1,3)", [id]],
+    ["select audit.finalize_inspection($1,3,'{}'::uuid[])", [id]],
     ["select audit.reopen_inspection($1,3)", [id]],
     { allowed: false, code: "40001" },
   );

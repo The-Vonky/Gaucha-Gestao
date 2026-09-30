@@ -188,11 +188,13 @@ export function Modal({
 export function Confirm({
   title,
   description,
+  children,
   onConfirm,
   onClose,
 }: {
   title: string;
   description: string;
+  children?: ReactNode;
   onConfirm: () => Promise<void>;
   onClose: () => void;
 }) {
@@ -212,7 +214,8 @@ export function Confirm({
   }
   return (
     <Modal title={title} onClose={onClose} busy={busy}>
-      <p>{description}</p>
+      <p className="confirm-description">{description}</p>
+      {children}
       {error && <Notice error>{error}</Notice>}
       <div className="actions">
         <button disabled={busy} onClick={onClose}>

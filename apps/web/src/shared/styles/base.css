@@ -856,3 +856,6 @@ dialog::backdrop {
     scroll-behavior: auto !important;
   }
 }
+
+/* Confirmation text can contain a user-supplied filename. */
+.confirm-description { overflow-wrap: anywhere; }

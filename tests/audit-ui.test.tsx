@@ -9,7 +9,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { InspectionPage } from "../apps/web/src/modules/audit/InspectionPage";
 import { visibleNavigation } from "../apps/web/src/app/navigation";
 import type {
@@ -26,6 +26,8 @@ const api = vi.hoisted(() => ({
   reopen: vi.fn(),
 }));
 vi.mock("../apps/web/src/modules/audit/api", () => api);
+const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async()=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
+vi.mock("../apps/web/src/modules/audit/evidence",()=>evidenceApi);
 const permissions = vi.hoisted(() => ({ allowed: true }));
 vi.mock("../apps/web/src/core/auth/AuthProvider", () => ({
   useAuth: () => ({ can: () => permissions.allowed }),
@@ -42,6 +44,8 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   permissions.allowed = true;
+  evidenceApi.listEvidence.mockResolvedValue([]);
+  evidenceApi.pendingCount.mockResolvedValue(0);
 });
 const version = "v";
 const items = [
@@ -125,6 +129,55 @@ describe("audit navigation", () => {
   });
 });
 describe("inspection page", () => {
+  it("binds hidden-section evidence and warns pending before finalizing",async()=>{
+    const user=userEvent.setup();
+    evidenceApi.listEvidence.mockResolvedValue([{id:"e9",item_key:"item-003",original_name:"seção9.pdf",content_type:"application/pdf",size_bytes:10,uploaded_by_name:"Ana",uploaded_at:""}] as never);
+    evidenceApi.pendingCount.mockResolvedValue(2);
+    setup(summary({answered:3,at_count:3}),items.map(i=>answer(i.key,"AT")));
+    await user.click(await screen.findByText("Finalizar"));
+    expect(await screen.findByText(/1 evidência.*toda a auditoria/)).toBeTruthy();
+    expect(screen.getByText(/Há envios pendentes/)).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByText("seção9.pdf")).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByText(/Critério 3/)).toBeTruthy();
+    await user.click(screen.getByText("Confirmar"));
+    await waitFor(()=>expect(api.finalize).toHaveBeenCalledWith("i1",1,["e9"]));
+  });
+  it("discards a pending finalization review when navigating to another inspection",async()=>{
+    const user=userEvent.setup();
+    let resolveReview!:(value:never[])=>void;
+    const waiting=new Promise<never[]>(resolve=>{resolveReview=resolve;});
+    evidenceApi.listEvidence.mockResolvedValue([]);
+    api.inspection.mockImplementation(async(id:string)=>summary({id,answered:3,at_count:3}));
+    api.checklist.mockResolvedValue({sections,items});
+    api.answers.mockResolvedValue(items.map(i=>answer(i.key,"AT")));
+    render(<MemoryRouter initialEntries={["/audit/inspections/i1"]}>
+      <Link to="/audit/inspections/i2">Outra auditoria</Link>
+      <Routes><Route path="/audit/inspections/:inspectionId" element={<InspectionPage/>}/></Routes>
+    </MemoryRouter>);
+    await screen.findByText("Finalizar");
+    await waitFor(()=>expect(evidenceApi.listEvidence).toHaveBeenCalledWith("i1"));
+    evidenceApi.listEvidence.mockImplementationOnce(()=>waiting);
+    await user.click(screen.getByText("Finalizar"));
+    await user.click(screen.getByText("Outra auditoria"));
+    await waitFor(()=>expect(api.inspection).toHaveBeenCalledWith("i2"));
+    resolveReview([]);
+    await waitFor(()=>expect((screen.getByText("Finalizar") as HTMLButtonElement).disabled).toBe(false));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(api.finalize).not.toHaveBeenCalled();
+    await user.click(screen.getByText("Finalizar"));await user.click(await screen.findByText("Confirmar"));
+    await waitFor(()=>expect(api.finalize).toHaveBeenCalledWith("i2",1,[]));
+  });
+  it("shows evidence-set conflict and requires explicit reload/review",async()=>{
+    const user=userEvent.setup();
+    api.finalize.mockRejectedValueOnce({code:"40001",message:"Evidence set changed"});
+    setup(summary({answered:3,at_count:3}),items.map(i=>answer(i.key,"AT")));
+    await user.click(await screen.findByText("Finalizar"));await user.click(await screen.findByText("Confirmar"));
+    expect(await screen.findByText(/O conjunto de evidências foi alterado/)).toBeTruthy();
+    expect((screen.getByText("Finalizar") as HTMLButtonElement).disabled).toBe(true);
+    await user.click(screen.getByText("Recarregar evidências e revisar"));
+    await waitFor(()=>expect((screen.getByText("Finalizar") as HTMLButtonElement).disabled).toBe(false));
+  });
+
   it("shows a partial draft result without final classification", async () => {
     setup(summary(), [
       answer("item-001", "AT"),
@@ -258,8 +311,8 @@ describe("inspection page", () => {
     api.finalize.mockResolvedValue(undefined);
     await user.click(await screen.findByText("Finalizar"));
     expect(api.finalize).not.toHaveBeenCalled();
-    await user.click(screen.getByText("Confirmar"));
-    await waitFor(() => expect(api.finalize).toHaveBeenCalledWith("i1", 1));
+    await user.click(await screen.findByText("Confirmar"));
+    await waitFor(() => expect(api.finalize).toHaveBeenCalledWith("i1", 1, []));
   });
   it("shows a read-only notice without edit permission", async () => {
     permissions.allowed = false;

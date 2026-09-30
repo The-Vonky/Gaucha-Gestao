@@ -59,8 +59,9 @@ concede acesso na tela Usuários. Recuperação de senha também usa o fluxo do 
   finalização e reabertura via RPCs confiáveis). Planos de Ação manuais e por AP/NAT,
   execução/verificação de eficácia e evidências binárias dos planos estão implementados.
   Exportação/relatórios de Audit (Excel e impressão/PDF) estão integrados; anexos por
-  critério (Checklist Evidence) permanecem pendentes; veja
-  `docs/modules/audit/QUALITY_COMPLETION_V1.md`.
+  critério (Checklist Evidence) estão implementados na branch de Evidence; veja
+  `docs/modules/audit/CHECKLIST_EVIDENCE_V1.md` para contrato e validação pendente.
+  A matriz de Qualidade não declara aceite físico ou produção.
 
 ## Testes de banco
 
@@ -72,8 +73,13 @@ otimista. Não simula políticas em JavaScript.
 `test:rls` executa apenas `tests/database.test.ts`; `npm test` inclui também as suítes
 de Audit, Action Plans e Evidence. O harness de evidências usa um stub de Storage;
 isso não substitui a API real. A CI inclui `tests/integration/action-plans.mjs`,
-`evidence.mjs`, `reporting.mjs`, `audit.mjs` e `admin.mjs` contra Supabase local com
+`evidence.mjs`, `reporting.mjs`, `audit.mjs`, `audit-evidence.mjs` e `admin.mjs` contra Supabase local com
 Storage e Chromium a 375px (Admin também a 768/1024/1440).
+`audit-evidence.mjs` acrescenta bytes reais de Storage, concorrência em duas sessões
+PostgreSQL, matriz de acesso, reconciliation e restauração de um arquivo. Seu runner
+recusa endpoints fora de `127.0.0.1`. O workflow também executa `npm audit --omit=dev`.
+A presença de uma suíte no workflow não comprova que sua execução passou; consulte
+os jobs da revisão correspondente.
 Dispositivos reais iOS/Android exigem validação manual separada.
 
 Antes de integrar

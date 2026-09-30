@@ -93,7 +93,7 @@ try {
   const full = allowed(await rpc("inspection_export", "both", { p_inspection: inspection }));
   assert.equal(full.inspection.counts.at, 158);
   assert.equal(full.sections[0].items[0].observation, "=SUM(1,2)\nÁgua 😀");
-  allowed(await rpc("finalize_inspection", "writer", { p_id: inspection, p_version: 1 }));
+  allowed(await rpc("finalize_inspection", "writer", { p_id: inspection, p_version: 1, p_expected_evidence_ids: [] }));
   assert.equal(allowed(await rpc("inspection_export", "both", { p_inspection: inspection })).inspection.status, "finalized");
   allowed(await rpc("reopen_inspection", "writer", { p_id: inspection, p_version: 2 }));
   const reopened = allowed(await rpc("inspection_export", "both", { p_inspection: inspection }));

@@ -12,6 +12,8 @@ import {
 } from "../../shared/ui";
 import * as api from "./api";
 import { ChecklistItem } from "./ChecklistItem";
+import { useChecklistEvidence } from "./useChecklistEvidence";
+import * as evidenceApi from "./evidence";
 import { formatDate, Progress, StatusBadge } from "./Result";
 import {
   CLASSIFICATION_LABELS,
@@ -21,7 +23,7 @@ import {
   type Classification,
 } from "./scoring";
 import { SectionNav } from "./SectionNav";
-import type { Answer } from "./types";
+import type { Answer, ChecklistEvidence } from "./types";
 import { ReportingActions } from "./reporting/ReportingActions";
 /** Band colors exist only for a finalized result. */
 const BAND_TONE: Record<Classification, BadgeTone> = {
@@ -32,6 +34,13 @@ const BAND_TONE: Record<Classification, BadgeTone> = {
 export function InspectionPage() {
   const { inspectionId = "" } = useParams();
   const auth = useAuth();
+  const evidence = useChecklistEvidence(inspectionId);
+  const [review,setReview]=useState<{inspectionId:string;version:number;rows:ChecklistEvidence[]}>();
+  const reviewGeneration=useRef(0);
+  const [finalPending,setFinalPending]=useState(0);
+  const [preparing,setPreparing]=useState(false);
+  const [evidenceError,setEvidenceError]=useState("");
+  const [evidenceConflict,setEvidenceConflict]=useState(false);
   const r = useResource(
     useCallback(async () => {
       const summary = await api.inspection(inspectionId);
@@ -60,7 +69,12 @@ export function InspectionPage() {
       return next;
     });
   }, []);
-  useEffect(() => setPending(new Set()), [inspectionId]);
+  useEffect(() => {
+    reviewGeneration.current++;
+    setPending(new Set());setAction(undefined);setReview(undefined);
+    setFinalPending(0);setPreparing(false);setEvidenceError("");setEvidenceConflict(false);setStale(false);
+    return () => { reviewGeneration.current++; };
+  }, [inspectionId]);
   const heading = useRef<HTMLHeadingElement>(null);
   const moved = useRef(false);
   useEffect(() => {
@@ -86,7 +100,12 @@ export function InspectionPage() {
     [data, loaded],
   );
   const reload = () => {
+    reviewGeneration.current++;
+    setReview(undefined);setAction(undefined);setPreparing(false);
     setStale(false);
+    setEvidenceConflict(false);
+    setEvidenceError("");
+    evidence.reload();
     setPending(new Set());
     r.reload();
   };
@@ -217,8 +236,20 @@ export function InspectionPage() {
           {draft && auth.can("audit.inspection.finalize", scope) && (
             <button
               className="primary"
-              disabled={remaining > 0 || stale}
-              onClick={() => setAction("finalize")}
+              disabled={remaining > 0 || stale || evidenceConflict || preparing || r.loading || summary.id!==inspectionId || pending.size>0}
+              onClick={async () => {
+                const generation=reviewGeneration.current;
+                const id=summary.id,version=summary.version;
+                setPreparing(true);setEvidenceError("");setReview(undefined);
+                try {
+                  // Review all criteria and bind this snapshot to its parent and lifecycle.
+                  const [rows,count]=await Promise.all([evidenceApi.listEvidence(id),evidenceApi.pendingCount(id)]);
+                  if(reviewGeneration.current!==generation)return;
+                  setReview({inspectionId:id,version,rows});setFinalPending(count);setAction("finalize");
+                } catch {
+                  if(reviewGeneration.current===generation)setEvidenceError("Não foi possível revisar as evidências. Tente novamente antes de finalizar.");
+                } finally { if(reviewGeneration.current===generation)setPreparing(false); }
+              }}
             >
               Finalizar
             </button>
@@ -236,6 +267,9 @@ export function InspectionPage() {
           )}
         </div>
       </header>
+      {evidenceError && <Notice error>{evidenceError}</Notice>}
+      {evidenceConflict && <Notice error>O conjunto de evidências foi alterado. <button onClick={reload}>Recarregar evidências e revisar</button></Notice>}
+      {Object.keys(evidence.uploads).length>0 && <Notice tone="warning">Há envios de evidência pendentes. Eles não entram no conjunto disponível e não poderão ser confirmados após a finalização.</Notice>}
       {stale && (
         <Notice error>
           Esta auditoria foi alterada em outra sessão.{" "}
@@ -303,6 +337,8 @@ export function InspectionPage() {
                     item={item}
                     row={answers[item.key]}
                     editable={editable && !stale}
+                    evidenceEditable={editable && !stale && !action}
+                    evidence={evidence}
                     onChange={onChange}
                     onPending={onPending}
                     onConflict={() => void refreshSummary()}
@@ -335,18 +371,38 @@ export function InspectionPage() {
           }
           description={
             action === "finalize"
-              ? "O resultado será calculado pelo servidor e a auditoria ficará somente leitura."
+              ? `O resultado será calculado pelo servidor e a auditoria ficará somente leitura. Esta finalização considera ${review?.rows.length??0} evidência(s) disponível(is) em toda a auditoria. ${finalPending>0||Object.keys(evidence.uploads).length>0?"Há envios pendentes; eles não entrarão no conjunto e não poderão ser confirmados após finalizar.":""}`
               : "A auditoria voltará a ficar editável. As respostas serão preservadas e o resultado final será removido até nova finalização."
           }
           onClose={() => setAction(undefined)}
           onConfirm={async () => {
-            await (action === "finalize" ? api.finalize : api.reopen)(
-              summary.id,
-              summary.version,
-            );
-            reload();
+            try {
+              if(action==="finalize") {
+                if(!review||review.inspectionId!==inspectionId||review.inspectionId!==summary.id||review.version!==summary.version)
+                  throw new Error("Recarregue a auditoria e revise as evidências antes de finalizar.");
+                await api.finalize(review.inspectionId,review.version,review.rows.map(e=>e.id));
+              }
+              else await api.reopen(summary.id,summary.version);
+              reload();
+            } catch(error) {
+              if(action==="finalize" && (error as {code?:string})?.code==="40001"){
+                setEvidenceConflict(true);setStale(true);setAction(undefined);
+              }
+              throw error;
+            }
           }}
-        />
+        >
+          {action==="finalize" && review && <div className="audit-evidence-review">
+            <h3>Evidências incluídas nesta finalização</h3>
+            {review.rows.length===0?<p>Nenhuma evidência disponível.</p>:<ul aria-label="Conjunto completo de evidências">
+              {review.rows.map(e=><li key={e.id}>
+                <strong>{e.original_name}</strong>
+                <span>Critério {items.find(i=>i.key===e.item_key)?.number??e.item_key} · {evidenceApi.typeLabel(e.content_type)} · {evidenceApi.formatSize(e.size_bytes)}</span>
+                <span>{e.uploaded_by_name} · {new Date(e.uploaded_at).toLocaleString("pt-BR")}</span>
+              </li>)}
+            </ul>}
+          </div>}
+        </Confirm>
       )}
     </>
   );

@@ -4,6 +4,8 @@ import { Icon, type IconName } from "../../shared/icons";
 import * as api from "./api";
 import { RESPONSE_LABELS, RESPONSES, type Response } from "./scoring";
 import type { Answer, Item } from "./types";
+import { ChecklistEvidence } from "./ChecklistEvidence";
+import type { EvidenceController } from "./useChecklistEvidence";
 type SaveState = "idle" | "saving" | "saved" | "error" | "conflict";
 const CONFLICT = new Set(["PGRST116", "40001"]);
 const SAVE_ICON: Record<Exclude<SaveState, "idle">, IconName> = {
@@ -19,10 +21,14 @@ export function ChecklistItem({
   onChange,
   onPending,
   onConflict,
+  evidence,
+  evidenceEditable=editable,
 }: {
   item: Item;
   row: Answer;
   editable: boolean;
+  evidence?: EvidenceController;
+  evidenceEditable?: boolean;
   onChange: (row: Answer) => void;
   onPending?: (key: string, value: boolean) => void;
   onConflict: () => void;
@@ -173,6 +179,7 @@ export function ChecklistItem({
         {state === "conflict" &&
           "Este critério foi alterado em outra sessão ou a auditoria mudou de estado. O valor atual foi carregado; revise antes de alterar novamente."}
       </p>
+      {evidence && <ChecklistEvidence item={item} editable={evidenceEditable} controller={evidence}/>}
     </li>
   );
 }
