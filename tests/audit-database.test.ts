@@ -248,11 +248,11 @@ describe.sequential("Audit domain database", () => {
       [id],
     );
     await expect(
-      db.query("select audit.finalize_inspection($1,$2)", [id, draft.version]),
+      db.query("select audit.finalize_inspection($1,$2,'{}'::uuid[])", [id, draft.version]),
     ).rejects.toThrow(/incomplete/);
     await answerAll(id, [], "AT");
     await expect(
-      db.query("select audit.finalize_inspection($1,$2)", [
+      db.query("select audit.finalize_inspection($1,$2,'{}'::uuid[])", [
         id,
         draft.version + 5,
       ]),
@@ -264,7 +264,7 @@ describe.sequential("Audit domain database", () => {
         [id],
       ),
     ).rejects.toThrow();
-    await db.query("select audit.finalize_inspection($1,$2)", [
+    await db.query("select audit.finalize_inspection($1,$2,'{}'::uuid[])", [
       id,
       draft.version,
     ]);
@@ -283,14 +283,14 @@ describe.sequential("Audit domain database", () => {
       ),
     ).toEqual([]);
     await expect(
-      db.query("select audit.finalize_inspection($1,$2)", [id, final.version]),
+      db.query("select audit.finalize_inspection($1,$2,'{}'::uuid[])", [id, final.version]),
     ).rejects.toThrow();
   });
   it("reopens explicitly, preserves answers and recomputes on re-finalization", async () => {
     await login(users.unitA);
     const id = await create(A);
     await answerAll(id, [], "AT");
-    await db.query("select audit.finalize_inspection($1,$2)", [
+    await db.query("select audit.finalize_inspection($1,$2,'{}'::uuid[])", [
       id,
       (await inspection(id)).version,
     ]);
@@ -328,7 +328,7 @@ describe.sequential("Audit domain database", () => {
       ).n,
     ).toBe(158);
     await answerAll(id, [["AT", 79]], "NAT");
-    await db.query("select audit.finalize_inspection($1,$2)", [
+    await db.query("select audit.finalize_inspection($1,$2,'{}'::uuid[])", [
       id,
       reopened.version,
     ]);
@@ -357,13 +357,13 @@ describe.sequential("Audit domain database", () => {
       ],
       "NAP",
     );
-    await db.query("select audit.finalize_inspection($1,1)", [ap]);
+    await db.query("select audit.finalize_inspection($1,1,'{}'::uuid[])", [ap]);
     const r = await inspection(ap);
     expect(Number(r.final_score)).toBeCloseTo((125 / 150) * 100, 10);
     expect(r.final_classification).toBe("adequate");
     const nap = await create(A);
     await answerAll(nap, [], "NAP");
-    await db.query("select audit.finalize_inspection($1,1)", [nap]);
+    await db.query("select audit.finalize_inspection($1,1,'{}'::uuid[])", [nap]);
     expect(await inspection(nap)).toMatchObject({
       status: "finalized",
       final_score: null,
@@ -464,7 +464,7 @@ describe.sequential("Audit domain database", () => {
       ),
     ).toEqual([]);
     await expect(
-      db.query("select audit.finalize_inspection($1,1)", [b]),
+      db.query("select audit.finalize_inspection($1,1,'{}'::uuid[])", [b]),
     ).rejects.toThrow(/Forbidden/);
     await expect(
       db.query("select audit.reopen_inspection($1,1)", [b]),
@@ -503,7 +503,7 @@ describe.sequential("Audit domain database", () => {
       ),
     ).toHaveLength(158);
     await expect(
-      db.query("select audit.finalize_inspection($1,1)", [id]),
+      db.query("select audit.finalize_inspection($1,1,'{}'::uuid[])", [id]),
     ).rejects.toThrow(/Forbidden/);
     await login(users.finalizer);
     expect(
@@ -512,7 +512,7 @@ describe.sequential("Audit domain database", () => {
         [id],
       ),
     ).toEqual([]);
-    await db.query("select audit.finalize_inspection($1,1)", [id]);
+    await db.query("select audit.finalize_inspection($1,1,'{}'::uuid[])", [id]);
     await expect(
       db.query("select audit.reopen_inspection($1,2)", [id]),
     ).rejects.toThrow(/Forbidden/);

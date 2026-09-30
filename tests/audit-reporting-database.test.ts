@@ -117,7 +117,7 @@ describe.sequential("Audit reporting RPCs", () => {
     await db.exec("reset role; select set_config('request.jwt.claim.sub','',false);");
     await db.query("update audit.inspection_answers set response='AT' where inspection_id=$1 and response is null", [inspectionB]);
     await as(1);
-    await db.query("select audit.finalize_inspection($1,1)", [inspectionB]);
+    await db.query("select audit.finalize_inspection($1,1,'{}'::uuid[])", [inspectionB]);
     data = await report("inspection_export", [inspectionB]);
     expect(data?.inspection).toMatchObject({ status: "finalized", classification: "adequate", score: 15750 / 158 });
     expect(data?.inspection.counts).toMatchObject({ at: 157, ap: 1, unanswered: 0 });
@@ -131,7 +131,7 @@ describe.sequential("Audit reporting RPCs", () => {
     await db.exec("reset role; select set_config('request.jwt.claim.sub','',false);");
     await db.query("update audit.inspection_answers set response='NAP' where inspection_id=$1", [inspectionB]);
     await as(1);
-    await db.query("select audit.finalize_inspection($1,3)", [inspectionB]);
+    await db.query("select audit.finalize_inspection($1,3,'{}'::uuid[])", [inspectionB]);
     let data = await report("inspection_export", [inspectionB]);
     expect(data?.inspection).toMatchObject({ status: "finalized", score: null, classification: null });
     expect(data?.inspection.counts).toMatchObject({ nap: 158, applicable: 0, unanswered: 0 });
@@ -142,7 +142,7 @@ describe.sequential("Audit reporting RPCs", () => {
       await db.query(`update audit.inspection_answers a set response=case when c.position<=$2 then 'AT' else 'NAT' end
         from audit.checklist_items c where a.inspection_id=$1 and c.key=a.item_key and c.template_version=a.template_version`, [next, atCount]);
       await as(1);
-      await db.query("select audit.finalize_inspection($1,1)", [next]);
+      await db.query("select audit.finalize_inspection($1,1,'{}'::uuid[])", [next]);
       data = await report("inspection_export", [next]);
       expect(data?.inspection.classification).toBe(expected);
       expect(data?.inspection.score).toBe(100 * atCount / 158);
