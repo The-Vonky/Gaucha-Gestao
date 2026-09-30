@@ -78,6 +78,8 @@ export async function runApi() {
   fails(await bucket("owner").upload(pending.object_key, blob(), { upsert: true }), null, "Upsert is denied even for a valid pending key");
   fails(await bucket("owner").copy(first.object_key, pending.object_key), null, "Storage copy cannot populate pending");
   fails(await bucket("owner").move(first.object_key, pending.object_key), null, "Storage move cannot populate pending");
+  // A signed upload token would outlive the reservation's lifecycle checks; it must not be issuable.
+  fails(await bucket("owner").createSignedUploadUrl(pending.object_key), null, "Signed upload URL cannot be issued for pending");
   assert.equal((await db.query("select count(*)::int n from storage.objects where bucket_id=$1 and name=$2",
     [BUCKET, pending.object_key])).rows[0].n, 0, "Bypass destination remains absent");
   fails(await confirm("unit", pending.evidence_id), "42501", "Confirm requires original uploader");
