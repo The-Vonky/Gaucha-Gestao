@@ -58,10 +58,11 @@ concede acesso na tela Usuários. Recuperação de senha também usa o fluxo do 
 - Audit v1 opera o checklist canônico de 158 critérios por unidade (criação, preenchimento,
   finalização e reabertura via RPCs confiáveis). Planos de Ação manuais e por AP/NAT,
   execução/verificação de eficácia e evidências binárias dos planos estão implementados.
-  Exportação/relatórios de Audit (Excel e impressão/PDF) estão integrados; anexos por
-  critério (Checklist Evidence) estão implementados na branch de Evidence; veja
-  `docs/modules/audit/CHECKLIST_EVIDENCE_V1.md` para contrato e validação pendente.
-  A matriz de Qualidade não declara aceite físico ou produção.
+  Exportação/relatórios de Audit (Excel e impressão/PDF) e anexos por critério
+  (Checklist Evidence) estão integrados na `main`; veja
+  `docs/modules/audit/CHECKLIST_EVIDENCE_V1.md` para contrato e gates restantes.
+  A CI pós-merge da PR #11 passou; a matriz de Qualidade ainda não declara aceite
+  físico ou produção.
 
 ## Testes de banco
 
