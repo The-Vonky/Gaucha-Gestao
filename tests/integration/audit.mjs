@@ -1204,7 +1204,7 @@ try {
           h.after_data.finalized_by === users.unitA,
       );
     } else assert.equal(h.after_data.final_score, null);
-    assert.deepEqual(Object.keys(h.metadata), []);
+    assert.deepEqual(h.metadata, h.action === "finalize" ? { evidence_ids: [] } : {});
     previous = h;
   }
   const logKeys = new Set(history.flatMap((h) => Object.keys(h.after_data)));

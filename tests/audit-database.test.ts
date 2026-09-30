@@ -572,7 +572,7 @@ describe.sequential("Audit domain database", () => {
     );
     for (const f of fns.rows) {
       expect(f.anon).toBe(false);
-      expect(f.auth).toBe(f.nspname === "audit");
+      expect(f.auth).toBe(f.nspname === "audit" || ["can_upload_checklist_evidence_object","can_read_checklist_evidence_object"].includes(f.proname));
     }
   });
 });

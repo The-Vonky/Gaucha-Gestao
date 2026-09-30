@@ -228,6 +228,25 @@ describe.sequential("Audit checklist evidence contract",()=>{
   expect(await rows("delete from storage.objects where name=$1 returning id",[b.object_key])).toEqual([]);
   await remove(b.evidence_id);expect(await one("select audit_private.can_read_checklist_evidence_object($1) allowed",[b.object_key])).toMatchObject({allowed:false});
  });
+ it("enforces authenticated Storage INSERT and denies copy/signed-upload operations",async()=>{
+  const id=await draft();const b=await begin(id);
+  const insert=(key:string)=>db.query("insert into storage.objects(bucket_id,name,owner_id,metadata) values('audit-checklist-evidence',$1,$2,'{}')",[key,users.unitA]);
+  await db.exec("select set_config('storage.operation','storage.object.upload',false)");
+  await expect(insert(id+"/"+uid(999))).rejects.toMatchObject({code:"42501"});
+  await login(users.global);await expect(insert(b.object_key)).rejects.toMatchObject({code:"42501"});
+  await login(users.unitA);
+  await db.exec("select set_config('storage.operation','storage.object.copy',false)");await expect(insert(b.object_key)).rejects.toMatchObject({code:"42501"});
+  await db.exec("select set_config('storage.operation','storage.object.upload',false)");await insert(b.object_key);
+  const expired=await begin(id);
+  await db.exec("reset role;alter table audit.checklist_evidence disable trigger guard_checklist_evidence");
+  await db.query("update audit.checklist_evidence set created_at=clock_timestamp()-interval '2 hours' where id=$1",[expired.evidence_id]);
+  await db.exec("alter table audit.checklist_evidence enable trigger guard_checklist_evidence");await login(users.unitA);
+  await expect(insert(expired.object_key)).rejects.toMatchObject({code:"42501"});
+  const old=await begin(id);await fill(id);await finalize(id);
+  await expect(insert(old.object_key)).rejects.toMatchObject({code:"42501"});
+  await db.query("select audit.reopen_inspection($1,2)",[id]);
+  await expect(insert(old.object_key)).rejects.toMatchObject({code:"42501"});
+ });
  it("binds finalize to every available ID across criteria as sorted distinct sets",async()=>{
   const id=await draft();const a=await attach(id),b=await attach(id,"item-150");await fill(id);
   await expect(finalize(id,null)).rejects.toMatchObject({code:"23514"});
