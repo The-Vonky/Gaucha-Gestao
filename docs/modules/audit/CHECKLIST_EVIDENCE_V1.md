@@ -116,9 +116,10 @@ and all six integration suites in workflow order against a freshly reset disposa
 local Supabase (127.0.0.1) with Chromium; no linked project or production execution
 occurred.
 
-CI evidence is now complete. PR #11 head `132771d54b0eae3781d72fb11746b12f28a84f0e`
-passed the full workflow before merge. The post-merge `main` execution
-`36728754202` passed on `c3f135f6026899362e1edacda3e97e922528ac8e`:
+Repository CI evidence is recorded. PR #11 head `132771d54b0eae3781d72fb11746b12f28a84f0e`
+passed the full pull-request workflow in run `36720376966`, attempt 2, before merge.
+The post-merge `main` execution `36728754202` passed on
+`c3f135f6026899362e1edacda3e97e922528ac8e`:
 typecheck, lint, 18 test files / 215 tests, build, verify:build, `npm audit --omit=dev`
 with 0 vulnerabilities, and all six integration suites including real Checklist
 Evidence Storage/Chromium coverage. This CI is repository validation only; no linked

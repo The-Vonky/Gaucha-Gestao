@@ -1,6 +1,6 @@
 # Implementation Brief — Audit Checklist Evidence v1
 
-Status: product/security decisions E1–E3 approved on 2026-09-29; not implemented at the baseline below. Implementation is now on `feat/audit-checklist-evidence-v1`; final CI evidence and physical/mobile acceptance remain pending until recorded.  
+Status: product/security decisions E1–E3 approved on 2026-09-29. Implementation is integrated in `main` by PR #11 at `c3f135f6026899362e1edacda3e97e922528ac8e`; post-merge repository CI `36728754202` passed. Physical/mobile and operational acceptance remain pending. The baseline below is the historical implementation starting point.  
 Date: 2026-09-29  
 Baseline: implementation starts from `main` at `db35fa5088adcd98ef758cd211c80159f0ff8169` (includes Audit Export & Reporting, PR #9). The brief was originally written against `3f158d36c6c087a560fd464e7c60bcdee2e7fae7`.
 

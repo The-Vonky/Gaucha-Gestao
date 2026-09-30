@@ -61,8 +61,9 @@ concede acesso na tela Usuários. Recuperação de senha também usa o fluxo do 
   Exportação/relatórios de Audit (Excel e impressão/PDF) e anexos por critério
   (Checklist Evidence) estão integrados na `main`; veja
   `docs/modules/audit/CHECKLIST_EVIDENCE_V1.md` para contrato e gates restantes.
-  A CI pós-merge da PR #11 passou; a matriz de Qualidade ainda não declara aceite
-  físico ou produção.
+  A CI pós-merge da PR #11 passou na execução `36728754202` sobre
+  `c3f135f6026899362e1edacda3e97e922528ac8e`; a matriz de Qualidade ainda não
+  declara aceite físico ou produção.
 
 ## Testes de banco
 
