@@ -109,10 +109,13 @@ Action Plans, Evidence, Reporting, Audit and Admin suites. It includes real JWT,
 Storage bytes, bypass attempts, two-session PostgreSQL races, reconciliation/file
 restore, desktop and 375px upload/download/retry/keyboard/overflow checks.
 
-Development used only the authenticated GitHub connector. No local checkout,
-local tests, linked project or production execution occurred. Check the exact
-commit's Actions jobs before claiming execution or acceptance. New Actions runs
-currently fail before a runner/step starts; their suites are not proven executed.
+Initial development used only the authenticated GitHub connector. An independent
+review later ran typecheck, lint, unit tests, build, verify:build, `npm audit --omit=dev`
+and all six integration suites in workflow order against a freshly reset disposable
+local Supabase (127.0.0.1) with Chromium; no linked project or production execution
+occurred. Local runs are not CI evidence: check the exact commit's Actions jobs before
+claiming CI acceptance. New Actions runs currently fail before a runner/step starts;
+their suites are not proven executed in CI.
 
 Physical iOS Safari and Android Chrome camera/gallery/file/download acceptance has
 not occurred. Quality is not declared 100%; production and physical/mobile gates
