@@ -56,13 +56,11 @@ export function InspectionPage() {
   const [lifecycleTransition, setLifecycleTransition] = useState<{
     inspectionId: string;
     version: number;
-    status: "draft" | "finalized";
   }>();
   useEffect(() => {
     if (lifecycleTransition && !r.loading &&
         data?.summary.id === lifecycleTransition.inspectionId &&
-        data.summary.version > lifecycleTransition.version &&
-        data.summary.status === lifecycleTransition.status) {
+        data.summary.version > lifecycleTransition.version) {
       setLifecycleTransition(undefined);
     }
   }, [data, r.loading, lifecycleTransition]);
@@ -149,7 +147,9 @@ export function InspectionPage() {
   // Keep the previous summary out of the UI from acceptance through the fresh load.
   // A failed/manual reload preserves this guard; navigation clears it.
   if (lifecycleTransition?.inspectionId === inspectionId)
-    return <Notice>Atualizando estado da auditoria…</Notice>;
+    return <Notice>Atualizando estado da auditoria…
+      {!r.loading && <button onClick={reload}>Tentar novamente</button>}
+    </Notice>;
   if (!data || !results)
     return (
       <>
@@ -406,7 +406,6 @@ export function InspectionPage() {
               setLifecycleTransition({
                 inspectionId: summary.id,
                 version: summary.version,
-                status: action === "finalize" ? "finalized" : "draft",
               });
               reload();
             } catch(error) {

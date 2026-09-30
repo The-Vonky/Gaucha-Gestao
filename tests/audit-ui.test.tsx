@@ -226,6 +226,26 @@ describe("inspection page", () => {
       expect(screen.getAllByRole("button", { name: /Anexar arquivo/ }).length).toBe(2);
     }
   });
+  it.each(["error", "old"] as const)("preserves a blocked lifecycle after a %s reload and allows manual retry", async (loadResult) => {
+    const user = userEvent.setup();
+    const initial = summary({ answered: 3, at_count: 3 });
+    setup(initial, items.map(i => answer(i.key, "AT")));
+    await screen.findByText("Finalizar");
+    api.finalize.mockResolvedValueOnce(undefined);
+    if (loadResult === "error") api.inspection.mockRejectedValueOnce({ code: "08006" });
+    else api.inspection.mockResolvedValueOnce(initial);
+    api.inspection.mockResolvedValueOnce(summary({ status: "finalized", version: 2, answered: 3, at_count: 3,
+      final_score: 100, final_classification: "adequate", finalized_at: "2026-09-24T12:00:00Z" }));
+    await user.click(screen.getByText("Finalizar"));
+    await user.click(await screen.findByText("Confirmar"));
+    const retry = await screen.findByRole("button", { name: "Tentar novamente" });
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Anexar arquivo/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Exportar Excel" })).toBeNull();
+    await user.click(retry);
+    expect(await screen.findByText(/Somente leitura/)).toBeTruthy();
+    expect(api.inspection).toHaveBeenCalledTimes(3);
+  });
   it("preserves finalize failure and cancellation without locking the page", async () => {
     const user = userEvent.setup();
     setup(summary({ answered: 3, at_count: 3 }), items.map(i => answer(i.key, "AT")));
