@@ -5,11 +5,11 @@ const http=vi.hoisted(()=>vi.fn());
 vi.mock("../apps/web/src/core/client",()=>({
  client:createClient("http://127.0.0.1:54321","test-key",{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:http}})
 }));
-import { beginUpload, finishUpload, downloadUrl, listEvidence, pendingCount, removeEvidence, retryable } from "../apps/web/src/modules/audit/evidence";
+import { beginUpload, finishUpload, downloadUrl, downloadEvidence, listEvidence, pendingCount, removeEvidence, retryable } from "../apps/web/src/modules/audit/evidence";
 import { checkFile, normalizeName } from "../apps/web/src/shared/evidenceFiles";
 import type { ChecklistEvidence } from "../apps/web/src/modules/audit/types";
 import { finalize } from "../apps/web/src/modules/audit/api";
-afterEach(()=>http.mockReset());
+afterEach(()=>{http.mockReset();vi.unstubAllGlobals();vi.restoreAllMocks();});
 describe("Audit evidence finalization client",()=>{
  it("sends the exact complete set selected by the caller",async()=>{
   http.mockResolvedValue(new Response(null,{status:204}));
@@ -54,6 +54,15 @@ describe("Audit evidence file and transport",()=>{
   expect(body.get("cacheControl")).toBe("0");
   const confirmations=calls.filter(([url])=>String(url).includes("/confirm_checklist_evidence_upload"));
   expect(confirmations.map(([,init])=>JSON.parse(init.body).p_evidence)).toEqual(["e1","e1"]);
+ });
+ it("shows missing bytes before attempting an attachment download",async()=>{
+  const row={id:"e1",inspection_id:"i1",item_key:"item-150",object_key:"i1/e1",original_name:"ação.pdf",content_type:"application/pdf",size_bytes:10,created_by:"u",uploaded_by_name:"Ana",uploaded_at:""} satisfies ChecklistEvidence;
+  http.mockResolvedValueOnce(json({signedURL:"/object/sign/audit-checklist-evidence/i1/e1?token=test"}));
+  const head=vi.fn().mockResolvedValue(new Response(null,{status:404}));vi.stubGlobal("fetch",head);
+  const click=vi.spyOn(HTMLAnchorElement.prototype,"click").mockImplementation(()=>{});
+  await expect(downloadEvidence(row)).rejects.toThrow("Arquivo indisponível.");
+  expect(head).toHaveBeenCalledWith(expect.stringContaining("/object/sign/"),{method:"HEAD",cache:"no-store"});
+  expect(click).not.toHaveBeenCalled();
  });
  it("recovers a lost upload response via duplicate and confirms",async()=>{
   http.mockResolvedValueOnce(json([{evidence_id:"e1",object_key:"i1/e1"}])).mockResolvedValueOnce(json({statusCode:"409",error:"Duplicate",message:"already exists"},409)).mockResolvedValueOnce(new Response(null,{status:204}));

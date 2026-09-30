@@ -214,7 +214,7 @@ export function Confirm({
   }
   return (
     <Modal title={title} onClose={onClose} busy={busy}>
-      <p>{description}</p>
+      <p className="confirm-description">{description}</p>
       {children}
       {error && <Notice error>{error}</Notice>}
       <div className="actions">

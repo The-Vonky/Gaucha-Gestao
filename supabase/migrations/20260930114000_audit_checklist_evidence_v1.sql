@@ -175,7 +175,8 @@ with check(bucket_id='audit-checklist-evidence' and current_setting('storage.ope
  and audit_private.can_upload_checklist_evidence_object(name));
 create policy audit_checklist_evidence_read on storage.objects for select to authenticated
 using(bucket_id='audit-checklist-evidence' and audit_private.can_read_checklist_evidence_object(name));
--- No client UPDATE/DELETE policies: no overwrite, upsert, move or copy destination without pending.
+-- No client UPDATE/DELETE policies: no overwrite, upsert or move.
+-- The upload-operation gate also denies COPY into a valid pending destination.
 
 drop function audit.finalize_inspection(uuid,integer);
 create function audit.finalize_inspection(p_id uuid,p_version integer,p_expected_evidence_ids uuid[]) returns void
