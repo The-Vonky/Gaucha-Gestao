@@ -8,3 +8,7 @@
 .audit-evidence button { min-height: 44px; max-width: 100%; white-space: normal; }
 .audit-evidence .muted { font-size: .8rem; overflow-wrap: anywhere; }
 .audit-evidence .pending { margin-top: .5rem; }
+
+.audit-evidence-review { min-width: 0; max-height: 40vh; overflow: auto; margin-block: 1rem; }
+.audit-evidence-review ul { list-style: none; padding: 0; }
+.audit-evidence-review li { display: grid; gap: .25rem; padding-block: .75rem; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
