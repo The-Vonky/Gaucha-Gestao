@@ -9,7 +9,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { InspectionPage } from "../apps/web/src/modules/audit/InspectionPage";
 import { visibleNavigation } from "../apps/web/src/app/navigation";
 import type {
@@ -137,8 +137,35 @@ describe("inspection page", () => {
     await user.click(await screen.findByText("Finalizar"));
     expect(await screen.findByText(/1 evidência.*toda a auditoria/)).toBeTruthy();
     expect(screen.getByText(/Há envios pendentes/)).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByText("seção9.pdf")).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByText(/Critério 3/)).toBeTruthy();
     await user.click(screen.getByText("Confirmar"));
     await waitFor(()=>expect(api.finalize).toHaveBeenCalledWith("i1",1,["e9"]));
+  });
+  it("discards a pending finalization review when navigating to another inspection",async()=>{
+    const user=userEvent.setup();
+    let resolveReview!:(value:never[])=>void;
+    const waiting=new Promise<never[]>(resolve=>{resolveReview=resolve;});
+    evidenceApi.listEvidence.mockResolvedValue([]);
+    api.inspection.mockImplementation(async(id:string)=>summary({id,answered:3,at_count:3}));
+    api.checklist.mockResolvedValue({sections,items});
+    api.answers.mockResolvedValue(items.map(i=>answer(i.key,"AT")));
+    render(<MemoryRouter initialEntries={["/audit/inspections/i1"]}>
+      <Link to="/audit/inspections/i2">Outra auditoria</Link>
+      <Routes><Route path="/audit/inspections/:inspectionId" element={<InspectionPage/>}/></Routes>
+    </MemoryRouter>);
+    await screen.findByText("Finalizar");
+    await waitFor(()=>expect(evidenceApi.listEvidence).toHaveBeenCalledWith("i1"));
+    evidenceApi.listEvidence.mockImplementationOnce(()=>waiting);
+    await user.click(screen.getByText("Finalizar"));
+    await user.click(screen.getByText("Outra auditoria"));
+    await waitFor(()=>expect(api.inspection).toHaveBeenCalledWith("i2"));
+    resolveReview([]);
+    await waitFor(()=>expect((screen.getByText("Finalizar") as HTMLButtonElement).disabled).toBe(false));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(api.finalize).not.toHaveBeenCalled();
+    await user.click(screen.getByText("Finalizar"));await user.click(await screen.findByText("Confirmar"));
+    await waitFor(()=>expect(api.finalize).toHaveBeenCalledWith("i2",1,[]));
   });
   it("shows evidence-set conflict and requires explicit reload/review",async()=>{
     const user=userEvent.setup();
