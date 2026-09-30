@@ -30,9 +30,22 @@ export async function units(): Promise<AuditUnit[]> {
 export async function summaries(
   args: { p_unit?: string; p_inspection?: string; p_overview?: boolean } = {},
 ): Promise<InspectionSummary[]> {
-  const { data, error } = await db().rpc("inspection_summaries", args);
-  if (error) throw error;
-  return (data ?? []).map(numeric);
+  const rows = new Map<string, InspectionSummary>();
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await db()
+      .rpc("inspection_summaries", args)
+      // Preserve the RPC's newest-first order, with a unique page boundary.
+      .order("applied_on", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    // A concurrent insertion can shift an already loaded row into the next page.
+    for (const row of data ?? [])
+      if (!rows.has(row.id)) rows.set(row.id, numeric(row));
+    if (!data || data.length < pageSize) return [...rows.values()];
+  }
 }
 export async function inspection(id: string) {
   const [summary] = await summaries({ p_inspection: id });
