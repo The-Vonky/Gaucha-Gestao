@@ -1032,6 +1032,30 @@ button.file-remove:hover:not(:disabled) {
   color: var(--color-text-secondary);
 }
 
+@media (pointer: coarse), (max-width: 1023px) {
+  .breadcrumb a,
+  .audit-unit h3 a,
+  .audit-unit > a,
+  .quality-return {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
+    max-width: 100%;
+    padding: var(--space-1) 0;
+    overflow-wrap: anywhere;
+  }
+  .ap-result .check {
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
+    align-items: center;
+  }
+  .ap-result .check input {
+    margin-top: 0;
+    flex-shrink: 0;
+  }
+}
+
 @media (max-width: 1023px) {
   .audit-layout {
     grid-template-columns: minmax(0, 1fr);

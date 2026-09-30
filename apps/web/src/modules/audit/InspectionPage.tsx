@@ -139,7 +139,7 @@ export function InspectionPage() {
           title="Auditoria indisponível"
           description="A auditoria não existe ou você não tem acesso a ela."
         />
-        <Link to="/audit">Voltar para Auditorias</Link>
+        <Link className="quality-return" to="/audit">Voltar para Auditorias</Link>
       </>
     );
   const { summary, sections, items } = data;

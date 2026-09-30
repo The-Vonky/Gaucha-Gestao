@@ -81,7 +81,7 @@ export function ActionPlanPage() {
           title="Plano de ação indisponível"
           description="O plano não existe ou você não tem acesso a ele."
         />
-        <Link to="/action-plans">Voltar para Planos de Ação</Link>
+        <Link className="quality-return" to="/action-plans">Voltar para Planos de Ação</Link>
       </>
     );
   const s = r.data;

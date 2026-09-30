@@ -724,6 +724,24 @@ main#main {
 }
 
 /* ---------- Tablet & mobile ---------- */
+@media (pointer: coarse), (max-width: 1023px) {
+  .menu a,
+  .crumbs a,
+  .topbar-brand {
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
+  }
+  .crumbs a {
+    display: inline-flex;
+    align-items: center;
+  }
+  .user-card .logout {
+    width: var(--touch-target);
+    min-height: var(--touch-target);
+    flex-shrink: 0;
+  }
+}
+
 @media (max-width: 1023px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);

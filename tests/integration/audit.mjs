@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { qualityTouchTargets } from "./quality-touch.mjs";
 import { execFileSync, spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -2007,6 +2008,12 @@ try {
       await page.locator("h1").waitFor();
       await settle(page);
       await noOverflow(page, route);
+      if (route === "/audit") assert.ok(await page.locator(".audit-unit h3 a").count());
+      for (const width of [375, 768, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await qualityTouchTargets(page, `${route} ${width}px/coarse`);
+      }
+      await page.setViewportSize({ width: 375, height: 812 });
     }
     // The official report controls use the full scoped RPC dataset. At 375px,
     // the dedicated print portal includes hidden checklist sections and no app chrome.
@@ -2184,6 +2191,11 @@ try {
       await locker.end();
     }
     assert.equal((await answerRow(uiInspection, "item-005")).response, null);
+    for (const width of [375, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await qualityTouchTargets(page, `stale notice actions ${width}px/coarse`);
+    }
+    await page.setViewportSize({ width: 375, height: 812 });
     await page.getByRole("button", { name: "Atualizar" }).tap();
     await page.getByText("Somente leitura", { exact: false }).first().waitFor();
     assert.equal(

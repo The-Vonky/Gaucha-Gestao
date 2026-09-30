@@ -794,7 +794,7 @@ dialog::backdrop {
 @media (pointer: coarse), (max-width: 1023px) {
   :root {
     --control-height: var(--touch-target);
-    --control-height-sm: 40px;
+    --control-height-sm: var(--touch-target);
   }
 }
 @media (max-width: 599px) {
