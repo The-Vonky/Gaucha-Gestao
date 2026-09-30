@@ -232,11 +232,11 @@ audit.begin_checklist_evidence_upload(uuid,text,text,text,bigint),audit.confirm_
 audit.remove_checklist_evidence(uuid),audit.checklist_evidence(uuid,text),audit.finalize_inspection(uuid,integer,uuid[]) to authenticated;
 -- Aggregate only: no pending identities, names or keys exposed. Used for explicit finalize warning.
 create function audit.checklist_evidence_pending_count(p_inspection uuid) returns integer
-language sql volatile security definer set search_path='' as $
+language sql volatile security definer set search_path='' as $$
  select count(*)::integer from audit.checklist_evidence e join audit.inspections i on i.id=e.inspection_id
  where e.inspection_id=p_inspection and e.status='pending' and e.created_at>clock_timestamp()-interval '1 hour'
  and private.has_unit_permission('audit.inspection.read',i.unit_id)
-$;
+$$;
 revoke all on function audit.checklist_evidence_pending_count(uuid) from public,anon,authenticated;
 grant execute on function audit.checklist_evidence_pending_count(uuid) to authenticated;
 commit;
