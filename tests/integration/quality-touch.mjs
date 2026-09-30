@@ -3,6 +3,13 @@ import assert from "node:assert/strict";
 // Read rendered bounds in Chromium, including label areas around native radios.
 // Only operational targets are checked; inline prose links retain their density.
 export async function qualityTouchTargets(page, label) {
+  // Modal entry scales the rendered bounds. Wait for actual finite animations,
+  // never a guessed delay; upload progress animations continue independently.
+  await page.evaluate(async () => {
+    const animations = document.getAnimations().filter(animation =>
+      animation.effect?.getComputedTiming().iterations !== Infinity);
+    await Promise.all(animations.map(animation => animation.finished.catch(() => undefined)));
+  });
   const result = await page.evaluate(() => {
     const selectors = [
       "button.small", ".row-actions button", ".notice-body button",
