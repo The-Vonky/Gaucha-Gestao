@@ -12,6 +12,8 @@ import {
 } from "../../shared/ui";
 import * as api from "./api";
 import { ChecklistItem } from "./ChecklistItem";
+import { useChecklistEvidence } from "./useChecklistEvidence";
+import * as evidenceApi from "./evidence";
 import { formatDate, Progress, StatusBadge } from "./Result";
 import {
   CLASSIFICATION_LABELS,
@@ -32,6 +34,12 @@ const BAND_TONE: Record<Classification, BadgeTone> = {
 export function InspectionPage() {
   const { inspectionId = "" } = useParams();
   const auth = useAuth();
+  const evidence = useChecklistEvidence(inspectionId);
+  const [finalEvidence,setFinalEvidence]=useState<string[]>([]);
+  const [finalPending,setFinalPending]=useState(0);
+  const [preparing,setPreparing]=useState(false);
+  const [evidenceError,setEvidenceError]=useState("");
+  const [evidenceConflict,setEvidenceConflict]=useState(false);
   const r = useResource(
     useCallback(async () => {
       const summary = await api.inspection(inspectionId);
@@ -87,6 +95,9 @@ export function InspectionPage() {
   );
   const reload = () => {
     setStale(false);
+    setEvidenceConflict(false);
+    setEvidenceError("");
+    evidence.reload();
     setPending(new Set());
     r.reload();
   };
@@ -217,8 +228,16 @@ export function InspectionPage() {
           {draft && auth.can("audit.inspection.finalize", scope) && (
             <button
               className="primary"
-              disabled={remaining > 0 || stale}
-              onClick={() => setAction("finalize")}
+              disabled={remaining > 0 || stale || evidenceConflict || preparing || pending.size>0}
+              onClick={async () => {
+                setPreparing(true);setEvidenceError("");
+                try {
+                  // Entire inspection, independently of the visible section. Freeze this review snapshot.
+                  const [rows,count]=await Promise.all([evidenceApi.listEvidence(summary.id),evidenceApi.pendingCount(summary.id)]);
+                  setFinalEvidence(rows.map(e=>e.id));setFinalPending(count);setAction("finalize");
+                } catch { setEvidenceError("Não foi possível revisar as evidências. Tente novamente antes de finalizar."); }
+                finally { setPreparing(false); }
+              }}
             >
               Finalizar
             </button>
@@ -236,6 +255,9 @@ export function InspectionPage() {
           )}
         </div>
       </header>
+      {evidenceError && <Notice error>{evidenceError}</Notice>}
+      {evidenceConflict && <Notice error>O conjunto de evidências foi alterado. <button onClick={reload}>Recarregar evidências e revisar</button></Notice>}
+      {Object.keys(evidence.uploads).length>0 && <Notice tone="warning">Há envios de evidência pendentes. Eles não entram no conjunto disponível e não poderão ser confirmados após a finalização.</Notice>}
       {stale && (
         <Notice error>
           Esta auditoria foi alterada em outra sessão.{" "}
@@ -303,6 +325,8 @@ export function InspectionPage() {
                     item={item}
                     row={answers[item.key]}
                     editable={editable && !stale}
+                    evidenceEditable={editable && !stale && !action}
+                    evidence={evidence}
                     onChange={onChange}
                     onPending={onPending}
                     onConflict={() => void refreshSummary()}
@@ -335,16 +359,21 @@ export function InspectionPage() {
           }
           description={
             action === "finalize"
-              ? "O resultado será calculado pelo servidor e a auditoria ficará somente leitura."
+              ? `O resultado será calculado pelo servidor e a auditoria ficará somente leitura. Esta finalização considera ${finalEvidence.length} evidência(s) disponível(is) em toda a auditoria. ${finalPending>0||Object.keys(evidence.uploads).length>0?"Há envios pendentes; eles não entrarão no conjunto e não poderão ser confirmados após finalizar.":""}`
               : "A auditoria voltará a ficar editável. As respostas serão preservadas e o resultado final será removido até nova finalização."
           }
           onClose={() => setAction(undefined)}
           onConfirm={async () => {
-            await (action === "finalize" ? api.finalize : api.reopen)(
-              summary.id,
-              summary.version,
-            );
-            reload();
+            try {
+              if(action==="finalize") await api.finalize(summary.id,summary.version,finalEvidence);
+              else await api.reopen(summary.id,summary.version);
+              reload();
+            } catch(error) {
+              if(action==="finalize" && (error as {code?:string})?.code==="40001"){
+                setEvidenceConflict(true);setStale(true);setAction(undefined);
+              }
+              throw error;
+            }
           }}
         />
       )}

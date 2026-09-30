@@ -9,7 +9,7 @@ import type {
   Item,
   Section,
 } from "./types";
-function db() {
+export function db() {
   if (!client) throw new Error("Configuração de desenvolvimento indisponível.");
   return (client as unknown as SupabaseClient<AuditDatabase, "audit">).schema(
     "audit",
@@ -105,10 +105,11 @@ export async function createInspection(
   if (error) throw error;
   return data;
 }
-export async function finalize(id: string, version: number) {
+export async function finalize(id: string, version: number, evidenceIds: string[]) {
   const { error } = await db().rpc("finalize_inspection", {
     p_id: id,
     p_version: version,
+    p_expected_evidence_ids: evidenceIds,
   });
   if (error) throw error;
 }

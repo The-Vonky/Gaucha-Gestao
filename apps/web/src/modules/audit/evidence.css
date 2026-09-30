@@ -1,0 +1,10 @@
+.audit-evidence { min-width: 0; border-top: 1px solid var(--border, #ddd); padding-top: .75rem; }
+.audit-evidence h3 { font-size: .95rem; margin: 0 0 .5rem; }
+.audit-evidence-list { list-style: none; margin: 0; padding: 0; }
+.audit-evidence .file-item { min-width: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.audit-evidence .file-body { flex: 1 1 180px; min-width: 0; }
+.audit-evidence-name, .audit-evidence .file-meta { overflow-wrap: anywhere; word-break: break-word; }
+.audit-evidence .file-actions { display: flex; flex-wrap: wrap; gap: .4rem; min-width: 0; }
+.audit-evidence button { min-height: 44px; max-width: 100%; white-space: normal; }
+.audit-evidence .muted { font-size: .8rem; overflow-wrap: anywhere; }
+.audit-evidence .pending { margin-top: .5rem; }

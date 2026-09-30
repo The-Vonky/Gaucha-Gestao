@@ -59,7 +59,7 @@ create trigger guard_checklist_evidence before update on audit.checklist_evidenc
 for each row execute function audit_private.guard_checklist_evidence();
 
 -- Shared Audit mutation order: parent FOR UPDATE -> deterministic authorization locks -> evidence.
--- Neither the FK lookup nor evidence mutations lock/update inspection_answers.
+-- No explicit answer locks/updates. The composite FK takes only its implicit compatible key-share lock.
 create function audit_private.lock_checklist_evidence_inspection(p_id uuid) returns audit.inspections
 language plpgsql security definer set search_path='' as $$
 declare i audit.inspections;
@@ -171,7 +171,8 @@ values('audit-checklist-evidence','audit-checklist-evidence',false,10485760,
 array['image/jpeg','image/png','application/pdf','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']);
 create policy audit_checklist_evidence_insert on storage.objects for insert to authenticated
-with check(bucket_id='audit-checklist-evidence' and audit_private.can_upload_checklist_evidence_object(name));
+with check(bucket_id='audit-checklist-evidence' and current_setting('storage.operation',true)='storage.object.upload'
+ and audit_private.can_upload_checklist_evidence_object(name));
 create policy audit_checklist_evidence_read on storage.objects for select to authenticated
 using(bucket_id='audit-checklist-evidence' and audit_private.can_read_checklist_evidence_object(name));
 -- No client UPDATE/DELETE policies: no overwrite, upsert, move or copy destination without pending.
@@ -229,4 +230,13 @@ grant usage on schema audit_private to authenticated;
 grant execute on function audit_private.can_upload_checklist_evidence_object(text),audit_private.can_read_checklist_evidence_object(text),
 audit.begin_checklist_evidence_upload(uuid,text,text,text,bigint),audit.confirm_checklist_evidence_upload(uuid),
 audit.remove_checklist_evidence(uuid),audit.checklist_evidence(uuid,text),audit.finalize_inspection(uuid,integer,uuid[]) to authenticated;
+-- Aggregate only: no pending identities, names or keys exposed. Used for explicit finalize warning.
+create function audit.checklist_evidence_pending_count(p_inspection uuid) returns integer
+language sql volatile security definer set search_path='' as $
+ select count(*)::integer from audit.checklist_evidence e join audit.inspections i on i.id=e.inspection_id
+ where e.inspection_id=p_inspection and e.status='pending' and e.created_at>clock_timestamp()-interval '1 hour'
+ and private.has_unit_permission('audit.inspection.read',i.unit_id)
+$;
+revoke all on function audit.checklist_evidence_pending_count(uuid) from public,anon,authenticated;
+grant execute on function audit.checklist_evidence_pending_count(uuid) to authenticated;
 commit;
