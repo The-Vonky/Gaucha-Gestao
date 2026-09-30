@@ -1,4 +1,4 @@
-import { assert, randomUUID, pg, config, A, BUCKET, blob, db, users, service, bucket, must, fails, rpc, beginArgs, begin, upload, confirm, remove, attach, list, row, evidenceRow, inspection, fill, finalize, reopen, expire, report, countEvents, download, waitForLock, session, outcome, race, beginSql, confirmSql, removeSql, finalizeSql, state } from "./audit-evidence-fixture.mjs";
+import { assert, randomUUID, pg, config, A, BUCKET, bytes, blob, db, users, service, bucket, must, fails, rpc, beginArgs, begin, upload, confirm, remove, attach, list, row, evidenceRow, inspection, fill, finalize, reopen, expire, report, countEvents, download, waitForLock, session, outcome, race, beginSql, confirmSql, removeSql, finalizeSql, state } from "./audit-evidence-fixture.mjs";
 
 export async function runDatabase() {
   state.phase = "quotas";
