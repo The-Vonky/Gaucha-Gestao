@@ -1,8 +1,9 @@
 # Audit Checklist Evidence v1
 
-Implementation branch: `feat/audit-checklist-evidence-v1`. Migration:
+Integrated in `main` by PR #11 at merge commit
+`c3f135f6026899362e1edacda3e97e922528ac8e`. Migration:
 `supabase/migrations/20260930114000_audit_checklist_evidence_v1.sql`.
-This records the implemented contract, not production readiness or full Quality acceptance.
+This records the implemented contract and verified repository state, not production readiness or full Quality acceptance.
 The completion matrix and foundation gates are maintained separately.
 
 ## Contract
@@ -113,9 +114,16 @@ Initial development used only the authenticated GitHub connector. An independent
 review later ran typecheck, lint, unit tests, build, verify:build, `npm audit --omit=dev`
 and all six integration suites in workflow order against a freshly reset disposable
 local Supabase (127.0.0.1) with Chromium; no linked project or production execution
-occurred. Local runs are not CI evidence: check the exact commit's Actions jobs before
-claiming CI acceptance. New Actions runs currently fail before a runner/step starts;
-their suites are not proven executed in CI.
+occurred.
+
+Repository CI evidence is recorded. PR #11 head `132771d54b0eae3781d72fb11746b12f28a84f0e`
+passed the full pull-request workflow in run `36720376966`, attempt 2, before merge.
+The post-merge `main` execution `36728754202` passed on
+`c3f135f6026899362e1edacda3e97e922528ac8e`:
+typecheck, lint, 18 test files / 215 tests, build, verify:build, `npm audit --omit=dev`
+with 0 vulnerabilities, and all six integration suites including real Checklist
+Evidence Storage/Chromium coverage. This CI is repository validation only; no linked
+project or production execution occurred.
 
 Physical iOS Safari and Android Chrome camera/gallery/file/download acceptance has
 not occurred. Quality is not declared 100%; production and physical/mobile gates

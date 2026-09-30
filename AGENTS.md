@@ -113,7 +113,7 @@ Never claim a check passed without running it.
 
 Core/authorization, Audit Domain v1 (including reopen), Action Plans and Action Plan Evidence are implemented. Quality UI is integrated; remaining module UX work is tracked separately. Audit Export & Reporting (inspection Excel, unit-history Excel, browser print/PDF) is implemented by PR #9; do not reimplement it.
 
-For the remaining first Quality scope, read `docs/modules/audit/QUALITY_COMPLETION_V1.md` and the relevant implementation brief. Checklist evidence is implemented on `feat/audit-checklist-evidence-v1`; see `docs/modules/audit/CHECKLIST_EVIDENCE_V1.md` for its contract and outstanding validation. Physical/mobile acceptance and operational release remain pending. Repository implementation and CI do not constitute production readiness.
+For the remaining first Quality scope, read `docs/modules/audit/QUALITY_COMPLETION_V1.md` and the relevant implementation brief. Checklist Evidence is integrated in `main` by PR #11; the unit-history Data API truncation blocker is fixed by PR #13; do not reimplement either. See `docs/modules/audit/CHECKLIST_EVIDENCE_V1.md` for the evidence contract and remaining physical/operational acceptance. The current post-merge `main` CI passed in run `36747746343` on `fdae41a51af284358aa9dc7804ba03f75f241ac6`. Physical/mobile acceptance and operational release remain pending. Repository implementation and CI do not constitute production readiness.
 
 Do not invent production infrastructure, choose a framework, migrate standalone systems or create speculative abstractions without an approved brief/ADR.
 

@@ -1,7 +1,7 @@
 # Platform Foundation Gates
 
 Status: active  
-Reviewed: 2026-09-30 against `db35fa5088adcd98ef758cd211c80159f0ff8169`
+Reviewed: 2026-09-30 against `fdae41a51af284358aa9dc7804ba03f75f241ac6`
 
 Implementation evidence and remaining Quality work: `docs/modules/audit/QUALITY_COMPLETION_V1.md`. Production entries below are repository gates, not a live infrastructure assessment.
 
@@ -125,9 +125,9 @@ Decision:
 - private authorized access;
 - file restore/retention handled independently from database backup.
 
-Implemented for Action Plans: private `action-plan-evidence` bucket, UUID keys, 10 MiB files, JPEG/PNG/PDF/XLSX/DOCX, 20 active items per plan, logical removal, rounds and signed downloads (Evidence/Storage v1, migration 0008). Magic-byte checks are client-side, not server attestation.
+Implemented for Action Plans: private `action-plan-evidence` bucket, UUID keys, 10 MiB files, JPEG/PNG/PDF/XLSX/DOCX, 20 active items per plan, logical removal, rounds and signed downloads (Evidence/Storage v1, migration 0008). Implemented for Audit Checklist Evidence in PR #11: private `audit-checklist-evidence` bucket, server UUID keys, 10 MiB files, 10 active/criterion and 100/inspection, logical removal, lifecycle-version binding and signed attachment downloads. Magic-byte checks remain client-side, not server attestation.
 
-Still pending: Audit checklist evidence implementation under its separate brief; retention/purge policy and production Storage/backup/header/reconciliation gates. No universal attachment table is authorized.
+Still pending: retention/purge policy and production Storage/backup/header/reconciliation gates for both evidence domains. No universal attachment table is authorized.
 
 ## Gate 7 — System audit log
 
@@ -188,7 +188,7 @@ Already defined:
 
 Resolved: `AUDIT_DOMAIN_V1.md` defines reopen and its implementation exists in migrations 0004/0009 and Audit UI. Action Plans and their evidence are also implemented.
 
-Product decision approved on 2026-09-29: preserve inspection Excel, unit-history Excel and print/PDF. The implementation under `AUDIT_EXPORT_REPORTING_V1.md` is integrated in `main` (PR #9, merged 2026-09-29); physical-device acceptance remains pending. Checklist attachments remain unimplemented under `AUDIT_CHECKLIST_EVIDENCE_V1.md`; its product/security decisions E1–E3 were approved on 2026-09-29 as recorded there.
+Product decision approved on 2026-09-29: preserve inspection Excel, unit-history Excel and print/PDF. The implementation under `AUDIT_EXPORT_REPORTING_V1.md` is integrated in `main` (PR #9); physical-device acceptance remains pending. Checklist attachments under `AUDIT_CHECKLIST_EVIDENCE_V1.md` are integrated in `main` by PR #11; the unit-history Data API truncation blocker is fixed by PR #13. Current post-merge CI `36747746343` passed on `fdae41a51af284358aa9dc7804ba03f75f241ac6`; E1–E3 remain the accepted product/security contract. Physical/mobile and operational release gates remain pending.
 
 ## What does not need to be designed now
 
