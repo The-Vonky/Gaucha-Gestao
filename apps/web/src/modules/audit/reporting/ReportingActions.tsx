@@ -59,8 +59,10 @@ export function ReportingActions(props: Props) {
       if (ticket === generation.current) download(blob, filename(report));
     } catch (e) {
       if (ticket === generation.current) {
-        const detail = message(e);
-        setError(/Narrow the date range/.test(detail) ? "Mais de 5.000 auditorias. Reduza o intervalo de datas e tente novamente." : detail);
+        const rangeLimit = typeof e === "object" && e !== null &&
+          "code" in e && e.code === "22023" &&
+          "message" in e && e.message === "Narrow the date range";
+        setError(rangeLimit ? "Mais de 5.000 auditorias. Reduza o intervalo de datas e tente novamente." : message(e));
       }
     } finally {
       if (ticket === generation.current) { running.current = false; setBusy(false); }

@@ -14,6 +14,12 @@ vi.mock("../apps/web/src/core/auth/AuthProvider", () => ({
     can: (permission: string) => permission === "audit.inspection.read" ? state.read : state.export }),
 }));
 vi.mock("../apps/web/src/modules/audit/reporting/api", () => rpc);
+const files = vi.hoisted(() => ({ workbookBlob: vi.fn(), download: vi.fn() }));
+vi.mock("../apps/web/src/modules/audit/reporting/workbook", () => ({ workbookBlob: files.workbookBlob }));
+vi.mock("../apps/web/src/modules/audit/reporting/download", async (original) => ({
+  ...await original<typeof import("../apps/web/src/modules/audit/reporting/download")>(),
+  download: files.download,
+}));
 const audit = vi.hoisted(() => ({ saveAnswer: vi.fn(), answer: vi.fn() }));
 vi.mock("../apps/web/src/modules/audit/api", () => audit);
 const report = { schema_version: 1, kind: "inspection", generated_at: "2026-09-29T12:00:00Z",
@@ -54,6 +60,44 @@ describe("Report actions", () => {
     expect(rpc.inspectionExport).toHaveBeenCalledTimes(2);
     state.session = false; view.rerender(component());
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Prévia de impressão" })).toBeNull());
+  });
+  it.each(["excel", "print"] as const)("guides a >5,000 history %s error without preparing output and allows retry", async (output) => {
+    const user = userEvent.setup();
+    const history = { ...report, kind: "unit_history", records: [], filters: { from: null, to: null },
+      ordering: "applied_on DESC, created_at DESC, id DESC", record_count: 0 };
+    rpc.historyExport.mockRejectedValueOnce({ code: "22023", message: "Narrow the date range" })
+      .mockResolvedValueOnce(history);
+    files.workbookBlob.mockResolvedValue(new Blob(["workbook"]));
+    render(<ReportingActions kind="unit_history" unitId="unit" from="2026-01-01" to="2026-09-30" />);
+    await user.click(screen.getByRole("button", { name: output === "excel" ? "Exportar histórico" : "Imprimir / PDF" }));
+    expect(await screen.findByText(/Mais de 5.000 auditorias. Reduza o intervalo de datas e tente novamente/)).toBeTruthy();
+    expect(files.workbookBlob).not.toHaveBeenCalled();
+    expect(files.download).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog", { name: "Prévia de impressão" })).toBeNull();
+    const retry = screen.getByRole("button", { name: "Tentar novamente" }) as HTMLButtonElement;
+    expect(retry.disabled).toBe(false);
+    await user.click(retry);
+    expect(rpc.historyExport).toHaveBeenCalledTimes(2);
+    if (output === "excel") {
+      await waitFor(() => expect(files.download).toHaveBeenCalledTimes(1));
+      expect(screen.queryByRole("dialog")).toBeNull();
+    } else {
+      expect(await screen.findByRole("dialog", { name: "Prévia de impressão" })).toBeTruthy();
+      expect(files.workbookBlob).not.toHaveBeenCalled();
+      expect(files.download).not.toHaveBeenCalled();
+    }
+  });
+  it.each([
+    { code: "22023", message: "SQL private detail" },
+    { code: "XX000", message: "Narrow the date range" },
+  ])("keeps other SQL errors behind the safe fallback: $code", async (error) => {
+    const user = userEvent.setup();
+    rpc.historyExport.mockRejectedValueOnce(error);
+    render(<ReportingActions kind="unit_history" unitId="unit" from="" to="" />);
+    await user.click(screen.getByRole("button", { name: "Exportar histórico" }));
+    expect(await screen.findByText(/Verifique sua conexão/)).toBeTruthy();
+    expect(screen.queryByText(/Reduza o intervalo/)).toBeNull();
+    expect(screen.getByRole("status").textContent).not.toContain(error.message);
   });
   it("discards a request when an answer becomes unsaved during generation", async () => {
     const user = userEvent.setup();

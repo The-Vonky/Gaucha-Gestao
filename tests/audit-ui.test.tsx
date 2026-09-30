@@ -2,6 +2,7 @@
 import React from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
+  act,
   cleanup,
   render,
   screen,
@@ -10,6 +11,8 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
+import { ChecklistEvidence } from "../apps/web/src/modules/audit/ChecklistEvidence";
+import type { EvidenceController } from "../apps/web/src/modules/audit/useChecklistEvidence";
 import { InspectionPage } from "../apps/web/src/modules/audit/InspectionPage";
 import { visibleNavigation } from "../apps/web/src/app/navigation";
 import type {
@@ -28,9 +31,12 @@ const api = vi.hoisted(() => ({
 vi.mock("../apps/web/src/modules/audit/api", () => api);
 const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async()=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
 vi.mock("../apps/web/src/modules/audit/evidence",()=>evidenceApi);
+vi.mock("../apps/web/src/modules/audit/reporting/api", () => ({
+  inspectionExport: vi.fn(), historyExport: vi.fn(),
+}));
 const permissions = vi.hoisted(() => ({ allowed: true }));
 vi.mock("../apps/web/src/core/auth/AuthProvider", () => ({
-  useAuth: () => ({ can: () => permissions.allowed }),
+  useAuth: () => ({ session: { user: { id: "u" } }, can: () => permissions.allowed }),
 }));
 beforeAll(() => {
   HTMLDialogElement.prototype.showModal = function () {
@@ -92,7 +98,7 @@ function summary(over: Partial<InspectionSummary> = {}): InspectionSummary {
     ...over,
   };
 }
-function setup(s: InspectionSummary | null, rows: Answer[]) {
+function setup(s: InspectionSummary | null, rows: Answer[], onRender?: React.ProfilerOnRenderCallback) {
   api.inspection.mockResolvedValue(s);
   api.checklist.mockResolvedValue({ sections, items });
   api.answers.mockResolvedValue(rows);
@@ -101,7 +107,7 @@ function setup(s: InspectionSummary | null, rows: Answer[]) {
       <Routes>
         <Route
           path="/audit/inspections/:inspectionId"
-          element={<InspectionPage />}
+          element={<React.Profiler id="inspection" onRender={onRender ?? (() => undefined)}><InspectionPage /></React.Profiler>}
         />
       </Routes>
     </MemoryRouter>,
@@ -178,6 +184,60 @@ describe("inspection page", () => {
     await waitFor(()=>expect((screen.getByText("Finalizar") as HTMLButtonElement).disabled).toBe(false));
   });
 
+  it.each(["finalize", "reopen"] as const)("keeps the UI blocked after %s acceptance through a controlled reload", async (action) => {
+    const user = userEvent.setup();
+    const finalized = summary({ status: "finalized", version: 2, final_score: 100,
+      final_classification: "adequate", finalized_at: "2026-09-24T12:00:00Z", answered: 3, at_count: 3 });
+    const initial = action === "finalize" ? summary({ answered: 3, at_count: 3 }) : finalized;
+    let accept!: () => void;
+    let finishReload!: (value: InspectionSummary) => void;
+    api[action].mockReturnValueOnce(new Promise<void>((resolve) => { accept = resolve; }));
+    let accepted = false;
+    const enabledBetweenLoads: number[] = [];
+    setup(initial, items.map(i => answer(i.key, "AT")), () => {
+      if (accepted) enabledBetweenLoads.push(document.querySelectorAll(
+        ".response:not(:disabled), .audit-observation textarea, .audit-evidence input[type=file], .report-controls button:not(:disabled), .audit-hero-actions > button"
+      ).length);
+    });
+    await screen.findByText(action === "finalize" ? "Finalizar" : "Reabrir");
+    api.inspection.mockReturnValueOnce(new Promise<InspectionSummary>((resolve) => { finishReload = resolve; }));
+    await user.click(screen.getByText(action === "finalize" ? "Finalizar" : "Reabrir"));
+    await user.click(await screen.findByText("Confirmar"));
+    await waitFor(() => expect(api[action]).toHaveBeenCalled());
+    await act(async () => { accepted = true; accept(); });
+    expect(api.inspection).toHaveBeenCalledTimes(2);
+    expect(enabledBetweenLoads.length).toBeGreaterThan(0);
+    expect(enabledBetweenLoads.every(count => count === 0)).toBe(true);
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Anexar arquivo/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Exportar Excel" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Finalizar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reabrir" })).toBeNull();
+    accepted = false;
+    await act(async () => { finishReload(action === "finalize" ? finalized : summary({ version: 3, answered: 3, at_count: 3 })); });
+    if (action === "finalize") {
+      expect(await screen.findByText(/Somente leitura/)).toBeTruthy();
+      for (const b of screen.getAllByRole("button", { name: /\((AT|AP|NAT|NAP)\)/ }))
+        expect((b as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.queryByRole("textbox")).toBeNull();
+      expect(screen.queryByRole("button", { name: /Anexar arquivo/ })).toBeNull();
+    } else {
+      await waitFor(() => expect((screen.getAllByRole("button", { name: "Atende (AT)" })[0] as HTMLButtonElement).disabled).toBe(false));
+      expect(screen.getAllByRole("button", { name: /Anexar arquivo/ }).length).toBe(2);
+    }
+  });
+  it("preserves finalize failure and cancellation without locking the page", async () => {
+    const user = userEvent.setup();
+    setup(summary({ answered: 3, at_count: 3 }), items.map(i => answer(i.key, "AT")));
+    api.finalize.mockRejectedValueOnce({ code: "55000" });
+    await user.click(await screen.findByText("Finalizar"));
+    await user.click(await screen.findByText("Confirmar"));
+    expect(await screen.findByText(/estado atual do registro/)).toBeTruthy();
+    await user.click(screen.getByText("Cancelar"));
+    expect((screen.getAllByRole("button", { name: "Atende (AT)" })[0] as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole("button", { name: "Exportar Excel" })).toBeTruthy();
+    expect(api.inspection).toHaveBeenCalledTimes(1);
+  });
   it("shows a partial draft result without final classification", async () => {
     setup(summary(), [
       answer("item-001", "AT"),
@@ -340,5 +400,30 @@ describe("inspection page", () => {
     );
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(screen.queryByText("db detail")).toBeNull();
+  });
+});
+
+describe("Checklist evidence removal errors", () => {
+  it.each([
+    ["55000", "Esta operação não é permitida no estado atual do registro."],
+    ["42501", "Você não tem permissão para esta operação. Atualize seu acesso."],
+  ])("preserves %s through Confirm", async (code, expected) => {
+    const user = userEvent.setup();
+    const controller: EvidenceController = {
+      data: undefined, error: "", loading: false, uploads: {}, reload: vi.fn(),
+      send: vi.fn(), retry: vi.fn(), discard: vi.fn(),
+      rows: [{ id: "e1", inspection_id: "i1", item_key: "item-001", object_key: "key",
+        original_name: "laudo.pdf", content_type: "application/pdf", size_bytes: 10,
+        created_by: "u", uploaded_by_name: "Ana", uploaded_at: "2026-09-30T12:00:00Z" }],
+    };
+    evidenceApi.removeEvidence.mockRejectedValueOnce({ code, message: "private SQL detail" });
+    render(<ChecklistEvidence item={items[0]} editable controller={controller} />);
+    await user.click(screen.getByRole("button", { name: "Remover laudo.pdf" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+    expect(await screen.findByText(expected)).toBeTruthy();
+    expect(screen.queryByText(/Verifique sua conexão/i)).toBeNull();
+    expect(screen.queryByText("private SQL detail")).toBeNull();
+    expect(controller.reload).not.toHaveBeenCalled();
+    expect((screen.getByRole("button", { name: "Confirmar" }) as HTMLButtonElement).disabled).toBe(false);
   });
 });

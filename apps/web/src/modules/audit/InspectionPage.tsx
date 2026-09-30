@@ -53,6 +53,19 @@ export function InspectionPage() {
     }, [inspectionId]),
   );
   const data = r.data;
+  const [lifecycleTransition, setLifecycleTransition] = useState<{
+    inspectionId: string;
+    version: number;
+    status: "draft" | "finalized";
+  }>();
+  useEffect(() => {
+    if (lifecycleTransition && !r.loading &&
+        data?.summary.id === lifecycleTransition.inspectionId &&
+        data.summary.version > lifecycleTransition.version &&
+        data.summary.status === lifecycleTransition.status) {
+      setLifecycleTransition(undefined);
+    }
+  }, [data, r.loading, lifecycleTransition]);
   // Saved rows apply only to the load they came from; a reload starts from server data.
   const [saved, setSaved] = useState<{
     from: typeof data;
@@ -71,6 +84,7 @@ export function InspectionPage() {
   }, []);
   useEffect(() => {
     reviewGeneration.current++;
+    setLifecycleTransition(undefined);
     setPending(new Set());setAction(undefined);setReview(undefined);
     setFinalPending(0);setPreparing(false);setEvidenceError("");setEvidenceConflict(false);setStale(false);
     return () => { reviewGeneration.current++; };
@@ -132,6 +146,10 @@ export function InspectionPage() {
         {r.error} <button onClick={reload}>Tentar novamente</button>
       </Notice>
     );
+  // Keep the previous summary out of the UI from acceptance through the fresh load.
+  // A failed/manual reload preserves this guard; navigation clears it.
+  if (lifecycleTransition?.inspectionId === inspectionId)
+    return <Notice>Atualizando estado da auditoria…</Notice>;
   if (!data || !results)
     return (
       <>
@@ -376,6 +394,7 @@ export function InspectionPage() {
           }
           onClose={() => setAction(undefined)}
           onConfirm={async () => {
+            const generation = reviewGeneration.current;
             try {
               if(action==="finalize") {
                 if(!review||review.inspectionId!==inspectionId||review.inspectionId!==summary.id||review.version!==summary.version)
@@ -383,6 +402,12 @@ export function InspectionPage() {
                 await api.finalize(review.inspectionId,review.version,review.rows.map(e=>e.id));
               }
               else await api.reopen(summary.id,summary.version);
+              if (reviewGeneration.current !== generation) return;
+              setLifecycleTransition({
+                inspectionId: summary.id,
+                version: summary.version,
+                status: action === "finalize" ? "finalized" : "draft",
+              });
               reload();
             } catch(error) {
               if(action==="finalize" && (error as {code?:string})?.code==="40001"){
