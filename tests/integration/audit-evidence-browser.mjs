@@ -194,7 +194,9 @@ export async function runBrowser() {
       await page.getByRole("button", { name: "Finalizar", exact: true }).click();
       await page.getByRole("dialog").getByText("fora da seção.pdf", { exact: true }).waitFor();
       await page.getByRole("dialog").getByRole("button", { name: "Confirmar", exact: true }).click();
-      await page.getByText("Somente leitura", { exact: false }).first().waitFor();
+      // The finalize dialog itself says "somente leitura"; wait for the finalized page notice instead.
+      await page.getByText(/^Auditoria finalizada em .+ Somente leitura\.$/).waitFor();
+      await page.getByRole("dialog").waitFor({ state: "detached" });
       fails(await confirm("owner", hiddenPending.evidence_id), "55000");
       const browserSnapshot = (await db.query(
         "select metadata->'evidence_ids' ids from core.system_audit_log where module='audit' and action='finalize' and entity_id=$1",
