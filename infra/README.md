@@ -73,6 +73,11 @@ project. Application schemas, storage policies and `supabase/config.toml` are un
 
 ## Validation contract
 
+The smoke is for disposable targets only. It removes its temporary REST table and
+synthetic login identity; the synthetic unit and its audit records remain until
+the explicit `down -v`. Existing audit references intentionally prevent deleting
+that unit. The smoke never bypasses domain triggers or erases audit history.
+
 The new `infra-validate.yml` checks syntax and ShellCheck, missing-target/path guards,
 Compose config, exact five services, image version pins, no DB or internal API ports,
 loopback gateway, schemas/row limit/signup/file settings. It generates credentials

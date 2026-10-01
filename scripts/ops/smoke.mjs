@@ -156,9 +156,10 @@ try {
   console.error(`Smoke failed at: ${step}`);
   process.exitCode = 1;
 } finally {
-  // Synthetic rows only; CI still tears down all named volumes even after failure.
+  // The unit has immutable audit references; retain it until disposable teardown.
+  // Never bypass domain triggers or remove audit history to clean up a smoke.
   try {
-    sql(`drop table if exists public.${table}; delete from core.units where id='${sentinel}'; notify pgrst,'reload schema'`);
+    sql(`drop table if exists public.${table}; notify pgrst,'reload schema'`);
     if (user) {
       sql(`delete from core.profiles where id='${user}'`);
       const removed = await request(`/auth/v1/admin/users/${user}`, service, {method:'DELETE'});
