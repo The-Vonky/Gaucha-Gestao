@@ -87,3 +87,8 @@ that create `core`, `audit`, `action_plans`. Storage/Kong therefore depend on
 REST being started rather than already having an application schema cache.
 The initial readiness gate and final full-stack `up --wait` both have bounded
 timeouts. PGRST_DB_SCHEMAS is never temporarily reduced.
+
+Storage's loopback readiness probe uses explicit `127.0.0.1` rather than
+`localhost`; the Storage process binds IPv4, while wget may resolve localhost
+to IPv6 first. Upstream uses the `storage` Docker hostname (also IPv4). Failure
+diagnostics include only redacted logs and health state, never container env.

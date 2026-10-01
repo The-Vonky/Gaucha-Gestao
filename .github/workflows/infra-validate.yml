@@ -132,6 +132,8 @@ jobs:
             const values=readFileSync(file,'utf8').trim().split('\n').map(line=>line.slice(line.indexOf('=')+1));
             try{
               let logs=execFileSync('docker',['compose','--env-file',file,'-p',project,'-f','infra/supabase/docker-compose.yml','logs','--no-color','--tail','80'],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
+              const ids=execFileSync('docker',['compose','--env-file',file,'-p',project,'-f','infra/supabase/docker-compose.yml','ps','--all','--quiet'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);
+              for(const id of ids) logs+='\n'+execFileSync('docker',['inspect','--format','{{.Name}} {{json .State.Health}}',id],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
               for(const value of values) if(value) logs=logs.replaceAll(value,'[REDACTED]');
               logs=logs.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,'[REDACTED JWT]');
               console.log(logs);
