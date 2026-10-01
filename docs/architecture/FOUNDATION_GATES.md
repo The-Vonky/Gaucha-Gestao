@@ -1,9 +1,9 @@
 # Platform Foundation Gates
 
 Status: active  
-Reviewed: 2026-09-30 against `fdae41a51af284358aa9dc7804ba03f75f241ac6`
+Reviewed: 2026-10-01 against `664ed5a95684b15c8035e78c21a413bdbd057103`
 
-Implementation evidence and remaining Quality work: `docs/modules/audit/QUALITY_COMPLETION_V1.md`. Production entries below are repository gates, not a live infrastructure assessment.
+Implementation evidence and remaining Quality work: `docs/modules/audit/QUALITY_COMPLETION_V1.md`. Production entries below are repository gates, not a live infrastructure assessment. Quality v1 functional software and pre-homologation hardening are complete after PR #14; physical P1–P9 acceptance is pending and operational O1–O8 readiness remains pending/partial. **Production ready: NO.** See the completion matrix for the current O1–O8 classifications.
 
 ## Purpose
 
@@ -139,7 +139,7 @@ Still pending: operational retention, monitoring and authorized purge/runbook pr
 
 ## Gate 8 — Backup and disaster recovery
 
-Status: **BASELINE DECIDED; IMPLEMENTATION PENDING**
+Status: **BASELINE DECIDED; OPERATIONAL EVIDENCE PENDING**
 
 Decision:
 - automated backups;
@@ -154,13 +154,15 @@ Still pending:
 - tool choice;
 - storage destination/account;
 - retention;
-- RPO/RTO;
+- technical RPO and RTO inside/outside operating hours (definition/measurement);
 - restore-test cadence;
 - final runbook.
 
+Operational owner and backup/restore owner: the current person responsible for the project. Alert recipients: the current person responsible for the project and supervisor. The provisional operating window, 24x7 infrastructure expectation and data-preservation requirement are recorded in [BACKUP_RECOVERY.md](BACKUP_RECOVERY.md#operational-decisions-and-provisions--2026-10-01). They do not close O1; numeric RPO/RTO and retention remain pending.
+
 ## Gate 9 — Observability and operations
 
-Status: **BASELINE DECIDED; IMPLEMENTATION PENDING**
+Status: **BASELINE DECIDED; OPERATIONAL EVIDENCE PENDING**
 
 Minimum:
 - host metrics;
@@ -176,7 +178,7 @@ Tooling remains intentionally open.
 
 ## Gate 10 — First-module contract
 
-Status: **DOMAIN CONTRACT IMPLEMENTED; COMPLETION SLICES SPECIFIED**
+Status: **FUNCTIONAL SOFTWARE AND PRE-HOMOLOGATION HARDENING COMPLETE; ACCEPTANCE PENDING**
 
 Already defined:
 - Audit source of truth;
@@ -188,7 +190,7 @@ Already defined:
 
 Resolved: `AUDIT_DOMAIN_V1.md` defines reopen and its implementation exists in migrations 0004/0009 and Audit UI. Action Plans and their evidence are also implemented.
 
-Product decision approved on 2026-09-29: preserve inspection Excel, unit-history Excel and print/PDF. The implementation under `AUDIT_EXPORT_REPORTING_V1.md` is integrated in `main` (PR #9); physical-device acceptance remains pending. Checklist attachments under `AUDIT_CHECKLIST_EVIDENCE_V1.md` are integrated in `main` by PR #11; the unit-history Data API truncation blocker is fixed by PR #13. Current post-merge CI `36747746343` passed on `fdae41a51af284358aa9dc7804ba03f75f241ac6`; E1–E3 remain the accepted product/security contract. Physical/mobile and operational release gates remain pending.
+Product decision approved on 2026-09-29: preserve inspection Excel, unit-history Excel and print/PDF. The implementation under `AUDIT_EXPORT_REPORTING_V1.md` is integrated in `main` (PR #9); physical-device acceptance remains pending. Checklist attachments under `AUDIT_CHECKLIST_EVIDENCE_V1.md` are integrated in `main` by PR #11; the unit-history Data API truncation blocker is fixed by PR #13. Pre-homologation hardening is integrated by PR #14. Current post-merge CI `36854366048` passed on `664ed5a95684b15c8035e78c21a413bdbd057103`; E1–E3 remain the accepted product/security contract. Physical/mobile and operational release gates remain pending.
 
 ## What does not need to be designed now
 
@@ -208,5 +210,5 @@ Do not block Audit on:
 
 ## Implementation start condition
 
-Foundation and the first Quality domain slices are implemented. Remaining application work is limited by the specific briefs and the completion matrix. Gates 7–9 still require operational evidence before production rollout; this document does not authorize infrastructure changes or deploys.
+Foundation and the first Quality domain slices are implemented. Quality v1 functional software and pre-homologation hardening are complete; remaining physical P1–P9 and operational O1–O8 acceptance is tracked in the completion matrix. Gates 7–9 still require operational evidence before production rollout; this document does not authorize infrastructure changes or deploys.
 
