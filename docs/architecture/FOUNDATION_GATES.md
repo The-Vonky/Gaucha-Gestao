@@ -139,7 +139,7 @@ Still pending: operational retention, monitoring and authorized purge/runbook pr
 
 ## Gate 8 — Backup and disaster recovery
 
-Status: **BASELINE DECIDED; OPERATIONAL EVIDENCE PENDING**
+Status: **BASELINE DECIDED; IMPLEMENTATION AND OPERATIONAL EVIDENCE PENDING**
 
 Decision:
 - automated backups;
@@ -162,7 +162,7 @@ Operational owner and backup/restore owner: the current person responsible for t
 
 ## Gate 9 — Observability and operations
 
-Status: **BASELINE DECIDED; OPERATIONAL EVIDENCE PENDING**
+Status: **BASELINE DECIDED; IMPLEMENTATION AND OPERATIONAL EVIDENCE PENDING**
 
 Minimum:
 - host metrics;
@@ -210,5 +210,5 @@ Do not block Audit on:
 
 ## Implementation start condition
 
-Foundation and the first Quality domain slices are implemented. Quality v1 functional software and pre-homologation hardening are complete; remaining physical P1–P9 and operational O1–O8 acceptance is tracked in the completion matrix. Gates 7–9 still require operational evidence before production rollout; this document does not authorize infrastructure changes or deploys.
+Foundation and the first Quality domain slices are implemented. Quality v1 functional software and pre-homologation hardening are complete; remaining physical P1–P9 and operational O1–O8 acceptance is tracked in the completion matrix. Gates 7–9 still have implementation and/or operational evidence pending before production rollout; this document does not authorize infrastructure changes or deploys.
 
