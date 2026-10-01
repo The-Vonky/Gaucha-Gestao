@@ -16,7 +16,7 @@ services:
       JWT_EXP: "3600"
       INFRA_ENVIRONMENT: ${INFRA_ENVIRONMENT:?required}
       INFRA_INSTANCE_ID: ${INFRA_INSTANCE_ID:?required}
-    command: [postgres, -c, config_file=/etc/postgresql/postgresql.conf, -c, log_min_messages=warning]
+    command: [postgres, -c, config_file=/etc/postgresql/postgresql.conf, -c, log_min_messages=fatal, -c, log_statement=none, -c, log_min_error_statement=panic]
     volumes:
       - db-data:/var/lib/postgresql/data
       - db-config:/etc/postgresql-custom

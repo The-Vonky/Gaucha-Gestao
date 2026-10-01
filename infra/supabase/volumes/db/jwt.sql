@@ -1,3 +1,6 @@
+-- Suppress statement/error-query logging before handling signing material.
+set log_statement = none;
+set log_min_error_statement = panic;
 \set jwt_secret `echo "$JWT_SECRET"`
 \set jwt_exp `echo "$JWT_EXP"`
 

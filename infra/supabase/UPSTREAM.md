@@ -49,7 +49,9 @@ Version tags are pinned; registry tag immutability is not guaranteed by this PR.
   omit imgproxy dependency. Set the application's schemas, 1000-row maximum,
   disabled public signup and 10 MiB global file limit. Bucket limits come unchanged
   from the application's migrations.
-- Retain required upstream role-password and JWT DB initialization. Omit optional
+- Retain required upstream role-password and JWT DB initialization; restrict role
+  passwords to Auth/REST/Storage because the omitted webhook SQL creates the
+  unused Functions role. Disable SQL statement/error-query logging before secrets. Omit optional
   Realtime/webhooks/analytics/pooler SQL. Persist DB, DB config and files in isolated
   Compose named volumes instead of host paths. Add a fresh-stack target marker.
 - Keep the upstream Kong entrypoint; retain only required API routes and consumers.
@@ -64,10 +66,17 @@ Pinned source root:
 No claim of production readiness, hardware capacity or equivalence between the
 CLI's database bootstrap and the self-hosted image bootstrap is made.
 
-Unmodified vendored files (SHA-256):
+Unmodified vendored file (SHA-256):
 
 | Local file | SHA-256 |
 | --- | --- |
 | `volumes/api/kong-entrypoint.sh` | `399394576635f7477dfee32e870f509567fc496f0dc86a5a6611f58d1099031f` |
-| `volumes/db/roles.sql` | `3ad717b225daa38aa982da26750f35641eb404e1eb5e69a763c22236ab96c1b2` |
-| `volumes/db/jwt.sql` | `1cc94a4f16f6e2932b383cd68e211a96bcae298437ca4120d8a5106396c58465` |
+
+The upstream DB files before adaptation have SHA-256
+`3ad717b225daa38aa982da26750f35641eb404e1eb5e69a763c22236ab96c1b2`
+(`roles.sql`) and `1cc94a4f16f6e2932b383cd68e211a96bcae298437ca4120d8a5106396c58465`
+(`jwt.sql`). They are **adapted**, not byte-identical vendoring: remove passwords
+for Pooler/Functions roles and disable session statement/error-query logging.
+Postgres also retains upstream `log_min_messages=fatal` and explicitly disables
+statement/error-query logging at startup. This prevents signing material and
+role-password initialization from being recorded in container logs.
