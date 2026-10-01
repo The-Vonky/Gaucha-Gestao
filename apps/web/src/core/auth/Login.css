@@ -43,7 +43,7 @@
     repeating-radial-gradient(
       circle at 0% 100%,
       transparent 0 56px,
-      rgb(244 241 234 / 0.05) 57px 58px,
+      rgb(244 241 234 / 0.032) 57px 58px,
       transparent 59px 96px
     ),
     var(--login-brand);
@@ -102,12 +102,17 @@
 }
 
 .login-v2-headline {
-  max-width: 11ch;
+  max-width: 18ch;
   margin: 0;
   font: 500 44px/52px var(--font-display);
   letter-spacing: -0.022em;
   text-wrap: balance;
   color: var(--login-on-brand);
+}
+
+/* Desktop composition: lead clause on its own line, remainder balanced below. */
+.login-v2-headline-lead {
+  display: block;
 }
 
 .login-v2-subtitle {
@@ -135,16 +140,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  padding: 4px 9px;
-  border-radius: 8px;
+  padding: 3px 5px;
+  border-radius: 3px;
   background: var(--login-surface);
 }
 
 .login-v2-company-logo-box img {
   display: block;
-  width: 132px;
-  max-height: 28px;
+  width: 104px;
+  max-height: 22px;
   object-fit: contain;
 }
 
@@ -374,6 +378,10 @@
   .login-v2-accent {
     width: 24px;
     margin-bottom: 16px;
+  }
+
+  .login-v2-headline-lead {
+    display: inline;
   }
 
   .login-v2-headline {

@@ -47,7 +47,8 @@ export function Login() {
         <div className="login-v2-message">
           <span className="login-v2-accent" aria-hidden="true" />
           <p className="login-v2-headline">
-            Gestão da operação, com clareza e controle.
+            <span className="login-v2-headline-lead">Gestão da operação,</span>{" "}
+            com clareza e controle.
           </p>
           <p className="login-v2-subtitle">
             Informação, processos e gestão das unidades em um ambiente único,
