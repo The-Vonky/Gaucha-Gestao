@@ -1,0 +1,506 @@
+/*
+ * Gaúcha Gestão — Login v2
+ * Isolated implementation of the approved login direction.
+ * Global design-system tokens remain unchanged until the wider UI review.
+ */
+
+.login-v2 {
+  --login-bg: #f3f4f1;
+  --login-surface: #ffffff;
+  --login-brand: #12352b;
+  --login-text: #17241f;
+  --login-text-secondary: #55635c;
+  --login-text-tertiary: #5f6b65;
+  --login-on-brand: #f4f1ea;
+  --login-on-brand-secondary: #b9cbbf;
+  --login-on-brand-muted: #9fb8a9;
+  --login-border: #dce1dc;
+  --login-border-input: #7f8c85;
+  --login-primary: #1e5a44;
+  --login-primary-hover: #164431;
+  --login-primary-active: #113428;
+  --login-disabled-bg: #eef1ee;
+  --login-disabled-border: #c9d1cb;
+  --login-button-disabled: #d5dbd6;
+  --login-accent: var(--brand-orange-500);
+
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: clamp(440px, 42vw, 640px) minmax(0, 1fr);
+  background: var(--login-bg);
+  color: var(--login-text);
+}
+
+.login-v2-brand {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 56px 64px 48px;
+  background:
+    repeating-radial-gradient(
+      circle at 0% 100%,
+      transparent 0 56px,
+      rgb(244 241 234 / 0.05) 57px 58px,
+      transparent 59px 96px
+    ),
+    var(--login-brand);
+  color: var(--login-on-brand);
+}
+
+.login-v2-product {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+}
+
+.login-v2-product-mark {
+  width: 40px;
+  height: auto;
+  flex: 0 0 auto;
+}
+
+.login-v2-product-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.login-v2-product-copy strong {
+  font: 600 17px/22px var(--font-display);
+  letter-spacing: -0.01em;
+  color: var(--login-on-brand);
+}
+
+.login-v2-product-copy small {
+  margin: 0;
+  font: 600 11px/14px var(--font-sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--login-on-brand-muted);
+}
+
+.login-v2-message {
+  position: relative;
+  z-index: 1;
+  align-self: end;
+  max-width: 472px;
+  padding-bottom: clamp(40px, 9vh, 84px);
+}
+
+.login-v2-accent {
+  display: block;
+  width: 32px;
+  height: 3px;
+  margin-bottom: 24px;
+  border-radius: 999px;
+  background: var(--login-accent);
+}
+
+.login-v2-headline {
+  max-width: 11ch;
+  margin: 0;
+  font: 500 44px/52px var(--font-display);
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+  color: var(--login-on-brand);
+}
+
+.login-v2-subtitle {
+  max-width: 45ch;
+  margin: 24px 0 0;
+  font: 400 17px/28px var(--font-sans);
+  color: var(--login-on-brand-secondary);
+}
+
+.login-v2-signature {
+  min-width: 0;
+}
+
+.login-v2-signature-desktop {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 400 12px/18px var(--font-sans);
+  color: var(--login-on-brand-muted);
+}
+
+.login-v2-company-logo-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: var(--login-surface);
+}
+
+.login-v2-company-logo-box img {
+  display: block;
+  width: 132px;
+  max-height: 28px;
+  object-fit: contain;
+}
+
+.login-v2-main {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  padding: 48px clamp(32px, 5vw, 72px) 28px;
+  background: var(--login-bg);
+}
+
+.login-v2-card {
+  width: min(100%, 440px);
+  align-self: center;
+  justify-self: center;
+  padding: 40px;
+  border: 1px solid var(--login-border);
+  border-radius: 12px;
+  background: var(--login-surface);
+  box-shadow:
+    0 1px 2px rgb(16 40 32 / 0.06),
+    0 16px 40px -16px rgb(16 40 32 / 0.22);
+}
+
+.login-v2-card h1 {
+  margin: 0;
+  font: 600 26px/34px var(--font-display);
+  letter-spacing: -0.015em;
+  color: var(--login-text);
+}
+
+.login-v2-support {
+  margin: 8px 0 0;
+  font: 400 15px/24px var(--font-sans);
+  color: var(--login-text-secondary);
+}
+
+.login-v2-form {
+  margin-top: 32px;
+}
+
+.login-v2-form label {
+  gap: 8px;
+  margin-bottom: 20px;
+  font: 500 14px/20px var(--font-sans);
+  color: var(--login-text);
+}
+
+.login-v2-form input {
+  min-height: 48px;
+  padding: 10px 12px;
+  border-color: var(--login-border-input);
+  border-radius: 8px;
+  background: var(--login-surface);
+  color: var(--login-text);
+  font: 400 16px/1.4 var(--font-sans);
+}
+
+.login-v2-form input:hover:not(:disabled) {
+  border-color: var(--login-text-secondary);
+}
+
+.login-v2-form input:focus-visible {
+  outline: none;
+  border-color: var(--login-primary);
+  box-shadow:
+    0 0 0 2px var(--login-surface),
+    0 0 0 4px var(--login-primary);
+}
+
+.login-v2-form input:disabled {
+  background: var(--login-disabled-bg);
+  border-color: var(--login-disabled-border);
+  color: var(--login-text-tertiary);
+}
+
+.login-v2-form .notice {
+  margin: 0 0 20px;
+}
+
+.login-v2-submit {
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  border-radius: 8px;
+  border-color: var(--login-primary);
+  background: var(--login-primary);
+  color: #ffffff;
+  font: 600 15px/20px var(--font-sans);
+  letter-spacing: 0.01em;
+  box-shadow: none;
+}
+
+.login-v2-submit:hover:not(:disabled) {
+  border-color: var(--login-primary-hover);
+  background: var(--login-primary-hover);
+  color: #ffffff;
+}
+
+.login-v2-submit:active:not(:disabled) {
+  border-color: var(--login-primary-active);
+  background: var(--login-primary-active);
+}
+
+.login-v2-submit:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--login-surface),
+    0 0 0 4px var(--login-primary);
+}
+
+.login-v2-submit:disabled {
+  border-color: var(--login-button-disabled);
+  background: var(--login-button-disabled);
+  color: var(--login-text-tertiary);
+}
+
+.login-v2-submit.is-busy:disabled {
+  border-color: var(--login-primary);
+  background: var(--login-primary);
+  color: #ffffff;
+}
+
+.login-v2-spinner {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  border: 2px solid rgb(255 255 255 / 0.38);
+  border-top-color: #ffffff;
+  border-radius: 999px;
+  animation: login-v2-spin 0.8s linear infinite;
+}
+
+@keyframes login-v2-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.login-v2-help {
+  margin: 24px 0 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--login-border);
+  font: 400 14px/22px var(--font-sans);
+  color: var(--login-text-secondary);
+}
+
+.login-v2-help strong {
+  color: var(--login-text);
+  font-weight: 600;
+}
+
+.login-v2-foot {
+  justify-self: center;
+  margin: 24px 0 0;
+  font: 400 12px/18px var(--font-sans);
+  color: var(--login-text-tertiary);
+}
+
+.login-v2-signature-mobile {
+  display: none;
+}
+
+@media (min-width: 960px) and (max-width: 1199px) {
+  .login-v2-brand {
+    padding-inline: 48px;
+  }
+
+  .login-v2-headline {
+    font-size: 36px;
+    line-height: 44px;
+  }
+}
+
+@media (max-width: 959px) {
+  .login-v2 {
+    position: relative;
+    display: block;
+    min-height: 100dvh;
+    background: var(--login-surface);
+  }
+
+  .login-v2::before {
+    content: "";
+    position: fixed;
+    z-index: 20;
+    inset: 0 0 auto;
+    height: env(safe-area-inset-top);
+    background: var(--login-brand);
+    pointer-events: none;
+  }
+
+  .login-v2-brand {
+    min-height: 226px;
+    padding:
+      calc(env(safe-area-inset-top) + 20px)
+      20px
+      24px;
+    grid-template-rows: auto 1fr;
+    background: var(--login-brand);
+  }
+
+  .login-v2-product {
+    gap: 10px;
+  }
+
+  .login-v2-product-mark {
+    width: 36px;
+  }
+
+  .login-v2-product-copy strong {
+    font-size: 16px;
+    line-height: 20px;
+  }
+
+  .login-v2-product-copy small {
+    font-size: 10px;
+    line-height: 14px;
+  }
+
+  .login-v2-message {
+    align-self: end;
+    max-width: 440px;
+    padding: 0;
+  }
+
+  .login-v2-accent {
+    width: 24px;
+    margin-bottom: 16px;
+  }
+
+  .login-v2-headline {
+    max-width: 18ch;
+    font-size: 24px;
+    line-height: 30px;
+    letter-spacing: -0.015em;
+  }
+
+  .login-v2-subtitle,
+  .login-v2-signature-desktop {
+    display: none;
+  }
+
+  .login-v2-main {
+    min-height: calc(100dvh - 226px);
+    display: flex;
+    flex-direction: column;
+    padding:
+      28px
+      20px
+      calc(env(safe-area-inset-bottom) + 16px);
+    background: var(--login-surface);
+  }
+
+  .login-v2-card {
+    width: min(100%, 440px);
+    align-self: center;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .login-v2-card h1 {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .login-v2-support {
+    font-size: 15px;
+    line-height: 22px;
+  }
+
+  .login-v2-form {
+    margin-top: 24px;
+    scroll-margin-block: 16px;
+  }
+
+  .login-v2-form label,
+  .login-v2-form input,
+  .login-v2-submit {
+    scroll-margin-block: 16px;
+  }
+
+  .login-v2-signature-mobile {
+    width: min(100%, 440px);
+    align-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 28px;
+    font: 400 12px/16px var(--font-sans);
+    color: var(--login-text-tertiary);
+  }
+
+  .login-v2-signature-mobile img {
+    display: block;
+    width: 132px;
+    max-height: 28px;
+    object-fit: contain;
+  }
+
+  .login-v2-foot {
+    display: none;
+  }
+}
+
+@media (max-width: 959px) and (max-height: 699px) {
+  .login-v2-brand {
+    min-height: 88px;
+    display: block;
+    padding:
+      calc(env(safe-area-inset-top) + 14px)
+      16px
+      14px;
+  }
+
+  .login-v2-product-mark {
+    width: 32px;
+  }
+
+  .login-v2-message {
+    display: none;
+  }
+
+  .login-v2-main {
+    min-height: calc(100dvh - 88px);
+    padding:
+      24px
+      16px
+      calc(env(safe-area-inset-bottom) + 12px);
+  }
+
+  .login-v2-form {
+    margin-top: 20px;
+  }
+
+  .login-v2-form label {
+    margin-bottom: 16px;
+  }
+
+  .login-v2-help {
+    margin-top: 20px;
+    padding-top: 20px;
+  }
+
+  .login-v2-signature-mobile {
+    padding-top: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-v2-spinner {
+    animation: none;
+  }
+}
