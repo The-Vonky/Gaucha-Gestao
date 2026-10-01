@@ -101,6 +101,24 @@ jobs:
           fi
           docker compose --env-file "$RUNNER_TEMP/gaucha-infra.env" -p "$INFRA_PROJECT" -f infra/supabase/docker-compose.yml up -d --wait --wait-timeout 120
           bash scripts/ops/healthcheck.sh --environment ci --env-file "$RUNNER_TEMP/gaucha-infra.env" --project "$INFRA_PROJECT" --database postgres
+      - name: Sanitized failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          node --input-type=module - "$RUNNER_TEMP/gaucha-infra.env" "$INFRA_PROJECT" <<'JS'
+          import {readFileSync,existsSync} from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const [file,project]=process.argv.slice(2);
+          if(existsSync(file)){
+            const values=readFileSync(file,'utf8').trim().split('\n').map(line=>line.slice(line.indexOf('=')+1));
+            try{
+              let logs=execFileSync('docker',['compose','--env-file',file,'-p',project,'-f','infra/supabase/docker-compose.yml','logs','--no-color','--tail','80'],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
+              for(const value of values) if(value) logs=logs.replaceAll(value,'[REDACTED]');
+              logs=logs.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,'[REDACTED JWT]');
+              console.log(logs);
+            }catch{console.error('Unable to collect sanitized container diagnostics')}
+          }
+          JS
       - name: Informational runner container stats (no hardware capacity claim)
         if: always()
         shell: bash
