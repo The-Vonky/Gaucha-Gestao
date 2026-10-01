@@ -73,7 +73,10 @@ try {
   assert.equal(hidden.status, 406);
   const profileError = await hidden.json();
   assert.equal(profileError.code, 'PGRST106');
-  assert.deepEqual(profileError.message.replace('The schema must be one of the following: ', '').split(',').map(v=>v.trim()), schemas);
+  // v14.17 reports the requested schema in message and the allowlist in hint.
+  assert.equal(profileError.message, 'Invalid schema: infra_control');
+  assert.ok(profileError.hint.startsWith('Only the following schemas are exposed: '));
+  assert.deepEqual(profileError.hint.replace('Only the following schemas are exposed: ', '').split(',').map(v=>v.trim()), schemas);
   console.log('smoke: exposed schemas exactly match the contract');
 
   step = 'public signup disabled';
