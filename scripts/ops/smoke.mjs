@@ -23,9 +23,10 @@ const composeArgs = ['compose', '--env-file', envFile, '--project-name', project
 const subprocessEnv = {...process.env, ...config};
 delete subprocessEnv.COMPOSE_FILE;
 delete subprocessEnv.COMPOSE_PROFILES;
-function sql(query) {
+function sql(query, role = 'postgres') {
+  assert.ok(['postgres','supabase_admin'].includes(role));
   return execFileSync('docker', [...composeArgs, 'exec', '-T', 'db', 'psql', '-X',
-    '-v', 'ON_ERROR_STOP=1', '-h', 'localhost', '-U', 'supabase_admin', '-d', database, '-Atqc', query],
+    '-w', '-v', 'ON_ERROR_STOP=1', '-h', role==='postgres'?'db':'localhost', '-U', role, '-d', database, '-Atqc', query],
   {env: subprocessEnv, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8'}).trim();
 }
 const base = `http://127.0.0.1:${config.GATEWAY_PORT}`;
@@ -49,9 +50,9 @@ let user;
 let step = 'database bootstrap';
 try {
   assert.equal(sql("select current_setting('server_version_num')::int/10000"), '17');
-  assert.equal(sql(`select environment from infra_control.target`), environment);
+  assert.equal(sql(`select environment from infra_control.target`, 'supabase_admin'), environment);
   const migrations = readdirSync(path.join(root, 'supabase/migrations')).filter(name => name.endsWith('.sql')).sort();
-  const recorded = JSON.parse(sql('select coalesce(json_object_agg(version,sha256),\'{}\'::json) from infra_control.migrations'));
+  const recorded = JSON.parse(sql('select coalesce(json_object_agg(version,sha256),\'{}\'::json) from infra_control.migrations', 'supabase_admin'));
   assert.deepEqual(Object.keys(recorded).sort(), migrations);
   for (const name of migrations) {
     assert.equal(recorded[name], createHash('sha256').update(readFileSync(path.join(root, 'supabase/migrations', name))).digest('hex'));
@@ -60,6 +61,17 @@ try {
   console.log(`smoke: PostgreSQL 17 and all ${migrations.length} migration hashes verified`);
 
   step = 'application ownership';
+  assert.equal(sql('select current_user'), 'postgres');
+  let passwordRejected = false;
+  try {
+    execFileSync('docker', [...composeArgs, 'exec', '-T', '-e', `PGPASSWORD=${randomBytes(32).toString('hex')}`,
+      'db', 'psql', '-X', '-w', '-h', 'db', '-U', 'postgres', '-d', database, '-Atqc', 'select current_user'],
+    {env:subprocessEnv,stdio:['ignore','pipe','pipe']});
+  } catch (error) {
+    passwordRejected = error.status===2 && error.stderr.toString().includes('password authentication failed for user "postgres"');
+  }
+  assert.ok(passwordRejected);
+  console.log('smoke: postgres authenticates with POSTGRES_PASSWORD and rejects an incorrect password');
   const appSchemas = ['core','private','audit','action_plans','action_plans_private','audit_private'];
   const schemaNames = appSchemas.map(name=>`'${name}'`).join(',');
   const ownership = JSON.parse(sql(`select json_build_object(

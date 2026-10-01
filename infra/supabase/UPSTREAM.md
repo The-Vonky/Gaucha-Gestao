@@ -97,3 +97,15 @@ Kong route blocks retain upstream YAML quoting verbatim. Its entrypoint inserts
 Lua expressions containing single quotes; converting those header scalars to
 single-quoted YAML makes the expanded configuration invalid. The reduced routes
 are semantically unchanged and the expanded legacy-key template is parse-checked.
+
+## Application migration role
+
+The DB image source tag `supabase/postgres:17.6.1.136` resolves to
+[`d156ba65c14694c12cc5e782bc15b9b8ed2d1376`](https://github.com/supabase/postgres/tree/d156ba65c14694c12cc5e782bc15b9b8ed2d1376).
+Its `migrations/db/migrate.sh` sets PGPASSWORD from POSTGRES_PASSWORD and creates
+the `postgres` login with that password during fresh Docker initialization.
+`ansible/files/postgresql_config/pg_hba.conf.j2` uses SCRAM for the Docker network,
+while localhost uses trust. Application migrations therefore authenticate directly
+as `postgres` via the `db` Docker hostname; marker/ledger operations retain the
+infrastructure helper. CI proves correct-password login, incorrect-password
+rejection and actual schema/SECURITY DEFINER ownership. No ALTER OWNER is used.

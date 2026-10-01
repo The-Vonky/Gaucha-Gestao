@@ -61,7 +61,9 @@ The target is the isolated Compose `db`, never a host connection string.
 
 `apply-migrations.sh` requires no existing `core` schema or infrastructure migration
 ledger, and executes `supabase/migrations/*.sql` in filename order **byte-for-byte**.
-The files retain their own transactions. Each success records its SHA-256. Platform
+The files execute as authenticated role `postgres`, retaining their own transactions
+and original ownership. Infrastructure marker/ledger operations use `supabase_admin`;
+each success records its SHA-256. No post-migration ownership reassignment occurs. Platform
 Auth/Storage migrations finish during service startup before application migrations.
 The initial `up -d` waits for DB/Auth/Storage via dependency health gates; REST starts
 with the exact app schemas but becomes healthy only after those migrations create
@@ -92,7 +94,17 @@ Smoke verifies all current migration hashes and representative objects, public
 signup rejection, synthetic admin-created user login, denied anon access to an
 existing Core row, exactly two private buckets, 10 MiB bucket/module boundaries,
 exact exposed schemas (including rejection of a private profile) and actual
-PostgREST truncation to 1000 of 1001 synthetic rows. It removes synthetic fixtures;
+PostgREST truncation to 1000 of 1001 synthetic rows. It also checks every application
+schema and SECURITY DEFINER function owner is `postgres`, including private helpers,
+and proves password authentication rejects an incorrect password.
+
+The Storage transport check uploads a complete small PDF via Kong to an existing
+private evidence bucket using service credentials and random object identifiers,
+requests a 60-second signed URL, downloads through the loopback gateway without
+API credentials and compares every byte. It deletes the object through Storage,
+checks metadata absence and confirms the signed download no longer works. This
+checks the configured file backend without duplicating domain RLS scenarios.
+It removes its temporary REST table, Storage object and synthetic login identity;
 CI destroys all volumes regardless of outcome. Domain scenarios remain in existing
 integration tests, which still run against the original CLI stack.
 

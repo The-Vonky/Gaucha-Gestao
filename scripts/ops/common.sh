@@ -37,7 +37,11 @@ ops_init() {
   compose=(docker compose --env-file "$env_file" --project-name "$project" -f "$repo_root/infra/supabase/docker-compose.yml")
   unset COMPOSE_FILE COMPOSE_PROFILES
 }
+# Infrastructure marker/ledger access only; application DDL uses ops_app_sql.
 ops_sql() { "${compose[@]}" exec -T db psql -X -v ON_ERROR_STOP=1 -h localhost -U supabase_admin -d "$database" "$@"; }
+# The Docker hostname uses SCRAM rather than localhost's upstream trust rule.
+# PGPASSWORD is already set from POSTGRES_PASSWORD in the isolated DB container.
+ops_app_sql() { "${compose[@]}" exec -T db psql -X -w -v ON_ERROR_STOP=1 -h db -U postgres -d "$database" "$@"; }
 ops_assert_target() {
   local target
   target=$(ops_sql -Atqc 'select environment||chr(58)||instance_id from infra_control.target') || ops_fail 'Cannot verify isolated DB marker'
