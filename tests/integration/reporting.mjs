@@ -74,31 +74,112 @@ try {
   denied(await rpc("unit_history_export", "both", { p_unit: randomUUID() }));
   assert.equal(allowed(await rpc("unit_history_export", "both", { p_unit: A, p_from: "2026-09-02" })).record_count, 0);
 
-  // A repeatable-read transaction demonstrates the report's statement snapshot:
-  // concurrent answer and lifecycle writes cannot mix into its coherent envelope.
-  const snapshot = new pg.Client({ connectionString: config.DB_URL });
-  await snapshot.connect();
-  try {
-    await snapshot.query("begin isolation level repeatable read");
-    await snapshot.query("set local role authenticated");
-    await snapshot.query("select set_config('request.jwt.claim.sub',$1,true)", [users.both]);
-    await snapshot.query("select txid_current_snapshot()");
-    await db.query("update audit.inspection_answers set response='AT', observation='=SUM(1,2)\nÁgua 😀' where inspection_id=$1", [inspection]);
-    const old = (await snapshot.query("select audit.inspection_export($1) result", [inspection])).rows[0].result;
-    assert.equal(old.inspection.status, "draft");
-    assert.equal(old.inspection.counts.answered, 0);
-    assert.equal(old.sections[0].items[0].observation, "");
-    await snapshot.query("commit");
-  } finally { await snapshot.end(); }
-  const full = allowed(await rpc("inspection_export", "both", { p_inspection: inspection }));
-  assert.equal(full.inspection.counts.at, 158);
-  assert.equal(full.sections[0].items[0].observation, "=SUM(1,2)\nÁgua 😀");
-  allowed(await rpc("finalize_inspection", "writer", { p_id: inspection, p_version: 1, p_expected_evidence_ids: [] }));
-  assert.equal(allowed(await rpc("inspection_export", "both", { p_inspection: inspection })).inspection.status, "finalized");
-  allowed(await rpc("reopen_inspection", "writer", { p_id: inspection, p_version: 2 }));
-  const reopened = allowed(await rpc("inspection_export", "both", { p_inspection: inspection }));
-  assert.equal(reopened.inspection.status, "draft");
-  assert.equal(reopened.inspection.classification, null);
+  // Hold the SELECT after its READ COMMITTED statement snapshot has been acquired,
+  // before evaluating the report. These are real concurrent exports, not a snapshot
+  // transaction started before a later sequential export. No RPC/SQL is replaced.
+  const lockKey = parseInt(tag, 16);
+  const lockerPid = (await db.query("select pg_backend_pid() pid")).rows[0].pid;
+  const observation = "=SUM(1,2)\nÁgua 😀";
+  const counts = (response) => ({
+    total: 158, answered: response ? 158 : 0, unanswered: response ? 0 : 158,
+    applicable: response ? 158 : 0,
+    at: response === "AT" ? 158 : 0, ap: response === "AP" ? 158 : 0,
+    nat: response === "NAT" ? 158 : 0, nap: 0,
+  });
+  function coherent(report, expected) {
+    assert.equal(report.record_count, 1);
+    const records = report.kind === "inspection" ? [report.inspection] : report.records;
+    assert.equal(records.length, 1);
+    const row = records[0];
+    assert.equal(row.id, inspection);
+    assert.equal(row.status, expected.status);
+    assert.equal(row.version, expected.version);
+    assert.equal(row.score, expected.score);
+    assert.equal(row.classification, expected.classification);
+    assert.equal(row.progress_percent, expected.response ? 100 : 0);
+    assert.deepEqual(row.counts, counts(expected.response));
+    if (expected.status === "finalized") assert.ok(row.finalized_at);
+    else assert.equal(row.finalized_at, null);
+    if (report.kind === "inspection") {
+      assert.equal(report.sections.length, 9);
+      const all = report.sections.flatMap(section => section.items);
+      assert.equal(all.length, 158);
+      for (const item of all) {
+        assert.equal(item.response, expected.response);
+        assert.equal(item.observation, expected.observation);
+        assert.equal(item.version, expected.answerVersion);
+      }
+      for (const section of report.sections) {
+        const total = section.items.length;
+        assert.deepEqual(section.counts, Object.fromEntries(
+          Object.entries(counts(expected.response)).map(([key, value]) => [key, value === 158 ? total : value])
+        ));
+        assert.equal(section.complete, !!expected.response);
+        assert.equal(section.score, expected.score);
+      }
+    }
+  }
+  async function duringExport(mutate, before, after) {
+    const sessions = [];
+    const queries = [];
+    let results = [];
+    await db.query("select pg_advisory_lock($1::bigint)", [lockKey]);
+    try {
+      for (const kind of ["inspection", "unit_history"]) {
+        const client = new pg.Client({ connectionString: config.DB_URL });
+        await client.connect();
+        sessions.push(client);
+        await client.query("set statement_timeout = '15s'");
+        await client.query("set role authenticated");
+        await client.query("select set_config('request.jwt.claim.sub',$1,false)", [users.both]);
+        const pid = (await client.query("select pg_backend_pid() pid")).rows[0].pid;
+        const sql = kind === "inspection"
+          ? "select audit.inspection_export($1) result from (select pg_advisory_xact_lock($2::bigint)) barrier"
+          : "select audit.unit_history_export($1,'2026-09-01','2026-09-01') result from (select pg_advisory_xact_lock($2::bigint)) barrier";
+        // Attach a rejection handler immediately so cleanup is safe if a barrier fails.
+        queries.push(client.query(sql, [kind === "inspection" ? inspection : A, lockKey])
+          .then(result => ({ result }), error => ({ error })));
+        const deadline = Date.now() + 10000;
+        for (;;) {
+          const waiting = await db.query(
+            "select $2::int = any(pg_blocking_pids($1::int)) blocked", [pid, lockerPid]);
+          if (waiting.rows[0].blocked) break;
+          assert.ok(Date.now() < deadline, `Export ${kind} did not reach its lock barrier`);
+        }
+      }
+      // Both SELECTs are in flight with an observed lock wait and an old snapshot.
+      await mutate();
+    } finally {
+      await db.query("select pg_advisory_unlock($1::bigint)", [lockKey]);
+      results = await Promise.all(queries);
+      await Promise.all(sessions.map(client => client.end()));
+    }
+    // Assertions stay outside cleanup so a failed mutation retains its original error.
+    for (const result of results) {
+      if (result.error) throw result.error;
+      coherent(result.result.rows[0].result, before);
+    }
+    coherent(allowed(await rpc("inspection_export", "both", { p_inspection: inspection })), after);
+    coherent(allowed(await rpc("unit_history_export", "both", { p_unit: A, p_from: "2026-09-01", p_to: "2026-09-01" })), after);
+  }
+  const emptyDraft = { status: "draft", version: 1, response: null, score: null,
+    classification: null, observation: "", answerVersion: 1 };
+  const atDraft = { ...emptyDraft, response: "AT", score: 100, observation, answerVersion: 2 };
+  const apFinal = { status: "finalized", version: 2, response: "AP", score: 50,
+    classification: "inadequate", observation, answerVersion: 3 };
+  const natReopened = { status: "draft", version: 3, response: "NAT", score: 0,
+    classification: null, observation, answerVersion: 4 };
+  await duringExport(async () => {
+    await db.query("update audit.inspection_answers set response='AT', observation=$2, version=version+1 where inspection_id=$1", [inspection, observation]);
+  }, emptyDraft, atDraft);
+  await duringExport(async () => {
+    await db.query("update audit.inspection_answers set response='AP', version=version+1 where inspection_id=$1", [inspection]);
+    allowed(await rpc("finalize_inspection", "writer", { p_id: inspection, p_version: 1, p_expected_evidence_ids: [] }));
+  }, atDraft, apFinal);
+  await duringExport(async () => {
+    allowed(await rpc("reopen_inspection", "writer", { p_id: inspection, p_version: 2 }));
+    await db.query("update audit.inspection_answers set response='NAT', version=version+1 where inspection_id=$1", [inspection]);
+  }, apFinal, natReopened);
   await db.query("update core.user_role_assignments set active=false where user_id=$1", [users.both]);
   denied(await rpc("inspection_export", "both", { p_inspection: inspection }));
   denied(await rpc("unit_history_export", "both", { p_unit: A }));

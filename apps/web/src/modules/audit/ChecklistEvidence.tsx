@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from "react";
 import { Confirm } from "../../shared/ui";
-import { ACCEPT, FORMATS_HINT, downloadEvidence, evidenceMessage, formatSize, typeLabel, removeEvidence } from "./evidence";
+import { ACCEPT, FORMATS_HINT, downloadEvidence, formatSize, typeLabel, removeEvidence } from "./evidence";
 import type { ChecklistEvidence as Evidence, Item } from "./types";
 import type { EvidenceController } from "./useChecklistEvidence";
 import "./evidence.css";
@@ -42,7 +42,7 @@ export function ChecklistEvidence({item,editable,controller}:{item:Item;editable
  </div>}
  {removing&&<Confirm title="Remover evidência" description={`Remover “${removing.original_name}” deste critério? O registro histórico será preservado.`}
  onClose={()=>{setRemoving(undefined);button.current?.focus();}} onConfirm={async()=>{
-  try{await removeEvidence(removing.id);controller.reload();}catch(error){throw new Error(evidenceMessage(error));}
+  await removeEvidence(removing.id);controller.reload();
  }}/>}
  </section>;
 }

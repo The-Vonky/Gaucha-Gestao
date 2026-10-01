@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { qualityTouchTargets } from "./quality-touch.mjs";
 import { execFileSync, spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -746,6 +747,7 @@ try {
     const context = await browser.newContext({
       viewport: { width: 375, height: 812 },
       acceptDownloads: true,
+      hasTouch: true,
     });
     const page = await context.newPage();
     const noOverflow = async (what) =>
@@ -755,6 +757,20 @@ try {
         ),
         `Mobile overflow: ${what}`,
       );
+    async function checkTouchWidths(label) {
+      for (const width of [375, 768, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await qualityTouchTargets(page, `${label} ${width}px/coarse`);
+        if (width < 1024) {
+          await page.getByRole("button", { name: "Menu", exact: true }).click();
+          await page.getByRole("dialog").waitFor();
+          await qualityTouchTargets(page, `${label} menu ${width}px/coarse`);
+          await page.keyboard.press("Escape");
+          await page.getByRole("dialog").waitFor({ state: "hidden" });
+        }
+      }
+      await page.setViewportSize({ width: 375, height: 812 });
+    }
     await page.goto(origin);
     await page.getByLabel(/E-mail/i).fill(users.unitEmail);
     await page.getByLabel(/Senha/i).fill(password);
@@ -774,13 +790,35 @@ try {
     await noOverflow("plan detail");
     const longName = `${"Relatório de inspeção da cozinha central ".repeat(3).trim()}.pdf`;
     const inputs = page.locator('input[type="file"]');
+    // Fail just the first confirmation after real bytes were uploaded. Both retry
+    // and discard now render on the actual Evidence component at every width.
+    await page.route("**/rest/v1/rpc/confirm_evidence_upload", route => route.fulfill({
+      status: 503, contentType: "application/json", body: JSON.stringify({ code: "", message: "offline" }),
+    }), { times: 1 });
     await inputs
       .first()
       .setInputFiles({ name: longName, mimeType: "", buffer: bytes });
+    await page.getByRole("button", { name: "Tentar novamente", exact: true }).waitFor();
+    await checkTouchWidths("evidence retry/discard and plan actions");
+    await page.getByRole("button", { name: "Tentar novamente", exact: true }).click();
     // The pending item names the file while it is sent; the list row means confirmed.
     const row = (name) => page.getByRole("listitem").filter({ hasText: name });
     await row(longName).waitFor();
     await noOverflow("long evidence name");
+    await row(longName).getByRole("button", { name: `Remover ${longName}` }).waitFor();
+    await checkTouchWidths("evidence download/remove");
+    // Retain dense 1440px fine-pointer desktop controls.
+    const fineContext = await browser.newContext({ viewport: { width: 1440, height: 900 },
+      hasTouch: false, storageState: await context.storageState() });
+    try {
+      const fine = await fineContext.newPage();
+      await fine.goto(`${origin}/action-plans/${uiPlan}`);
+      await fine.getByRole("button", { name: `Remover ${longName}` }).waitFor();
+      assert.equal(await fine.evaluate(() => matchMedia("(pointer: fine)").matches), true);
+      assert.equal((await fine.getByRole("button", { name: `Remover ${longName}` }).boundingBox()).height, 32);
+      assert.equal((await fine.locator(".sidebar .menu a").first().boundingBox()).height, 38);
+      assert.equal((await fine.locator(".sidebar .logout").boundingBox()).height, 36);
+    } finally { await fineContext.close(); }
     await inputs.last().setInputFiles({
       name: "foto.png",
       mimeType: "image/png",
@@ -830,11 +868,19 @@ try {
     const form = page.getByRole("dialog");
     await form.getByText("verificacao.pdf").waitFor();
     await noOverflow("verification form");
+    assert.equal(await form.locator(".ap-result .check").count(), 3);
+    for (const width of [375, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await qualityTouchTargets(page, `verification radios ${width}px/coarse`);
+    }
+    await page.setViewportSize({ width: 375, height: 812 });
     await form.getByLabel("Eficaz", { exact: true }).check();
     await form.getByLabel(/Análise/).fill("Critério atendido");
     await form.getByRole("button", { name: "Salvar" }).click();
     await form.waitFor({ state: "hidden" });
     await page.getByText("Verificação nº 1 (atual)").waitFor();
+    await page.getByRole("button", { name: "Reverificar eficácia" }).waitFor();
+    await checkTouchWidths("reverification actions");
     assert.equal(
       (
         await db.query(
