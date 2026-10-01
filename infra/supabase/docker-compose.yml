@@ -86,7 +86,8 @@ services:
     restart: "no"
     depends_on:
       db: {condition: service_healthy}
-      rest: {condition: service_healthy}
+      # Platform Storage migrations can run before application schemas exist.
+      rest: {condition: service_started}
     environment:
       ANON_KEY: ${ANON_KEY:?required}
       SERVICE_KEY: ${SERVICE_ROLE_KEY:?required}
@@ -115,7 +116,8 @@ services:
     restart: "no"
     depends_on:
       auth: {condition: service_healthy}
-      rest: {condition: service_healthy}
+      # Platform Storage migrations can run before application schemas exist.
+      rest: {condition: service_started}
       storage: {condition: service_healthy}
     ports:
       - "127.0.0.1:${GATEWAY_PORT:?required}:8000"

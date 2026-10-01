@@ -29,8 +29,9 @@ bash scripts/ops/gen-secrets.sh --environment staging --output "$infra_env"
 # in this external file if needed. Keep permissions 600. Do not echo secrets.
 
 docker compose --env-file "$infra_env" -p "$infra_project" -f infra/supabase/docker-compose.yml config --quiet
-docker compose --env-file "$infra_env" -p "$infra_project" -f infra/supabase/docker-compose.yml up -d --wait --wait-timeout 300
+docker compose --env-file "$infra_env" -p "$infra_project" -f infra/supabase/docker-compose.yml up -d
 bash scripts/ops/apply-migrations.sh --environment staging --env-file "$infra_env" --project "$infra_project" --database postgres
+docker compose --env-file "$infra_env" -p "$infra_project" -f infra/supabase/docker-compose.yml up -d --wait --wait-timeout 180
 bash scripts/ops/healthcheck.sh --environment staging --env-file "$infra_env" --project "$infra_project" --database postgres
 node scripts/ops/smoke.mjs --environment staging --env-file "$infra_env" --project "$infra_project" --database postgres
 
@@ -62,6 +63,10 @@ The target is the isolated Compose `db`, never a host connection string.
 ledger, and executes `supabase/migrations/*.sql` in filename order **byte-for-byte**.
 The files retain their own transactions. Each success records its SHA-256. Platform
 Auth/Storage migrations finish during service startup before application migrations.
+The initial `up -d` waits for DB/Auth/Storage via dependency health gates; REST starts
+with the exact app schemas but becomes healthy only after those migrations create
+them. The second `up --wait` requires all five services to be healthy. No temporary
+schema-list override or placeholder application schema is used.
 There is no reset/drop/replay mode. A partially applied run is a failed disposable
 stack: dispose that explicit project, generate new credentials and use a fresh
 project. Application schemas, storage policies and `supabase/config.toml` are unchanged.

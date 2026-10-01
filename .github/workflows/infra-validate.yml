@@ -75,10 +75,27 @@ jobs:
           console.log('Resolved minimum/safety contract verified');
           JS
           rm -f "$RUNNER_TEMP/infra-config.json"
-      - name: Start only minimal stack and wait for healthy dependencies
+      - name: Start minimum stack and wait for platform migration dependencies
         shell: bash
         run: |
-          docker compose --env-file "$RUNNER_TEMP/gaucha-infra.env" -p "$INFRA_PROJECT" -f infra/supabase/docker-compose.yml up -d --wait --wait-timeout 300
+          # REST requires application schemas, which are created by the next step.
+          docker compose --env-file "$RUNNER_TEMP/gaucha-infra.env" -p "$INFRA_PROJECT" -f infra/supabase/docker-compose.yml up -d
+          node --input-type=module - "$RUNNER_TEMP/gaucha-infra.env" "$INFRA_PROJECT" <<'JS'
+          import {execFileSync} from 'node:child_process';
+          const [file,project]=process.argv.slice(2);
+          const compose=['compose','--env-file',file,'-p',project,'-f','infra/supabase/docker-compose.yml'];
+          const deadline=Date.now()+180000;
+          while(true){
+            const healthy=['db','auth','storage','kong'].every(service=>{
+              const id=execFileSync('docker',[...compose,'ps','--all','--quiet',service],{encoding:'utf8'}).trim();
+              return id && execFileSync('docker',['inspect','--format','{{.State.Status}}:{{.State.Health.Status}}',id],{encoding:'utf8'}).trim()==='running:healthy';
+            });
+            if(healthy) break;
+            if(Date.now()>deadline) throw new Error('Platform dependencies did not become healthy');
+            await new Promise(resolve=>setTimeout(resolve,1000));
+          }
+          console.log('Platform migration dependencies healthy; REST waits for application schemas');
+          JS
       - name: Apply existing migrations to explicit new DB
         shell: bash
         run: |
@@ -86,6 +103,8 @@ jobs:
           if bash scripts/ops/apply-migrations.sh --environment ci --env-file "$RUNNER_TEMP/gaucha-infra.env" --project "$INFRA_PROJECT" --database postgres; then
             echo 'Migrations accepted a populated target' >&2; exit 1
           fi
+          # Final readiness includes REST, with exactly the configured app schemas.
+          docker compose --env-file "$RUNNER_TEMP/gaucha-infra.env" -p "$INFRA_PROJECT" -f infra/supabase/docker-compose.yml up -d --wait --wait-timeout 180
       - name: Healthcheck mandatory services and data paths
         shell: bash
         run: bash scripts/ops/healthcheck.sh --environment ci --env-file "$RUNNER_TEMP/gaucha-infra.env" --project "$INFRA_PROJECT" --database postgres
