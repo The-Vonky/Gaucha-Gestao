@@ -2,83 +2,134 @@ import { useState, type FormEvent } from "react";
 import { client } from "../client";
 import { Notice } from "../../shared/ui";
 import { BrandMark } from "../../shared/brand";
-import { Icon } from "../../shared/icons";
 import logo from "../../assets/gaucha-alimentacao-logo.png";
+import "./Login.css";
+
 export function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     setBusy(true);
     setError("");
+
     try {
       const result = await client!.auth.signInWithPassword({
         email: String(data.get("email")).trim(),
         password: String(data.get("password")),
       });
-      if (result.error)
+
+      if (result.error) {
         setError(
           "Não foi possível entrar. Confira suas credenciais e tente novamente.",
         );
+      }
     } catch {
       setError("Conexão indisponível. Tente novamente.");
     } finally {
       setBusy(false);
     }
   }
+
   return (
-    <main className="login">
-      {/* The two "elos" of the mark at architectural scale: the composition's structure. */}
-      <BrandMark className="login-loops" weight={2.6} />
-      <section className="login-intro">
-        <p className="login-lockup">
-          <BrandMark />
-          <span className="brand-name">
-            Gaúcha<small>Gestão</small>
+    <main className="login-v2">
+      <section className="login-v2-brand" aria-label="Gaúcha Gestão">
+        <div className="login-v2-product">
+          <BrandMark className="login-v2-product-mark" />
+          <span className="login-v2-product-copy">
+            <strong>Gaúcha Gestão</strong>
+            <small>Plataforma corporativa</small>
           </span>
-        </p>
-        <h1>Um só lugar para a gestão da nossa operação.</h1>
-        <p className="login-tagline">
-          Plataforma corporativa da Gaúcha Alimentação.
-        </p>
+        </div>
+
+        <div className="login-v2-message">
+          <span className="login-v2-accent" aria-hidden="true" />
+          <p className="login-v2-headline">
+            Gestão da operação, com clareza e controle.
+          </p>
+          <p className="login-v2-subtitle">
+            Informação, processos e gestão das unidades em um ambiente único,
+            seguro e rastreável.
+          </p>
+        </div>
+
+        <div className="login-v2-signature login-v2-signature-desktop">
+          <span>Uma plataforma</span>
+          <span className="login-v2-company-logo-box">
+            <img src={logo} alt="Gaúcha Alimentação" />
+          </span>
+        </div>
       </section>
-      <section className="login-card" aria-labelledby="login-title">
-        <img className="login-logo" src={logo} alt="Gaúcha Alimentação" />
-        <h2 id="login-title">Acesse sua conta</h2>
-        <p>Use o acesso fornecido pela administração.</p>
-        <form onSubmit={(e) => void submit(e)}>
-          <fieldset disabled={busy}>
-            <label>
-              E-mail
-              <input
-                name="email"
-                type="email"
-                autoComplete="username"
-                required
-              />
-            </label>
-            <label>
-              Senha
-              <input
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-              />
-            </label>
-            {error && <Notice error>{error}</Notice>}
-            <button className="primary" type="submit">
-              {busy ? "Entrando…" : "Entrar"}
-              {!busy && <Icon name="arrowRight" />}
-            </button>
-          </fieldset>
-        </form>
-        <p className="muted login-help">
-          Precisa de acesso ou redefinição de senha? Fale com a administração.
-        </p>
+
+      <section className="login-v2-main" aria-labelledby="login-title">
+        <div className="login-v2-card">
+          <h1 id="login-title">Entrar na plataforma</h1>
+          <p className="login-v2-support">
+            Use o e-mail e a senha fornecidos pela administração.
+          </p>
+
+          <form
+            className="login-v2-form"
+            aria-busy={busy}
+            onSubmit={(e) => void submit(e)}
+          >
+            <fieldset disabled={busy}>
+              <label htmlFor="login-email">
+                E-mail
+                <input
+                  id="login-email"
+                  name="email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  enterKeyHint="next"
+                  required
+                />
+              </label>
+
+              <label htmlFor="login-password">
+                Senha
+                <input
+                  id="login-password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  enterKeyHint="go"
+                  required
+                />
+              </label>
+
+              {error && <Notice error>{error}</Notice>}
+
+              <button
+                className={`primary login-v2-submit${busy ? " is-busy" : ""}`}
+                type="submit"
+              >
+                {busy && (
+                  <span className="login-v2-spinner" aria-hidden="true" />
+                )}
+                <span>{busy ? "Entrando…" : "Entrar"}</span>
+              </button>
+            </fieldset>
+          </form>
+
+          <p className="login-v2-help">
+            Precisa de acesso ou redefinição de senha?{" "}
+            <strong>Fale com a administração.</strong>
+          </p>
+        </div>
+
+        <div className="login-v2-signature login-v2-signature-mobile">
+          <span>Uma plataforma</span>
+          <img src={logo} alt="Gaúcha Alimentação" />
+        </div>
+
+        <p className="login-v2-foot">© 2026 Gaúcha Alimentação</p>
       </section>
-      <p className="login-foot">Gaúcha Alimentação · Uso interno</p>
     </main>
   );
 }
