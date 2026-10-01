@@ -62,10 +62,11 @@ concede acesso na tela Usuários. Recuperação de senha também usa o fluxo do 
   (Checklist Evidence) estão integrados na `main`; veja
   `docs/modules/audit/CHECKLIST_EVIDENCE_V1.md` para contrato e gates restantes.
   O histórico por unidade pagina `inspection_summaries` em blocos de 500 desde a PR #13,
-  evitando o truncamento silencioso pelo limite Data API de 1.000 linhas. A CI pós-merge
-  atual passou na execução `36747746343` sobre
-  `fdae41a51af284358aa9dc7804ba03f75f241ac6`; a matriz de Qualidade ainda não
-  declara aceite físico ou produção.
+  evitando o truncamento silencioso pelo limite Data API de 1.000 linhas. O software
+  funcional e o hardening pré-homologação da Qualidade v1 estão concluídos após a PR #14. A CI pós-merge
+  atual passou na execução `36854366048` sobre
+  `664ed5a95684b15c8035e78c21a413bdbd057103`; a homologação física P1–P9 permanece pendente e a prontidão
+  operacional O1–O8 permanece pendente/parcial. Production ready: NÃO; veja a matriz de Qualidade.
 
 ## Testes de banco
 

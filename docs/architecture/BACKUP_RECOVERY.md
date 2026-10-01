@@ -26,7 +26,21 @@ The production design must define:
 - recovery point objective (RPO);
 - recovery time objective (RTO).
 
-RPO/RTO are not finalized in this architecture phase.
+Technical RPO, RTO inside operating hours, RTO outside operating hours and retention periods remain pending definition/measurement.
+
+## Operational decisions and provisions — 2026-10-01
+
+| Responsibility / provision | Current decision |
+| --- | --- |
+| Operational owner | Current person responsible for the project |
+| Backup/restore owner | Same person responsible for the project |
+| Alert recipients | Current person responsible for the project + supervisor |
+| Provisional operating window | Monday–Friday, 07:00–18:00 (America/Sao_Paulo), with occasional exceptions |
+| Infrastructure expected to remain powered on | 24x7; not a verified availability or support guarantee |
+
+Business requirement: data that the system has confirmed as saved must not be lost. This is a business requirement, not a proven technical recovery guarantee. **Do not record RPO=0:** no architecture has yet been demonstrated capable of guaranteeing zero RPO.
+
+Technical RPO, RTO inside the provisional operating window, RTO outside that window, and retention for backups, system audit logs and removed objects remain pending definition/measurement. These decisions leave O1 **PARTIAL**, not CLOSED. Backup independence, restore drills and operational readiness still require evidence; this document does not authorize production release.
 
 ## Minimum recovery scenarios
 

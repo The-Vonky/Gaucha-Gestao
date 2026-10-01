@@ -1,6 +1,34 @@
 # Qualidade v1 — matriz factual e escopo restante
 
-Revisão documental: 2026-09-30 sobre `main` em `fdae41a51af284358aa9dc7804ba03f75f241ac6`, merge da PR #13 (paginação completa do histórico por unidade). Essa composição inclui Audit Checklist Evidence (PR #11), Audit Export & Reporting (PR #9), Admin polish (PR #8) e as fatias anteriores de Qualidade. A CI pós-merge da `main` passou na execução `36747746343`. Este retrato não afirma que a plataforma esteja implantada em produção. E1–E3 e o contrato de relatórios foram aprovados em 2026-09-29.
+Revisão documental: 2026-10-01 sobre `main` em `664ed5a95684b15c8035e78c21a413bdbd057103`, merge da PR #14 (hardening pré-homologação). Essa composição inclui Audit Checklist Evidence (PR #11), Audit Export & Reporting (PR #9), Admin polish (PR #8) e as fatias anteriores de Qualidade. A CI pós-merge da `main` passou na execução `36854366048`. Este retrato não afirma que a plataforma esteja implantada em produção. E1–E3 e o contrato de relatórios foram aprovados em 2026-09-29.
+
+## Estado pós-PR #14
+
+| Frente | Estado |
+| --- | --- |
+| Software funcional da Qualidade v1 | Concluído |
+| Hardening pré-homologação | Concluído e integrado pela PR #14 |
+| CI da `main` | Verde: execução `36854366048` |
+| Homologação física P1–P9 | Pendente |
+| Prontidão operacional O1–O8 | Pendente/parcial; classificação abaixo |
+| Production ready | **NÃO** |
+
+A PR #14 concluiu o hardening de touch targets/mobile, o tratamento do limite >5.000 no Reporting, a preservação dos códigos de erro de Checklist Evidence, a proteção visual de finalize/reopen durante reload e o teste concorrente reforçado de Reporting. Os contratos funcionais existentes permanecem os mesmos.
+
+### Classificação operacional da auditoria atual
+
+| Item | Estado |
+| --- | --- |
+| O1 | PARTIAL |
+| O2 | UNKNOWN / requires environment check |
+| O3 | OPEN |
+| O4 | OPEN |
+| O5 | PARTIAL |
+| O6 | PARTIAL |
+| O7 | OPEN |
+| O8 | OPEN |
+
+O1 permanece PARTIAL: responsáveis e janela provisória foram definidos, mas faltam RPO/RTO numéricos e retenções. O2 exige verificação do ambiente; não foi realizada nesta revisão documental. Decisões/provisões operacionais e o requisito de preservação dos dados confirmados como salvos estão em [Backup and Recovery](../../architecture/BACKUP_RECOVERY.md#operational-decisions-and-provisions--2026-10-01). A infraestrutura esperada ligada 24x7 não comprova disponibilidade nem atendimento contínuo.
 
 ## Como ler
 
@@ -23,7 +51,7 @@ Caminhos de UI abaixo são relativos a `apps/web/src/modules/`; migrations ficam
 | Exports/reporting | Implementado e integrado na `main` (PR #9); aceite físico pendente | Migration `20260929172805_audit_export_reporting_v1.sql`; `audit/reporting/`, ações em `InspectionPage.tsx`/`UnitHistory.tsx`; XLSX de inspeção/histórico e print surface dedicada; benchmark representativo de 5.000 em `tests/performance/reporting-history.mjs` | Impressão/salvamento em iOS Safari e Android Chrome pendentes; [brief](../../briefs/AUDIT_EXPORT_REPORTING_V1.md) |
 | UI/UX | Fases 2–3 integradas; aceite móvel pendente | Páginas Audit/Action Plans/Evidence e navegação por seções no `InspectionPage.tsx` pós-PR #7; filtros/ações de relatório na PR #9 | Verificação manual de dispositivo real e PDF físico; `InspectionPage.tsx` não usa mais `<select>` |
 | Autorização/RLS | Implementado para o escopo funcional de Qualidade | Core 0001–0003; Audit 0004/0009, reporting e Checklist Evidence; Action Plans 0006/0007; Storage/evidence 0008. Checklist Evidence aplica default deny, escopo da unidade, separação read/edit e políticas próprias de Storage/RLS | CI pós-merge `36728754202` comprovou JWT/PostgREST/Storage, wrong-unit/sector/anon/inactive denial e revogação sob espera de lock; produção continua sujeita aos gates operacionais |
-| Testes automatizados | Implementado para o escopo funcional de Qualidade | `npm test` cobre 19 arquivos/224 testes, incluindo 9 testes de paginação Audit com 1.001 summaries; workflow executa Action Plans, Evidence, Reporting, Audit, Checklist Evidence e Admin em Supabase descartável com Storage/Chromium. `audit-evidence.mjs` inclui bytes reais, bypasses, concorrência PostgreSQL e 375px | CI pós-merge passou em `36747746343`; testes físicos e operação continuam separados |
+| Testes automatizados | Implementado para o escopo funcional de Qualidade | `npm test` inclui 9 testes de paginação Audit com 1.001 summaries; workflow executa Action Plans, Evidence, Reporting, Audit, Checklist Evidence e Admin em Supabase descartável com Storage/Chromium. `audit-evidence.mjs` inclui bytes reais, bypasses, concorrência PostgreSQL e 375px | CI pós-merge passou em `36854366048`; testes físicos e operação continuam separados |
 | Mobile real | Parcialmente implementado/validado | Integrações Audit/Reporting e Checklist Evidence exercitam Chromium a 375px, incluindo print portal, XLSX e upload/download/remove de evidências | Emulação não comprova iOS Safari/Android Chrome físicos. Aceites manuais de câmera/galeria/arquivos, download, XLSX e print/PDF permanecem necessários |
 | Segurança dos arquivos | Parcialmente implementado | RPC/bucket validam tamanho/MIME/extensão; cliente `checkFile` valida assinatura; URLs 60s, attachment-only e remoção lógica | Bytes não são atestados pelo servidor; ZIP magic não distingue OOXML seguro. E3 aprovada aceita explicitamente o risco residual no novo Audit; arquivos continuam não confiáveis, sem preview inline e com download attachment; nosniff/cache/EXIF têm limites explícitos |
 | Produção/operação | Parcialmente documentado; operação não verificada | ADR-004, BACKUP_RECOVERY.md e gates de EVIDENCE_STORAGE_V1.md; migration 0008 e `20260930114000_audit_checklist_evidence_v1.sql` contêm reconciliação privada para seus respectivos domínios | Não foi inspecionado servidor/deploy. Exigir evidências de backup independente, restore com download, RPO/RTO/retenção, cabeçalhos, alertas, runbook e autorização operacional; não marcar infraestrutura como inexistente |
@@ -31,13 +59,13 @@ Caminhos de UI abaixo são relativos a `apps/web/src/modules/`; migrations ficam
 
 ## Evidência de CI disponível
 
-Checks da `main` `fdae41a51af284358aa9dc7804ba03f75f241ac6` (merge da PR #13): `validate` e `action-plans-integration` concluíram com `success` na [execução 36747746343](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/36747746343).
+Checks da `main` `664ed5a95684b15c8035e78c21a413bdbd057103` (merge da PR #14): `validate` e `action-plans-integration` concluíram com `success` na [execução 36854366048](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/36854366048).
 
-O workflow pós-merge executou `npm ci`, typecheck, lint, `npm test` (19 arquivos, 224 testes), build, verify:build e `npm audit --omit=dev` (0 vulnerabilidades), além das integrações reais de Action Plans, Evidence, Reporting, Audit, Checklist Evidence e Admin UI em Supabase descartável com Storage e Chromium. A correção da PR #13 acrescenta 9 testes de API que comprovam 1.001 summaries, ranges/filtros, ordenação, deduplicação de fronteira, erro em página posterior e compatibilidade de inspection/overview; as integrações reais confirmam que as consultas Audit continuam válidas no PostgREST, embora não criem >500 summaries no stack real. O Storage local respondeu sem `Cache-Control` e sem `X-Content-Type-Options`; isso mantém nosniff/cache como gate de produção. Nenhum resultado de CI é teste físico de celular, restore de produção ou aceite operacional. `npm run test:rls` isoladamente roda apenas `tests/database.test.ts`.
+O workflow pós-merge executou `npm ci`, typecheck, lint, `npm test`, build, verify:build e `npm audit --omit=dev` (0 vulnerabilidades), além das integrações reais de Action Plans, Evidence, Reporting, Audit, Checklist Evidence e Admin UI em Supabase descartável com Storage e Chromium. A correção da PR #13 acrescenta 9 testes de API que comprovam 1.001 summaries, ranges/filtros, ordenação, deduplicação de fronteira, erro em página posterior e compatibilidade de inspection/overview; as integrações reais confirmam que as consultas Audit continuam válidas no PostgREST, embora não criem >500 summaries no stack real. Na validação anteriormente registrada, o Storage local respondeu sem `Cache-Control` e sem `X-Content-Type-Options`; isso mantém nosniff/cache como gate de produção. Nenhum resultado de CI é teste físico de celular, restore de produção ou aceite operacional. `npm run test:rls` isoladamente roda apenas `tests/database.test.ts`.
 
 ## Fechamento — pendências finais
 
-Retrato de `fdae41a51af284358aa9dc7804ba03f75f241ac6`. Classifica o que os contratos existentes já exigem; não cria requisitos nem escolhe valores operacionais. "Bloqueia produção" segue os gates de FOUNDATION_GATES.md (6–9), EVIDENCE_STORAGE_V1.md e os critérios de aceite dos briefs. Nenhum item abaixo bloqueia o merge de uma funcionalidade isolada, desde que a respectiva CI passe e o item continue registrado.
+Retrato de `664ed5a95684b15c8035e78c21a413bdbd057103`. Classifica o que os contratos existentes já exigem; não cria requisitos nem escolhe valores operacionais. "Bloqueia produção" segue os gates de FOUNDATION_GATES.md (6–9), EVIDENCE_STORAGE_V1.md e os critérios de aceite dos briefs. Nenhum item abaixo bloqueia o merge de uma funcionalidade isolada, desde que a respectiva CI passe e o item continue registrado.
 
 | Item | Já automatizado | Exige dispositivo físico | Exige evidência operacional | Bloqueia produção / fechamento | Contrato |
 | --- | --- | --- | --- | --- | --- |
@@ -67,7 +95,7 @@ Já automatizado e fora desta lista de pendências funcionais: Core/RLS, Audit l
 | FOUNDATION_GATES.md | Reopen/brief Audit/event model/file rules como decisões ainda iniciais | Referencia contratos/migrations existentes; mantém pendências operacionais sem inferir produção |
 | OVERVIEW.md | RBAC, catálogo e Core físico abertos; attachment metadata como candidato Core | Remete a ADR-005/migrations e ownership por módulo, inclui Action Plans transversal |
 | SECURITY.md | Autenticação ainda não selecionada | Supabase Auth conforme ADR-004/005 e implementação |
-| FOUNDATION_GATES.md, LOCAL_FOUNDATION.md, README.md, AGENTS.md, AUDIT_CHECKLIST_EVIDENCE_V1.md (2026-09-30 pós-PR #11/#13) | Checklist Evidence ainda descrito como branch/ausente, baseline da `main` anterior e histórico de unidade sem registrar a correção de paginação | Checklist Evidence registrado como integrado; PR #13 registrada como correção do truncamento >1.000; baseline atual `fdae41a` com CI pós-merge verde; somente aceite físico e operação permanecem abertos |
+| FOUNDATION_GATES.md, LOCAL_FOUNDATION.md, README.md, AGENTS.md, AUDIT_CHECKLIST_EVIDENCE_V1.md (2026-09-30 pós-PR #11/#13) | Checklist Evidence ainda descrito como branch/ausente, baseline da `main` anterior e histórico de unidade sem registrar a correção de paginação | Checklist Evidence registrado como integrado; PR #13 registrada como correção do truncamento >1.000; baseline então revisada `fdae41a` com CI pós-merge verde; somente aceite físico e operação permanecem abertos |
 | AUDIT_SOURCE_OF_TRUTH.md, MIGRATION_MAP.md | Estado legado podia ser confundido com plataforma atual | Adiciona contexto temporal, decisões resolvidas e links para os briefs, preservando proveniência histórica |
 
 Os três briefs de domínio anteriores permanecem como contratos das respectivas fatias; suas exclusões de anexos/exportações não significam exclusão do módulo completo. QUALITY_UI_V1.md permanece intocado.
@@ -88,6 +116,6 @@ Não entram: novos módulos/origens, Realtime, arquivo portátil ZIP, importaç�
 - **E2 aprovada:** após reopen, o conjunto atual volta a ser editável com `audit.inspection.edit`; evidências existentes permanecem, removidas mantêm registro histórico e não são restauradas automaticamente. Cada finalização registra os IDs das evidências disponíveis naquele momento; sem navegador de revisões históricas em v1.
 - **E3 aprovada para v1:** risco residual da validação de bytes no cliente e preservação de EXIF explicitamente aceito. Arquivos continuam não confiáveis, sem preview inline, download como attachment e tipos/tamanho/MIME/extensão restritos. Não declarar antivírus, sanitização ou validação de bytes no servidor. Validação/quarentena confiável fica como evolução futura separada.
 - **Relatórios aprovados:** conteúdo especificado, Excel da inspeção, Excel do histórico, impressão/save-as-PDF pelo navegador e máximo 5.000 summaries por geração. Sem PDF server-side, assinatura digital ou armazenamento de relatórios em v1.
-- **Operação:** dono, retenção/purge, RPO/RTO, comprovação de restore e liberação de produção. Não supor que ausência de evidência neste repositório significa ausência de configuração no servidor.
+- **Operação:** responsáveis e janela provisória definidos em BACKUP_RECOVERY.md; retenção/purge, RPO técnico, RTO dentro/fora do expediente, comprovação de restore e liberação de produção permanecem pendentes. Não supor que ausência de evidência neste repositório significa ausência de configuração no servidor.
 
-E1–E3 e relatórios não têm decisões de produto pendentes. Reporting (PR #9), Checklist Evidence (PR #11) e a correção de paginação do histórico por unidade (PR #13) estão integrados na `main` com CI pós-merge verde. Não há blocker funcional de código conhecido registrado nesta matriz; aceite físico/mobile e operação continuam pendentes. Não declarar Qualidade 100% nem autorizar produção com base nesta matriz.
+E1–E3 e relatórios não têm decisões de produto pendentes. Reporting (PR #9), Checklist Evidence (PR #11) e a correção de paginação do histórico por unidade (PR #13) estão integrados na `main`; o hardening pré-homologação foi concluído pela PR #14, com CI pós-merge verde. Não há blocker funcional de código conhecido registrado nesta matriz; aceite físico/mobile e operação continuam pendentes. Não declarar Qualidade 100% nem autorizar produção com base nesta matriz.
