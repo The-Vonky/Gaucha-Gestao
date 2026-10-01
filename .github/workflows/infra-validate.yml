@@ -1,0 +1,125 @@
+name: Validate reproducible infrastructure
+on:
+  push:
+    branches: [main, infra/self-hosted-stack-v1]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  infra-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      INFRA_PROJECT: gaucha-infra-ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate scripts and isolated-target guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          for script in scripts/ops/*.sh; do bash -n "$script"; done
+          shellcheck -x -P . scripts/ops/*.sh
+          # Upstream deliberately constructs quoted Lua expressions as data.
+          shellcheck -e SC2089,SC2090 infra/supabase/volumes/api/kong-entrypoint.sh
+          node --check scripts/ops/smoke.mjs
+          if bash scripts/ops/gen-secrets.sh --environment ci --output "$GITHUB_WORKSPACE/rejected.env"; then
+            echo 'Generator accepted a repository path' >&2; exit 1
+          fi
+          if bash scripts/ops/gen-secrets.sh --environment production --output "$RUNNER_TEMP/rejected.env"; then
+            echo 'Generator accepted production' >&2; exit 1
+          fi
+          if bash scripts/ops/apply-migrations.sh; then
+            echo 'Migrations accepted an implicit target' >&2; exit 1
+          fi
+      - name: Validate Compose template without logging configuration
+        shell: bash
+        run: |
+          docker compose --env-file infra/env/staging.env.example -p "$INFRA_PROJECT" -f infra/supabase/docker-compose.yml config --quiet
+          services=$(docker compose --env-file infra/env/staging.env.example -p "$INFRA_PROJECT" -f infra/supabase/docker-compose.yml config --services | sort | tr '\n' ' ')
+          test "$services" = 'auth db kong rest storage '
+      - name: Generate ephemeral credentials outside checkout
+        shell: bash
+        run: |
+          bash scripts/ops/gen-secrets.sh --environment ci --output "$RUNNER_TEMP/gaucha-infra.env"
+          # Mask every secret and synthetic marker before any container command.
+          while IFS='=' read -r key value; do
+            case "$key" in
+              POSTGRES_PASSWORD|JWT_SECRET|ANON_KEY|SERVICE_ROLE_KEY|INFRA_INSTANCE_ID) echo "::add-mask::$value" ;;
+            esac
+          done < "$RUNNER_TEMP/gaucha-infra.env"
+      - name: Validate resolved safety contract
+        shell: bash
+        run: |
+          docker compose --env-file "$RUNNER_TEMP/gaucha-infra.env" -p "$INFRA_PROJECT" -f infra/supabase/docker-compose.yml config --format json > "$RUNNER_TEMP/infra-config.json"
+          node --input-type=module - "$RUNNER_TEMP/infra-config.json" <<'JS'
+          import {readFileSync} from 'node:fs';
+          import assert from 'node:assert/strict';
+          const {services}=JSON.parse(readFileSync(process.argv[2],'utf8'));
+          assert.deepEqual(Object.keys(services).sort(),['auth','db','kong','rest','storage']);
+          for(const [name,s] of Object.entries(services)){
+            assert.ok(!s.image.includes('latest'));
+            if(name!=='kong') assert.equal((s.ports??[]).length,0);
+            assert.ok(!s.profiles?.length);
+          }
+          assert.equal(services.kong.ports.length,1);
+          assert.equal(services.kong.ports[0].host_ip,'127.0.0.1');
+          assert.equal(services.rest.environment.PGRST_DB_SCHEMAS,'public,graphql_public,core,audit,action_plans');
+          assert.equal(services.rest.environment.PGRST_DB_MAX_ROWS,'1000');
+          assert.equal(services.auth.environment.GOTRUE_DISABLE_SIGNUP,'true');
+          assert.equal(services.storage.environment.STORAGE_BACKEND,'file');
+          assert.equal(services.storage.environment.ENABLE_IMAGE_TRANSFORMATION,'false');
+          assert.equal(services.storage.environment.FILE_SIZE_LIMIT,'10485760');
+          console.log('Resolved minimum/safety contract verified');
+          JS
+          rm -f "$RUNNER_TEMP/infra-config.json"
+      - name: Start only minimal stack and wait for healthy dependencies
+        shell: bash
+        run: |
+          docker compose --env-file "$RUNNER_TEMP/gaucha-infra.env" -p "$INFRA_PROJECT" -f infra/supabase/docker-compose.yml up -d --wait --wait-timeout 300
+      - name: Apply existing migrations to explicit new DB
+        shell: bash
+        run: |
+          bash scripts/ops/apply-migrations.sh --environment ci --env-file "$RUNNER_TEMP/gaucha-infra.env" --project "$INFRA_PROJECT" --database postgres
+          if bash scripts/ops/apply-migrations.sh --environment ci --env-file "$RUNNER_TEMP/gaucha-infra.env" --project "$INFRA_PROJECT" --database postgres; then
+            echo 'Migrations accepted a populated target' >&2; exit 1
+          fi
+      - name: Healthcheck mandatory services and data paths
+        shell: bash
+        run: bash scripts/ops/healthcheck.sh --environment ci --env-file "$RUNNER_TEMP/gaucha-infra.env" --project "$INFRA_PROJECT" --database postgres
+      - name: Smoke current application infrastructure contract
+        shell: bash
+        run: node scripts/ops/smoke.mjs --environment ci --env-file "$RUNNER_TEMP/gaucha-infra.env" --project "$INFRA_PROJECT" --database postgres
+      - name: Negative healthcheck with Storage stopped
+        shell: bash
+        run: |
+          docker compose --env-file "$RUNNER_TEMP/gaucha-infra.env" -p "$INFRA_PROJECT" -f infra/supabase/docker-compose.yml stop storage
+          if bash scripts/ops/healthcheck.sh --environment ci --env-file "$RUNNER_TEMP/gaucha-infra.env" --project "$INFRA_PROJECT" --database postgres; then
+            echo 'Healthcheck incorrectly accepted stopped Storage' >&2; exit 1
+          fi
+          docker compose --env-file "$RUNNER_TEMP/gaucha-infra.env" -p "$INFRA_PROJECT" -f infra/supabase/docker-compose.yml up -d --wait --wait-timeout 120
+          bash scripts/ops/healthcheck.sh --environment ci --env-file "$RUNNER_TEMP/gaucha-infra.env" --project "$INFRA_PROJECT" --database postgres
+      - name: Informational runner container stats (no hardware capacity claim)
+        if: always()
+        shell: bash
+        run: |
+          if test -f "$RUNNER_TEMP/gaucha-infra.env"; then
+            ids=$(docker compose --env-file "$RUNNER_TEMP/gaucha-infra.env" -p "$INFRA_PROJECT" -f infra/supabase/docker-compose.yml ps --quiet)
+            if test -n "$ids"; then
+              # IDs are produced by Docker; intentionally one argument per ID.
+              # shellcheck disable=SC2086
+              docker stats --no-stream $ids
+            fi
+          fi
+      - name: Always dispose stack and credentials
+        if: always()
+        shell: bash
+        run: |
+          status=0
+          if test -f "$RUNNER_TEMP/gaucha-infra.env"; then
+            docker compose --env-file "$RUNNER_TEMP/gaucha-infra.env" -p "$INFRA_PROJECT" -f infra/supabase/docker-compose.yml down -v --remove-orphans || status=$?
+          fi
+          rm -f "$RUNNER_TEMP/gaucha-infra.env" "$RUNNER_TEMP/infra-config.json"
+          exit "$status"
