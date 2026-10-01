@@ -42,6 +42,9 @@ const email = `infra-${tag}@example.invalid`;
 const password = randomBytes(32).toString('hex');
 const sentinel = randomUUID();
 const table = `infra_smoke_${tag}`;
+const storageBucket = buckets[0];
+const storageObject = `${randomUUID()}/${randomUUID()}.pdf`;
+let storagePending = false;
 let user;
 let step = 'database bootstrap';
 try {
@@ -55,6 +58,24 @@ try {
   }
   assert.equal(sql("select to_regclass('core.profiles') is not null and to_regclass('audit.checklist_evidence') is not null and to_regclass('action_plans.evidence') is not null"), 't');
   console.log(`smoke: PostgreSQL 17 and all ${migrations.length} migration hashes verified`);
+
+  step = 'application ownership';
+  const appSchemas = ['core','private','audit','action_plans','action_plans_private','audit_private'];
+  const schemaNames = appSchemas.map(name=>`'${name}'`).join(',');
+  const ownership = JSON.parse(sql(`select json_build_object(
+    'schemas', (select json_agg(json_build_object('name',nspname,'owner',pg_get_userbyid(nspowner)))
+      from pg_namespace where nspname in (${schemaNames})),
+    'functions', (select json_agg(json_build_object('schema',n.nspname,'name',p.oid::regprocedure::text,'owner',pg_get_userbyid(p.proowner)))
+      from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+      where p.prosecdef and n.nspname in (${schemaNames})))`));
+  assert.deepEqual(ownership.schemas.map(s=>s.name).sort(), [...appSchemas].sort());
+  for (const schema of ownership.schemas) assert.equal(schema.owner, 'postgres');
+  for (const routine of ownership.functions) assert.equal(routine.owner, 'postgres');
+  for (const schema of appSchemas) {
+    const count = ownership.functions.filter(routine=>routine.schema===schema).length;
+    assert.ok(count>0);
+    console.log(`smoke: ${schema} schema and ${count} SECURITY DEFINER functions owned by postgres`);
+  }
 
   step = 'REST exposed schemas';
   const schemas = ['public','graphql_public','core','audit','action_plans'];
@@ -137,6 +158,58 @@ try {
   }
   console.log('smoke: exactly two private buckets and 10 MiB boundaries verified');
 
+  step = 'Storage file upload/sign/download/delete';
+  // A complete one-page PDF, with byte offsets and stream length computed in ASCII.
+  const stream = `% ephemeral ${tag}\nq\nQ\n`;
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 72 72] /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}endstream`,
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  for (const [index, object] of objects.entries()) {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${index+1} 0 obj\n${object}\nendobj\n`;
+  }
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 5\n0000000000 65535 f \n${offsets.slice(1).map(offset=>`${String(offset).padStart(10,'0')} 00000 n \n`).join('')}`;
+  pdf += `trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  const sent = Buffer.from(pdf, 'ascii');
+  // Service credentials isolate infrastructure transport from domain RLS suites.
+  storagePending = true;
+  const uploaded = await request(`/storage/v1/object/${storageBucket}/${storageObject}`, service,
+    {method:'POST',headers:{'Content-Type':'application/pdf','Cache-Control':'no-store','x-upsert':'false'},body:sent});
+  assert.ok(uploaded.ok);
+  assert.equal((await uploaded.json()).Key, `${storageBucket}/${storageObject}`);
+  const signed = await request(`/storage/v1/object/sign/${storageBucket}/${storageObject}`, service,
+    {method:'POST',body:JSON.stringify({expiresIn:60})});
+  assert.ok(signed.ok);
+  const {signedURL} = await signed.json();
+  const downloadURL = new URL(`/storage/v1${signedURL}`, base);
+  assert.equal(downloadURL.origin, base);
+  assert.equal(downloadURL.pathname, `/storage/v1/object/sign/${storageBucket}/${storageObject}`);
+  const token = downloadURL.searchParams.get('token');
+  assert.ok(token);
+  const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+  assert.equal(claims.exp-claims.iat, 60);
+  // No API key/Authorization: this must work using the signed URL through Kong.
+  const downloaded = await fetch(downloadURL, {redirect:'error',signal:AbortSignal.timeout(10000)});
+  assert.ok(downloaded.ok);
+  assert.ok(downloaded.headers.get('content-type').startsWith('application/pdf'));
+  assert.deepEqual(Buffer.from(await downloaded.arrayBuffer()), sent);
+  console.log(`smoke: Storage file upload/sign(60s)/gateway download verified ${sent.length} identical PDF bytes`);
+  const removedObject = await request(`/storage/v1/object/${storageBucket}`, service,
+    {method:'DELETE',body:JSON.stringify({prefixes:[storageObject]})});
+  assert.ok(removedObject.ok);
+  assert.deepEqual((await removedObject.json()).map(object=>object.name), [storageObject]);
+  assert.equal(sql(`select count(*) from storage.objects where bucket_id='${storageBucket}' and name='${storageObject}'`), '0');
+  const missing = await fetch(downloadURL, {redirect:'error',signal:AbortSignal.timeout(10000)});
+  assert.ok([400,404].includes(missing.status));
+  storagePending = false;
+  console.log('smoke: Storage delete confirmed; metadata absent and signed download unavailable');
+
   step = 'actual REST max_rows';
   sql(`create table public.${table}(id int primary key); alter table public.${table} enable row level security;
     grant select on public.${table} to service_role;
@@ -159,6 +232,12 @@ try {
   // The unit has immutable audit references; retain it until disposable teardown.
   // Never bypass domain triggers or remove audit history to clean up a smoke.
   try {
+    if (storagePending) {
+      const removed = await request(`/storage/v1/object/${storageBucket}`, service,
+        {method:'DELETE',body:JSON.stringify({prefixes:[storageObject]})});
+      assert.ok(removed.ok);
+      assert.equal(sql(`select count(*) from storage.objects where bucket_id='${storageBucket}' and name='${storageObject}'`), '0');
+    }
     sql(`drop table if exists public.${table}; notify pgrst,'reload schema'`);
     if (user) {
       sql(`delete from core.profiles where id='${user}'`);
