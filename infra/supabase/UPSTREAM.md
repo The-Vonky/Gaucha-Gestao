@@ -92,3 +92,8 @@ Storage's loopback readiness probe uses explicit `127.0.0.1` rather than
 `localhost`; the Storage process binds IPv4, while wget may resolve localhost
 to IPv6 first. Upstream uses the `storage` Docker hostname (also IPv4). Failure
 diagnostics include only redacted logs and health state, never container env.
+
+Kong route blocks retain upstream YAML quoting verbatim. Its entrypoint inserts
+Lua expressions containing single quotes; converting those header scalars to
+single-quoted YAML makes the expanded configuration invalid. The reduced routes
+are semantically unchanged and the expanded legacy-key template is parse-checked.

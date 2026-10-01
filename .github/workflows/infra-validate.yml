@@ -88,7 +88,10 @@ jobs:
           while(true){
             const healthy=['db','auth','storage','kong'].every(service=>{
               const id=execFileSync('docker',[...compose,'ps','--all','--quiet',service],{encoding:'utf8'}).trim();
-              return id && execFileSync('docker',['inspect','--format','{{.State.Status}}:{{.State.Health.Status}}',id],{encoding:'utf8'}).trim()==='running:healthy';
+              if(!id) return false;
+              const state=execFileSync('docker',['inspect','--format','{{.State.Status}}:{{.State.Health.Status}}',id],{encoding:'utf8'}).trim();
+              if(state.startsWith('exited:') || state.startsWith('dead:')) throw new Error(service+' exited during bootstrap');
+              return state==='running:healthy';
             });
             if(healthy) break;
             if(Date.now()>deadline) throw new Error('Platform dependencies did not become healthy');
