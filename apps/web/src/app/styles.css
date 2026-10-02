@@ -1,5 +1,5 @@
 /*
- * Module styles (Audit, Action Plans, Evidence) — Quality UI v1 phases 2–3.
+ * Module styles (Audit, Action Plans, Evidence) — Quality UI v1 phases 2–3 + final polish.
  * Rules live in docs/briefs/QUALITY_UI_V1.md (§9–§11); values come from tokens.css.
  */
 .breadcrumb {
@@ -8,12 +8,12 @@
   margin-bottom: var(--space-3);
   overflow-wrap: anywhere;
 }
-.report-controls { display: grid; gap: .25rem; max-width: 100%; }
-.report-controls .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.report-controls { display: grid; gap: var(--space-1); max-width: 100%; }
+.report-controls .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .report-controls [role="status"]:empty { display: none; }
 .audit-report-filters { padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); margin-bottom: var(--space-5); }
 .audit-report-filters .actions { flex-wrap: wrap; }
-.audit-report-filters label { display: grid; gap: .25rem; }
+.audit-report-filters label { display: grid; gap: var(--space-1); }
 .breadcrumb a {
   display: inline;
   padding: 0;
@@ -1067,7 +1067,7 @@ button.file-remove:hover:not(:disabled) {
   /* Sticky compact bar under the brand bar: current section + global progress. */
   .audit-section-bar {
     position: sticky;
-    top: var(--header-height);
+    top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
     z-index: var(--z-sticky);
     display: flex;
     align-items: center;
