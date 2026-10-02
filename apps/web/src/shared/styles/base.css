@@ -719,20 +719,27 @@ dialog::backdrop {
   width: 56px;
   height: auto;
 }
-.loader .loop-orange,
-.loader .loop-green {
-  animation: loop-spin 1.4s var(--ease-standard) infinite;
-}
+/* The two loops pulse alternately, as in the Login (no rotation). */
 .loader .loop-orange {
-  transform-origin: 15px 14px;
+  animation: loop-alternate 1.1s ease-in-out infinite;
 }
 .loader .loop-green {
-  transform-origin: 33px 14px;
-  animation-direction: reverse;
+  animation: loop-alternate 1.1s ease-in-out -0.55s infinite;
 }
-@keyframes loop-spin {
-  to {
-    transform: rotate(360deg);
+@keyframes loop-alternate {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader .loop-orange,
+  .loader .loop-green {
+    animation: none;
+    opacity: 1;
   }
 }
 
