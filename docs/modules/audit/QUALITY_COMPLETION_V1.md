@@ -1,6 +1,6 @@
 # Qualidade v1 — matriz factual e escopo restante
 
-Revisão documental: 2026-10-02 sobre `main` em `22334995b5b239274c5c1adc98495357ec0d7980`, após PR #18 (fechamento visual/documental da Qualidade v1). Login v3 · Elo, Audit, Action Plans, ambos os domínios de Evidence, Reporting e Admin necessários ao escopo estão integrados. A CI de aplicação pós-merge passou em `37017170877` e a CI de infraestrutura reproduzível em `37017171393`. Nenhuma delas comprova produção. O checklist operacional/físico nominal P1–P9/O1–O8 está em [QUALITY_ACCEPTANCE_V1.md](QUALITY_ACCEPTANCE_V1.md).
+Revisão documental: 2026-10-02 sobre a baseline de aplicação `22334995b5b239274c5c1adc98495357ec0d7980`, merge da PR #18 (fechamento visual/documental da Qualidade v1). Login v3 · Elo, Audit, Action Plans, ambos os domínios de Evidence, Reporting e Admin necessários ao escopo estão integrados. A CI de aplicação pós-merge passou em `37017170877` e a CI de infraestrutura reproduzível em `37017171393`. Nenhuma delas comprova produção. O checklist operacional/físico nominal P1–P9/O1–O8 está em [QUALITY_ACCEPTANCE_V1.md](QUALITY_ACCEPTANCE_V1.md).
 
 ## Estado pós-PR #14
 
@@ -59,7 +59,7 @@ Caminhos de UI abaixo são relativos a `apps/web/src/modules/`; migrations ficam
 
 ## Evidência de CI disponível
 
-Checks atuais da `main` `22334995b5b239274c5c1adc98495357ec0d7980` (merge da PR #18): `validate` e `action-plans-integration` concluíram com `success` na execução `37017170877`; a validação separada de infraestrutura reproduzível concluiu com `success` em `37017171393`. A suíte unitária possui 236 testes, incluindo `tests/login.test.tsx`. Esses resultados são repositório/runner descartável, não produção.
+Checks pós-merge da baseline de aplicação `22334995b5b239274c5c1adc98495357ec0d7980` (PR #18): `validate` e `action-plans-integration` concluíram com `success` na execução `37017170877`; a validação separada de infraestrutura reproduzível concluiu com `success` em `37017171393`. A suíte unitária possui 236 testes, incluindo `tests/login.test.tsx`. Esses resultados são repositório/runner descartável, não produção.
 
 O workflow executa `npm ci`, typecheck, lint, `npm test`, build, verify:build e `npm audit --omit=dev`, além das integrações reais de Action Plans, Evidence, Reporting, Audit, Checklist Evidence e Admin UI em Supabase descartável com Storage e Chromium. A PR #18 acrescentou `tests/login.test.tsx`, elevando a suíte unitária para 236 testes na `main`. A correção da PR #13 acrescenta 9 testes de API que comprovam 1.001 summaries, ranges/filtros, ordenação, deduplicação de fronteira, erro em página posterior e compatibilidade de inspection/overview; as integrações reais confirmam que as consultas Audit continuam válidas no PostgREST, embora não criem >500 summaries no stack real. Na validação anteriormente registrada, o Storage local respondeu sem `Cache-Control` e sem `X-Content-Type-Options`; isso mantém nosniff/cache como gate de produção. Nenhum resultado de CI é teste físico de celular, restore de produção ou aceite operacional. `npm run test:rls` isoladamente roda apenas `tests/database.test.ts`.
 

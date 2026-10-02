@@ -1,7 +1,7 @@
 # Qualidade v1 — aceite final P1–P9 / O1–O8
 
 Status: aberto até evidência real  
-Baseline de repositório revisada: 2026-10-02 — `main` `22334995b5b239274c5c1adc98495357ec0d7980`  
+Baseline de aplicação revisada: 2026-10-02 — PR #18 `22334995b5b239274c5c1adc98495357ec0d7980`  
 Objetivo: transformar as referências genéricas a “P1–P9” e “O1–O8” em um checklist nominal, sem criar funcionalidade nova nem substituir evidência operacional.
 
 ## Regra de fechamento
@@ -31,7 +31,7 @@ Este fechamento cobre o primeiro domínio entregue da área de Qualidade:
 
 ## Baseline automatizada já comprovada
 
-Na `main` `22334995b5b239274c5c1adc98495357ec0d7980`:
+Na baseline de aplicação `22334995b5b239274c5c1adc98495357ec0d7980`, integrada à `main`:
 
 - CI de aplicação `37017170877`: typecheck, lint, 236 testes, build, verify:build, audit de dependências e integrações reais de Action Plans, Evidence, Reporting, Audit, Checklist Evidence e Admin;
 - CI de infraestrutura `37017171393`: stack mínimo reproduzível aprovado em runner descartável;
