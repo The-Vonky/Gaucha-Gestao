@@ -63,10 +63,11 @@ concede acesso na tela Usuários. Recuperação de senha também usa o fluxo do 
   `docs/modules/audit/CHECKLIST_EVIDENCE_V1.md` para contrato e gates restantes.
   O histórico por unidade pagina `inspection_summaries` em blocos de 500 desde a PR #13,
   evitando o truncamento silencioso pelo limite Data API de 1.000 linhas. O software
-  funcional e o hardening pré-homologação da Qualidade v1 estão concluídos após a PR #14. A CI pós-merge
-  atual passou na execução `36854366048` sobre
-  `664ed5a95684b15c8035e78c21a413bdbd057103`; a homologação física P1–P9 permanece pendente e a prontidão
-  operacional O1–O8 permanece pendente/parcial. Production ready: NÃO; veja a matriz de Qualidade.
+  funcional e o hardening pré-homologação da Qualidade v1 estão concluídos após a PR #14; Login v3 · Elo foi
+  integrado pela PR #17. A baseline verificada é `main` em `32540028119ecd0ac13bcec13d69c1d55e67d834`, com
+  CI de aplicação `37012575081` e infraestrutura reproduzível `37012575111` verdes. A homologação física P1–P9
+  e a prontidão operacional O1–O8 permanecem abertas conforme `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md`.
+  Production ready: NÃO.
 
 ## Testes de banco
 

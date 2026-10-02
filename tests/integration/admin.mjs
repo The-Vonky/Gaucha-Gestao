@@ -137,6 +137,16 @@ try {
     );
   /** Every visible enabled control in `scope` meets the target for this width. */
   const targets = async (page, scope, width, what) => {
+    // Measure the settled UI, not the dialog entrance scale (0.985), which can
+    // make a correct 44px target temporarily render at ~43.3px.
+    await page.evaluate(async () => {
+      const animations = document.getAnimations().filter(
+        (animation) => animation.effect?.getComputedTiming().iterations !== Infinity,
+      );
+      await Promise.all(
+        animations.map((animation) => animation.finished.catch(() => undefined)),
+      );
+    });
     const min = width < 1024 ? 44 : 32;
     const small = await page.locator(scope).evaluateAll(
       (els, min) =>

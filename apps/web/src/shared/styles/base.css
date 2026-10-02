@@ -397,7 +397,7 @@ fieldset {
 .notice.error {
   border-color: var(--danger-border);
   background: var(--danger-bg);
-  color: #7a1a12;
+  color: var(--danger-text);
 }
 .notice.error > .icon {
   color: var(--danger);
@@ -513,6 +513,9 @@ fieldset {
 /* ---------- Table ---------- */
 .table-scroll {
   overflow: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -668,7 +671,7 @@ dialog::backdrop {
 @keyframes dialog-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.985);
+    transform: translateY(8px);
   }
 }
 @keyframes drawer-in {
@@ -819,6 +822,15 @@ dialog::backdrop {
   .page-title p {
     font: var(--text-body-sm);
   }
+  .page-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .page-actions > *,
+  .actions > button,
+  .actions > .button-link {
+    flex: 1 1 auto;
+  }
   td,
   th {
     padding: var(--space-3);
@@ -834,7 +846,10 @@ dialog::backdrop {
     flex-basis: 100%;
   }
   .filters label {
-    flex-basis: 45%;
+    flex-basis: 100%;
+  }
+  .filters button {
+    flex: 1 1 100%;
   }
   .record-list li {
     align-items: flex-start;

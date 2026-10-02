@@ -14,8 +14,8 @@ Migration order prioritizes:
 
 | Module | Standalone status | Initial migration risk | Notes |
 | --- | --- | --- | --- |
-| Audit / Quality Audit | not finished | medium/high | current priority; first platform module |
-| ISO Records | finished | low/medium | good early CRUD/workflow module |
+| Audit / Quality Audit | platform v1 implemented | medium/high | repository implementation complete; P1–P9 physical and O1–O8 operational acceptance are the current closure priority; do not reimplement completed slices |
+| ISO Records / legacy Propostas ISO | finished legacy | medium | migration gate required before implementation; the source system is functionally commercial clients/proposals despite the historical ISO name, so ownership/navigation must be resolved first |
 | Sales / Card Machines | finished | low | dashboard/import-oriented |
 | Satisfaction Survey | finished | low | strong unit/period integration candidate |
 | Meeting Room Scheduling | finished, weak | low | likely cheaper to reimplement on platform foundation |
@@ -38,19 +38,23 @@ No production cutover.
 
 ## Phase 1 — Platform foundation + Audit
 
+Status: repository implementation complete; physical/operational acceptance remains open.
+
 Goal: prove the platform using the highest-priority active system.
 
-Implement only the Core capabilities Audit actually needs plus intentionally selected platform foundations.
+The implemented scope is Audit, Action Plans, both evidence domains, reporting/export and the Core/Admin capabilities they require. Do not restart these slices. Close `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md` before declaring the phase production-ready.
 
 Do not build every future module capability in advance.
 
 ## Phase 2 — Early stable modules
 
-Candidate sequence:
-1. ISO Records;
+Candidate sequence after Quality closure:
+1. resolve the migration gate and domain ownership of legacy `Registros_ISO-Gaucha` / Propostas ISO;
 2. Sales / Card Machines;
 3. Satisfaction Survey;
 4. Meeting Room Scheduling.
+
+The first item is not authorized for implementation until its functional ownership and navigation placement are approved.
 
 This sequence intentionally tests different workloads while keeping migration complexity moderate.
 

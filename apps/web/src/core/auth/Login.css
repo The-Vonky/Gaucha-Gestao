@@ -723,7 +723,7 @@
     min-height: 0;
     height: var(--band-h);
     overflow: hidden;
-    padding: calc(env(safe-area-inset-top, 0px) + 18px) 20px 0;
+    padding: calc(env(safe-area-inset-top, 0px) + 18px) max(20px, env(safe-area-inset-right, 0px)) 0 max(20px, env(safe-area-inset-left, 0px));
   }
 
   .login-v3[data-layout="compact"] .login-v3-brand {
@@ -732,7 +732,7 @@
 
   .login-v3-band-elo {
     position: absolute;
-    right: 0;
+    right: env(safe-area-inset-right, 0px);
     bottom: 0;
     display: block;
     width: 240px;
@@ -788,7 +788,7 @@
   /* 32px short of the screen, so the signature sits closer to the form. */
   .login-v3-main {
     min-height: calc(100dvh - var(--band-h) - 32px);
-    padding: 28px 20px calc(env(safe-area-inset-bottom, 0px) + 16px);
+    padding: 28px max(20px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 16px) max(20px, env(safe-area-inset-left, 0px));
   }
 
   .login-v3[data-layout="compact"] .login-v3-main {

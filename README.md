@@ -37,9 +37,13 @@ A plataforma nasce a partir da consolidação gradual dos sistemas existentes. O
 
 ## Estado atual
 
-A plataforma já implementa Core/autorização, Audit v1 (incluindo reabertura), Planos de Ação e evidências de execução/verificação dos planos. A UI de Qualidade está integrada; Audit Export & Reporting (PR #9), anexos por critério / Checklist Evidence (PR #11) e a correção de paginação do histórico por unidade acima do limite da Data API (PR #13) estão integrados na `main`. O software funcional e o hardening pré-homologação da Qualidade v1 estão concluídos após a PR #14. A composição atual passou na CI pós-merge `36854366048` em `664ed5a95684b15c8035e78c21a413bdbd057103`. Homologação física P1–P9 pendente; prontidão operacional O1–O8 pendente/parcial. **Production ready: NÃO.** Consulte o [contrato e roteiro operacional](docs/modules/audit/CHECKLIST_EVIDENCE_V1.md). Implementação e CI não significam produção.
+A plataforma implementa Core/autorização, Audit v1 (incluindo reabertura), Planos de Ação, evidências de execução/verificação, Checklist Evidence por critério e Audit Export & Reporting. O hardening funcional da Qualidade v1 está integrado; a UI institucional aplica o Design System ao App Shell, Home, Administração e superfícies de Qualidade, e o **Login v3 · Elo** foi integrado pela PR #17.
 
-Consulte a [matriz factual e o escopo restante de Qualidade](docs/modules/audit/QUALITY_COMPLETION_V1.md) e os briefs/contratos relacionados. Implementação no repositório não comprova operação em produção. Não há autorização implícita para deploy ou migração de dados de produção.
+Baseline verificada antes desta rodada final: `main` em `32540028119ecd0ac13bcec13d69c1d55e67d834`. A CI pós-merge passou em `37012575081` (typecheck, lint, 235 testes, build, verify:build, audit e integrações reais em Supabase descartável) e a infraestrutura reproduzível passou em `37012575111`. A PR #16 comprova apenas a reprodutibilidade de um stack self-hosted mínimo em runner descartável; não representa deploy ou ambiente de produção.
+
+A rodada final de Qualidade remove estilos legados do Login, reforça safe areas e ergonomia mobile e alinha Checklist Evidence aos tokens compartilhados. O fechamento factual e os aceites restantes estão em [Qualidade v1 — matriz factual](docs/modules/audit/QUALITY_COMPLETION_V1.md) e [Qualidade v1 — aceite final](docs/modules/audit/QUALITY_ACCEPTANCE_V1.md).
+
+**Production ready: NÃO enquanto P1–P9 e O1–O8 não estiverem registrados como aprovados.** Código/CI não substituem teste físico, backup/restore, observabilidade e aprovação operacional. Não há autorização implícita para deploy ou migração de dados de produção.
 
 Consulte `docs/architecture/OVERVIEW.md` antes de iniciar implementação estrutural.
 
