@@ -48,6 +48,25 @@ main#main {
   outline: none;
 }
 
+/* Page entrance (Elo): only the page title and the first content block,
+   finite, on mount — i.e. once per navigation. */
+main#main > :is(.page-title, .launch-head, .audit-hero),
+main#main > :is(.page-title, .launch-head, .audit-hero) + * {
+  animation: page-in var(--duration-entrance) var(--ease-elo);
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  main#main > :is(.page-title, .launch-head, .audit-hero),
+  main#main > :is(.page-title, .launch-head, .audit-hero) + * {
+    animation: none;
+  }
+}
+
 /* ---------- Brand navigation surface (sidebar + drawer) ---------- */
 .sidebar,
 .nav-drawer {
