@@ -1,6 +1,6 @@
 # Implementation Brief — Quality UI v1 (Gaúcha Gestão Design System)
 
-Status: PHASES 1–3 IMPLEMENTED; Login v3 · Elo integrated; final cross-app polish in progress  
+Status: PHASES 1–3 IMPLEMENTED; Login v3 · Elo integrated; final cross-app polish included  
 Date: 2026-09-25  
 Last reviewed: 2026-10-02  
 Baseline: `main` at `8f1464be79cdf871666c713ba89b6eacfd21a769`  
