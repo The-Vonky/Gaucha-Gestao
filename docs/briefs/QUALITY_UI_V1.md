@@ -1,7 +1,8 @@
 # Implementation Brief — Quality UI v1 (Gaúcha Gestão Design System)
 
-Status: PHASES 1–3 IMPLEMENTED (UI only: Evidence UI and Admin polish done; Audit reporting and checklist evidence are separate work, Quality is not complete)  
+Status: PHASES 1–3 IMPLEMENTED; Login v3 · Elo integrated; final cross-app polish in progress  
 Date: 2026-09-25  
+Last reviewed: 2026-10-02  
 Baseline: `main` at `8f1464be79cdf871666c713ba89b6eacfd21a769`  
 Branch: `feat/quality-ui-v1`
 
@@ -120,9 +121,9 @@ Not planned unless a real reuse appears: Tooltip, Dropdown, Tabs, Radio group, C
 - **Tablet/Mobile (<1024):** the header becomes the brand bar (dark surface + 2 px brand gradient hairline): menu, lockup, breadcrumbs (≥600 px) and avatar. Navigation opens a dark `Drawer` (focus trap, Escape, backdrop click, closes on navigation) holding the menu and the user card with "Sair".
 - Route change scrolls to top and focuses `main` without scrolling it under the sticky header.
 - **Home (launchpad):** no hero. A short head (date, "Áreas de trabalho", user name and number of released modules — derived from permissions). Each operational area is a **domain panel**: tinted surface (Qualidade green, future areas orange), large display name with an orange accent, static description, the loops rising from under the name, and **module tiles** (dark-surface icon with orange glyph, display title, description, "Abrir"). **Administração** is secondary: one dense surface with divided rows. No KPIs until a real source exists. No permissions → compact `EmptyState` (mark on a small plate, signed-in e-mail to hand to the administration).
-- **Login:** full-bleed brand surface; the two loops at architectural scale (lower-left, the green loop and plate passing behind the card) structure an asymmetric composition: lockup + headline + tagline top-left, light login card on the right with the official logo at real size, footer "Gaúcha Alimentação · Uso interno". At 375 px the loops rise behind the card between the headline and the form.
+- **Login v3 · Elo:** desktop uses an asymmetric brand panel + form surface, with the two open loops meeting at the seam; orange frames the institutional message and green wraps the card edge. The card contains email/password, an accessible 44×44 show/hide-password control, explicit busy/error states and the Gaúcha Alimentação signature. Motion is finite, pointer parallax is fine-pointer desktop only, and `prefers-reduced-motion` shows the final state without decorative animation. Below 960 px the Login becomes a branded top band with a dedicated Elo composition; short viewports use a stable compact mode and `visualViewport` keeps the submit action visible above the mobile keyboard. `theme-color` is restored on unmount. Presentation is owned exclusively by `core/auth/Login.css`; App Shell must not carry legacy Login rules.
 - **Brand motif:** `BrandMark` itself — colour for the mark and the login, `tone="mono"` in the surface's ink for the sidebar and domain panels, with a thinner `weight` at large scale. Hidden where it cannot read whole (stacked domain panel).
-- **BrandMark sizes:** sidebar/drawer 34 · mobile bar 28 · login lockup 40 (34 mobile) · states 48 · loader 56 · empty state 34.
+- **BrandMark sizes:** sidebar/drawer 34 · mobile bar 28 · Login product mark 48 desktop / 40 mobile · Login loader 30×18 · states 48 · shared loader 56 · empty state 34.
 
 ## 7. Responsiveness
 
@@ -169,10 +170,10 @@ Preserve all current restrictions (types, size, count limits, two-phase upload, 
 
 ## 12. Phases
 
-1. **Foundation (this delivery):** tokens, global styles, Shared components, App Shell, Home, Login; module CSS only re-mapped to tokens.
+1. **Foundation:** tokens, global styles, Shared components, App Shell and Home. The original Login direction was superseded by the integrated Login v3 · Elo; legacy Login CSS in App Shell is not part of the accepted design.
 2. **Audit + Action Plans redesign** following §9–§10.
 3. **Evidence experience** following §11; then Admin screens polish (implemented: dense rows, `Badge` status with text, system vs custom roles, consult vs edit, permissions grouped by domain, log filters and escaped JSON details; styles in `core/admin/admin.css`; validated at 375/768/1024/1440 by `tests/integration/admin.mjs`).
 
 ## Validation
 
-`npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, `npm run verify:build`; browser integration suites (`tests/integration/*.mjs`) must keep passing at 375 px.
+`npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, `npm run verify:build`; the disposable Supabase browser integrations must keep passing. `quality-touch.mjs` is a shared assertion helper executed by the Audit/Evidence integration suites at narrow/coarse-pointer breakpoints; Admin separately validates 375/768/1024/1440. Real iOS Safari/Android Chrome acceptance remains separate and is tracked in `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md`.
