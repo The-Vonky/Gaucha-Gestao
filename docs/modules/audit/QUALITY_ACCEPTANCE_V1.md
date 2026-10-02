@@ -33,7 +33,8 @@ Este fechamento cobre o primeiro domínio entregue da área de Qualidade:
 
 Na `main` `32540028119ecd0ac13bcec13d69c1d55e67d834`:
 
-- CI de aplicação `37012575081`: typecheck, lint, 235 testes, build, verify:build, audit de dependências e integrações reais de Action Plans, Evidence, Reporting, Audit, Checklist Evidence e Admin;
+- baseline pré-PR #18: CI de aplicação `37012575081` com typecheck, lint, 235 testes, build, verify:build, audit de dependências e integrações reais de Action Plans, Evidence, Reporting, Audit, Checklist Evidence e Admin;
+- candidato da PR #18: adiciona `tests/login.test.tsx`, totalizando 236 testes unitários quando o head final estiver verde;
 - CI de infraestrutura `37012575111`: stack mínimo reproduzível aprovado em runner descartável;
 - Audit: catálogo 9 seções / 158 critérios, scoring, create/edit/finalize/reopen, concorrência, stale versions, revogação e RLS;
 - Action Plans: origem manual/Audit, lifecycle, concorrência, verificação e revogação;
