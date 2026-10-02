@@ -1,7 +1,8 @@
 /*
- * Gaúcha Gestão — design tokens (Quality UI v1).
+ * Gaúcha Gestão — design tokens (Quality UI v1 + Design System Elo v1).
  * Source of the palette: the Gaúcha Alimentação logo (orange/gold loop,
- * green→lime loop, charcoal wordmark). Rules live in docs/briefs/QUALITY_UI_V1.md.
+ * green→lime loop, charcoal wordmark). Rules live in docs/briefs/QUALITY_UI_V1.md;
+ * neutrals, elevation, focus and motion follow docs/briefs/DESIGN_SYSTEM_ELO_V1.md.
  * Brand tokens express identity; semantic tokens express state. Never use a
  * brand token to communicate status.
  */
@@ -34,20 +35,20 @@
   --brand-orange-900: #773a0b;
   --brand-orange-950: #451d01;
 
-  /* ---------- Neutrals: warm "linen" greys and the wordmark charcoal ---------- */
+  /* ---------- Neutrals: Elo cool, slightly green greys (from Login v3) ---------- */
   --neutral-0: #ffffff;
-  --neutral-25: #fbfaf7;
-  --neutral-50: #f4f2ec; /* work surface */
-  --neutral-100: #ebe8e0;
-  --neutral-200: #dfdbd1;
-  --neutral-300: #cbc6b9;
-  --neutral-400: #8f8a7d; /* form control borders (3.4:1 on white) */
-  --neutral-500: #7a7568;
-  --neutral-600: #5c584d; /* secondary text (6.3:1 on work surface) */
-  --neutral-700: #454239;
-  --neutral-800: #2f2d27;
-  --neutral-900: #1f1e1a;
-  --neutral-950: #141310;
+  --neutral-25: #f9faf7; /* subtle surface: th, row hover */
+  --neutral-50: #f4f5f0; /* work surface */
+  --neutral-100: #eceeea; /* sunken / hover */
+  --neutral-200: #e2e7e1; /* border */
+  --neutral-300: #d3d9d3; /* strong border */
+  --neutral-400: #7e8b83; /* form control borders (3.55:1 on white, 3.30:1 on input bg) */
+  --neutral-500: #6b7a71; /* icons and disabled text ONLY (4.12:1 on work surface) */
+  --neutral-600: #4f5e55; /* secondary text (6.25:1 on work surface) */
+  --neutral-700: #3c4a42; /* strong secondary text (8.52:1 on work surface) */
+  --neutral-800: #26362d; /* control text (11.63:1 on work surface) */
+  --neutral-900: #14241b; /* text (14.77:1 on work surface) */
+  --neutral-950: #0b160f;
 
   /* ---------- Brand surface: institutional deep green (navigation, login) ---------- */
   --brand-surface: #0f2c1e;
@@ -55,8 +56,9 @@
   --brand-surface-line: rgb(255 255 255 / 0.08);
   --brand-surface-hover: rgb(255 255 255 / 0.06);
   --brand-surface-active: rgb(255 255 255 / 0.11);
-  --on-brand: #f3f1ea; /* 13:1 on brand surface */
-  --on-brand-muted: #a9b6ad; /* 7.1:1 */
+  --on-brand: #f4f1ea; /* 13.3:1 on brand surface */
+  --on-brand-secondary: #c9d7cd; /* 10.07:1 */
+  --on-brand-muted: #9fb8a9; /* 7.08:1 */
   --on-brand-accent: var(--brand-orange-300);
 
   /* ---------- Brand gradients (identity pieces, never on controls or text) ---------- */
@@ -83,7 +85,10 @@
   --color-surface-brand: var(--brand-surface);
   --color-text: var(--neutral-900);
   --color-text-secondary: var(--neutral-600);
+  --color-text-tertiary: #5f6b65; /* captions, footers (5.07:1 on work, 4.76:1 on neutral-100) */
   --color-text-disabled: var(--neutral-500);
+  --color-icon: var(--neutral-500);
+  --color-input-bg: #f6f7f3;
   --color-text-inverse: var(--neutral-0);
   --color-border: var(--neutral-200);
   --color-border-strong: var(--neutral-300);
@@ -100,7 +105,7 @@
   --color-selected-text: var(--brand-green-800);
   --color-hover-bg: var(--neutral-100);
   --color-pressed-bg: var(--neutral-200);
-  --color-focus: var(--brand-orange-700); /* ≥3:1 on light surfaces */
+  --color-focus: var(--brand-green-600); /* ≥3:1 on light surfaces; --on-brand-accent on brand */
 
   /* ---------- Semantic status (independent from brand) ---------- */
   --success: #1c7c43;
@@ -172,14 +177,23 @@
   --radius-xl: 16px;
   --radius-2xl: 24px; /* brand panels, login card */
   --radius-full: 999px; /* dots, avatars, progress tracks only */
+  --radius-control: 10px; /* fields and buttons (Elo) */
 
   /* ---------- Elevation ---------- */
-  --shadow-xs: 0 1px 2px rgb(31 30 26 / 0.05);
-  --shadow-sm: 0 1px 2px rgb(31 30 26 / 0.04), 0 2px 6px rgb(31 30 26 / 0.04);
-  --shadow-md: 0 1px 2px rgb(31 30 26 / 0.04),
-    0 8px 20px -6px rgb(31 30 26 / 0.1);
-  --shadow-lg: 0 24px 56px -12px rgb(31 30 26 / 0.28);
+  --shadow-xs: 0 1px 2px rgb(10 39 21 / 0.05);
+  --shadow-sm: 0 1px 2px rgb(10 39 21 / 0.04), 0 2px 6px rgb(10 39 21 / 0.04);
+  --shadow-md: 0 1px 2px rgb(10 39 21 / 0.04),
+    0 8px 20px -6px rgb(10 39 21 / 0.1);
+  --shadow-lg: 0 24px 56px -12px rgb(10 39 21 / 0.28);
+  --shadow-input: inset 0 1px 2px rgb(10 39 21 / 0.06),
+    0 1px 0 rgb(255 255 255 / 0.8);
+  --shadow-action: inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 10px 22px -12px rgb(26 106 53 / 0.85);
+  --shadow-action-hover: inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 14px 26px -12px rgb(26 106 53 / 0.95);
   --focus-ring: 0 0 0 2px var(--neutral-0), 0 0 0 4px var(--color-focus);
+  --focus-ring-input: 0 0 0 1px var(--color-action),
+    0 0 0 4px rgb(31 133 64 / 0.12), 0 2px 6px rgb(10 39 21 / 0.06);
 
   /* ---------- Layers ---------- */
   --z-base: 0;
@@ -196,6 +210,8 @@
   --duration-slow: 260ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-elo: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --duration-entrance: 260ms;
 
   /* ---------- Layout ---------- */
   /* Breakpoints (media queries cannot read custom properties):
