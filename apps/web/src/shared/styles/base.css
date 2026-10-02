@@ -268,6 +268,13 @@ input[type="radio"] {
   accent-color: var(--color-action);
   box-shadow: none;
 }
+/* Native checks keep their look; focus is the shared green outline (the
+   field halo above is removed by box-shadow: none). */
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
 textarea {
   resize: vertical;
   min-height: 80px;
