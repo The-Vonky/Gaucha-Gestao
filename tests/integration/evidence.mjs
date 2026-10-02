@@ -773,7 +773,7 @@ try {
     }
     await page.goto(origin);
     await page.getByLabel(/E-mail/i).fill(users.unitEmail);
-    await page.getByLabel(/Senha/i).fill(password);
+    await page.getByLabel(/^Senha$/i).fill(password);
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
     await page
       .getByRole("heading", { level: 2, name: "Planos de Ação", exact: true })

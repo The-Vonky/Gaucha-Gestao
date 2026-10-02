@@ -1981,9 +1981,9 @@ try {
       page.on("dialog", () => assert.fail("Native dialog opened"));
       await page.goto(origin);
       await page.getByLabel(/E-mail/i).fill(users[`${user}Email`]);
-      await page.getByLabel(/Senha/i).fill(password);
+      await page.getByLabel(/^Senha$/i).fill(password);
       await page.getByRole("button", { name: "Entrar", exact: true }).click();
-      await page.getByLabel(/Senha/i).waitFor({ state: "detached" });
+      await page.getByLabel(/^Senha$/i).waitFor({ state: "detached" });
       return page;
     }
     const noOverflow = async (page, label) =>

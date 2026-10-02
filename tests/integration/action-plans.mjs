@@ -686,7 +686,7 @@ try {
     });
     await page.goto(origin);
     await page.getByLabel(/E-mail/i).fill(users.globalEmail);
-    await page.getByLabel(/Senha/i).fill(password);
+    await page.getByLabel(/^Senha$/i).fill(password);
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
     await page
       // The mobile sidebar is collapsed; the permission-driven Home entry is visible.
