@@ -1,0 +1,884 @@
+/*
+ * Gaúcha Gestão — Login v3 · Elo
+ * The two open loops of the Gaúcha mark meet on the seam between the brand
+ * panel and the form. Reference: validated prototype (Login v3 — direções,
+ * route B). Global tokens and type stay untouched; everything is scoped here.
+ */
+
+.login-v3 {
+  --login-bg: #f4f5f0;
+  --login-surface: #ffffff;
+  --login-brand: var(--brand-surface);
+  --login-on-brand: #f4f1ea;
+  --login-on-brand-2: #c9d7cd;
+  --login-on-brand-muted: #9fb8a9;
+  --login-gold: var(--brand-orange-300);
+  --login-text: #14241b;
+  --login-text-2: #4f5e55;
+  --login-text-3: #5f6b65;
+  --login-line: #e2e7e1;
+  --login-input-bg: #f6f7f3;
+  --login-input-border: #7e8b83;
+  --login-input-hover: #4f5e55;
+  --login-icon: #6b7a71;
+  --login-primary: var(--brand-green-600);
+  --login-primary-hover: var(--brand-green-700);
+  --login-primary-active: var(--brand-green-800);
+  --login-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Desktop geometry: panel width and height-driven scale (720 → 900px). */
+  --pw: clamp(440px, 42vw, 640px);
+  --hl-size: clamp(38px, calc(5.556vh - 2px), 48px);
+  --hl-lh: clamp(44px, calc(6.667vh - 4px), 56px);
+  --sub-size: clamp(15px, calc(0.556vh + 11px), 16px);
+  --sub-lh: clamp(24px, calc(1.111vh + 16px), 26px);
+  --sub-gap: clamp(14px, calc(3.333vh - 10px), 20px);
+  --card-pad: clamp(36px, calc(4.444vh + 4px), 44px);
+  --form-gap: clamp(22px, calc(3.333vh - 2px), 28px);
+  --main-pb: clamp(28px, calc(6.667vh - 20px), 40px);
+  /* The card's left edge sits just inside the green loop's centre (≈ 0.9 of
+     its radius), so the loop wraps the card's side instead of passing behind. */
+  --card-offset: max(
+    24px,
+    min(180px, calc(21.67vh - 36px), calc(100vw - var(--pw) - 472px))
+  );
+  /* Pointer position for the parallax, -0.5…0.5 (set by Login.tsx). */
+  --login-px: 0;
+  --login-py: 0;
+
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: var(--pw) minmax(0, 1fr);
+  overflow: hidden;
+  background: var(--login-bg);
+  color: var(--login-text);
+}
+
+.login-v3-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* ---------- Elo ---------- */
+.login-v3-elo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.login-v3-elo-shift {
+  opacity: 0.84;
+  transform: translate(
+    calc(var(--login-px) * -18px),
+    calc(var(--login-py) * -18px)
+  );
+  transition: transform 0.9s var(--login-ease);
+}
+
+.login-v3-loop {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: var(--elo-dash);
+  stroke-dashoffset: var(--elo-dash);
+  animation: login-v3-draw 1.15s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+.login-v3-loop.is-green {
+  animation-delay: 0.12s;
+}
+
+.login-v3-plate {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0);
+  animation: login-v3-pop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1.25) 1s forwards;
+}
+
+/* The contact point lights up once and then stays still. */
+.login-v3-glow {
+  fill: #fbb900;
+  opacity: 0;
+  animation: login-v3-glow 0.8s ease-out 1.1s forwards;
+}
+
+.login-v3-contact,
+.login-v3-band-elo .login-v3-glow {
+  transition: opacity 0.45s ease;
+}
+
+.login-v3-contact {
+  opacity: 0.7;
+}
+
+.login-v3:focus-within .login-v3-contact {
+  opacity: 1;
+}
+
+@keyframes login-v3-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes login-v3-pop {
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes login-v3-glow {
+  55% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0.32;
+  }
+}
+
+/* ---------- Entrance ---------- */
+.login-v3-rise {
+  animation: login-v3-rise 0.7s var(--login-ease) both;
+}
+
+.login-v3-product {
+  animation-delay: 0.1s;
+}
+
+.login-v3-headline .login-v3-rise:nth-child(1) {
+  animation-delay: 0.32s;
+}
+
+.login-v3-headline .login-v3-rise:nth-child(2) {
+  animation-delay: 0.4s;
+}
+
+.login-v3-headline .login-v3-rise:nth-child(3) {
+  animation-delay: 0.48s;
+}
+
+.login-v3-subtitle {
+  animation-delay: 0.62s;
+}
+
+.login-v3-foot {
+  animation-delay: 0.9s;
+}
+
+.login-v3-card-in {
+  animation: login-v3-card-in 0.8s var(--login-ease) 0.5s both;
+}
+
+@keyframes login-v3-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes login-v3-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.985);
+  }
+}
+
+/* ---------- Brand panel ---------- */
+.login-v3-brand {
+  position: relative;
+  min-width: 0;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 56px 64px 50px;
+  background: var(--login-brand);
+  color: var(--login-on-brand);
+}
+
+.login-v3-band-elo {
+  display: none;
+}
+
+.login-v3-product {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: fit-content;
+}
+
+.login-v3-product-mark {
+  width: 48px;
+  height: 28px;
+  flex: 0 0 auto;
+}
+
+.login-v3-product strong {
+  display: block;
+  font: 600 20px/24px var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+.login-v3-product small {
+  display: block;
+  margin-top: 3px;
+  font: 600 11px/14px var(--font-sans);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--login-on-brand-muted);
+}
+
+.login-v3-message {
+  position: relative;
+  z-index: 2;
+  max-width: 472px;
+}
+
+.login-v3-headline {
+  margin: 0;
+  font: 600 var(--hl-size) / var(--hl-lh) var(--font-display);
+  letter-spacing: -0.012em;
+  color: var(--login-on-brand);
+}
+
+.login-v3-headline > span {
+  display: block;
+}
+
+.login-v3-headline .is-gold {
+  color: var(--login-gold);
+}
+
+.login-v3-subtitle {
+  max-width: 400px;
+  margin: var(--sub-gap) 0 0;
+  font: 400 var(--sub-size) / var(--sub-lh) var(--font-sans);
+  color: var(--login-on-brand-2);
+}
+
+/* ---------- Form side ---------- */
+.login-v3-main {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 var(--main-pb) var(--card-offset);
+}
+
+.login-v3-stage {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  transform: translate(
+    calc(var(--login-px) * 5px),
+    calc(var(--login-py) * 5px)
+  );
+  transition: transform 0.9s var(--login-ease);
+}
+
+.login-v3-card {
+  width: min(440px, 100%);
+  padding: var(--card-pad);
+  border-radius: 16px;
+  background: var(--login-surface);
+  box-shadow:
+    0 1px 2px rgb(10 39 21 / 0.06),
+    0 28px 64px -28px rgb(10 39 21 / 0.38);
+}
+
+.login-v3-card[data-shake="a"] {
+  animation: login-v3-shake-a 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+.login-v3-card[data-shake="b"] {
+  animation: login-v3-shake-b 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes login-v3-shake-a {
+  15%,
+  85% {
+    transform: translateX(-2px);
+  }
+  30%,
+  70% {
+    transform: translateX(5px);
+  }
+  45% {
+    transform: translateX(-6px);
+  }
+  60% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes login-v3-shake-b {
+  15%,
+  85% {
+    transform: translateX(-2px);
+  }
+  30%,
+  70% {
+    transform: translateX(5px);
+  }
+  45% {
+    transform: translateX(-6px);
+  }
+  60% {
+    transform: translateX(4px);
+  }
+}
+
+.login-v3-card h1 {
+  margin: 0;
+  font: 600 28px/36px var(--font-display);
+  letter-spacing: -0.005em;
+  color: var(--login-text);
+}
+
+.login-v3-support {
+  margin: 8px 0 0;
+  font: 400 15px/24px var(--font-sans);
+  color: var(--login-text-2);
+}
+
+.login-v3-form {
+  margin-top: var(--form-gap);
+}
+
+.login-v3-form fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.login-v3-form label {
+  gap: 8px;
+  margin: 0;
+  font: 500 14px/20px var(--font-sans);
+  color: var(--login-text);
+}
+
+.login-v3-label {
+  transition: color 0.18s ease;
+}
+
+.login-v3-form label:focus-within .login-v3-label {
+  color: var(--login-primary-hover);
+}
+
+.login-v3-form fieldset:disabled .login-v3-label {
+  color: var(--login-text-3);
+}
+
+.login-v3-field {
+  position: relative;
+  display: block;
+}
+
+/* The icon sits in its own 44px lane, set off by a hairline. */
+.login-v3-field::after {
+  content: "";
+  position: absolute;
+  left: 44px;
+  top: 14px;
+  bottom: 14px;
+  width: 1px;
+  background: #dfe4de;
+  pointer-events: none;
+  transition: background-color 0.18s ease;
+}
+
+.login-v3-field-icon {
+  position: absolute;
+  left: 13px;
+  top: 16px;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--login-icon);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+  transition: stroke 0.18s ease;
+}
+
+.login-v3-field:hover .login-v3-field-icon {
+  stroke: var(--login-input-hover);
+}
+
+.login-v3-field:focus-within .login-v3-field-icon {
+  stroke: var(--login-primary);
+}
+
+.login-v3-field:focus-within::after {
+  background: #cfe3d5;
+}
+
+.login-v3-form input {
+  height: 52px;
+  min-height: 52px;
+  padding: 0 14px 0 58px;
+  border: 1px solid var(--login-input-border);
+  border-radius: 10px;
+  background: var(--login-input-bg);
+  box-shadow:
+    inset 0 1px 2px rgb(10 39 21 / 0.06),
+    0 1px 0 rgb(255 255 255 / 0.8);
+  font: 400 16px/1.2 var(--font-sans);
+  color: var(--login-text);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.login-v3-form input:hover:not(:disabled) {
+  border-color: var(--login-input-hover);
+  background: var(--login-surface);
+  box-shadow:
+    inset 0 1px 2px rgb(10 39 21 / 0.04),
+    0 1px 3px rgb(10 39 21 / 0.08);
+}
+
+.login-v3-form input:focus,
+.login-v3-form input:focus-visible {
+  outline: none;
+  border-color: var(--login-primary);
+  background: var(--login-surface);
+  box-shadow:
+    0 0 0 1px var(--login-primary),
+    0 0 0 4px rgb(31 133 64 / 0.12),
+    0 2px 6px rgb(10 39 21 / 0.06);
+}
+
+.login-v3-form input:disabled {
+  border-color: #d3d9d3;
+  border-style: dashed;
+  background: #eceeea;
+  box-shadow: none;
+  color: var(--login-text-3);
+  cursor: not-allowed;
+}
+
+.login-v3-form fieldset:disabled .login-v3-field-icon {
+  stroke: #a3aca6;
+}
+
+.login-v3-form fieldset:disabled .login-v3-field::after {
+  background: #d3d9d3;
+}
+
+/* Show/hide password: a 44px target inside the field's right edge. */
+.login-v3-password {
+  position: relative;
+}
+
+.login-v3-password input {
+  padding-right: 52px;
+}
+
+.login-v3-reveal {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--login-icon);
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.login-v3-reveal:hover:not(:disabled),
+.login-v3-reveal:active:not(:disabled) {
+  border: 0;
+  background: transparent;
+  color: var(--login-icon);
+  transform: none;
+}
+
+@media (hover: hover) {
+  .login-v3-reveal:hover:not(:disabled) {
+    background: rgb(10 39 21 / 0.05);
+    color: var(--login-input-hover);
+  }
+}
+
+.login-v3-reveal:focus-visible {
+  outline: 2px solid var(--login-primary);
+  outline-offset: -2px;
+  color: var(--login-primary);
+}
+
+.login-v3-reveal:disabled {
+  border: 0;
+  background: transparent;
+  color: #a3aca6;
+}
+
+.login-v3-reveal svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.login-v3-form .notice {
+  margin: 0;
+  border-radius: 10px;
+  animation: login-v3-alert 0.32s var(--login-ease);
+}
+
+@keyframes login-v3-alert {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.login-v3-submit {
+  width: 100%;
+  height: 54px;
+  min-height: 54px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 10px;
+  font: 600 16px/1 var(--font-display);
+  letter-spacing: 0.03em;
+  gap: 10px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 10px 22px -12px rgb(26 106 53 / 0.85);
+  transition:
+    background-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.12s ease;
+}
+
+.login-v3-submit.primary {
+  background: var(--login-primary);
+  color: #ffffff;
+}
+
+.login-v3-submit.primary:hover:not(:disabled) {
+  background: var(--login-primary-hover);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 14px 26px -12px rgb(26 106 53 / 0.95);
+}
+
+.login-v3-submit.primary:active:not(:disabled) {
+  background: var(--login-primary-active);
+  transform: scale(0.985);
+}
+
+.login-v3-submit:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--login-surface),
+    0 0 0 4px var(--login-primary);
+}
+
+.login-v3-submit.primary.is-busy:disabled {
+  background: var(--login-primary-hover);
+  color: #ffffff;
+  cursor: progress;
+}
+
+.login-v3-arrow {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+  transition: transform 0.2s var(--login-ease);
+}
+
+.login-v3-submit:hover:not(:disabled) .login-v3-arrow {
+  transform: translateX(4px);
+}
+
+/* Loading: the elo itself, its two loops pulsing alternately (no spin). */
+.login-v3-loader {
+  width: 30px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.login-v3-loader .loop-orange path {
+  stroke: #fbb900;
+}
+
+.login-v3-loader .loop-orange circle {
+  fill: #fbb900;
+}
+
+.login-v3-loader .loop-green path {
+  stroke: #a6cf5e;
+}
+
+.login-v3-loader .loop-green circle {
+  fill: #a6cf5e;
+}
+
+.login-v3-loader .loop-orange {
+  animation: login-v3-alternate 1.1s ease-in-out infinite;
+}
+
+.login-v3-loader .loop-green {
+  animation: login-v3-alternate 1.1s ease-in-out -0.55s infinite;
+}
+
+@keyframes login-v3-alternate {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.login-v3-help {
+  margin: 24px 0 0;
+  padding-top: 22px;
+  border-top: 1px solid var(--login-line);
+  font: 400 14px/22px var(--font-sans);
+  color: var(--login-text-2);
+}
+
+.login-v3-help strong {
+  font-weight: 600;
+  color: var(--login-text);
+}
+
+.login-v3-foot {
+  width: min(440px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font: 400 12px/16px var(--font-sans);
+  color: var(--login-text-3);
+}
+
+.login-v3-signature {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.login-v3-signature img {
+  display: block;
+  width: 148px;
+  height: auto;
+}
+
+/* ---------- Mobile ---------- */
+@media (max-width: 959px) {
+  .login-v3 {
+    --band-h: calc(env(safe-area-inset-top, 0px) + 228px);
+    display: block;
+    overflow: visible;
+    background: var(--login-surface);
+  }
+
+  .login-v3[data-layout="compact"] {
+    --band-h: calc(env(safe-area-inset-top, 0px) + 66px);
+  }
+
+  /* The status-bar area stays brand green while the page scrolls. */
+  .login-v3::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 20;
+    height: env(safe-area-inset-top, 0px);
+    background: var(--login-brand);
+    pointer-events: none;
+  }
+
+  .login-v3-brand {
+    display: block;
+    min-height: 0;
+    height: var(--band-h);
+    overflow: hidden;
+    padding: calc(env(safe-area-inset-top, 0px) + 18px) 20px 0;
+  }
+
+  .login-v3[data-layout="compact"] .login-v3-brand {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 14px);
+  }
+
+  .login-v3-band-elo {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    display: block;
+    width: 240px;
+    height: 78px;
+    opacity: 0.84;
+    pointer-events: none;
+  }
+
+  .login-v3[data-layout="compact"] .login-v3-band-elo {
+    width: 140px;
+    height: 37px;
+  }
+
+  .login-v3-product {
+    gap: 12px;
+  }
+
+  .login-v3-product-mark {
+    width: 40px;
+    height: 24px;
+  }
+
+  .login-v3-product strong {
+    font-size: 17px;
+    line-height: 21px;
+  }
+
+  .login-v3-product small {
+    margin-top: 2px;
+    font-size: 10px;
+    line-height: 13px;
+  }
+
+  .login-v3-message {
+    margin-top: 28px;
+  }
+
+  .login-v3[data-layout="compact"] .login-v3-message {
+    display: none;
+  }
+
+  .login-v3-headline {
+    --hl-size: 28px;
+    --hl-lh: 34px;
+    letter-spacing: -0.01em;
+  }
+
+  .login-v3-subtitle,
+  .login-v3-copy {
+    display: none;
+  }
+
+  /* 32px short of the screen, so the signature sits closer to the form. */
+  .login-v3-main {
+    min-height: calc(100dvh - var(--band-h) - 32px);
+    padding: 28px 20px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  }
+
+  .login-v3[data-layout="compact"] .login-v3-main {
+    padding-top: 22px;
+  }
+
+  .login-v3-stage {
+    display: block;
+    flex-grow: 0;
+    transform: none;
+  }
+
+  .login-v3-card-in {
+    animation-delay: 0.45s;
+  }
+
+  .login-v3-card {
+    width: min(100%, 440px);
+    margin: 0 auto;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .login-v3-card h1 {
+    font-size: 24px;
+    line-height: 30px;
+  }
+
+  .login-v3-support {
+    line-height: 22px;
+  }
+
+  .login-v3-form {
+    margin-top: 24px;
+  }
+
+  .login-v3-form fieldset {
+    gap: 16px;
+  }
+
+  .login-v3-help {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .login-v3-foot {
+    width: auto;
+    margin-top: auto;
+    padding-top: 28px;
+    justify-content: center;
+  }
+}
+
+/* ---------- Reduced motion: everything in its final state ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .login-v3-loop,
+  .login-v3-plate,
+  .login-v3-glow,
+  .login-v3-rise,
+  .login-v3-card-in,
+  .login-v3-card[data-shake],
+  .login-v3-form .notice,
+  .login-v3-loader .loop-orange,
+  .login-v3-loader .loop-green {
+    animation: none;
+  }
+
+  .login-v3-loop {
+    stroke-dashoffset: 0;
+  }
+
+  .login-v3-plate {
+    transform: none;
+  }
+
+  .login-v3-glow {
+    opacity: 0.32;
+  }
+
+  .login-v3-elo-shift,
+  .login-v3-stage {
+    transform: none;
+    transition: none;
+  }
+
+  .login-v3-contact,
+  .login-v3-arrow,
+  .login-v3-submit {
+    transition: none;
+  }
+}

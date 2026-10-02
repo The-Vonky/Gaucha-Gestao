@@ -209,9 +209,9 @@ try {
     page.on("dialog", () => assert.fail("Native dialog opened"));
     await page.goto(origin);
     await page.getByLabel(/E-mail/i).fill(admin.email);
-    await page.getByLabel(/Senha/i).fill(password);
+    await page.getByLabel(/^Senha$/i).fill(password);
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
-    await page.getByLabel(/Senha/i).waitFor({ state: "detached" });
+    await page.getByLabel(/^Senha$/i).waitFor({ state: "detached" });
     const visit = async (route, name) => {
       await page.goto(`${origin}${route}`);
       await page.locator("h1").waitFor();
@@ -333,9 +333,9 @@ try {
   const page = await context.newPage();
   await page.goto(origin);
   await page.getByLabel(/E-mail/i).fill(admin.email);
-  await page.getByLabel(/Senha/i).fill(password);
+  await page.getByLabel(/^Senha$/i).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await page.getByLabel(/Senha/i).waitFor({ state: "detached" });
+  await page.getByLabel(/^Senha$/i).waitFor({ state: "detached" });
   // The signed-in administrator never gets an activation toggle on their own row.
   await page.goto(`${origin}/admin/users`);
   await settle(page);

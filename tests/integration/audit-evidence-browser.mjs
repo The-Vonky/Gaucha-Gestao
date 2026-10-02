@@ -43,9 +43,9 @@ export async function runBrowser() {
       page.on("popup", () => assert.fail("Download must use a same-tab attachment"));
       await page.goto(origin);
       await page.getByLabel(/E-mail/i).fill(users.uiEmail);
-      await page.getByLabel(/Senha/i).fill(password);
+      await page.getByLabel(/^Senha$/i).fill(password);
       await page.getByRole("button", { name: "Entrar", exact: true }).click();
-      await page.getByLabel(/Senha/i).waitFor({ state: "detached" });
+      await page.getByLabel(/^Senha$/i).waitFor({ state: "detached" });
       const uiInspection = await inspection();
       await page.goto(origin + "/audit/inspections/" + uiInspection);
       const section = page.getByRole("region", { name: "Evidências do critério 1", exact: true });
