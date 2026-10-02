@@ -19,6 +19,7 @@
   --brand-green-800: #18552d;
   --brand-green-900: #144527;
   --brand-green-950: #0a2715;
+  --brand-lime-50: #f1f5e4; /* domain panel tint */
   --brand-lime-300: #c6de82; /* gradient tail of the green loop */
   --brand-lime-400: #a6cf5e;
 
@@ -56,10 +57,21 @@
   --brand-surface-line: rgb(255 255 255 / 0.08);
   --brand-surface-hover: rgb(255 255 255 / 0.06);
   --brand-surface-active: rgb(255 255 255 / 0.11);
+  --brand-surface-glow: rgb(42 159 76 / 0.16);
+  --brand-surface-scrollbar: rgb(255 255 255 / 0.15);
+  /* Elos watermark on the brand surface: the two loop colours, faint. */
+  --brand-surface-loop-orange: rgb(251 185 0 / 0.09);
+  --brand-surface-loop-green: rgb(166 207 94 / 0.08);
+  --brand-surface-contact: rgb(251 185 0 / 0.32);
   --on-brand: #f4f1ea; /* 13.3:1 on brand surface */
   --on-brand-secondary: #c9d7cd; /* 10.07:1 */
   --on-brand-muted: #9fb8a9; /* 7.08:1 */
   --on-brand-accent: var(--brand-orange-300);
+
+  /* Elos on light domain panels (Home). */
+  --tint-loop-orange: rgb(243 146 0 / 0.14);
+  --tint-loop-green: rgb(31 133 64 / 0.16);
+  --tint-contact: rgb(243 146 0 / 0.4);
 
   /* ---------- Brand gradients (identity pieces, never on controls or text) ---------- */
   --gradient-orange: linear-gradient(135deg, #fbb900 0%, #ee8100 100%);
@@ -83,6 +95,7 @@
   --color-surface-subtle: var(--neutral-25);
   --color-surface-sunken: var(--neutral-100);
   --color-surface-brand: var(--brand-surface);
+  --color-surface-header: rgb(244 245 240 / 0.86); /* translucent --neutral-50 */
   --color-text: var(--neutral-900);
   --color-text-secondary: var(--neutral-600);
   --color-text-tertiary: #5f6b65; /* captions, footers (5.07:1 on work, 4.76:1 on neutral-100) */
@@ -185,6 +198,10 @@
   --shadow-md: 0 1px 2px rgb(10 39 21 / 0.04),
     0 8px 20px -6px rgb(10 39 21 / 0.1);
   --shadow-lg: 0 24px 56px -12px rgb(10 39 21 / 0.28);
+  --shadow-tile: 0 1px 2px rgb(10 39 21 / 0.06),
+    0 10px 28px -14px rgb(10 39 21 / 0.28);
+  --shadow-tile-hover: 0 1px 2px rgb(10 39 21 / 0.06),
+    0 18px 36px -14px rgb(10 39 21 / 0.35);
   --shadow-input: inset 0 1px 2px rgb(10 39 21 / 0.06),
     0 1px 0 rgb(255 255 255 / 0.8);
   --shadow-action: inset 0 1px 0 rgb(255 255 255 / 0.14),

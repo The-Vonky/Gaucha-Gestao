@@ -1,8 +1,8 @@
 /*
- * App Shell and Home — "Elos" direction (Quality UI v1).
+ * App Shell and Home — "Elos" direction (Quality UI v1, Design System Elo v1).
  * Brand navigation lives on the deep institutional green; work stays on a
- * light, warm surface. The two connected loops of the mark are the structure
- * of brand surfaces, never scattered decoration.
+ * light, cool Elo surface. The two connected loops of the mark are the
+ * structure of brand surfaces, never scattered decoration.
  */
 
 /* ---------- Brand pieces ---------- */
@@ -51,11 +51,11 @@ main#main {
 /* ---------- Brand navigation surface (sidebar + drawer) ---------- */
 .sidebar,
 .nav-drawer {
-  --color-focus: var(--brand-orange-300);
+  --color-focus: var(--on-brand-accent);
   background:
     radial-gradient(
       120% 45% at 0% 0%,
-      rgb(42 159 76 / 0.16) 0%,
+      var(--brand-surface-glow) 0%,
       transparent 65%
     ),
     var(--brand-surface);
@@ -70,15 +70,27 @@ main#main {
   padding: var(--space-5) var(--space-3) var(--space-3);
   overflow: hidden;
 }
-/* The loops, in the surface's own ink, anchored under the navigation. */
+/* The loops, anchored under the navigation, drawn like the Login: the two
+   brand colours, faint, meeting on a discreet contact point (the centre of
+   the 48×28 mark). */
 .sidebar-loops {
   position: absolute;
   left: -140px;
   bottom: 56px;
   width: 520px;
   height: auto;
-  color: rgb(255 255 255 / 0.045);
+  background: radial-gradient(
+    circle at 50% 50%,
+    var(--brand-surface-contact) 0 5px,
+    transparent 5.5px
+  );
   pointer-events: none;
+}
+.sidebar-loops .loop-orange {
+  color: var(--brand-surface-loop-orange);
+}
+.sidebar-loops .loop-green {
+  color: var(--brand-surface-loop-green);
 }
 .brand {
   display: flex;
@@ -97,7 +109,7 @@ main#main {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgb(255 255 255 / 0.15) transparent;
+  scrollbar-color: var(--brand-surface-scrollbar) transparent;
 }
 .menu section {
   margin-top: var(--space-5);
@@ -118,7 +130,7 @@ main#main {
   padding: 0 var(--space-3);
   margin: 2px 0;
   border-radius: var(--radius-md);
-  color: rgb(243 241 234 / 0.8);
+  color: var(--on-brand-secondary);
   font-weight: 500;
   font-size: 0.875rem;
   text-decoration: none;
@@ -129,7 +141,7 @@ main#main {
 .menu a .icon {
   width: 18px;
   height: 18px;
-  color: rgb(243 241 234 / 0.55);
+  color: var(--on-brand-muted);
   transition: color var(--duration-fast) var(--ease-standard);
 }
 .menu a:hover {
@@ -137,14 +149,14 @@ main#main {
   color: var(--on-brand);
 }
 .menu a:hover .icon {
-  color: rgb(243 241 234 / 0.85);
+  color: var(--on-brand-secondary);
 }
 .menu a:focus-visible {
   outline-offset: -2px;
 }
 .menu a.active {
   background: var(--brand-surface-active);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05);
+  box-shadow: inset 0 0 0 1px var(--brand-surface-line);
   color: var(--color-text-inverse);
   font-weight: 600;
 }
@@ -264,7 +276,7 @@ main#main {
   gap: var(--space-3);
   min-height: var(--header-height);
   padding: 0 var(--space-10);
-  background: rgb(244 242 236 / 0.86);
+  background: var(--color-surface-header);
   backdrop-filter: saturate(1.3) blur(10px);
   border-bottom: 1px solid var(--color-border);
 }
@@ -380,7 +392,8 @@ main#main {
   );
   --domain-ink: var(--brand-orange-900);
   --domain-text: var(--brand-orange-900);
-  --domain-loops: var(--brand-orange-200);
+  --domain-loop-orange: var(--tint-loop-orange);
+  --domain-loop-green: var(--tint-loop-green);
   position: relative;
   overflow: hidden;
   display: grid;
@@ -394,23 +407,33 @@ main#main {
 .domain[data-group="Qualidade"] {
   --domain-bg: linear-gradient(
     115deg,
-    #d5ecd9 0%,
+    var(--brand-green-100) 0%,
     var(--brand-green-50) 62%,
-    #f1f5e4 100%
+    var(--brand-lime-50) 100%
   );
   --domain-ink: var(--brand-green-900);
   --domain-text: var(--brand-green-800);
-  --domain-loops: rgb(31 133 64 / 0.16);
 }
-/* The loops rise from under the domain name, in the domain's own tint. */
+/* The loops rise from under the domain name, drawn like the Login: the two
+   brand colours as tints, meeting on a discreet contact point. */
 .domain-loops {
   position: absolute;
   left: -170px;
   bottom: -285px;
   width: 660px;
   height: auto;
-  color: var(--domain-loops);
+  background: radial-gradient(
+    circle at 50% 50%,
+    var(--tint-contact) 0 6px,
+    transparent 6.5px
+  );
   pointer-events: none;
+}
+.domain-loops .loop-orange {
+  color: var(--domain-loop-orange);
+}
+.domain-loops .loop-green {
+  color: var(--domain-loop-green);
 }
 .domain-intro {
   position: relative;
@@ -454,9 +477,7 @@ main#main {
   background: var(--color-surface);
   color: var(--color-text);
   text-decoration: none;
-  box-shadow:
-    0 1px 2px rgb(10 39 21 / 0.06),
-    0 10px 28px -14px rgb(10 39 21 / 0.28);
+  box-shadow: var(--shadow-tile);
   transition:
     transform var(--duration-base) var(--ease-standard),
     box-shadow var(--duration-base) var(--ease-standard);
@@ -464,9 +485,7 @@ main#main {
 .module-tile:hover {
   color: var(--color-text);
   transform: translateY(-2px);
-  box-shadow:
-    0 1px 2px rgb(10 39 21 / 0.06),
-    0 18px 36px -14px rgb(10 39 21 / 0.35);
+  box-shadow: var(--shadow-tile-hover);
 }
 .module-tile:active {
   transform: translateY(0);
@@ -478,7 +497,7 @@ main#main {
   width: 44px;
   height: 44px;
   margin-bottom: var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   background: var(--brand-surface);
   color: var(--brand-orange-300);
 }
@@ -630,7 +649,7 @@ main#main {
     background: var(--brand-surface);
     backdrop-filter: none;
     border-bottom: 0;
-    --color-focus: var(--brand-orange-300);
+    --color-focus: var(--on-brand-accent);
   }
   .topbar::after {
     content: "";
