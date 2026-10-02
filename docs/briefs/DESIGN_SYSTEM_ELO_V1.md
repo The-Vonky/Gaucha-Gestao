@@ -1,6 +1,6 @@
 # Implementation Brief — Design System Elo v1 (linguagem do Login v3 em toda a aplicação)
 
-Status: APROVADO PARA IMPLEMENTAÇÃO
+Status: IMPLEMENTADO na branch `design/elo-system-v1` (pendente de PR, CI e merge)
 Data: 2026-10-02
 Baseline: `main` em `f9356ae` (aplicação: PR #18 `22334995b5b239274c5c1adc98495357ec0d7980`)
 Branch: `design/elo-system-v1`
