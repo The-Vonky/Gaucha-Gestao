@@ -671,7 +671,7 @@ dialog::backdrop {
 @keyframes dialog-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.985);
+    transform: translateY(8px);
   }
 }
 @keyframes drawer-in {
