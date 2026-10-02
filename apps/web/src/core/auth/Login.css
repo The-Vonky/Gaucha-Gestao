@@ -721,8 +721,9 @@
     display: none;
   }
 
+  /* 32px short of the screen, so the signature sits closer to the form. */
   .login-v3-main {
-    min-height: calc(100dvh - var(--band-h));
+    min-height: calc(100dvh - var(--band-h) - 32px);
     padding: 28px 20px calc(env(safe-area-inset-bottom, 0px) + 16px);
   }
 

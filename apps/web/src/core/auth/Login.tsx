@@ -25,10 +25,11 @@ const FINE_POINTER = "(hover: hover) and (pointer: fine)";
 const COMPACT_HEIGHT = 700;
 // The fitted elo is drawn slightly smaller so the headline and the form lead.
 const ELO_SCALE = 0.93;
-// Plates sit just inside the loop's opening, a little smaller than the stroke,
-// so they read as the ends of the mark rather than loose dots.
-const PLATE_INSET = 0.6;
-const PLATE_SIZE = 0.15;
+// Plates sit on the loop's mouth, centred between the two arc ends (the
+// `loop` dx), a little thinner than the stroke, so they read as the mark's
+// terminal rather than a loose dot.
+const PLATE_INSET = 0.4622;
+const PLATE_SIZE = 0.13;
 
 type Layout = "normal" | "compact";
 type Elo = {
@@ -42,6 +43,14 @@ type Elo = {
   contact: [number, number];
   radius: number;
 };
+
+/**
+ * Length of a `loop` arc in units of r. Its ends lie inside the radius-r circle
+ * (as in the mark), so the arc spans 2π − 2·asin(0.8189) ≈ 4.363 rad. The
+ * draw-in dash must cover all of it or the lower end is cut off.
+ */
+const LOOP_LENGTH = 4.363;
+const dashFor = (r: number) => Math.ceil(LOOP_LENGTH * r) + 8;
 
 /** Arc of a loop of radius r centred on (cx, cy), open towards the plate. */
 function loop(cx: number, cy: number, r: number, side: "left" | "right") {
@@ -141,7 +150,7 @@ function useEloGeometry(
         orange: loop(orangeX, cy, radius, "left"),
         green: loop(greenX, cy, radius, "right"),
         stroke,
-        dash: Math.ceil(4.168 * radius) + 8,
+        dash: dashFor(radius),
         orangePlate: [orangeX - radius * PLATE_INSET, cy],
         greenPlate: [greenX + radius * PLATE_INSET, cy],
         plate: radius * PLATE_SIZE,
@@ -387,14 +396,14 @@ export function Login() {
           viewBox={layout === "compact" ? "0 0 140 37" : "0 0 240 78"}
         >
           {layout === "compact" ? (
-            <g style={{ ["--elo-dash" as string]: 134 }}>
+            <g style={{ ["--elo-dash" as string]: dashFor(30) }}>
               <circle className="login-v3-glow" cx="96" cy="37" r="18" style={{ filter: "blur(8px)" }} />
               <path className="login-v3-loop is-green" d={loop(126, 37, 30, "right")} stroke={green} strokeWidth="7" />
               <path className="login-v3-loop is-orange" d={loop(66, 37, 30, "left")} stroke={orange} strokeWidth="7" />
               <circle className="login-v3-plate is-orange" cx="36" cy="37" r="7" fill={orange} />
             </g>
           ) : (
-            <g style={{ ["--elo-dash" as string]: 275 }}>
+            <g style={{ ["--elo-dash" as string]: dashFor(64) }}>
               <circle className="login-v3-glow" cx="176" cy="78" r="30" style={{ filter: "blur(12px)" }} />
               <path className="login-v3-loop is-green" d={loop(240, 78, 64, "right")} stroke={green} strokeWidth="14" />
               <path className="login-v3-loop is-orange" d={loop(112, 78, 64, "left")} stroke={orange} strokeWidth="14" />
