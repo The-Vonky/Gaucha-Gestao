@@ -1,9 +1,9 @@
 # Platform Foundation Gates
 
 Status: active  
-Reviewed: 2026-10-01 against `664ed5a95684b15c8035e78c21a413bdbd057103`
+Reviewed: 2026-10-02 against `32540028119ecd0ac13bcec13d69c1d55e67d834`
 
-Implementation evidence and remaining Quality work: `docs/modules/audit/QUALITY_COMPLETION_V1.md`. Production entries below are repository gates, not a live infrastructure assessment. Quality v1 functional software and pre-homologation hardening are complete after PR #14; physical P1–P9 acceptance is pending and operational O1–O8 readiness remains pending/partial. **Production ready: NO.** See the completion matrix for the current O1–O8 classifications.
+Implementation evidence and remaining Quality work: `docs/modules/audit/QUALITY_COMPLETION_V1.md`; nominal physical/operational closure checklist: `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md`. Production entries below are repository gates, not a live infrastructure assessment. Quality v1 functional software, pre-homologation hardening and Login v3 are integrated; physical P1–P9 acceptance is pending and operational O1–O8 readiness remains pending/partial. PR #16 proves a disposable/reproducible minimal self-hosted stack, not a production environment. **Production ready: NO.**
 
 ## Purpose
 
@@ -210,5 +210,5 @@ Do not block Audit on:
 
 ## Implementation start condition
 
-Foundation and the first Quality domain slices are implemented. Quality v1 functional software and pre-homologation hardening are complete; remaining physical P1–P9 and operational O1–O8 acceptance is tracked in the completion matrix. Gates 7–9 still have implementation and/or operational evidence pending before production rollout; this document does not authorize infrastructure changes or deploys.
+Foundation and the first Quality domain slices are implemented. Quality v1 functional software and pre-homologation hardening are complete; remaining physical P1–P9 and operational O1–O8 acceptance is tracked in `QUALITY_ACCEPTANCE_V1.md` and summarized in the completion matrix. Gates 7–9 still have implementation and/or operational evidence pending before production rollout; this document does not authorize infrastructure changes or deploys.
 
