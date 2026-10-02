@@ -1,0 +1,151 @@
+# Derived from official self-hosted/v0.8.1, including its Kong override.
+# Provenance and deliberate reductions: UPSTREAM.md.
+services:
+  db:
+    image: supabase/postgres:17.6.1.136
+    restart: "no"
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: "5432"
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: postgres
+      PGDATABASE: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?required}
+      JWT_SECRET: ${JWT_SECRET:?required}
+      JWT_EXP: "3600"
+      INFRA_ENVIRONMENT: ${INFRA_ENVIRONMENT:?required}
+      INFRA_INSTANCE_ID: ${INFRA_INSTANCE_ID:?required}
+    command: [postgres, -c, config_file=/etc/postgresql/postgresql.conf, -c, log_min_messages=fatal, -c, log_statement=none, -c, log_min_error_statement=panic]
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - db-config:/etc/postgresql-custom
+      - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
+      - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:ro
+      - ./volumes/db/99-target.sql:/docker-entrypoint-initdb.d/init-scripts/99-target.sql:ro
+    healthcheck:
+      test: [CMD, pg_isready, -U, postgres, -h, localhost, -d, postgres]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+  auth:
+    image: supabase/gotrue:v2.196.0
+    restart: "no"
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL:?required}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:?required}@db:5432/postgres
+      GOTRUE_SITE_URL: ${SITE_URL:?required}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:?required}
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:?required}
+      GOTRUE_JWT_ISSUER: ${API_EXTERNAL_URL:?required}
+    healthcheck:
+      test: [CMD, wget, --no-verbose, --tries=1, --spider, http://localhost:9999/health]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  rest:
+    image: postgrest/postgrest:v14.17
+    restart: "no"
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:?required}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public,graphql_public,core,audit,action_plans
+      PGRST_DB_MAX_ROWS: "1000"
+      PGRST_DB_EXTRA_SEARCH_PATH: public,extensions
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_ADMIN_SERVER_PORT: "3001"
+      PGRST_ADMIN_SERVER_HOST: localhost
+      PGRST_JWT_SECRET: ${JWT_SECRET:?required}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET:?required}
+      PGRST_APP_SETTINGS_JWT_EXP: "3600"
+    command: [postgrest]
+    healthcheck:
+      test: [CMD, postgrest, --ready]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  storage:
+    image: supabase/storage-api:v1.74.0
+    restart: "no"
+    depends_on:
+      db: {condition: service_healthy}
+      # Platform Storage migrations can run before application schemas exist.
+      rest: {condition: service_started}
+    environment:
+      ANON_KEY: ${ANON_KEY:?required}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY:?required}
+      AUTH_JWT_SECRET: ${JWT_SECRET:?required}
+      POSTGREST_URL: http://rest:3000
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD:?required}@db:5432/postgres
+      STORAGE_PUBLIC_URL: ${API_EXTERNAL_URL:?required}
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      FILE_SIZE_LIMIT: "10485760"
+      STORAGE_BACKEND: file
+      GLOBAL_S3_BUCKET: gaucha-staging
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: gaucha-staging
+      REGION: local
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    volumes:
+      - storage-data:/var/lib/storage
+    healthcheck:
+      test: [CMD, wget, --no-verbose, --tries=1, --spider, http://127.0.0.1:5000/status]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+  kong:
+    image: kong/kong:3.9.3
+    restart: "no"
+    depends_on:
+      auth: {condition: service_healthy}
+      # Platform Storage migrations can run before application schemas exist.
+      rest: {condition: service_started}
+      storage: {condition: service_healthy}
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:?required}:8000"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/kong.yml
+      KONG_ROUTER_FLAVOR: expressions
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_DNS_NOT_FOUND_TTL: "1"
+      KONG_DNS_VALID_TTL: "5"
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,post-function
+      KONG_ADMIN_LISTEN: "off"
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_PROXY_ACCESS_LOG: "off"
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      SUPABASE_ANON_KEY: ${ANON_KEY:?required}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY:?required}
+    volumes:
+      - ./volumes/api/kong.yml:/home/kong/temp.yml:ro
+      - ./volumes/api/kong-entrypoint.sh:/home/kong/kong-entrypoint.sh:ro
+    entrypoint: [/bin/sh, /home/kong/kong-entrypoint.sh]
+    healthcheck:
+      test: [CMD, kong, health]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+volumes:
+  db-data:
+  db-config:
+  storage-data:
