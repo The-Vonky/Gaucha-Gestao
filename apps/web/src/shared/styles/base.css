@@ -397,7 +397,7 @@ fieldset {
 .notice.error {
   border-color: var(--danger-border);
   background: var(--danger-bg);
-  color: #7a1a12;
+  color: var(--danger-text);
 }
 .notice.error > .icon {
   color: var(--danger);
