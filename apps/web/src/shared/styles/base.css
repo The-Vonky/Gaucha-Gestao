@@ -842,7 +842,9 @@ dialog::backdrop {
   /* iOS Safari zooms into fields below 16px on focus. */
   input,
   select,
-  textarea {
+  textarea,
+  .filters input,
+  .filters select {
     font-size: 16px;
   }
 }
