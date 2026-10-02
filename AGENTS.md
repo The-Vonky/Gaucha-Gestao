@@ -111,9 +111,17 @@ Never claim a check passed without running it.
 
 ## Current phase
 
-Core/authorization, Audit Domain v1 (including reopen), Action Plans and Action Plan Evidence are implemented. Quality v1 functional software and pre-homologation hardening are complete after PR #14; do not restart implementation of that scope. Audit Export & Reporting (inspection Excel, unit-history Excel, browser print/PDF) is implemented by PR #9; do not reimplement it.
+Core/authorization, Audit Domain v1 (including reopen), Action Plans, Action Plan Evidence, Audit Export & Reporting and Audit Checklist Evidence are implemented. Quality v1 functional software and pre-homologation hardening are integrated. Do not restart those domains.
 
-For the remaining first Quality scope, read `docs/modules/audit/QUALITY_COMPLETION_V1.md` and the relevant implementation brief. Checklist Evidence is integrated in `main` by PR #11; the unit-history Data API truncation blocker is fixed by PR #13; do not reimplement either. See `docs/modules/audit/CHECKLIST_EVIDENCE_V1.md` for the evidence contract and remaining physical/operational acceptance. The current post-merge `main` CI passed in run `36854366048` on `664ed5a95684b15c8035e78c21a413bdbd057103`. Physical P1–P9 acceptance is pending; operational O1–O8 readiness remains pending/partial as classified in the completion matrix. Production ready: NO. Repository implementation and CI do not constitute production readiness.
+The institutional UI/Design System is applied to App Shell, Home, Administration and Quality surfaces. Login v3 · Elo is integrated in `main` by PR #17. Do not restore or copy the legacy Login rules that were removed from `app/shell.css`; the Login owns its presentation in `core/auth/Login.css`.
 
-Do not invent production infrastructure, choose a framework, migrate standalone systems or create speculative abstractions without an approved brief/ADR.
+Current verified baseline before the final-polish branch: `main` at `32540028119ecd0ac13bcec13d69c1d55e67d834`. Post-merge application CI `37012575081` and reproducible-infrastructure CI `37012575111` passed. The self-hosted stack validation is disposable/reproducible infrastructure evidence only; it is not production deployment evidence.
 
+For Quality closure, read:
+- `docs/modules/audit/QUALITY_COMPLETION_V1.md`;
+- `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md`;
+- the relevant implementation brief.
+
+Physical P1–P9 acceptance and operational O1–O8 readiness remain release gates until actual evidence is recorded. **Production ready: NO.** Repository implementation, browser automation and disposable infrastructure CI do not constitute production readiness.
+
+Do not invent production infrastructure, choose a new framework, migrate another standalone system or create speculative abstractions without an approved brief/ADR.
