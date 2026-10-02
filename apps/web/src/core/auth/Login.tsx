@@ -23,6 +23,12 @@ const DESKTOP = "(min-width: 960px)";
 const REDUCED = "(prefers-reduced-motion: reduce)";
 const FINE_POINTER = "(hover: hover) and (pointer: fine)";
 const COMPACT_HEIGHT = 700;
+// The fitted elo is drawn slightly smaller so the headline and the form lead.
+const ELO_SCALE = 0.93;
+// Plates sit just inside the loop's opening, a little smaller than the stroke,
+// so they read as the ends of the mark rather than loose dots.
+const PLATE_INSET = 0.6;
+const PLATE_SIZE = 0.15;
 
 type Layout = "normal" | "compact";
 type Elo = {
@@ -32,6 +38,7 @@ type Elo = {
   dash: number;
   orangePlate: [number, number];
   greenPlate: [number, number];
+  plate: number;
   contact: [number, number];
   radius: number;
 };
@@ -123,7 +130,8 @@ function useEloGeometry(
       const top = Math.max(offsetIn(product, el).bottom + 32, c.top + 24);
       const bottom = Math.min(offsetIn(headline, el).top - 36, c.bottom - 24);
       if (notice) notice.style.display = "";
-      const radius = Math.max(110, Math.min(200, (bottom - top) / 2 / 1.09));
+      const fitted = Math.max(110, Math.min(200, (bottom - top) / 2 / 1.09));
+      const radius = fitted * ELO_SCALE;
       const stroke = radius * 0.18;
       const cy = (top + bottom) / 2;
       const seam = brand.offsetWidth;
@@ -134,8 +142,9 @@ function useEloGeometry(
         green: loop(greenX, cy, radius, "right"),
         stroke,
         dash: Math.ceil(4.168 * radius) + 8,
-        orangePlate: [orangeX - radius, cy],
-        greenPlate: [greenX + radius, cy],
+        orangePlate: [orangeX - radius * PLATE_INSET, cy],
+        greenPlate: [greenX + radius * PLATE_INSET, cy],
+        plate: radius * PLATE_SIZE,
         contact: [seam, cy],
         radius,
       });
@@ -350,7 +359,7 @@ export function Login() {
               className="login-v3-plate is-green"
               cx={elo.greenPlate[0]}
               cy={elo.greenPlate[1]}
-              r={elo.stroke}
+              r={elo.plate}
               fill={green}
             />
             <path
@@ -363,7 +372,7 @@ export function Login() {
               className="login-v3-plate is-orange"
               cx={elo.orangePlate[0]}
               cy={elo.orangePlate[1]}
-              r={elo.stroke}
+              r={elo.plate}
               fill={orange}
             />
           </g>
@@ -501,7 +510,7 @@ export function Login() {
         <footer className="login-v3-foot login-v3-rise">
           <span className="login-v3-signature">
             <span>Uma plataforma</span>
-            <img src={logo} alt="Gaúcha Alimentação" width="140" height="33" />
+            <img src={logo} alt="Gaúcha Alimentação" width="148" height="35" />
           </span>
           <span className="login-v3-copy">© 2026</span>
         </footer>

@@ -10,7 +10,7 @@
   --login-surface: #ffffff;
   --login-brand: var(--brand-surface);
   --login-on-brand: #f4f1ea;
-  --login-on-brand-2: #b7c9bd;
+  --login-on-brand-2: #c9d7cd;
   --login-on-brand-muted: #9fb8a9;
   --login-gold: var(--brand-orange-300);
   --login-text: #14241b;
@@ -36,10 +36,11 @@
   --card-pad: clamp(36px, calc(4.444vh + 4px), 44px);
   --form-gap: clamp(22px, calc(3.333vh - 2px), 28px);
   --main-pb: clamp(28px, calc(6.667vh - 20px), 40px);
-  /* The card's left edge sits on the green loop's centre (≈ its radius). */
+  /* The card's left edge sits just inside the green loop's centre (≈ 0.9 of
+     its radius), so the loop wraps the card's side instead of passing behind. */
   --card-offset: max(
     24px,
-    min(200px, calc(26.1vh - 45px), calc(100vw - var(--pw) - 472px))
+    min(180px, calc(21.67vh - 36px), calc(100vw - var(--pw) - 472px))
   );
   /* Pointer position for the parallax, -0.5…0.5 (set by Login.tsx). */
   --login-px: 0;
@@ -384,32 +385,56 @@
   display: block;
 }
 
+/* The icon sits in its own 44px lane, set off by a hairline. */
+.login-v3-field::after {
+  content: "";
+  position: absolute;
+  left: 44px;
+  top: 14px;
+  bottom: 14px;
+  width: 1px;
+  background: #dfe4de;
+  pointer-events: none;
+  transition: background-color 0.18s ease;
+}
+
 .login-v3-field-icon {
   position: absolute;
-  left: 15px;
+  left: 13px;
   top: 16px;
   width: 20px;
   height: 20px;
   fill: none;
   stroke: var(--login-icon);
-  stroke-width: 1.7;
+  stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
   pointer-events: none;
   transition: stroke 0.18s ease;
 }
 
+.login-v3-field:hover .login-v3-field-icon {
+  stroke: var(--login-input-hover);
+}
+
 .login-v3-field:focus-within .login-v3-field-icon {
   stroke: var(--login-primary);
+}
+
+.login-v3-field:focus-within::after {
+  background: #cfe3d5;
 }
 
 .login-v3-form input {
   height: 52px;
   min-height: 52px;
-  padding: 0 14px 0 46px;
+  padding: 0 14px 0 58px;
   border: 1px solid var(--login-input-border);
   border-radius: 10px;
   background: var(--login-input-bg);
+  box-shadow:
+    inset 0 1px 2px rgb(10 39 21 / 0.06),
+    0 1px 0 rgb(255 255 255 / 0.8);
   font: 400 16px/1.2 var(--font-sans);
   color: var(--login-text);
   transition:
@@ -420,7 +445,10 @@
 
 .login-v3-form input:hover:not(:disabled) {
   border-color: var(--login-input-hover);
-  background: #fbfbf9;
+  background: var(--login-surface);
+  box-shadow:
+    inset 0 1px 2px rgb(10 39 21 / 0.04),
+    0 1px 3px rgb(10 39 21 / 0.08);
 }
 
 .login-v3-form input:focus,
@@ -430,13 +458,25 @@
   background: var(--login-surface);
   box-shadow:
     0 0 0 1px var(--login-primary),
-    0 0 0 5px rgb(31 133 64 / 0.16);
+    0 0 0 4px rgb(31 133 64 / 0.12),
+    0 2px 6px rgb(10 39 21 / 0.06);
 }
 
 .login-v3-form input:disabled {
-  border-color: #c9d1cb;
-  background: #eef1ee;
+  border-color: #d3d9d3;
+  border-style: dashed;
+  background: #eceeea;
+  box-shadow: none;
   color: var(--login-text-3);
+  cursor: not-allowed;
+}
+
+.login-v3-form fieldset:disabled .login-v3-field-icon {
+  stroke: #a3aca6;
+}
+
+.login-v3-form fieldset:disabled .login-v3-field::after {
+  background: #d3d9d3;
 }
 
 .login-v3-form .notice {
@@ -579,12 +619,14 @@
 .login-v3-signature {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .login-v3-signature img {
   display: block;
-  width: 140px;
+  width: 148px;
   height: auto;
 }
 
