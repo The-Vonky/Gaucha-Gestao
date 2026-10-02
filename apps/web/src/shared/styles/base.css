@@ -100,7 +100,7 @@ button,
   min-height: var(--control-height);
   padding: 0 var(--space-4);
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   background: var(--color-surface);
   color: var(--neutral-800);
   font: var(--text-label);
@@ -113,6 +113,7 @@ button,
     background-color var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard),
     color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
     transform var(--duration-fast) var(--ease-standard);
 }
 .button-link {
@@ -135,25 +136,39 @@ button:disabled {
   border-color: var(--color-border);
   box-shadow: none;
 }
+/* Primary: the Login v3 action (display type, green lift, press scale). */
 button.primary,
 .button-link.primary {
   background: var(--color-action);
   border-color: var(--color-action);
   color: var(--color-action-text);
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  box-shadow: var(--shadow-action);
 }
 button.primary:hover:not(:disabled),
 .button-link.primary:hover {
   background: var(--color-action-hover);
   border-color: var(--color-action-hover);
   color: var(--color-action-text);
+  box-shadow: var(--shadow-action-hover);
 }
-button.primary:active:not(:disabled) {
+button.primary:active:not(:disabled),
+.button-link.primary:active {
   background: var(--color-action-active);
+  transform: scale(0.985);
+}
+button.primary:focus-visible,
+.button-link.primary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 button.primary:disabled {
   background: var(--brand-green-200);
   border-color: var(--brand-green-200);
   color: var(--brand-green-900);
+  box-shadow: none;
 }
 button.danger {
   color: var(--danger);
@@ -209,13 +224,15 @@ textarea {
   min-height: var(--control-height);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border-control);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  border-radius: var(--radius-control);
+  background: var(--color-input-bg);
+  box-shadow: var(--shadow-input);
   color: var(--color-text);
   font: var(--text-body);
   transition:
     border-color var(--duration-fast) var(--ease-standard),
-    box-shadow var(--duration-fast) var(--ease-standard);
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
 }
 input::placeholder,
 textarea::placeholder {
@@ -231,14 +248,16 @@ select:focus-visible,
 textarea:focus-visible {
   outline: none;
   border-color: var(--color-action);
-  box-shadow: 0 0 0 3px rgb(31 133 64 / 0.18);
+  box-shadow: var(--focus-ring-input);
 }
 input:disabled,
 select:disabled,
 textarea:disabled {
-  background: var(--color-surface-sunken);
-  color: var(--color-text-disabled);
-  border-color: var(--color-border);
+  background: var(--neutral-100);
+  color: var(--color-text-tertiary);
+  border-color: var(--neutral-300);
+  border-style: dashed;
+  box-shadow: none;
 }
 input[type="checkbox"],
 input[type="radio"] {
@@ -364,7 +383,7 @@ fieldset {
   border-left-width: 3px;
   background: var(--info-bg);
   color: var(--neutral-900);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   overflow-wrap: anywhere;
 }
 .notice > .icon {
@@ -398,6 +417,13 @@ fieldset {
   border-color: var(--danger-border);
   background: var(--danger-bg);
   color: var(--danger-text);
+  animation: notice-in 0.32s var(--ease-elo);
+}
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
 }
 .notice.error > .icon {
   color: var(--danger);
@@ -636,7 +662,7 @@ dialog {
   background: var(--color-surface);
 }
 dialog[open] {
-  animation: dialog-in var(--duration-slow) var(--ease-emphasized);
+  animation: dialog-in var(--duration-slow) var(--ease-elo);
 }
 dialog::backdrop {
   background: rgb(10 39 21 / 0.45);
