@@ -16,6 +16,19 @@ Qualidade v1 só pode ser declarada **100% / production-ready** quando:
 
 Automação Chromium, Supabase descartável e stack self-hosted reproduzível são evidência de engenharia, não substitutos dos itens abaixo.
 
+## Limite de escopo da Qualidade v1
+
+Este fechamento cobre o primeiro domínio entregue da área de Qualidade:
+
+- Auditorias;
+- Planos de Ação;
+- Action Plan Evidence;
+- Checklist Evidence;
+- Export & Reporting;
+- App Shell/Admin necessários ao uso e à autorização desses fluxos.
+
+`Qualidade > Registros ISO` e `Qualidade > Pesquisa de Satisfação` permanecem módulos futuros do roadmap e **não são ausência funcional desta entrega**. Eles exigem migration gate/brief próprios e não devem ser adicionados para “completar” este v1.
+
 ## Baseline automatizada já comprovada
 
 Na `main` `32540028119ecd0ac13bcec13d69c1d55e67d834`:
