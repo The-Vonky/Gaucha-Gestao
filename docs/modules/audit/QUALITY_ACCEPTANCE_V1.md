@@ -1,7 +1,7 @@
 # Qualidade v1 — aceite final P1–P9 / O1–O8
 
 Status: aberto até evidência real  
-Baseline de repositório revisada: 2026-10-02  
+Baseline de repositório revisada: 2026-10-02 — `main` `22334995b5b239274c5c1adc98495357ec0d7980`  
 Objetivo: transformar as referências genéricas a “P1–P9” e “O1–O8” em um checklist nominal, sem criar funcionalidade nova nem substituir evidência operacional.
 
 ## Regra de fechamento
@@ -31,17 +31,16 @@ Este fechamento cobre o primeiro domínio entregue da área de Qualidade:
 
 ## Baseline automatizada já comprovada
 
-Na `main` `32540028119ecd0ac13bcec13d69c1d55e67d834`:
+Na `main` `22334995b5b239274c5c1adc98495357ec0d7980`:
 
-- baseline pré-PR #18: CI de aplicação `37012575081` com typecheck, lint, 235 testes, build, verify:build, audit de dependências e integrações reais de Action Plans, Evidence, Reporting, Audit, Checklist Evidence e Admin;
-- candidato da PR #18: adiciona `tests/login.test.tsx`, totalizando 236 testes unitários quando o head final estiver verde;
-- CI de infraestrutura `37012575111`: stack mínimo reproduzível aprovado em runner descartável;
+- CI de aplicação `37017170877`: typecheck, lint, 236 testes, build, verify:build, audit de dependências e integrações reais de Action Plans, Evidence, Reporting, Audit, Checklist Evidence e Admin;
+- CI de infraestrutura `37017171393`: stack mínimo reproduzível aprovado em runner descartável;
 - Audit: catálogo 9 seções / 158 critérios, scoring, create/edit/finalize/reopen, concorrência, stale versions, revogação e RLS;
 - Action Plans: origem manual/Audit, lifecycle, concorrência, verificação e revogação;
 - Evidence: upload/confirm/list/download/remove, Storage/RLS, reconciliação, limites, rounds e corridas;
 - Reporting: inspection/history XLSX, print surface, filtros/escopo, conteúdo completo e segurança de células;
 - UI: Chromium narrow/coarse-pointer e Admin em 375/768/1024/1440, sem overflow obrigatório e com touch targets;
-- Login v3 · Elo: integrado pela PR #17, CI pós-merge verde e contrato de autenticação preservado.
+- Login v3 · Elo: integrado, contrato de autenticação preservado, teste dedicado de mostrar/ocultar senha e safe areas mobile no polish final.
 
 ## P1–P9 — homologação física
 

@@ -64,8 +64,8 @@ concede acesso na tela Usuários. Recuperação de senha também usa o fluxo do 
   O histórico por unidade pagina `inspection_summaries` em blocos de 500 desde a PR #13,
   evitando o truncamento silencioso pelo limite Data API de 1.000 linhas. O software
   funcional e o hardening pré-homologação da Qualidade v1 estão concluídos após a PR #14; Login v3 · Elo foi
-  integrado pela PR #17. A baseline verificada é `main` em `32540028119ecd0ac13bcec13d69c1d55e67d834`, com
-  CI de aplicação `37012575081` e infraestrutura reproduzível `37012575111` verdes. A homologação física P1–P9
+  integrado pela PR #17. A baseline verificada é `main` em `22334995b5b239274c5c1adc98495357ec0d7980`, com
+  CI de aplicação `37017170877` e infraestrutura reproduzível `37017171393` verdes. A homologação física P1–P9
   e a prontidão operacional O1–O8 permanecem abertas conforme `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md`.
   Production ready: NÃO.
 

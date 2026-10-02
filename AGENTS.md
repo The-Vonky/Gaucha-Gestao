@@ -115,7 +115,7 @@ Core/authorization, Audit Domain v1 (including reopen), Action Plans, Action Pla
 
 The institutional UI/Design System is applied to App Shell, Home, Administration and Quality surfaces. Login v3 · Elo is integrated in `main` by PR #17. Do not restore or copy the legacy Login rules that were removed from `app/shell.css`; the Login owns its presentation in `core/auth/Login.css`.
 
-Current verified baseline before the final-polish branch: `main` at `32540028119ecd0ac13bcec13d69c1d55e67d834`. Post-merge application CI `37012575081` and reproducible-infrastructure CI `37012575111` passed. The self-hosted stack validation is disposable/reproducible infrastructure evidence only; it is not production deployment evidence.
+Current verified baseline: `main` at `22334995b5b239274c5c1adc98495357ec0d7980`, including PR #18 final Quality polish. Post-merge application CI `37017170877` and reproducible-infrastructure CI `37017171393` passed. The application suite contains 236 tests, including dedicated Login v3 password-reveal regression coverage. The self-hosted stack validation is disposable/reproducible infrastructure evidence only; it is not production deployment evidence.
 
 For Quality closure, read:
 - `docs/modules/audit/QUALITY_COMPLETION_V1.md`;
