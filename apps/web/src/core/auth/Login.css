@@ -479,6 +479,70 @@
   background: #d3d9d3;
 }
 
+/* Show/hide password: a 44px target inside the field's right edge. */
+.login-v3-password {
+  position: relative;
+}
+
+.login-v3-password input {
+  padding-right: 52px;
+}
+
+.login-v3-reveal {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--login-icon);
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.login-v3-reveal:hover:not(:disabled),
+.login-v3-reveal:active:not(:disabled) {
+  border: 0;
+  background: transparent;
+  color: var(--login-icon);
+  transform: none;
+}
+
+@media (hover: hover) {
+  .login-v3-reveal:hover:not(:disabled) {
+    background: rgb(10 39 21 / 0.05);
+    color: var(--login-input-hover);
+  }
+}
+
+.login-v3-reveal:focus-visible {
+  outline: 2px solid var(--login-primary);
+  outline-offset: -2px;
+  color: var(--login-primary);
+}
+
+.login-v3-reveal:disabled {
+  border: 0;
+  background: transparent;
+  color: #a3aca6;
+}
+
+.login-v3-reveal svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .login-v3-form .notice {
   margin: 0;
   border-radius: 10px;

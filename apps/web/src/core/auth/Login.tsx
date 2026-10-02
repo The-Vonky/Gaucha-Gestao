@@ -268,8 +268,19 @@ function LockIcon() {
   );
 }
 
+function EyeIcon({ crossed }: { crossed: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="3" />
+      {crossed && <path d="M4 4l16 16" />}
+    </svg>
+  );
+}
+
 export function Login() {
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [shakes, setShakes] = useState(0);
   const layout = useStableLayout();
@@ -283,6 +294,7 @@ export function Login() {
   const stage = useRef<HTMLDivElement>(null);
   const form = useRef<HTMLFormElement>(null);
   const button = useRef<HTMLButtonElement>(null);
+  const password = useRef<HTMLInputElement>(null);
 
   const elo = useEloGeometry(root, {
     brand,
@@ -294,6 +306,20 @@ export function Login() {
   useParallax(root);
   useKeyboardCta(form, button);
   useBrandThemeColor();
+
+  // Switching the input type keeps its value; restore the caret too.
+  function togglePassword() {
+    const input = password.current;
+    const caret =
+      input && document.activeElement === input
+        ? [input.selectionStart, input.selectionEnd]
+        : null;
+    setShowPassword((shown) => !shown);
+    if (input && caret)
+      requestAnimationFrame(() =>
+        input.setSelectionRange(caret[0], caret[1]),
+      );
+  }
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -471,20 +497,37 @@ export function Login() {
                     </span>
                   </label>
 
-                  <label htmlFor="login-password">
-                    <span className="login-v3-label">Senha</span>
-                    <span className="login-v3-field">
-                      <LockIcon />
-                      <input
-                        id="login-password"
-                        name="password"
-                        type="password"
-                        autoComplete="current-password"
-                        enterKeyHint="go"
-                        required
-                      />
-                    </span>
-                  </label>
+                  {/* The reveal button sits outside the label so it never
+                      becomes part of the field's accessible name. */}
+                  <div className="login-v3-password">
+                    <label htmlFor="login-password">
+                      <span className="login-v3-label">Senha</span>
+                      <span className="login-v3-field">
+                        <LockIcon />
+                        <input
+                          ref={password}
+                          id="login-password"
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="current-password"
+                          enterKeyHint="go"
+                          required
+                        />
+                      </span>
+                    </label>
+                    <button
+                      className="login-v3-reveal"
+                      type="button"
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                      aria-pressed={showPassword}
+                      aria-controls="login-password"
+                      // Pointer use keeps focus (and the caret) in the field.
+                      onPointerDown={(e) => e.preventDefault()}
+                      onClick={togglePassword}
+                    >
+                      <EyeIcon crossed={showPassword} />
+                    </button>
+                  </div>
 
                   {error && <Notice error>{error}</Notice>}
 
