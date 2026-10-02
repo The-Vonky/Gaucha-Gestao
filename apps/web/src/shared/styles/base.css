@@ -236,7 +236,7 @@ textarea {
 }
 input::placeholder,
 textarea::placeholder {
-  color: var(--neutral-500);
+  color: var(--color-text-tertiary);
 }
 input:hover:not(:disabled),
 select:hover:not(:disabled),
