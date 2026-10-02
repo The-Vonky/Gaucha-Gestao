@@ -825,6 +825,12 @@ dialog::backdrop {
     --control-height: var(--touch-target);
     --control-height-sm: var(--touch-target);
   }
+  /* iOS Safari zooms into fields below 16px on focus. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 @media (max-width: 599px) {
   .empty-state {
