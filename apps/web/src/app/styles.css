@@ -447,10 +447,10 @@
   margin-left: -1px;
 }
 .response:first-child {
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  border-radius: var(--radius-control) 0 0 var(--radius-control);
 }
 .response:last-child {
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
 }
 .response:focus-visible {
   position: relative;
@@ -1053,6 +1053,10 @@ button.file-remove:hover:not(:disabled) {
   .ap-result .check input {
     margin-top: 0;
     flex-shrink: 0;
+  }
+  /* Keep the 16px touch floor from base.css (prevents iOS focus zoom). */
+  .audit-observation textarea {
+    font-size: 16px;
   }
 }
 

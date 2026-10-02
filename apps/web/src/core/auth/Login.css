@@ -2,29 +2,30 @@
  * Gaúcha Gestão — Login v3 · Elo
  * The two open loops of the Gaúcha mark meet on the seam between the brand
  * panel and the form. Reference: validated prototype (Login v3 — direções,
- * route B). Global tokens and type stay untouched; everything is scoped here.
+ * route B). Login variables resolve to the shared Elo tokens where one exists
+ * (Design System Elo v1); Login-only geometry and motion stay scoped here.
  */
 
 .login-v3 {
-  --login-bg: #f4f5f0;
-  --login-surface: #ffffff;
+  --login-bg: var(--neutral-50);
+  --login-surface: var(--neutral-0);
   --login-brand: var(--brand-surface);
-  --login-on-brand: #f4f1ea;
-  --login-on-brand-2: #c9d7cd;
-  --login-on-brand-muted: #9fb8a9;
-  --login-gold: var(--brand-orange-300);
-  --login-text: #14241b;
-  --login-text-2: #4f5e55;
-  --login-text-3: #5f6b65;
-  --login-line: #e2e7e1;
-  --login-input-bg: #f6f7f3;
-  --login-input-border: #7e8b83;
-  --login-input-hover: #4f5e55;
-  --login-icon: #6b7a71;
-  --login-primary: var(--brand-green-600);
-  --login-primary-hover: var(--brand-green-700);
-  --login-primary-active: var(--brand-green-800);
-  --login-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --login-on-brand: var(--on-brand);
+  --login-on-brand-2: var(--on-brand-secondary);
+  --login-on-brand-muted: var(--on-brand-muted);
+  --login-gold: var(--on-brand-accent);
+  --login-text: var(--neutral-900);
+  --login-text-2: var(--neutral-600);
+  --login-text-3: var(--color-text-tertiary);
+  --login-line: var(--neutral-200);
+  --login-input-bg: var(--color-input-bg);
+  --login-input-border: var(--neutral-400);
+  --login-input-hover: var(--neutral-600);
+  --login-icon: var(--color-icon);
+  --login-primary: var(--color-action);
+  --login-primary-hover: var(--color-action-hover);
+  --login-primary-active: var(--color-action-active);
+  --login-ease: var(--ease-elo);
 
   /* Desktop geometry: panel width and height-driven scale (720 → 900px). */
   --pw: clamp(440px, 42vw, 640px);

@@ -1,6 +1,6 @@
 # Implementation Brief — Quality UI v1 (Gaúcha Gestão Design System)
 
-Status: PHASES 1–3 IMPLEMENTED; Login v3 · Elo integrated; final cross-app polish included  
+Status: PHASES 1–3 IMPLEMENTED; Login v3 · Elo integrated; final cross-app polish included; §2 (neutrals), §4 (elevation/motion) and §8 (focus colour) superseded by [Design System Elo v1](DESIGN_SYSTEM_ELO_V1.md)  
 Date: 2026-09-25  
 Last reviewed: 2026-10-02  
 Baseline: `main` at `8f1464be79cdf871666c713ba89b6eacfd21a769`  
@@ -28,6 +28,8 @@ Branch: `feat/quality-ui-v1`
 6. **Motion clarifies, never decorates.** Short durations; everything respects `prefers-reduced-motion`.
 
 ## 2. Palette
+
+> **Neutrals superseded** by [Design System Elo v1](DESIGN_SYSTEM_ELO_V1.md) §4.1: the warm "linen" scale is retired; `--neutral-*` now carries the Elo cool greys of the Login. Brand and semantic status tokens below remain valid.
 
 Source file: `apps/web/src/shared/styles/tokens.css`.
 
@@ -78,6 +80,8 @@ Two system faces, no web-font dependency. **Display** (`--font-display`): Bahnsc
 Tables, progress counts, percentages and dates use tabular numerals (`.numeric`).
 
 ## 4. Spacing, radius, elevation, layers, motion
+
+> **Elevation and motion superseded** by [Design System Elo v1](DESIGN_SYSTEM_ELO_V1.md) §4.1/§4.5: shadows use the green ink `rgb(10 39 21 / …)`, fields/buttons use `--radius-control` (10 px), and Elo motion adds `--ease-elo` and `--duration-entrance`. Spacing, layers, breakpoints and control heights below remain valid.
 
 - **Spacing:** 4 px base — `--space-1` (4) … `--space-16` (64).
 - **Radius:** `xs 4` · `sm 6` (badges) · `md 8` (controls) · `lg 12` (cards) · `xl 16` (hero, dialogs). `--radius-full` only for dots, avatars and progress tracks — never for buttons.
@@ -132,6 +136,8 @@ Not planned unless a real reuse appears: Tooltip, Dropdown, Tabs, Radio group, C
 - Grids collapse to one column below 600 px; page actions wrap under the title.
 
 ## 8. Accessibility
+
+> **Focus colour superseded** by [Design System Elo v1](DESIGN_SYSTEM_ELO_V1.md) §2.4: focus is green (`--brand-green-600`) on light surfaces and `--on-brand-accent` on brand surfaces. The rest of this section remains valid.
 
 - Focus: 2 px orange (`--color-focus`) outline with 2 px offset on every interactive element; inputs add a green focus halo.
 - Contrast: body/secondary text ≥4.5:1; control borders ≥3:1; logo 500-steps never used for text.

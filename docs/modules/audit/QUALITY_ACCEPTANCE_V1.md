@@ -98,7 +98,11 @@ A rodada final deve manter como invariantes:
 - ações/filtros responsivos em mobile, touch targets ≥44 px quando narrow/coarse;
 - safe-area de top/bottom/left/right no shell mobile;
 - Audit section bar abaixo da altura real do header/safe-area;
-- sem regra visual que altere scoring, lifecycle, RLS, autorização ou contrato de Storage.
+- sem regra visual que altere scoring, lifecycle, RLS, autorização ou contrato de Storage;
+- tokens Elo ([Design System Elo v1](../../briefs/DESIGN_SYSTEM_ELO_V1.md)): neutros frios do Login, sombras em tinta verde, `--radius-control` em campos e botões;
+- foco verde (`--brand-green-600`) em superfícies claras e `--on-brand-accent` em superfícies de marca;
+- `input/select/textarea` com 16 px em `pointer: coarse` ou abaixo de 1024 px (sem zoom de foco no iOS; verificar fisicamente em P2/P4);
+- loader com os dois elos alternando opacidade, sem rotação, e estático com `prefers-reduced-motion`.
 
 ## Registro de execução
 
