@@ -6,8 +6,8 @@
  */
 
 /* ---------- Brand pieces ---------- */
-/* BrandMark sizes: sidebar/drawer 34 · mobile header 28 · login lockup 40 ·
-   states 48 · loader 56 · empty state 34. */
+/* BrandMark sizes: sidebar/drawer 34 · mobile header 28 ·
+   states 48 · loader 56 · empty state 34. Login sizes live in Login.css. */
 .brand-mark {
   width: 34px;
   height: auto;
