@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { useResource } from "../../shared/useResource";
 import { Icon } from "../../shared/icons";
@@ -11,7 +11,8 @@ import {
   type BadgeTone,
 } from "../../shared/ui";
 import * as api from "./api";
-import { ChecklistItem } from "./ChecklistItem";
+import { InspectionChecklist } from "./InspectionChecklist";
+import { InspectionProvider, type InspectionView } from "./InspectionContext";
 import { useChecklistEvidence } from "./useChecklistEvidence";
 import * as evidenceApi from "./evidence";
 import { formatDate, Progress, StatusBadge } from "./Result";
@@ -22,7 +23,6 @@ import {
   tally,
   type Classification,
 } from "./scoring";
-import { SectionNav } from "./SectionNav";
 import type { Answer, ChecklistEvidence } from "./types";
 import { ReportingActions } from "./reporting/ReportingActions";
 /** Band colors exist only for a finalized result. */
@@ -169,12 +169,29 @@ export function InspectionPage() {
   const remaining = overall.tally.total - overall.tally.answered;
   const current = sections.find((s) => s.key === section) ?? sections[0];
   const index = sections.indexOf(current);
-  const sectionResult = results.sections[current.key];
   const select = (key: string) => {
     moved.current = true;
     setSection(key);
   };
   const band = summary.final_classification;
+  const view: InspectionView = {
+    summary,
+    sections,
+    items,
+    answers,
+    results,
+    editable,
+    stale,
+    confirming: !!action,
+    evidence,
+    current,
+    index,
+    select,
+    heading,
+    onChange,
+    onPending,
+    onConflict: () => void refreshSummary(),
+  };
   return (
     <>
       <nav className="breadcrumb" aria-label="Trilha">
@@ -312,77 +329,12 @@ export function InspectionPage() {
       {draft && !editable && (
         <Notice>Você pode consultar esta auditoria, mas não editá-la.</Notice>
       )}
-      <div className="audit-layout">
-        <SectionNav
-          sections={sections.map((s) => ({
-            key: s.key,
-            position: s.position,
-            name: s.name,
-            answered: results.sections[s.key].tally.answered,
-            total: results.sections[s.key].tally.total,
-          }))}
-          current={current.key}
-          answered={overall.tally.answered}
-          total={overall.tally.total}
-          onSelect={select}
-        />
-        <section
-          className="audit-checklist"
-          aria-labelledby="audit-section-title"
-        >
-          <header className="audit-section-head">
-            <h2 id="audit-section-title" ref={heading} tabIndex={-1}>
-              {current.position}. {current.name}
-            </h2>
-            <p className="numeric">
-              {sectionResult.tally.answered}/{sectionResult.tally.total}{" "}
-              respondidos · {formatScore(sectionResult.score)}{" "}
-              {sectionResult.classification
-                ? `· ${CLASSIFICATION_LABELS[sectionResult.classification]}`
-                : sectionResult.complete
-                  ? "· Sem critérios aplicáveis"
-                  : sectionResult.score !== null
-                    ? "· Parcial"
-                    : ""}
-            </p>
-          </header>
-          <ol className="audit-items">
-            {items
-              .filter((i) => i.section_key === current.key)
-              .map((item) =>
-                answers[item.key] ? (
-                  <ChecklistItem
-                    key={item.key}
-                    item={item}
-                    row={answers[item.key]}
-                    editable={editable && !stale}
-                    evidenceEditable={editable && !stale && !action}
-                    evidence={evidence}
-                    onChange={onChange}
-                    onPending={onPending}
-                    onConflict={() => void refreshSummary()}
-                  />
-                ) : null,
-              )}
-          </ol>
-          <div className="actions audit-pager">
-            <button
-              type="button"
-              disabled={index <= 0}
-              onClick={() => select(sections[index - 1].key)}
-            >
-              Seção anterior
-            </button>
-            <button
-              type="button"
-              disabled={index >= sections.length - 1}
-              onClick={() => select(sections[index + 1].key)}
-            >
-              Próxima seção
-            </button>
-          </div>
-        </section>
-      </div>
+      <InspectionProvider value={view}>
+        <Routes>
+          <Route index element={<InspectionChecklist />} />
+          <Route path="*" element={<Navigate to={`/audit/inspections/${summary.id}`} replace />} />
+        </Routes>
+      </InspectionProvider>
       {action && (
         <Confirm
           title={

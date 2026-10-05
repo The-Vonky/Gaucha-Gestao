@@ -8,7 +8,7 @@ export function AuditModule() {
     <Routes>
       <Route index element={<AuditOverview />} />
       <Route path="units/:unitId" element={<UnitHistory />} />
-      <Route path="inspections/:inspectionId" element={<InspectionPage />} />
+      <Route path="inspections/:inspectionId/*" element={<InspectionPage />} />
       <Route
         path="*"
         element={
