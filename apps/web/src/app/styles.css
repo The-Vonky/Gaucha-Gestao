@@ -12,7 +12,7 @@
 .report-controls .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .report-controls [role="status"]:empty { display: none; }
 .audit-report-filters { padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); margin-bottom: var(--space-5); }
-.audit-report-filters .actions { flex-wrap: wrap; }
+.audit-report-filters .actions { flex-wrap: wrap; justify-content: flex-start; }
 .audit-report-filters label { display: grid; gap: var(--space-1); }
 .breadcrumb a {
   display: inline;
@@ -114,6 +114,155 @@
 }
 .audit-delta.down {
   color: var(--danger);
+}
+
+/* ---------- Audit: unit identity and media slot (D2) ---------- */
+/* The media slot holds a typographic monogram today; a future Core unit cover
+   fills the same box without changing card or header structure. */
+.unit-media {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--brand-green-50);
+  color: var(--brand-green-800);
+}
+.unit-media.lg {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+}
+.unit-monogram {
+  font: 600 1.125rem/1 var(--font-display);
+  letter-spacing: 0.04em;
+}
+.unit-media.lg .unit-monogram {
+  font-size: 1.5rem;
+}
+.unit-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: calc(-1 * var(--space-2)) 0 var(--space-5);
+}
+.unit-identity p {
+  margin: var(--space-1) 0 0;
+}
+
+/* ---------- Audit: unit summary and history ---------- */
+.unit-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.unit-summary .unit-figures,
+.unit-summary .unit-trend-panel {
+  grid-column: 1 / -1;
+}
+.unit-current {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+}
+.unit-current .audit-result strong {
+  font: var(--text-kpi);
+}
+.unit-figures dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+.unit-figures dt {
+  font: var(--text-caption);
+  color: var(--color-text-secondary);
+}
+.unit-figures dd {
+  margin: 0;
+  font: var(--text-kpi);
+  font-size: 1.5rem;
+}
+.unit-history {
+  display: grid;
+  gap: var(--space-4);
+}
+.unit-history .audit-report-filters {
+  margin-bottom: 0;
+}
+
+/* ---------- Audit: score evolution chart (single series, final results) ---------- */
+.score-trend {
+  position: relative;
+  margin: 0;
+  min-width: 0;
+}
+.score-trend svg {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+}
+.score-trend text {
+  font: var(--text-caption);
+  fill: var(--color-text-secondary);
+}
+.trend-grid line {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+/* Band thresholds: hairline, solid, slightly stronger than the grid. */
+.trend-threshold line {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+}
+.trend-crosshair {
+  stroke: var(--neutral-400);
+  stroke-width: 1;
+}
+.trend-line {
+  fill: none;
+  stroke: var(--neutral-600);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.trend-hit {
+  fill: transparent;
+}
+.trend-dot {
+  stroke: var(--color-surface);
+  stroke-width: 2;
+  fill: var(--neutral-600);
+}
+.trend-point.adequate .trend-dot { fill: var(--success-solid); }
+.trend-point.partial .trend-dot { fill: var(--warning-solid); }
+.trend-point.inadequate .trend-dot { fill: var(--danger-solid); }
+.trend-point:focus {
+  outline: none;
+}
+.trend-point:focus-visible .trend-dot {
+  stroke: var(--color-focus);
+}
+.trend-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  font: var(--text-caption);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.trend-tooltip strong {
+  font: 600 1rem/1.2 var(--font-display);
+  color: var(--color-text);
 }
 
 /* ---------- Audit: inspection context hero ---------- */
@@ -1400,6 +1549,9 @@ button.file-remove:hover:not(:disabled) {
   .audit-overview {
     grid-template-columns: minmax(0, 1fr);
   }
+  .unit-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .audit-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
@@ -1535,6 +1687,12 @@ button.file-remove:hover:not(:disabled) {
   }
 }
 @media (max-width: 599px) {
+  .unit-figures dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .unit-figures dd {
+    font-size: 1.25rem;
+  }
   .audit-hero-kpis {
     gap: var(--space-2);
   }

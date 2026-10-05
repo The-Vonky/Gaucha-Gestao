@@ -14,6 +14,7 @@ import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { ChecklistEvidence } from "../apps/web/src/modules/audit/ChecklistEvidence";
 import type { EvidenceController } from "../apps/web/src/modules/audit/useChecklistEvidence";
 import { InspectionPage } from "../apps/web/src/modules/audit/InspectionPage";
+import { UnitPage } from "../apps/web/src/modules/audit/UnitPage";
 import { visibleNavigation } from "../apps/web/src/app/navigation";
 import type {
   Answer,
@@ -27,6 +28,8 @@ const api = vi.hoisted(() => ({
   saveAnswer: vi.fn(),
   finalize: vi.fn(),
   reopen: vi.fn(),
+  units: vi.fn(),
+  summaries: vi.fn(),
 }));
 vi.mock("../apps/web/src/modules/audit/api", () => api);
 const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async()=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
@@ -506,6 +509,42 @@ describe("inspection page", () => {
   });
 });
 
+describe("unit page", () => {
+  const unit = { id: "A", code: "UA-1", name: "Cozinha Central", active: true };
+  const final = (id: string, applied_on: string, final_score: number, final_classification: "adequate" | "partial") =>
+    summary({ id, applied_on, status: "finalized", final_score, final_classification, finalized_at: `${applied_on}T12:00:00Z`, answered: 3, at_count: 3 });
+  function renderUnit(path: string) {
+    api.units.mockResolvedValue([unit]);
+    api.summaries.mockResolvedValue([
+      summary({ id: "d1", applied_on: "2026-10-01", answered: 1, at_count: 1 }),
+      final("f2", "2026-09-20", 60, "partial"),
+      final("f1", "2026-08-20", 90, "adequate"),
+    ]);
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes><Route path="/audit/units/:unitId/*" element={<UnitPage />} /></Routes>
+      </MemoryRouter>,
+    );
+  }
+  it("summarizes the unit: situation derived from the latest final result, draft and trend", async () => {
+    renderUnit("/audit/units/A");
+    expect(await screen.findByRole("heading", { name: "Cozinha Central" })).toBeTruthy();
+    expect(api.summaries).toHaveBeenCalledWith({ p_unit: "A" });
+    // Latest finalized is partial: attention wins over the open draft (D6).
+    expect(screen.getByText("Em atenção")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Resumo" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "Continuar" }).getAttribute("href")).toBe("/audit/inspections/d1/checklist");
+    expect(screen.getByText(/-30,0 p\.p\. vs\. anterior/)).toBeTruthy();
+    expect(screen.getByRole("group", { name: /últimas 2 auditorias finalizadas/ })).toBeTruthy();
+  });
+  it("lists every inspection and the history report on the Histórico tab", async () => {
+    renderUnit("/audit/units/A/historico");
+    expect(await screen.findByRole("heading", { name: "Auditorias" })).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Abrir" })).toHaveLength(3);
+    expect(screen.getByRole("heading", { name: "Relatório do histórico" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Exportar histórico" })).toBeTruthy();
+  });
+});
 describe("Checklist evidence removal errors", () => {
   it.each([
     ["55000", "Esta operação não é permitida no estado atual do registro."],

@@ -2002,6 +2002,7 @@ try {
     for (const route of [
       "/audit",
       `/audit/units/${A}`,
+      `/audit/units/${A}/historico`,
       `/audit/inspections/${uiInspection}/checklist`,
       `/audit/inspections/${uiInspection}`,
     ]) {
@@ -2039,7 +2040,8 @@ try {
     ]);
     assert.match(inspectionDownload.suggestedFilename(), /^auditoria-[a-f0-9-]+-\d+\.xlsx$/);
     assert.deepEqual((await readExcelFile(await inspectionDownload.path())).map((sheet) => sheet.sheet), ["Resumo", "Checklist", "Secoes"]);
-    await page.goto(`${origin}/audit/units/${A}`);
+    // The history report lives on the unit's Histórico tab (D4).
+    await page.goto(`${origin}/audit/units/${A}/historico`);
     await page.getByLabel("De", { exact: true }).fill("2026-09-20");
     await page.getByLabel("Até", { exact: true }).fill("2026-09-20");
     const [historyDownload] = await Promise.all([
