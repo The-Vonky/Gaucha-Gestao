@@ -148,6 +148,8 @@ Not planned unless a real reuse appears: Tooltip, Dropdown, Tabs, Radio group, C
 
 ## 9. Audit design rules (phase 2)
 
+> **Navigation and layout evolved** by [Audit UX v2](AUDIT_UX_V2.md): overview by monitored unit, unit page (Resumo | Histórico) and routed inspection tabs (Visão geral | Checklist | Plano de ação). The preservation rules and the band/draft rules below remain valid.
+
 Preserve integrally: 158 criteria, 9 sections, AT/AP/NAT/NAP, observations, scoring, progress, finalize, reopen, concurrency/conflict states, permissions, Action Plans and Evidence links. No RPC changes.
 
 1. **Context hero** (compact, ≤ ~160 px desktop): unit, date, responsible, status badge, progress (`n/158`, neutral bar), conformity. Draft conformity is labeled *parcial* and uses neutral/info styling; only a finalized result gets the band color, larger KPI type and the band label.

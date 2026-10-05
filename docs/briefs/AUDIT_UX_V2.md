@@ -1,6 +1,6 @@
 # Implementation Brief — Audit UX v2 (experiência da Auditoria por unidade)
 
-Status: APROVADO PARA IMPLEMENTAÇÃO (decisões D1–D7 fechadas em 2026-10-05; ver §2.2)
+Status: IMPLEMENTADO na branch `design/audit-ux-v2` (pendente de PR, CI e merge; decisões D1–D7 fechadas em 2026-10-05, ver §2.2)
 Data: 2026-10-05
 Baseline: `main` em `e7253e088f27fa98aa810c4daaa7994d9a90345a` (Design System Elo v1 integrado pela PR #19; CI pós-merge verde)
 Branch: `design/audit-ux-v2`
@@ -404,3 +404,15 @@ Cada commit mantém typecheck, lint, testes e build verdes. O passo 2 é o gate 
 - Docs: `AUDIT_SOURCE_OF_TRUTH.md` (Unit experience, Platform adaptation), `QUALITY_UI_V1.md` §1, §6–§9, `DESIGN_SYSTEM_ELO_V1.md`, ADR-003.
 - Referência original v2.9.1 (local, fora do repositório): `DOCUMENTACAO_TECNICA.md` (Interface v2.2/v2.3/v2.6/v2.7) e `Sistema_Checklist_Qualidade.html`: KPIs "Unidades monitoradas", "Auditorias registradas", "Conformidade média", "Inspeções em preenchimento"; "Atividade recente"; abas "Visão geral / Checklist / Plano de ação"; capas por unidade em data URL (não reaproveitável).
 - Testes: `tests/audit-ui.test.tsx`, `tests/integration/{audit,audit-evidence-browser,quality-touch}.mjs`.
+
+## 13. Notas de implementação
+
+Desvios conscientes em relação ao texto das telas, todos dentro das decisões D1–D7:
+
+- **"Mais ações" no mobile (§6.5/§6.10):** é um disclosure inline, não um sheet. `ReportingActions` mantém estado e a prévia de impressão; dentro de um sheet que fecha, a prévia seria desmontada. O controle continua montado quando recolhido.
+- **Abas da auditoria não são sticky (D7):** a barra de seção do checklist já é sticky abaixo do header/safe-area; empilhar duas barras esconderia conteúdo. D7 permite sticky "quando necessário".
+- **Checklist sempre montado:** fora da aba Checklist, o painel fica oculto (`hidden`) para que filas de salvamento por critério e texto em digitação sobrevivam à troca de aba. Coberto por teste unitário dedicado.
+- **Atividade recente → "Auditorias recentes":** a seção lista auditorias por data de aplicação e declara na própria tela o que o contrato inclui (em andamento + as duas últimas finalizadas de cada unidade). Não há feed de eventos nem uso de `core.system_audit_log`.
+- **Evolução no Resumo da unidade:** as últimas 6 auditorias finalizadas; o gráfico completo fica no Histórico.
+- **`verify:build`:** o marcador de texto de Planos de Ação passou a ser `"Novo plano de ação"` (do próprio módulo), porque o link "Planos de ação desta auditoria" virou a aba.
+
