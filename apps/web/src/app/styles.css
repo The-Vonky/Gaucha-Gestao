@@ -597,6 +597,8 @@
 .audit-result-value.partial { color: var(--warning); }
 .audit-result-value.inadequate { color: var(--danger); }
 .audit-section-results {
+  /* Rows adapt to the panel's real width (1024px puts it in a narrow column). */
+  container-type: inline-size;
   display: grid;
   list-style: none;
   margin: 0;
@@ -604,7 +606,7 @@
 }
 .audit-section-results li {
   display: grid;
-  grid-template-columns: 1.5rem minmax(0, 1fr) minmax(0, 20rem) auto;
+  grid-template-columns: 1.5rem minmax(10rem, 1fr) minmax(16.5rem, 20rem) auto;
   align-items: center;
   gap: var(--space-2) var(--space-3);
   padding: var(--space-2) 0;
@@ -625,7 +627,7 @@
 }
 .audit-sr-meta {
   display: grid;
-  grid-template-columns: 3.5rem 4.5rem minmax(0, 1fr);
+  grid-template-columns: 3.5rem 4.5rem minmax(7.5rem, 1fr);
   align-items: center;
   gap: var(--space-3);
 }
@@ -635,6 +637,26 @@
 }
 .audit-sr-status {
   color: var(--color-text-secondary);
+}
+/* Too narrow for one row: name beside "Abrir", figures on a second line. */
+@container (max-width: 34.5rem) {
+  .audit-section-results li {
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+    grid-template-areas:
+      "pos name open"
+      ". meta meta";
+  }
+  .audit-section-results .audit-sr-pos { grid-area: pos; }
+  .audit-section-results .audit-sr-name { grid-area: name; }
+  .audit-section-results li > button { grid-area: open; }
+  .audit-section-results .audit-sr-meta {
+    grid-area: meta;
+    grid-template-columns: auto auto minmax(0, 1fr);
+  }
+  .audit-section-results .audit-sr-count,
+  .audit-section-results .audit-sr-score {
+    text-align: left;
+  }
 }
 .audit-attention {
   display: grid;
@@ -772,7 +794,8 @@
 }
 .audit-counts {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  /* As many columns as the panel fits: five on wide panels, fewer when narrow. */
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
   gap: var(--space-2);
   margin: 0;
 }
@@ -1790,26 +1813,6 @@ button.file-remove:hover:not(:disabled) {
     padding: 0 var(--space-2);
     white-space: normal;
     text-align: center;
-  }
-  .audit-counts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .audit-section-results li {
-    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
-    grid-template-areas:
-      "pos name open"
-      ". meta meta";
-  }
-  .audit-section-results .audit-sr-pos { grid-area: pos; }
-  .audit-section-results .audit-sr-name { grid-area: name; }
-  .audit-section-results li > button { grid-area: open; }
-  .audit-section-results .audit-sr-meta {
-    grid-area: meta;
-    grid-template-columns: auto auto minmax(0, 1fr);
-  }
-  .audit-section-results .audit-sr-count,
-  .audit-section-results .audit-sr-score {
-    text-align: left;
   }
   .audit-info {
     grid-template-columns: minmax(0, 1fr);
