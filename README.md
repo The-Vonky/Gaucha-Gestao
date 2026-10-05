@@ -37,7 +37,7 @@ A plataforma nasce a partir da consolidação gradual dos sistemas existentes. O
 
 ## Estado atual
 
-A plataforma implementa Core/autorização, Audit v1 (incluindo reabertura), Planos de Ação, evidências de execução/verificação, Checklist Evidence por critério e Audit Export & Reporting. O hardening funcional da Qualidade v1 está integrado; a UI institucional aplica o Design System ao App Shell, Home, Administração e superfícies de Qualidade, e o **Login v3 · Elo** foi integrado pela PR #17.
+A plataforma implementa Core/autorização, Audit v1 (incluindo reabertura), Planos de Ação, evidências de execução/verificação, Checklist Evidence por critério e Audit Export & Reporting. O hardening funcional da Qualidade v1 está integrado; a UI institucional aplica o Design System ao App Shell, Home, Administração e superfícies de Qualidade, e o **Login v3 · Elo** foi integrado pela PR #17. O [Design System Elo v1](docs/briefs/DESIGN_SYSTEM_ELO_V1.md) leva a linguagem do Login (neutros, material de campos e botões, foco verde e movimento) a toda a aplicação, sem alterar regras de negócio.
 
 Baseline de aplicação verificada e integrada pela PR #18: commit `22334995b5b239274c5c1adc98495357ec0d7980`. A CI pós-merge passou em `37017170877` (typecheck, lint, 236 testes, build, verify:build, audit e integrações reais em Supabase descartável) e a infraestrutura reproduzível passou em `37017171393`. A validação self-hosted continua sendo evidência reproduzível em runner descartável; não representa deploy ou ambiente de produção.
 

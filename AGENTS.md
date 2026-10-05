@@ -113,7 +113,7 @@ Never claim a check passed without running it.
 
 Core/authorization, Audit Domain v1 (including reopen), Action Plans, Action Plan Evidence, Audit Export & Reporting and Audit Checklist Evidence are implemented. Quality v1 functional software and pre-homologation hardening are integrated. Do not restart those domains.
 
-The institutional UI/Design System is applied to App Shell, Home, Administration and Quality surfaces. Login v3 · Elo is integrated in `main` by PR #17. Do not restore or copy the legacy Login rules that were removed from `app/shell.css`; the Login owns its presentation in `core/auth/Login.css`.
+The institutional UI/Design System is applied to App Shell, Home, Administration and Quality surfaces. Login v3 · Elo is integrated in `main` by PR #17, and Design System Elo v1 (`docs/briefs/DESIGN_SYSTEM_ELO_V1.md`) promotes its language (neutrals, field/button material, green focus, motion) to the whole application. Do not restore or copy the legacy Login rules that were removed from `app/shell.css`; the Login owns its presentation in `core/auth/Login.css`.
 
 Current verified application baseline is PR #18 merge commit `22334995b5b239274c5c1adc98495357ec0d7980`, including the final Quality polish; documentation-only commits may follow it on `main`. Post-merge application CI `37017170877` and reproducible-infrastructure CI `37017171393` passed. The application suite contains 236 tests, including dedicated Login v3 password-reveal regression coverage. The self-hosted stack validation is disposable/reproducible infrastructure evidence only; it is not production deployment evidence.
 
