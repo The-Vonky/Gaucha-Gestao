@@ -15,7 +15,8 @@
     "verify:build": "node scripts/verify-build.mjs",
     "test": "vitest run",
     "test:rls": "vitest run tests/database.test.ts",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "seed:audit-demo": "node scripts/audit-demo/seed.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",
