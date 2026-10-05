@@ -1997,29 +1997,69 @@ try {
       page
         .getByText("Carregando", { exact: false })
         .waitFor({ state: "hidden" });
+    // Overview tables stay legible at every width: section names keep real
+    // width and no row/count cell overflows internally.
+    const legibleOverview = async (page, label) => {
+      const result = await page.evaluate(() => ({
+        names: [...document.querySelectorAll(".audit-sr-name")].map((e) => e.getBoundingClientRect().width),
+        overflowing: [...document.querySelectorAll(".audit-section-results li, .audit-sr-meta, .audit-count")]
+          .filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.className),
+      }));
+      assert.equal(result.names.length, 9, `${label}: section results`);
+      assert.ok(Math.min(...result.names) >= 120, `${label}: section names squeezed ${result.names}`);
+      assert.deepEqual(result.overflowing, [], `${label}: internal overflow`);
+    };
     const page = await open("ui");
     const uiInspection = await create("ui");
+    // A second draft with AP/NAT answers: its plans and points of attention render links.
+    const planInspection = await create("ui");
+    await fill(planInspection, ["AP", "NAT"]);
     for (const route of [
       "/audit",
       `/audit/units/${A}`,
       `/audit/units/${A}/historico`,
       `/audit/inspections/${uiInspection}/checklist`,
       `/audit/inspections/${uiInspection}/plano`,
+      `/audit/inspections/${planInspection}/plano`,
+      `/audit/inspections/${planInspection}`,
       `/audit/inspections/${uiInspection}`,
     ]) {
       await page.goto(`${origin}${route}`);
       await page.locator("h1").waitFor();
       await settle(page);
       await noOverflow(page, route);
-      if (route === "/audit") assert.ok(await page.locator(".unit-card-link").count());
+      if (route === "/audit") {
+        assert.ok(await page.locator(".unit-card-link").count());
+        assert.ok(await page.locator(".audit-recent-list a").count());
+      }
       if (route.endsWith("/plano"))
         await page.getByRole("heading", { name: /^Planos de ação/ }).waitFor();
-      for (const width of [375, 768, 1440]) {
+      if (route === `/audit/inspections/${planInspection}/plano`)
+        assert.equal(await page.locator(".audit-plan-main a").count(), 2);
+      for (const width of [375, 768, 1024, 1440]) {
         await page.setViewportSize({ width, height: 900 });
         await qualityTouchTargets(page, `${route} ${width}px/coarse`);
+        if (/\/audit\/inspections\/[^/]+$/.test(route))
+          await legibleOverview(page, `${route} ${width}px`);
       }
       await page.setViewportSize({ width: 375, height: 812 });
     }
+    // "Abrir critério N" lands on that criterion (not just its section), after
+    // the shell's own route scroll/focus.
+    await page.goto(`${origin}/audit/inspections/${planInspection}`);
+    await settle(page);
+    await page.getByRole("button", { name: /^Abrir critério 2 na seção 1:/ }).tap();
+    await page.waitForFunction(() =>
+      document.activeElement?.matches("li.audit-item") &&
+      /^\s*2\./.test(document.activeElement.textContent));
+    const target = await page.evaluate(() => {
+      const box = document.activeElement.getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom, height: innerHeight, scrollY };
+    });
+    assert.ok(target.top >= 0 && target.top < target.height, `Criterion 2 in view ${JSON.stringify(target)}`);
+    await page.goto(`${origin}/audit/inspections/${uiInspection}`);
+    await page.locator("h1").waitFor();
+    await settle(page);
     // The official report controls use the full scoped RPC dataset. At 375px,
     // the dedicated print portal includes hidden checklist sections and no app chrome.
     // At 375px the report controls sit behind the inspection's "Mais ações".
