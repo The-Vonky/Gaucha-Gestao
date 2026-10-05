@@ -17,7 +17,7 @@ const required = {
     "create_manual_plan",
     "set_plan_status",
     "verify_plan",
-    "Planos de ação desta auditoria",
+    "Novo plano de ação",
   ],
   "Action Plan evidence": [
     "begin_evidence_upload",
