@@ -686,7 +686,7 @@
   grid-template-areas:
     "text responses"
     "obs obs"
-    "save save";
+    "evi save";
   gap: var(--space-2) var(--space-5);
   padding: var(--space-3) var(--space-4) var(--space-3) var(--space-5);
   border-top: 1px solid var(--color-border);
@@ -705,6 +705,43 @@
   width: 3px;
   border-radius: 0 2px 2px 0;
   background: var(--info-border);
+}
+/* D5: criterion evidence behind a quiet disclosure ("Evidências (n)"). */
+.audit-item-evidence {
+  grid-area: evi;
+  min-width: 0;
+}
+.audit-evidence-toggle {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-2);
+  margin-left: calc(-1 * var(--space-2));
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-text-secondary);
+  font: var(--text-body-sm);
+  font-weight: 600;
+}
+.audit-evidence-toggle .icon {
+  width: 16px;
+  height: 16px;
+}
+.audit-evidence-toggle[aria-expanded="true"] {
+  color: var(--color-text);
+}
+.audit-item-evidence .audit-evidence {
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 0;
+}
+/* The toggle already names the block; keep the heading for assistive tech only. */
+.audit-item-evidence .audit-evidence > h3 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .audit-item-text {
   grid-area: text;
@@ -728,6 +765,7 @@
   flex: 1 1 0;
   gap: 3px;
   min-width: 56px;
+  white-space: nowrap;
   min-height: var(--touch-target);
   padding: 0 var(--space-2);
   border-radius: 0;
@@ -828,6 +866,12 @@
   margin: 0;
   font: var(--text-caption);
   color: var(--color-text-secondary);
+}
+/* Errors and conflicts need room: their own full-width row below the item. */
+.audit-save.error,
+.audit-save.conflict {
+  grid-column: 1 / -1;
+  grid-row: auto;
 }
 .audit-save:empty {
   margin-top: calc(-1 * var(--space-2));
@@ -1478,7 +1522,8 @@ button.file-remove:hover:not(:disabled) {
       "text"
       "responses"
       "obs"
-      "save";
+      "save"
+      "evi";
     padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
   }
   .response {

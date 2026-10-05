@@ -14,7 +14,7 @@ export async function qualityTouchTargets(page, label) {
     const selectors = [
       "button.small", ".row-actions button", ".notice-body button",
       ".audit-evidence button", ".response", ".breadcrumb a", ".crumbs a",
-      ".audit-unit h3 a", ".audit-unit > a", ".quality-return", ".audit-tabs a", ".audit-more-toggle",
+      ".audit-unit h3 a", ".audit-unit > a", ".quality-return", ".audit-tabs a", ".audit-more-toggle", ".audit-evidence-toggle",
       ".ap-result .check", ".menu a", ".logout", ".mobile-menu", ".topbar-brand",
     ];
     const visible = element => element.getClientRects().length &&

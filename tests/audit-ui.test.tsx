@@ -227,6 +227,8 @@ describe("inspection page", () => {
       expect(screen.queryByRole("button", { name: /Anexar arquivo/ })).toBeNull();
     } else {
       await waitFor(() => expect((screen.getAllByRole("button", { name: "Atende (AT)" })[0] as HTMLButtonElement).disabled).toBe(false));
+      // D5: attach controls live behind each criterion's "Evidências (n)" disclosure.
+      for (const toggle of screen.getAllByRole("button", { name: /^Evidências \(/ })) await user.click(toggle);
       expect(screen.getAllByRole("button", { name: /Anexar arquivo/ }).length).toBe(2);
     }
   });
@@ -453,6 +455,20 @@ describe("inspection page", () => {
     await screen.findByRole("link", { name: "Visão geral" });
     expect(screen.queryByRole("link", { name: "Plano de ação" })).toBeNull();
     expect(plansApi.summaries).not.toHaveBeenCalled();
+  });
+  it("keeps criterion evidence behind a closed \"Evidências (n)\" disclosure", async () => {
+    const user = userEvent.setup();
+    evidenceApi.listEvidence.mockResolvedValue([{ id: "e1", inspection_id: "i1", item_key: "item-001", object_key: "k",
+      original_name: "laudo.pdf", content_type: "application/pdf", size_bytes: 10, created_by: "u",
+      uploaded_by_name: "Ana", uploaded_at: "2026-09-24T12:00:00Z" }]);
+    setup(summary(), [answer("item-001", null), answer("item-002", null), answer("item-003", null)]);
+    const toggle = await screen.findByRole("button", { name: "Evidências (1)" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("button", { name: "Anexar arquivo ao critério 1" })).toBeNull();
+    await user.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "Anexar arquivo ao critério 1" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Baixar laudo.pdf" })).toBeTruthy();
   });
   it("keeps unsaved observation text and the pending gate across a tab switch", async () => {
     const user = userEvent.setup();

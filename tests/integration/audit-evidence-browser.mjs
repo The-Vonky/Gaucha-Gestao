@@ -49,7 +49,17 @@ export async function runBrowser() {
       const uiInspection = await inspection();
       await page.goto(origin + "/audit/inspections/" + uiInspection + "/checklist");
       const section = page.getByRole("region", { name: "Evidências do critério 1", exact: true });
-      await section.waitFor();
+      // D5: criterion evidence sits behind "Evidências (n)"; open it after each (re)load.
+      // A reload/lifecycle change remounts the checklist (closed again), so retry until open.
+      const openEvidence = async () => {
+        const toggle = page.locator('li.audit-item:has([aria-label="Evidências do critério 1"]) .audit-evidence-toggle');
+        for (let attempt = 0; ; attempt++) {
+          await toggle.waitFor();
+          if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+          try { await section.waitFor({ timeout: 5000 }); return; } catch (error) { if (attempt >= 3) throw error; }
+        }
+      };
+      await openEvidence();
       const add = section.getByRole("button", { name: "Anexar arquivo ao critério 1", exact: true });
       await add.focus();
       assert.equal(await add.evaluate((element) => element === document.activeElement), true, "Add is keyboard-focusable");
@@ -179,7 +189,7 @@ export async function runBrowser() {
       // Lifecycle UI: finalized is readable, then reopen permits a new upload.
       await fill(uiInspection);
       await page.reload();
-      await section.waitFor();
+      await openEvidence();
       // Pending uploads from another section warn at review; concurrent available evidence causes a visible conflict.
       const hiddenPending = await begin("owner", uiInspection, "item-128", "pendente fora da seção.pdf");
       must(await upload("owner", hiddenPending.object_key));
@@ -190,6 +200,7 @@ export async function runBrowser() {
       await page.getByText("O conjunto de evidências foi alterado.", { exact: false }).first().waitFor();
       assert.equal((await row(uiInspection)).status, "draft", "Visible conflict never silently finalizes");
       await page.getByRole("button", { name: "Recarregar evidências e revisar", exact: true }).click();
+      await openEvidence();
       await section.getByRole("button", { name: "Baixar valid.pdf", exact: true }).waitFor();
       await page.getByRole("button", { name: "Finalizar", exact: true }).click();
       await page.getByRole("dialog").getByText("fora da seção.pdf", { exact: true }).waitFor();
@@ -197,6 +208,7 @@ export async function runBrowser() {
       // The finalize dialog itself says "somente leitura"; wait for the finalized page notice instead.
       await page.getByText(/^Auditoria finalizada em .+ Somente leitura\.$/).waitFor();
       await page.getByRole("dialog").waitFor({ state: "detached" });
+      await openEvidence();
       fails(await confirm("owner", hiddenPending.evidence_id), "55000");
       const browserSnapshot = (await db.query(
         "select metadata->'evidence_ids' ids from core.system_audit_log where module='audit' and action='finalize' and entity_id=$1",
@@ -212,6 +224,8 @@ export async function runBrowser() {
       assert.ok(readFileSync(await finalDownload.path()).equals(bytes));
       await page.getByRole("button", { name: "Reabrir", exact: true }).click();
       await page.getByRole("dialog").getByRole("button", { name: "Confirmar", exact: true }).click();
+      await page.getByRole("button", { name: "Finalizar", exact: true }).waitFor();
+      await openEvidence();
       await add.waitFor();
       assert.equal(await add.isEnabled(), true);
       await input.setInputFiles({ name: "reopened.pdf", mimeType: PDF, buffer: bytes });
