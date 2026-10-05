@@ -41,8 +41,8 @@ export function InspectionOverview() {
   const unanswered = tally.total - tally.answered;
   const draft = summary.status === "draft";
   const band = summary.final_classification;
-  const openSection = (key: string) => {
-    select(key);
+  const openSection = (key: string, item?: string) => {
+    select(key, item);
     navigate(`${base}/checklist`);
   };
   const sectionOf = new Map(sections.map((s) => [s.key, s]));
@@ -177,7 +177,7 @@ export function InspectionOverview() {
                         type="button"
                         className="small"
                         aria-label={`Abrir critério ${item.number} na seção ${section.position}: ${section.name}`}
-                        onClick={() => openSection(section.key)}
+                        onClick={() => openSection(section.key, item.key)}
                       >
                         Abrir
                       </button>

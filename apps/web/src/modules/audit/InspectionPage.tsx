@@ -15,7 +15,7 @@ import { InspectionChecklist } from "./InspectionChecklist";
 import { InspectionOverview } from "./InspectionOverview";
 import { InspectionPlans } from "./InspectionPlans";
 import { plansForInspection } from "../action-plans/public";
-import { InspectionProvider, type InspectionView } from "./InspectionContext";
+import { InspectionProvider, itemAnchor, type InspectionView } from "./InspectionContext";
 import { useChecklistEvidence } from "./useChecklistEvidence";
 import * as evidenceApi from "./evidence";
 import { formatDate, Progress, StatusBadge } from "./Result";
@@ -127,7 +127,7 @@ export function InspectionPage() {
     reviewGeneration.current++;
     setLifecycleTransition(undefined);
     setPending(new Set());setAction(undefined);setReview(undefined);
-    setFinalPending(0);setPreparing(false);setEvidenceError("");setEvidenceConflict(false);setStale(false);setPlansStale(false);
+    setFinalPending(0);setPreparing(false);setEvidenceError("");setEvidenceConflict(false);setStale(false);setPlansStale(false);setTarget(undefined);
     return () => { reviewGeneration.current++; };
   }, [inspectionId]);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -138,6 +138,21 @@ export function InspectionPage() {
     moved.current = false;
     heading.current?.focus();
   }, [section]);
+  // A criterion requested from the overview ("Abrir critério N").
+  const [target, setTarget] = useState<string>();
+  useEffect(() => {
+    if (!target || tab !== "checklist") return;
+    // Deferred past this commit: the shell scrolls to the top and focuses
+    // <main> on route change after this effect, and would undo it.
+    const timer = setTimeout(() => {
+      setTarget(undefined);
+      const row = document.getElementById(itemAnchor(target));
+      if (!row) return;
+      row.scrollIntoView?.({ block: "start" });
+      row.focus({ preventScroll: true });
+    });
+    return () => clearTimeout(timer);
+  }, [target, tab]);
   const loaded = useMemo(
     () => Object.fromEntries((data?.rows ?? []).map((a) => [a.item_key, a])),
     [data],
@@ -219,9 +234,11 @@ export function InspectionPage() {
   const remaining = overall.tally.total - overall.tally.answered;
   const current = sections.find((s) => s.key === section) ?? sections[0];
   const index = sections.indexOf(current);
-  const select = (key: string) => {
-    moved.current = true;
+  const select = (key: string, item?: string) => {
+    // A requested criterion takes focus instead of the section heading.
+    moved.current = !item;
     setSection(key);
+    setTarget(item);
   };
   const band = summary.final_classification;
   const view: InspectionView = {

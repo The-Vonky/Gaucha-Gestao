@@ -10,7 +10,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { ChecklistEvidence } from "../apps/web/src/modules/audit/ChecklistEvidence";
 import type { EvidenceController } from "../apps/web/src/modules/audit/useChecklistEvidence";
 import { InspectionPage } from "../apps/web/src/modules/audit/InspectionPage";
@@ -440,6 +440,47 @@ describe("inspection page", () => {
     expect(screen.getByText("Sem respostas")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Abrir seção 2: ESTOQUE no checklist" }));
     expect(screen.getByRole("heading", { name: "2. ESTOQUE" })).toBeTruthy();
+  });
+  it("opens the requested criterion, not just its section, after the shell's route focus", async () => {
+    const user = userEvent.setup();
+    const scrolled: Element[] = [];
+    const scrollIntoView = vi.fn(function (this: Element) { scrolled.push(this); });
+    Element.prototype.scrollIntoView = scrollIntoView;
+    // Mirrors the App Shell: every route change scrolls to top and focuses <main>.
+    function ShellFocus() {
+      const { pathname } = useLocation();
+      React.useEffect(() => { document.getElementById("main")?.focus({ preventScroll: true }); }, [pathname]);
+      return null;
+    }
+    api.inspection.mockResolvedValue(summary({ answered: 1, ap_count: 1 }));
+    api.checklist.mockResolvedValue({ sections, items });
+    api.answers.mockResolvedValue([answer("item-001", null), answer("item-002", null),
+      { ...answer("item-003", "AP"), observation: "Caixas no chão" }]);
+    render(
+      <MemoryRouter initialEntries={["/audit/inspections/i1"]}>
+        <main id="main" tabIndex={-1}>
+          <Routes>
+            <Route path="/audit/inspections/:inspectionId/*" element={<InspectionPage />} />
+          </Routes>
+        </main>
+        <ShellFocus />
+      </MemoryRouter>,
+    );
+    await user.click(await screen.findByRole("button", { name: "Abrir critério 3 na seção 2: ESTOQUE" }));
+    expect(screen.getByRole("heading", { name: "2. ESTOQUE" })).toBeTruthy();
+    await waitFor(() => expect(document.activeElement?.textContent).toContain("Estoque limpo?"));
+    const row = document.activeElement as HTMLElement;
+    expect(row.tagName).toBe("LI");
+    expect(row.classList.contains("audit-item")).toBe(true);
+    expect(scrolled).toEqual([row]);
+    // Plain section navigation keeps focusing the section heading, without a criterion scroll.
+    await user.click(screen.getByRole("link", { name: "Visão geral" }));
+    await user.click(screen.getByRole("button", { name: "Abrir seção 1: ESTRUTURA no checklist" }));
+    expect(screen.getByRole("heading", { name: "1. ESTRUTURA" })).toBeTruthy();
+    await new Promise((done) => setTimeout(done, 20));
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(document.activeElement?.closest(".audit-item")).toBeNull();
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
   });
   it("lists the inspection's plans on its tab through the Action Plans contract", async () => {
     plansApi.summaries.mockResolvedValue([{

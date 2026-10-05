@@ -6,6 +6,7 @@ import { RESPONSE_LABELS, RESPONSES, type Response } from "./scoring";
 import type { Answer, Item } from "./types";
 import { ChecklistEvidence } from "./ChecklistEvidence";
 import type { EvidenceController } from "./useChecklistEvidence";
+import { itemAnchor } from "./InspectionContext";
 type SaveState = "idle" | "saving" | "saved" | "error" | "conflict";
 const CONFLICT = new Set(["PGRST116", "40001"]);
 const SAVE_ICON: Record<Exclude<SaveState, "idle">, IconName> = {
@@ -112,6 +113,9 @@ export function ChecklistItem({
   const showEvidence = evidenceOpen || uploading;
   return (
     <li
+      id={itemAnchor(item.key)}
+      // Focusable only programmatically: the target of "Abrir critério N".
+      tabIndex={-1}
       className="audit-item"
       data-answered={row.response ? "true" : "false"}
       aria-busy={busy || undefined}

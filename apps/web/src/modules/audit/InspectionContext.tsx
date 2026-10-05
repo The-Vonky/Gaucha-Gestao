@@ -21,7 +21,8 @@ export type InspectionView = {
   evidence: EvidenceController;
   current: Section;
   index: number;
-  select: (key: string) => void;
+  /** Moves the checklist to a section; with `item`, positions and focuses that criterion. */
+  select: (key: string, item?: string) => void;
   heading: RefObject<HTMLHeadingElement | null>;
   onChange: (row: Answer) => void;
   onPending: (key: string, value: boolean) => void;
@@ -35,6 +36,8 @@ export type InspectionView = {
     reload: () => void;
   };
 };
+/** DOM id of a checklist criterion row, the target of select(section, item). */
+export const itemAnchor = (itemKey: string) => `audit-item-${itemKey}`;
 const InspectionContext = createContext<InspectionView | null>(null);
 export const InspectionProvider = InspectionContext.Provider;
 export function useInspection(): InspectionView {
