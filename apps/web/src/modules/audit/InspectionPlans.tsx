@@ -17,12 +17,15 @@ export function InspectionPlans() {
       queueRank(a.plan) - queueRank(b.plan) ||
       (a.item_number ?? 0) - (b.item_number ?? 0),
   );
+  const read = !plans.loading && !plans.error;
   const count = (status: PlanStatus) => rows.filter((x) => x.plan.status === status).length;
   return (
     <section className="audit-panel" aria-labelledby="audit-plans-title">
       <div className="audit-panel-head">
         <h2 id="audit-plans-title">
-          Planos de ação <span className="audit-tab-count numeric">{rows.length}</span>
+          Planos de ação
+          {/* Counted only after a successful read: loading/error is not zero plans. */}
+          {read && <> <span className="audit-tab-count numeric">{rows.length}</span></>}
         </h2>
         <Link className="button-link" to={`/action-plans?inspection=${summary.id}`}>
           Abrir na fila de Planos de Ação
@@ -38,7 +41,7 @@ export function InspectionPlans() {
           {plans.error} <button onClick={plans.reload}>Tentar novamente</button>
         </Notice>
       )}
-      {!plans.loading && !plans.error && (
+      {read && (
         <>
           <dl className="audit-plan-counts">
             {STATUSES.map((s) => (

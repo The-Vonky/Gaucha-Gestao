@@ -56,6 +56,9 @@ export function InspectionOverview() {
   for (const row of evidence.rows)
     evidenceByItem.set(row.item_key, [...(evidenceByItem.get(row.item_key) ?? []), row]);
   const evidenceItems = items.filter((i) => evidenceByItem.has(i.key));
+  // Counts only after a successful read: loading/error is "unavailable", never zero.
+  const plansRead = !plans.loading && !plans.error;
+  const evidenceRead = !evidence.loading && !evidence.error;
   return (
     <div className="audit-overview">
       <div className="audit-overview-main">
@@ -200,7 +203,7 @@ export function InspectionOverview() {
           <section className="audit-panel" aria-labelledby="audit-plans-summary-title">
             <div className="audit-panel-head">
               <h2 id="audit-plans-summary-title">
-                Planos de ação <span className="audit-tab-count numeric">{plans.rows.length}</span>
+                Planos de ação{plansRead && <> <span className="audit-tab-count numeric">{plans.rows.length}</span></>}
               </h2>
               <Link className="button-link" to={`${base}/plano`}>Ver planos</Link>
             </div>
@@ -211,7 +214,7 @@ export function InspectionOverview() {
                 <button type="button" onClick={plans.reload}>Tentar novamente</button>
               </p>
             )}
-            {!plans.loading && !plans.error && (
+            {plansRead && (
               <dl className="audit-plan-counts">
                 {(["pending", "in_progress", "completed"] as PlanStatus[]).map((st) => (
                   <div key={st}>
@@ -231,7 +234,7 @@ export function InspectionOverview() {
         <section className="audit-panel" aria-labelledby="audit-evidence-title">
           <div className="audit-panel-head">
             <h2 id="audit-evidence-title">
-              Evidências <span className="audit-tab-count numeric">{evidence.rows.length}</span>
+              Evidências{evidenceRead && <> <span className="audit-tab-count numeric">{evidence.rows.length}</span></>}
             </h2>
           </div>
           {evidence.loading && <p role="status">Carregando evidências…</p>}
@@ -241,7 +244,7 @@ export function InspectionOverview() {
               <button type="button" onClick={evidence.reload}>Tentar novamente</button>
             </p>
           )}
-          {!evidence.loading && !evidence.error && !evidence.rows.length && (
+          {evidenceRead && !evidence.rows.length && (
             <p className="muted">Nenhuma evidência anexada a esta auditoria.</p>
           )}
           {evidenceItems.length > 0 && (

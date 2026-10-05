@@ -502,6 +502,27 @@ describe("inspection page", () => {
     expect(api.saveAnswer).toHaveBeenCalledTimes(3);
     expect(plansApi.summaries).toHaveBeenCalledTimes(3);
   });
+  it("never shows a zero count while plans or evidence are loading or failed", async () => {
+    const user = userEvent.setup();
+    plansApi.summaries.mockRejectedValue({ code: "XX000", message: "db detail" });
+    evidenceApi.listEvidence.mockImplementation(() => new Promise(() => undefined));
+    setup(summary(), items.map((i) => answer(i.key, null)), undefined, "/audit/inspections/i1");
+    const plansPanel = await screen.findByRole("region", { name: /Planos de ação/ });
+    await within(plansPanel).findByRole("button", { name: "Tentar novamente" });
+    expect(within(plansPanel).getByRole("heading").textContent).toBe("Planos de ação");
+    expect(within(plansPanel).queryByText("0")).toBeNull();
+    const evidencePanel = screen.getByRole("region", { name: /^Evidências/ });
+    expect(within(evidencePanel).getByRole("status").textContent).toBe("Carregando evidências…");
+    expect(within(evidencePanel).getByRole("heading").textContent).toBe("Evidências");
+    await user.click(screen.getByRole("link", { name: "Plano de ação" }));
+    const tab = await screen.findByRole("region", { name: /Planos de ação/ });
+    await within(tab).findByRole("button", { name: "Tentar novamente" });
+    expect(within(tab).getByRole("heading").textContent).toBe("Planos de ação");
+    expect(within(tab).queryByText("0")).toBeNull();
+    await user.click(screen.getByRole("link", { name: /Checklist/ }));
+    expect(screen.getAllByRole("button", { name: "Evidências" })).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: /Evidências \(0\)/ })).toBeNull();
+  });
   it("hides the action plan tab without action_plan.read", async () => {
     permissions.allowed = false;
     setup(summary(), [answer("item-001", null), answer("item-002", null), answer("item-003", null)], undefined, "/audit/inspections/i1");

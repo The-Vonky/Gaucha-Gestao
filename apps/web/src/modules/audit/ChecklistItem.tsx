@@ -198,7 +198,8 @@ export function ChecklistItem({
             onClick={() => setEvidenceOpen((open) => !open)}
           >
             <Icon name={showEvidence ? "chevronDown" : "chevronRight"} />
-            Evidências ({evidenceCount})
+            {/* The count needs a successful read; loading/error is not "no evidence". */}
+            {evidence.loading || evidence.error ? "Evidências" : `Evidências (${evidenceCount})`}
           </button>
           <div id={`${id}-evidence`} hidden={!showEvidence}>
             <ChecklistEvidence item={item} editable={evidenceEditable} controller={evidence}/>
