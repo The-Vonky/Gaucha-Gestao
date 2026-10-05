@@ -255,6 +255,15 @@
   color: var(--danger);
 }
 
+.new-inspection-unit {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-4);
+}
+.new-inspection-unit .muted {
+  font: var(--text-label);
+}
+
 /* ---------- Audit: unit identity and media slot (D2) ---------- */
 /* The media slot holds a typographic monogram today; a future Core unit cover
    fills the same box without changing card or header structure. */

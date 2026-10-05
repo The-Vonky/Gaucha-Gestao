@@ -90,6 +90,7 @@ export function UnitPage() {
         <NewInspection
           units={r.data.units}
           unitId={unitId}
+          lastApplied={state?.latest ? { [unitId]: state.latest.applied_on } : {}}
           onClose={() => setCreating(false)}
         />
       )}

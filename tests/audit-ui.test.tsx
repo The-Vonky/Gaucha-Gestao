@@ -16,6 +16,7 @@ import type { EvidenceController } from "../apps/web/src/modules/audit/useCheckl
 import { InspectionPage } from "../apps/web/src/modules/audit/InspectionPage";
 import { UnitPage } from "../apps/web/src/modules/audit/UnitPage";
 import { AuditOverview } from "../apps/web/src/modules/audit/AuditOverview";
+import { NewInspection } from "../apps/web/src/modules/audit/NewInspection";
 import { visibleNavigation } from "../apps/web/src/app/navigation";
 import type {
   Answer,
@@ -31,6 +32,7 @@ const api = vi.hoisted(() => ({
   reopen: vi.fn(),
   units: vi.fn(),
   summaries: vi.fn(),
+  createInspection: vi.fn(),
 }));
 vi.mock("../apps/web/src/modules/audit/api", () => api);
 const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async()=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
@@ -585,6 +587,43 @@ describe("audit overview by monitored unit", () => {
     expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Alfa"]);
     await user.click(screen.getByRole("button", { name: /^Todas/ }));
     expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(4);
+  });
+});
+describe("new inspection", () => {
+  const units = [
+    { id: "u1", code: "U1", name: "Alfa", active: true },
+    { id: "u2", code: "U2", name: "Beta", active: true },
+  ];
+  function renderNew(props: { unitId?: string }) {
+    render(
+      <MemoryRouter initialEntries={["/audit"]}>
+        <Routes>
+          <Route path="/audit" element={<NewInspection units={units} lastApplied={{ u1: "2026-09-20" }} onClose={() => undefined} {...props} />} />
+          <Route path="/audit/inspections/:inspectionId/*" element={<p>Checklist aberto</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+  it("fixes the unit from the unit page, suggests the previous visit and opens the checklist", async () => {
+    const user = userEvent.setup();
+    api.createInspection.mockResolvedValue("new-id");
+    renderNew({ unitId: "u1" });
+    expect(screen.queryByRole("combobox", { name: "Unidade" })).toBeNull();
+    expect(screen.getByText("Alfa")).toBeTruthy();
+    expect((screen.getByLabelText("Data da visita anterior (opcional)") as HTMLInputElement).value).toBe("2026-09-20");
+    await user.click(screen.getByText("Salvar"));
+    expect(api.createInspection).toHaveBeenCalledWith("u1", expect.any(String), "2026-09-20");
+    expect(await screen.findByText("Checklist aberto")).toBeTruthy();
+  });
+  it("suggests the previous visit per chosen unit until the user edits it", async () => {
+    const user = userEvent.setup();
+    renderNew({});
+    const previous = screen.getByLabelText("Data da visita anterior (opcional)") as HTMLInputElement;
+    expect(previous.value).toBe("");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Unidade" }), "u1");
+    expect(previous.value).toBe("2026-09-20");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Unidade" }), "u2");
+    expect(previous.value).toBe("");
   });
 });
 describe("Checklist evidence removal errors", () => {

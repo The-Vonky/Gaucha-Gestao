@@ -239,7 +239,16 @@ export function AuditOverview() {
         </>
       )}
       {creating && r.data && (
-        <NewInspection units={r.data.units} onClose={() => setCreating(false)} />
+        <NewInspection
+          units={r.data.units}
+          // Rows are newest first by application date, so `latest` is each unit's last visit.
+          lastApplied={Object.fromEntries(
+            monitored.flatMap(({ unit, state }) =>
+              state.latest ? [[unit.id, state.latest.applied_on]] : [],
+            ),
+          )}
+          onClose={() => setCreating(false)}
+        />
       )}
     </>
   );
