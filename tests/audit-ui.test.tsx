@@ -98,15 +98,16 @@ function summary(over: Partial<InspectionSummary> = {}): InspectionSummary {
     ...over,
   };
 }
-function setup(s: InspectionSummary | null, rows: Answer[], onRender?: React.ProfilerOnRenderCallback) {
+// D1: the inspection opens on its overview; the checklist lives at /checklist.
+function setup(s: InspectionSummary | null, rows: Answer[], onRender?: React.ProfilerOnRenderCallback, path = "/audit/inspections/i1/checklist") {
   api.inspection.mockResolvedValue(s);
   api.checklist.mockResolvedValue({ sections, items });
   api.answers.mockResolvedValue(rows);
   render(
-    <MemoryRouter initialEntries={["/audit/inspections/i1"]}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route
-          path="/audit/inspections/:inspectionId"
+          path="/audit/inspections/:inspectionId/*"
           element={<React.Profiler id="inspection" onRender={onRender ?? (() => undefined)}><InspectionPage /></React.Profiler>}
         />
       </Routes>
@@ -156,9 +157,9 @@ describe("inspection page", () => {
     api.inspection.mockImplementation(async(id:string)=>summary({id,answered:3,at_count:3}));
     api.checklist.mockResolvedValue({sections,items});
     api.answers.mockResolvedValue(items.map(i=>answer(i.key,"AT")));
-    render(<MemoryRouter initialEntries={["/audit/inspections/i1"]}>
-      <Link to="/audit/inspections/i2">Outra auditoria</Link>
-      <Routes><Route path="/audit/inspections/:inspectionId" element={<InspectionPage/>}/></Routes>
+    render(<MemoryRouter initialEntries={["/audit/inspections/i1/checklist"]}>
+      <Link to="/audit/inspections/i2/checklist">Outra auditoria</Link>
+      <Routes><Route path="/audit/inspections/:inspectionId/*" element={<InspectionPage/>}/></Routes>
     </MemoryRouter>);
     await screen.findByText("Finalizar");
     await waitFor(()=>expect(evidenceApi.listEvidence).toHaveBeenCalledWith("i1"));
@@ -403,6 +404,35 @@ describe("inspection page", () => {
     expect(await screen.findByText(/não editá-la/)).toBeTruthy();
     expect(screen.queryByText("Finalizar")).toBeNull();
   });
+  it("opens on the overview tab and reaches the checklist through its tab", async () => {
+    const user = userEvent.setup();
+    setup(summary({ answered: 1, at_count: 1 }), [answer("item-001", "AT"), answer("item-002", null), answer("item-003", null)], undefined, "/audit/inspections/i1");
+    const overview = await screen.findByRole("link", { name: "Visão geral" });
+    expect(overview.getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("heading", { name: "Respostas" })).toBeTruthy();
+    // The checklist stays mounted but hidden, so its controls are not exposed.
+    expect(screen.queryAllByRole("button", { name: "Atende (AT)" })).toHaveLength(0);
+    expect(screen.getByText("Finalizar")).toBeTruthy();
+    await user.click(screen.getByRole("link", { name: /Checklist/ }));
+    expect(screen.getAllByRole("button", { name: "Atende (AT)" })).toHaveLength(2);
+    expect(screen.queryByRole("heading", { name: "Respostas" })).toBeNull();
+  });
+  it("keeps unsaved observation text and the pending gate across a tab switch", async () => {
+    const user = userEvent.setup();
+    api.saveAnswer.mockImplementation(() => new Promise(() => undefined));
+    setup(summary(), [answer("item-001", null), answer("item-002", null), answer("item-003", null)]);
+    const [field] = await screen.findAllByLabelText("Observação");
+    await user.type(field, "Ralo aberto");
+    // Leaving the tab blurs the field, which starts the (still pending) save.
+    await user.click(screen.getByRole("link", { name: "Visão geral" }));
+    expect(api.saveAnswer).toHaveBeenLastCalledWith(
+      expect.objectContaining({ item_key: "item-001" }),
+      expect.objectContaining({ observation: "Ralo aberto" }),
+    );
+    expect((screen.getByText("Exportar Excel") as HTMLButtonElement).disabled).toBe(true);
+    await user.click(screen.getByRole("link", { name: /Checklist/ }));
+    expect((screen.getAllByLabelText("Observação")[0] as HTMLTextAreaElement).value).toBe("Ralo aberto");
+  });
   it("handles unauthorized or unknown inspections and load errors", async () => {
     setup(null, []);
     expect(await screen.findByText("Auditoria indisponível")).toBeTruthy();
@@ -412,7 +442,7 @@ describe("inspection page", () => {
       <MemoryRouter initialEntries={["/audit/inspections/i1"]}>
         <Routes>
           <Route
-            path="/audit/inspections/:inspectionId"
+            path="/audit/inspections/:inspectionId/*"
             element={<InspectionPage />}
           />
         </Routes>

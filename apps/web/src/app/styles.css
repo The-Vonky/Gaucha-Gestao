@@ -213,6 +213,113 @@
 .audit-hint {
   margin: 0 0 var(--space-3);
 }
+/* Secondary actions: inline on wide screens, behind "Mais ações" when narrow. */
+.audit-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-4);
+}
+.audit-more-toggle {
+  display: none;
+}
+
+/* ---------- Audit: routed inspection tabs (segmented bar, D7) ---------- */
+.audit-tabs {
+  display: inline-flex;
+  gap: var(--space-1);
+  max-width: 100%;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-1);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-control);
+}
+.audit-tabs a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
+  border-radius: calc(var(--radius-control) - 2px);
+  color: var(--color-text-secondary);
+  font: var(--text-label);
+  font-size: 0.875rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.audit-tabs a:hover {
+  color: var(--color-text);
+  background: var(--color-hover-bg);
+}
+.audit-tabs a[aria-current="page"] {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-xs);
+}
+.audit-tab-count {
+  font: var(--text-caption);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* ---------- Audit: inspection overview tab ---------- */
+.audit-overview {
+  display: grid;
+  gap: var(--space-4);
+}
+.audit-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  min-width: 0;
+}
+.audit-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.audit-panel-head h2 {
+  margin: 0;
+  font: var(--text-section-title);
+}
+.audit-counts {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+.audit-count {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-border-strong);
+  background: var(--color-surface-subtle);
+}
+.audit-count dt {
+  font: var(--text-caption);
+  color: var(--color-text-secondary);
+}
+.audit-count dt abbr {
+  font: 600 0.8125rem/1 var(--font-display);
+  color: var(--color-text);
+  text-decoration: none;
+}
+.audit-count dd {
+  margin: 0;
+  font: var(--text-kpi);
+  font-size: 1.5rem;
+}
+.audit-count.at { border-left-color: var(--success-solid); }
+.audit-count.ap { border-left-color: var(--warning-solid); }
+.audit-count.nat { border-left-color: var(--danger-solid); }
+.audit-count.nap { border-left-color: var(--neutral-solid); }
 
 /* ---------- Audit: sections ---------- */
 .audit-layout {
@@ -1120,6 +1227,31 @@ button.file-remove:hover:not(:disabled) {
   }
 }
 @media (max-width: 767px) {
+  .audit-more-toggle {
+    display: inline-flex;
+  }
+  .audit-more {
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+  .audit-more[data-open="false"] {
+    display: none;
+  }
+  .audit-tabs {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+  .audit-tabs a {
+    min-height: var(--touch-target);
+    padding: 0 var(--space-2);
+    white-space: normal;
+    text-align: center;
+  }
+  .audit-counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .audit-hero {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:

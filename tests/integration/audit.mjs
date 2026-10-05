@@ -2002,6 +2002,7 @@ try {
     for (const route of [
       "/audit",
       `/audit/units/${A}`,
+      `/audit/inspections/${uiInspection}/checklist`,
       `/audit/inspections/${uiInspection}`,
     ]) {
       await page.goto(`${origin}${route}`);
@@ -2017,6 +2018,8 @@ try {
     }
     // The official report controls use the full scoped RPC dataset. At 375px,
     // the dedicated print portal includes hidden checklist sections and no app chrome.
+    // At 375px the report controls sit behind the inspection's "Mais ações".
+    await page.getByRole("button", { name: "Mais ações" }).click();
     await page.getByRole("button", { name: "Imprimir / PDF", exact: true }).click();
     const print = page.getByRole("dialog", { name: "Prévia de impressão" });
     await print.waitFor();
@@ -2049,7 +2052,7 @@ try {
     assert.ok(await page.locator(".report-history thead th").count());
     await noOverflow(page, "history print preview 375px");
     await page.keyboard.press("Escape");
-    await page.goto(`${origin}/audit/inspections/${uiInspection}`);
+    await page.goto(`${origin}/audit/inspections/${uiInspection}/checklist`);
     await settle(page);
     const itemByNumber = (p, number) =>
       p
@@ -2208,7 +2211,7 @@ try {
     // Finalize / reopen confirmations fit the viewport and use the server result.
     const flow = await create("ui");
     await fill(flow, repeat(["AT", 120], ["NAT", 38]));
-    await page.goto(`${origin}/audit/inspections/${flow}`);
+    await page.goto(`${origin}/audit/inspections/${flow}/checklist`);
     await settle(page);
     await page.getByRole("button", { name: "Finalizar" }).tap();
     const dialog = page.getByRole("dialog");
@@ -2259,7 +2262,7 @@ try {
     // Losing access while the page is open: the save fails and the inspection becomes unavailable.
     const revoked = await open("uiRevoked");
     const gone = await create("uiRevoked");
-    await revoked.goto(`${origin}/audit/inspections/${gone}`);
+    await revoked.goto(`${origin}/audit/inspections/${gone}/checklist`);
     await settle(revoked);
     await db.query(
       "update core.user_role_assignments set active=false where user_id=$1",

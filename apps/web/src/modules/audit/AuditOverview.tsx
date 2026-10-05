@@ -82,7 +82,7 @@ export function AuditOverview() {
                     </div>
                     <Link
                       className="button-link"
-                      to={`/audit/inspections/${d.id}`}
+                      to={`/audit/inspections/${d.id}/checklist`}
                     >
                       Continuar
                     </Link>

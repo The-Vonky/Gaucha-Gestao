@@ -47,7 +47,7 @@ export async function runBrowser() {
       await page.getByRole("button", { name: "Entrar", exact: true }).click();
       await page.getByLabel(/^Senha$/i).waitFor({ state: "detached" });
       const uiInspection = await inspection();
-      await page.goto(origin + "/audit/inspections/" + uiInspection);
+      await page.goto(origin + "/audit/inspections/" + uiInspection + "/checklist");
       const section = page.getByRole("region", { name: "Evidências do critério 1", exact: true });
       await section.waitFor();
       const add = section.getByRole("button", { name: "Anexar arquivo ao critério 1", exact: true });
@@ -72,7 +72,7 @@ export async function runBrowser() {
       const [downloaded] = await Promise.all([page.waitForEvent("download"), page.keyboard.press("Enter")]);
       assert.equal(downloaded.suggestedFilename(), name);
       assert.ok(readFileSync(await downloaded.path()).equals(bytes), "Browser download original bytes");
-      assert.equal(page.url(), origin + "/audit/inspections/" + uiInspection, "Download retains current route");
+      assert.equal(page.url(), origin + "/audit/inspections/" + uiInspection + "/checklist", "Download retains current route");
       const available = await list("ui", uiInspection);
       assert.equal(available.length, 1);
       assert.equal(available[0].original_name, name);

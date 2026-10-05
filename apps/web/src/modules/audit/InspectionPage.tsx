@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, Navigate, Route, Routes, useParams } from "react-router-dom";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Link, Navigate, NavLink, useParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { useResource } from "../../shared/useResource";
 import { Icon } from "../../shared/icons";
@@ -12,6 +12,7 @@ import {
 } from "../../shared/ui";
 import * as api from "./api";
 import { InspectionChecklist } from "./InspectionChecklist";
+import { InspectionOverview } from "./InspectionOverview";
 import { InspectionProvider, type InspectionView } from "./InspectionContext";
 import { useChecklistEvidence } from "./useChecklistEvidence";
 import * as evidenceApi from "./evidence";
@@ -25,6 +26,11 @@ import {
 } from "./scoring";
 import type { Answer, ChecklistEvidence } from "./types";
 import { ReportingActions } from "./reporting/ReportingActions";
+/** Routed tabs below /audit/inspections/:id (D1: the overview is the index). */
+const TABS: Record<string, "overview" | "checklist"> = {
+  "": "overview",
+  checklist: "checklist",
+};
 /** Band colors exist only for a finalized result. */
 const BAND_TONE: Record<Classification, BadgeTone> = {
   adequate: "success",
@@ -32,7 +38,10 @@ const BAND_TONE: Record<Classification, BadgeTone> = {
   inadequate: "danger",
 };
 export function InspectionPage() {
-  const { inspectionId = "" } = useParams();
+  const { inspectionId = "", "*": tabPath = "" } = useParams();
+  const tab = TABS[tabPath];
+  const moreId = useId();
+  const [more, setMore] = useState(false);
   const auth = useAuth();
   const evidence = useChecklistEvidence(inspectionId);
   const [review,setReview]=useState<{inspectionId:string;version:number;rows:ChecklistEvidence[]}>();
@@ -162,6 +171,8 @@ export function InspectionPage() {
       </>
     );
   const { summary, sections, items } = data;
+  const base = `/audit/inspections/${summary.id}`;
+  if (!tab) return <Navigate to={base} replace />;
   const scope = { unit_id: summary.unit_id };
   const draft = summary.status === "draft";
   const editable = draft && auth.can("audit.inspection.edit", scope);
@@ -268,7 +279,6 @@ export function InspectionPage() {
           )}
         </section>
         <div className="audit-hero-actions">
-          <ReportingActions kind="inspection" inspectionId={summary.id} unitId={summary.unit_id} blocked={pending.size > 0 || stale || r.loading} />
           {draft && auth.can("audit.inspection.finalize", scope) && (
             <button
               className="primary"
@@ -293,16 +303,41 @@ export function InspectionPage() {
           {!draft && auth.can("audit.inspection.reopen", scope) && (
             <button onClick={() => setAction("reopen")}>Reabrir</button>
           )}
-          {auth.can("action_plan.read", scope) && (
-            <Link
-              className="audit-plans-link"
-              to={`/action-plans?inspection=${summary.id}`}
-            >
-              Planos de ação desta auditoria
-            </Link>
-          )}
+          {/* Secondary actions stay mounted (report preview/state survive); on
+              narrow screens they collapse behind "Mais ações". */}
+          <button
+            type="button"
+            className="audit-more-toggle"
+            aria-expanded={more}
+            aria-controls={moreId}
+            onClick={() => setMore((open) => !open)}
+          >
+            Mais ações
+          </button>
+          <div id={moreId} className="audit-more" data-open={more}>
+            <ReportingActions kind="inspection" inspectionId={summary.id} unitId={summary.unit_id} blocked={pending.size > 0 || stale || r.loading} />
+            {auth.can("action_plan.read", scope) && (
+              <Link
+                className="audit-plans-link"
+                to={`/action-plans?inspection=${summary.id}`}
+              >
+                Planos de ação desta auditoria
+              </Link>
+            )}
+          </div>
         </div>
       </header>
+      <nav className="audit-tabs" aria-label="Auditoria">
+        <NavLink end to={base}>
+          Visão geral
+        </NavLink>
+        <NavLink to={`${base}/checklist`}>
+          Checklist{" "}
+          <span className="audit-tab-count numeric">
+            {overall.tally.answered}/{overall.tally.total}
+          </span>
+        </NavLink>
+      </nav>
       {evidenceError && <Notice error>{evidenceError}</Notice>}
       {evidenceConflict && <Notice error>O conjunto de evidências foi alterado. <button onClick={reload}>Recarregar evidências e revisar</button></Notice>}
       {Object.keys(evidence.uploads).length>0 && <Notice tone="warning">Há envios de evidência pendentes. Eles não entram no conjunto disponível e não poderão ser confirmados após a finalização.</Notice>}
@@ -330,10 +365,12 @@ export function InspectionPage() {
         <Notice>Você pode consultar esta auditoria, mas não editá-la.</Notice>
       )}
       <InspectionProvider value={view}>
-        <Routes>
-          <Route index element={<InspectionChecklist />} />
-          <Route path="*" element={<Navigate to={`/audit/inspections/${summary.id}`} replace />} />
-        </Routes>
+        {tab === "overview" && <InspectionOverview />}
+        {/* The checklist stays mounted while other tabs show, so per-criterion
+            save queues and text being typed survive a tab switch. */}
+        <div className="audit-tab-panel" hidden={tab !== "checklist"}>
+          <InspectionChecklist />
+        </div>
       </InspectionProvider>
       {action && (
         <Confirm
