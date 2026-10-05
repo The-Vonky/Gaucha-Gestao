@@ -254,16 +254,16 @@ export function InspectionOverview() {
                   <p className="audit-evidence-group-title">
                     Critério <span className="numeric">{itemOf.get(item.key)?.number}</span>
                   </p>
-                  <ul className="audit-evidence-list">
+                  <ul className="audit-overview-files">
                     {evidenceByItem.get(item.key)!.map((e) => (
-                      <li key={e.id} className="file-item">
-                        <div className="file-body">
+                      <li key={e.id} className="audit-overview-file">
+                        <div>
                           <strong className="audit-evidence-name">{e.original_name}</strong>
                           <p className="file-meta">
                             {e.uploaded_by_name} · {dateTime(e.uploaded_at)}
                           </p>
                         </div>
-                        <div className="file-actions">
+                        <div className="audit-overview-file-action">
                           <Download row={e} />
                         </div>
                       </li>

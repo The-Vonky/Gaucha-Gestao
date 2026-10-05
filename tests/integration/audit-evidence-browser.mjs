@@ -83,6 +83,26 @@ export async function runBrowser() {
       assert.equal(downloaded.suggestedFilename(), name);
       assert.ok(readFileSync(await downloaded.path()).equals(bytes), "Browser download original bytes");
       assert.equal(page.url(), origin + "/audit/inspections/" + uiInspection + "/checklist", "Download retains current route");
+      // Overview evidence list: the long name and "Baixar" each keep their own
+      // space (no overlap), stacking when the panel is narrow.
+      await page.getByRole("link", { name: "Visão geral", exact: true }).click();
+      const overviewFile = page.locator(".audit-overview-file").filter({ hasText: name });
+      for (const size of [375, 768, 1024, 1440]) {
+        await page.setViewportSize({ width: size, height: 812 });
+        await overviewFile.waitFor();
+        const layout = await overviewFile.evaluate((row) => {
+          const box = (element) => element.getBoundingClientRect();
+          const nameBox = box(row.querySelector(".audit-evidence-name")), action = box(row.querySelector("button"));
+          return { overlap: Math.min(nameBox.right, action.right) > Math.max(nameBox.left, action.left) + 1 &&
+            Math.min(nameBox.bottom, action.bottom) > Math.max(nameBox.top, action.top) + 1,
+          inside: nameBox.right <= box(row).right + 1 && action.right <= box(row).right + 1,
+          overflow: document.documentElement.scrollWidth > innerWidth };
+        });
+        assert.deepEqual(layout, { overlap: false, inside: true, overflow: false }, "Overview evidence layout at " + size + "px");
+      }
+      await page.setViewportSize({ width, height: 812 });
+      await page.getByRole("link", { name: /^Checklist/ }).click();
+      await downloadButton.waitFor();
       const available = await list("ui", uiInspection);
       assert.equal(available.length, 1);
       assert.equal(available[0].original_name, name);
