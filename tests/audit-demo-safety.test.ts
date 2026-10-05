@@ -33,6 +33,8 @@ describe("audit demo target boundary", () => {
     expect(() => assertLocalEnvironment({}, false)).not.toThrow();
     expect(() => assertLocalEnvironment({}, true)).toThrow(/linked/i);
     for (const env of [
+      { Node_Env: "production" }, { docker_host: "tcp://remote:2375" },
+      { supabase_access_token: "secret" }, { database_url: "postgres://remote/postgres" },
       { NODE_ENV: "production" }, { APP_ENV: "prod" }, { ENVIRONMENT: "staging" },
       { SUPABASE_PROJECT_REF: "linked" }, { SUPABASE_ACCESS_TOKEN: "secret" },
       { SUPABASE_SERVICE_ROLE_KEY: "secret" }, { PGPASSWORD: "secret" },

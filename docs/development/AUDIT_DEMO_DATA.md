@@ -124,13 +124,15 @@ não há limpeza seletiva que burle os contratos de histórico.
 
 - Recusa checkout com `supabase/.temp/project-ref` (linked) e projeto local diferente.
 - Recusa ambientes fora de development/local/test, variáveis de credenciais/projeto
-  Supabase, overrides de PostgreSQL/Docker e URLs remotas presentes no processo.
+  Supabase, overrides de PostgreSQL/Docker e URLs remotas presentes no processo,
+  inclusive nomes de variáveis com diferenças de maiúsculas/minúsculas no Windows.
 - Não lê `.env`, dumps ou configurações de produção; não aceita segredo como entrada.
 - Confere `API_URL` e `DB_URL` do **status local da CLI**, exigindo literalmente
   `127.0.0.1` ou `localhost`, portas 54321/54322 e banco `postgres`. Rejeita
   parâmetros, hosts normalizados alternativos, caminhos diferentes e redirects.
-- Confere socket local do Docker, nome/label do projeto, imagem Supabase PostgreSQL
-  e container em execução. Escreve via `docker exec` no **ID imutável do container**
+- Confere e fixa o socket local do Docker para todas as chamadas seguintes,
+  incluindo a CLI: trocar o contexto padrão durante a execução não altera o destino.
+  Confere nome/label do projeto, imagem Supabase PostgreSQL e container em execução. Escreve via `docker exec` no **ID imutável do container**
   e socket PostgreSQL interno, sem conectar à `DB_URL` ou a portas encaminhadas.
 - Somente a identificação do administrador é feita como operador. Todas as
   gravações de domínio usam `SET LOCAL ROLE authenticated`, identidade do usuário,
@@ -150,7 +152,10 @@ npm test
 npm run seed:audit-demo
 ```
 
-`tests/audit-demo-safety.test.ts` valida recusas de destino/flags.
+`tests/audit-demo-safety.test.ts` valida recusas de destino/flags, incluindo nomes
+de variáveis no Windows. `tests/audit-demo-runner.test.ts` simula a fronteira externa
+Docker/CLI no Linux para reproduzir uma troca concorrente de contexto; não inicia
+Docker real nem substitui a validação local completa.
 `tests/audit-demo-database.test.ts` aplica todas as migrations no PostgreSQL
 PGlite e exercita a massa com grants, RLS, triggers e RPCs reais, repetição,
 colisões, identidade e rollback tardio. Auth e Storage usam o contrato mínimo

@@ -26,25 +26,31 @@ try {
 
   phase = "Docker local (instale/inicie Docker Desktop ou Engine)";
   const [context] = JSON.parse(command("docker", ["context", "inspect"]));
-  assertDockerEndpoint(context?.Endpoints?.docker?.Host);
+  const dockerHost = context?.Endpoints?.docker?.Host;
+  assertDockerEndpoint(dockerHost);
+  // Pin the validated socket: another operator may change the default context
+  // while npx runs. CLI and Docker calls must retain this exact local daemon.
+  const localEnv = Object.fromEntries(Object.entries(process.env)
+    .filter(([key]) => !["DOCKER_HOST", "DOCKER_CONTEXT"].includes(key.toUpperCase())));
+  localEnv.DOCKER_HOST = dockerHost;
   phase = "Supabase local (execute npx supabase@2.117.0 start)";
   // Same pinned CLI used by the repository integration runners. No environment
   // credentials, dotenv, linked flags, external URLs or keys are consumed.
   const status = JSON.parse(command(process.platform === "win32" ? "npx.cmd" : "npx",
     ["--yes", "supabase@2.117.0", "status", "-o", "json"],
-    { shell: process.platform === "win32" }));
+    { shell: process.platform === "win32", env: localEnv }));
   assertLocalStatus(status);
   phase = "container descartável verificado";
-  const [container] = JSON.parse(command("docker", ["inspect", CONTAINER_NAME]));
+  const [container] = JSON.parse(command("docker", ["--host", dockerHost, "inspect", CONTAINER_NAME], { env: localEnv }));
   const containerId = assertLocalContainer(container);
 
   phase = "transação de dados (em caso de erro, rollback automático)";
   // Use the immutable container ID and its INTERNAL Unix PostgreSQL socket.
   // DB_URL is validated but NEVER connected to: no forwarded loopback port can
   // redirect these writes to a linked/remote database. No password is supplied.
-  const output = command("docker", ["exec", "-i", containerId, "psql", "-X", "-w", "-qAt",
+  const output = command("docker", ["--host", dockerHost, "exec", "-i", containerId, "psql", "-X", "-w", "-qAt",
     "-v", "ON_ERROR_STOP=1", "-h", "/var/run/postgresql", "-U", "postgres", "-d", "postgres"],
-    { input: buildSeedSql(userId) });
+    { input: buildSeedSql(userId), env: localEnv });
   const report = JSON.parse(output);
   console.log(`DEMONSTRAÇÃO LOCAL — massa ${report.result}. Nenhum dado de produção utilizado.`);
   console.log(`Usuário local: ${report.user_name} (${report.user_id}); use sua senha existente.`);

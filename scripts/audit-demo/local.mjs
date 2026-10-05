@@ -17,11 +17,14 @@ export function assertLocalStatus(status) {
 
 export function assertLocalEnvironment(env, linked) {
   if (linked) refuse("checkout linked a banco remoto; use um checkout local não linked");
-  for (const key of ["NODE_ENV", "APP_ENV", "ENVIRONMENT", "VITE_MODE"])
-    if (env[key] && !["development", "dev", "local", "test"].includes(env[key].toLowerCase()))
-      refuse(`ambiente ${key} não é desenvolvimento local`);
-  for (const [key, value] of Object.entries(env)) {
+  for (const [originalKey, value] of Object.entries(env)) {
     if (!value) continue;
+    // Windows environment names are case-insensitive; inspect every entry so
+    // differently cased duplicates cannot conceal a forbidden value.
+    const key = originalKey.toUpperCase();
+    if (["NODE_ENV", "APP_ENV", "ENVIRONMENT", "VITE_MODE"].includes(key) &&
+        !["development", "dev", "local", "test"].includes(value.toLowerCase()))
+      refuse(`ambiente ${key} não é desenvolvimento local`);
     if (/^SUPABASE_/.test(key) && !["SUPABASE_URL", "SUPABASE_DB_URL"].includes(key))
       refuse(`variável ${key} não é aceita; não forneça credenciais ou projeto remoto`);
     if (/^(PGHOST|PGHOSTADDR|PGPORT|PGDATABASE|PGUSER|PGPASSWORD|PGPASSFILE|PGSERVICE|PGSERVICEFILE|PGOPTIONS|PGSSLMODE|POSTGRES_PASSWORD|JWT_SECRET|SERVICE_ROLE_KEY|DOCKER_HOST|DOCKER_CONTEXT|DOCKER_TLS_VERIFY|DOCKER_CERT_PATH)$/.test(key))
