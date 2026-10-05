@@ -1724,7 +1724,9 @@ button.file-remove:hover:not(:disabled) {
 @media (pointer: coarse), (max-width: 1023px) {
   .breadcrumb a,
   .unit-card-link,
-  .quality-return {
+  .quality-return,
+  .audit-recent-list a,
+  .audit-plan-main a {
     display: inline-flex;
     align-items: center;
     min-height: var(--touch-target);
