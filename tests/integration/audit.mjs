@@ -2004,6 +2004,7 @@ try {
       `/audit/units/${A}`,
       `/audit/units/${A}/historico`,
       `/audit/inspections/${uiInspection}/checklist`,
+      `/audit/inspections/${uiInspection}/plano`,
       `/audit/inspections/${uiInspection}`,
     ]) {
       await page.goto(`${origin}${route}`);
@@ -2011,6 +2012,8 @@ try {
       await settle(page);
       await noOverflow(page, route);
       if (route === "/audit") assert.ok(await page.locator(".unit-card-link").count());
+      if (route.endsWith("/plano"))
+        await page.getByRole("heading", { name: /^Planos de ação/ }).waitFor();
       for (const width of [375, 768, 1440]) {
         await page.setViewportSize({ width, height: 900 });
         await qualityTouchTargets(page, `${route} ${width}px/coarse`);
