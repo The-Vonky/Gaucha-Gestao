@@ -417,6 +417,19 @@ describe("inspection page", () => {
     expect(screen.getAllByRole("button", { name: "Atende (AT)" })).toHaveLength(2);
     expect(screen.queryByRole("heading", { name: "Respostas" })).toBeNull();
   });
+  it("summarizes a draft on the overview: partial result, sections and points of attention", async () => {
+    const user = userEvent.setup();
+    const nat = { ...answer("item-002", "NAT"), observation: "Teto com infiltração" };
+    setup(summary({ answered: 2, at_count: 1, nat_count: 1 }), [answer("item-001", "AT"), nat, answer("item-003", null)], undefined, "/audit/inspections/i1");
+    await screen.findByRole("heading", { name: "Conformidade parcial" });
+    expect(screen.getAllByText("Parcial · em andamento", { exact: false }).length).toBeGreaterThan(0);
+    // No result band label for a draft.
+    expect(screen.queryByText("Adequada")).toBeNull();
+    expect(within(screen.getByRole("region", { name: /Pontos de atenção/ })).getByText("Teto com infiltração")).toBeTruthy();
+    expect(screen.getByText("Sem respostas")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Abrir seção 2: ESTOQUE no checklist" }));
+    expect(screen.getByRole("heading", { name: "2. ESTOQUE" })).toBeTruthy();
+  });
   it("keeps unsaved observation text and the pending gate across a tab switch", async () => {
     const user = userEvent.setup();
     api.saveAnswer.mockImplementation(() => new Promise(() => undefined));

@@ -4,7 +4,7 @@ import { ACCEPT, FORMATS_HINT, downloadEvidence, formatSize, typeLabel, removeEv
 import type { ChecklistEvidence as Evidence, Item } from "./types";
 import type { EvidenceController } from "./useChecklistEvidence";
 import "./evidence.css";
-function Download({row}:{row:Evidence}){
+export function Download({row}:{row:Evidence}){
  const [busy,setBusy]=useState(false),[error,setError]=useState(false);
  return <><button type="button" className="small" aria-label={`Baixar ${row.original_name}`} disabled={busy}
  onClick={async()=>{setBusy(true);setError(false);try{await downloadEvidence(row);}catch{setError(true);}finally{setBusy(false);}}}>
