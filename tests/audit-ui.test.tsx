@@ -15,6 +15,7 @@ import { ChecklistEvidence } from "../apps/web/src/modules/audit/ChecklistEviden
 import type { EvidenceController } from "../apps/web/src/modules/audit/useChecklistEvidence";
 import { InspectionPage } from "../apps/web/src/modules/audit/InspectionPage";
 import { UnitPage } from "../apps/web/src/modules/audit/UnitPage";
+import { AuditOverview } from "../apps/web/src/modules/audit/AuditOverview";
 import { visibleNavigation } from "../apps/web/src/app/navigation";
 import type {
   Answer,
@@ -543,6 +544,47 @@ describe("unit page", () => {
     expect(screen.getAllByRole("link", { name: "Abrir" })).toHaveLength(3);
     expect(screen.getByRole("heading", { name: "Relatório do histórico" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Exportar histórico" })).toBeTruthy();
+  });
+});
+describe("audit overview by monitored unit", () => {
+  const units = [
+    { id: "u1", code: "U1", name: "Alfa", active: true },
+    { id: "u2", code: "U2", name: "Beta", active: true },
+    { id: "u3", code: "U3", name: "Gama", active: true },
+    { id: "u4", code: "U4", name: "Delta", active: true },
+  ];
+  const fin = (unit_id: string, unit_name: string, final_score: number, final_classification: "adequate" | "partial" | "inadequate") =>
+    summary({ id: `f-${unit_id}`, unit_id, unit_name, status: "finalized", final_score, final_classification, finalized_at: "2026-09-20T12:00:00Z", answered: 3, at_count: 3 });
+  function renderOverview() {
+    api.units.mockResolvedValue(units);
+    api.summaries.mockResolvedValue([
+      summary({ id: "d-u2", unit_id: "u2", unit_name: "Beta", applied_on: "2026-10-01", created_at: "2026-10-01T10:00:00Z" }),
+      fin("u1", "Alfa", 95, "adequate"),
+      fin("u3", "Gama", 40, "inadequate"),
+    ]);
+    render(<MemoryRouter><AuditOverview /></MemoryRouter>);
+  }
+  it("orders units by situation (attention, in progress, adequate, no data) and keeps the average neutral", async () => {
+    renderOverview();
+    await screen.findByRole("heading", { name: "Unidades monitoradas" });
+    expect(api.summaries).toHaveBeenCalledWith({ p_overview: true });
+    const names = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(names).toEqual(["Gama", "Beta", "Alfa", "Delta"]);
+    // (95 + 40) / 2 = 67.5, shown without a result band (D3).
+    const average = screen.getByText("67,5%");
+    expect(average.closest(".metric")?.className).toBe("metric");
+    expect(screen.getByRole("link", { name: "Continuar" }).getAttribute("href")).toBe("/audit/inspections/d-u2/checklist");
+  });
+  it("filters units by situation and clears the filter", async () => {
+    const user = userEvent.setup();
+    renderOverview();
+    await screen.findByRole("heading", { name: "Unidades monitoradas" });
+    await user.click(screen.getByRole("button", { name: /^Em atenção/ }));
+    expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Gama"]);
+    await user.click(screen.getByRole("button", { name: /^Adequadas/ }));
+    expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Alfa"]);
+    await user.click(screen.getByRole("button", { name: /^Todas/ }));
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(4);
   });
 });
 describe("Checklist evidence removal errors", () => {

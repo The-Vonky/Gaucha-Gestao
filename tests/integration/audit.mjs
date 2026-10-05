@@ -2010,7 +2010,7 @@ try {
       await page.locator("h1").waitFor();
       await settle(page);
       await noOverflow(page, route);
-      if (route === "/audit") assert.ok(await page.locator(".audit-unit h3 a").count());
+      if (route === "/audit") assert.ok(await page.locator(".unit-card-link").count());
       for (const width of [375, 768, 1440]) {
         await page.setViewportSize({ width, height: 900 });
         await qualityTouchTargets(page, `${route} ${width}px/coarse`);
