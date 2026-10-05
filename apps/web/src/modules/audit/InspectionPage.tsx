@@ -13,6 +13,8 @@ import {
 import * as api from "./api";
 import { InspectionChecklist } from "./InspectionChecklist";
 import { InspectionOverview } from "./InspectionOverview";
+import { InspectionPlans } from "./InspectionPlans";
+import { plansForInspection } from "../action-plans/public";
 import { InspectionProvider, type InspectionView } from "./InspectionContext";
 import { useChecklistEvidence } from "./useChecklistEvidence";
 import * as evidenceApi from "./evidence";
@@ -27,9 +29,10 @@ import {
 import type { Answer, ChecklistEvidence } from "./types";
 import { ReportingActions } from "./reporting/ReportingActions";
 /** Routed tabs below /audit/inspections/:id (D1: the overview is the index). */
-const TABS: Record<string, "overview" | "checklist"> = {
+const TABS: Record<string, "overview" | "checklist" | "plans"> = {
   "": "overview",
   checklist: "checklist",
+  plano: "plans",
 };
 /** Band colors exist only for a finalized result. */
 const BAND_TONE: Record<Classification, BadgeTone> = {
@@ -62,6 +65,20 @@ export function InspectionPage() {
     }, [inspectionId]),
   );
   const data = r.data;
+  // Plans come from the Action Plans public read contract, only with action_plan.read.
+  const canPlans =
+    !!data && auth.can("action_plan.read", { unit_id: data.summary.unit_id });
+  const plans = useResource(
+    useCallback(
+      () => (canPlans ? plansForInspection(inspectionId) : Promise.resolve(null)),
+      [inspectionId, canPlans],
+    ),
+  );
+  const reloadPlans = plans.reload;
+  useEffect(() => {
+    // Checklist answers create/deactivate plans server-side: refresh on entering the tab.
+    if (tab === "plans") reloadPlans();
+  }, [tab]);
   const [lifecycleTransition, setLifecycleTransition] = useState<{
     inspectionId: string;
     version: number;
@@ -172,7 +189,7 @@ export function InspectionPage() {
     );
   const { summary, sections, items } = data;
   const base = `/audit/inspections/${summary.id}`;
-  if (!tab) return <Navigate to={base} replace />;
+  if (!tab || (tab === "plans" && !canPlans)) return <Navigate to={base} replace />;
   const scope = { unit_id: summary.unit_id };
   const draft = summary.status === "draft";
   const editable = draft && auth.can("audit.inspection.edit", scope);
@@ -202,6 +219,13 @@ export function InspectionPage() {
     onChange,
     onPending,
     onConflict: () => void refreshSummary(),
+    plans: {
+      enabled: canPlans,
+      rows: plans.data ?? [],
+      loading: plans.loading,
+      error: plans.error,
+      reload: plans.reload,
+    },
   };
   return (
     <>
@@ -316,14 +340,6 @@ export function InspectionPage() {
           </button>
           <div id={moreId} className="audit-more" data-open={more}>
             <ReportingActions kind="inspection" inspectionId={summary.id} unitId={summary.unit_id} blocked={pending.size > 0 || stale || r.loading} />
-            {auth.can("action_plan.read", scope) && (
-              <Link
-                className="audit-plans-link"
-                to={`/action-plans?inspection=${summary.id}`}
-              >
-                Planos de ação desta auditoria
-              </Link>
-            )}
           </div>
         </div>
       </header>
@@ -337,6 +353,7 @@ export function InspectionPage() {
             {overall.tally.answered}/{overall.tally.total}
           </span>
         </NavLink>
+        {canPlans && <NavLink to={`${base}/plano`}>Plano de ação</NavLink>}
       </nav>
       {evidenceError && <Notice error>{evidenceError}</Notice>}
       {evidenceConflict && <Notice error>O conjunto de evidências foi alterado. <button onClick={reload}>Recarregar evidências e revisar</button></Notice>}
@@ -366,6 +383,7 @@ export function InspectionPage() {
       )}
       <InspectionProvider value={view}>
         {tab === "overview" && <InspectionOverview />}
+        {tab === "plans" && <InspectionPlans />}
         {/* The checklist stays mounted while other tabs show, so per-criterion
             save queues and text being typed survive a tab switch. */}
         <div className="audit-tab-panel" hidden={tab !== "checklist"}>

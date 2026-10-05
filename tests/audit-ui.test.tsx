@@ -31,6 +31,8 @@ const api = vi.hoisted(() => ({
 vi.mock("../apps/web/src/modules/audit/api", () => api);
 const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async()=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
 vi.mock("../apps/web/src/modules/audit/evidence",()=>evidenceApi);
+const plansApi = vi.hoisted(() => ({ summaries: vi.fn(async () => [] as unknown[]) }));
+vi.mock("../apps/web/src/modules/action-plans/api", () => plansApi);
 vi.mock("../apps/web/src/modules/audit/reporting/api", () => ({
   inspectionExport: vi.fn(), historyExport: vi.fn(),
 }));
@@ -52,6 +54,7 @@ afterEach(() => {
   permissions.allowed = true;
   evidenceApi.listEvidence.mockResolvedValue([]);
   evidenceApi.pendingCount.mockResolvedValue(0);
+  plansApi.summaries.mockResolvedValue([]);
 });
 const version = "v";
 const items = [
@@ -429,6 +432,27 @@ describe("inspection page", () => {
     expect(screen.getByText("Sem respostas")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Abrir seção 2: ESTOQUE no checklist" }));
     expect(screen.getByRole("heading", { name: "2. ESTOQUE" })).toBeTruthy();
+  });
+  it("lists the inspection's plans on its tab through the Action Plans contract", async () => {
+    plansApi.summaries.mockResolvedValue([{
+      plan: { id: "p1", status: "pending", source_type: "checklist", source_active: true, source_response: "NAT",
+        source_reactivated_after_verification: false, due_date: null, effectiveness: null,
+        improvement_point: "Teto íntegro?", responsible: "" },
+      item_number: 2, unit_name: "Unidade A", sector_name: null, inspection_applied_on: null,
+      verified_by_name: null, completed_by_name: null,
+    }]);
+    setup(summary(), [answer("item-001", null), answer("item-002", "NAT"), answer("item-003", null)], undefined, "/audit/inspections/i1/plano");
+    expect(await screen.findByRole("link", { name: "2. Teto íntegro?" })).toBeTruthy();
+    expect(plansApi.summaries).toHaveBeenCalledWith({ p_inspection: "i1" });
+    expect(screen.getByRole("link", { name: "Plano de ação" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "Abrir na fila de Planos de Ação" }).getAttribute("href")).toBe("/action-plans?inspection=i1");
+  });
+  it("hides the action plan tab without action_plan.read", async () => {
+    permissions.allowed = false;
+    setup(summary(), [answer("item-001", null), answer("item-002", null), answer("item-003", null)], undefined, "/audit/inspections/i1");
+    await screen.findByRole("link", { name: "Visão geral" });
+    expect(screen.queryByRole("link", { name: "Plano de ação" })).toBeNull();
+    expect(plansApi.summaries).not.toHaveBeenCalled();
   });
   it("keeps unsaved observation text and the pending gate across a tab switch", async () => {
     const user = userEvent.setup();

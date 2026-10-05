@@ -1,4 +1,5 @@
 import { createContext, useContext, type RefObject } from "react";
+import type { PlanSummary } from "../action-plans/public";
 import type { EvidenceController } from "./useChecklistEvidence";
 import type { Result } from "./scoring";
 import type { Answer, InspectionSummary, Item, Section } from "./types";
@@ -25,6 +26,14 @@ export type InspectionView = {
   onChange: (row: Answer) => void;
   onPending: (key: string, value: boolean) => void;
   onConflict: () => void;
+  /** Plans of this inspection (Action Plans public contract); enabled with action_plan.read. */
+  plans: {
+    enabled: boolean;
+    rows: PlanSummary[];
+    loading: boolean;
+    error: string;
+    reload: () => void;
+  };
 };
 const InspectionContext = createContext<InspectionView | null>(null);
 export const InspectionProvider = InspectionContext.Provider;

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge, type BadgeTone } from "../../shared/ui";
+import { isOverdue, STATUS_LABELS, type PlanStatus } from "../action-plans/public";
 import { Download } from "./ChecklistEvidence";
 import { useInspection } from "./InspectionContext";
 import { formatDate } from "./Result";
@@ -30,7 +31,7 @@ function sectionStatus(result: Result) {
 }
 /** Overview tab: operational summary of one inspection (data already loaded by the shell). */
 export function InspectionOverview() {
-  const { summary, sections, items, answers, results, editable, evidence, select } =
+  const { summary, sections, items, answers, results, editable, evidence, select, plans } =
     useInspection();
   const navigate = useNavigate();
   const [allAttention, setAllAttention] = useState(false);
@@ -194,6 +195,38 @@ export function InspectionOverview() {
             </button>
           )}
         </section>
+
+        {plans.enabled && (
+          <section className="audit-panel" aria-labelledby="audit-plans-summary-title">
+            <div className="audit-panel-head">
+              <h2 id="audit-plans-summary-title">
+                Planos de ação <span className="audit-tab-count numeric">{plans.rows.length}</span>
+              </h2>
+              <Link className="button-link" to={`${base}/plano`}>Ver planos</Link>
+            </div>
+            {plans.loading && <p role="status">Carregando planos de ação…</p>}
+            {plans.error && (
+              <p role="alert">
+                Não foi possível carregar os planos.{" "}
+                <button type="button" onClick={plans.reload}>Tentar novamente</button>
+              </p>
+            )}
+            {!plans.loading && !plans.error && (
+              <dl className="audit-plan-counts">
+                {(["pending", "in_progress", "completed"] as PlanStatus[]).map((st) => (
+                  <div key={st}>
+                    <dt>{STATUS_LABELS[st]}</dt>
+                    <dd className="numeric">{plans.rows.filter((x) => x.plan.status === st).length}</dd>
+                  </div>
+                ))}
+                <div>
+                  <dt>Atrasados</dt>
+                  <dd className="numeric">{plans.rows.filter((x) => isOverdue(x.plan)).length}</dd>
+                </div>
+              </dl>
+            )}
+          </section>
+        )}
 
         <section className="audit-panel" aria-labelledby="audit-evidence-title">
           <div className="audit-panel-head">

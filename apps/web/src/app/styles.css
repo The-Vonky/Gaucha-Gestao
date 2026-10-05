@@ -203,13 +203,6 @@
 .audit-hero-actions:empty {
   display: none;
 }
-.audit-plans-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--control-height);
-  font: var(--text-label);
-  font-size: 0.875rem;
-}
 .audit-hint {
   margin: 0 0 var(--space-3);
 }
@@ -397,6 +390,54 @@
 .audit-evidence-group-title {
   margin: 0 0 var(--space-1);
   font: var(--text-label);
+}
+.audit-plan-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+.audit-plan-counts > div {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
+}
+.audit-plan-counts dt {
+  font: var(--text-caption);
+  color: var(--color-text-secondary);
+}
+.audit-plan-counts dd {
+  margin: 0;
+  font: var(--text-kpi);
+  font-size: 1.25rem;
+}
+.audit-plans {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.audit-plans li {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+}
+.audit-plan-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  overflow-wrap: anywhere;
+}
+.audit-plan-main a {
+  font-weight: 600;
+}
+.audit-plan-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-1) 0 0;
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
 }
 .audit-info {
   display: grid;
