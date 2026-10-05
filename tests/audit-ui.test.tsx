@@ -455,6 +455,53 @@ describe("inspection page", () => {
     expect(screen.getByRole("link", { name: "Plano de ação" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "Abrir na fila de Planos de Ação" }).getAttribute("href")).toBe("/action-plans?inspection=i1");
   });
+  it("reads plans again once an AP/NAT answer is persisted, including saves still pending on a tab switch", async () => {
+    const user = userEvent.setup();
+    const plan = (id: string, item_number: number, source_active = true) => ({
+      plan: { id, status: "pending", source_type: "checklist", source_active, source_response: "NAT",
+        source_reactivated_after_verification: false, due_date: null, effectiveness: null,
+        improvement_point: `Plano ${id}`, responsible: "" },
+      item_number, unit_name: "Unidade A", sector_name: null, inspection_applied_on: null,
+      verified_by_name: null, completed_by_name: null,
+    });
+    const saves: Array<() => void> = [];
+    api.saveAnswer.mockImplementation((row: Answer, values) =>
+      new Promise((done) => saves.push(() => done({ ...row, ...values, version: row.version + 1 }))));
+    const settleSave = async () => {
+      await waitFor(() => expect(saves).toHaveLength(1));
+      await act(async () => saves.shift()!());
+    };
+    setup(summary(), items.map((i) => answer(i.key, null)));
+    const nat = (await screen.findAllByRole("button", { name: /\(NAT\)$/ }))[0];
+    await waitFor(() => expect(plansApi.summaries).toHaveBeenCalledTimes(1));
+    // The checklist shows no plans: an answer saved there does not read them.
+    await user.click(nat);
+    await settleSave();
+    await waitFor(() => expect(nat.getAttribute("aria-pressed")).toBe("true"));
+    expect(plansApi.summaries).toHaveBeenCalledTimes(1);
+    plansApi.summaries.mockResolvedValue([plan("p1", 1)]);
+    await user.click(screen.getByRole("link", { name: "Visão geral" }));
+    await waitFor(() => expect(plansApi.summaries).toHaveBeenCalledTimes(2));
+    const plansPanel = screen.getByRole("region", { name: /Planos de ação/ });
+    await waitFor(() => expect(within(plansPanel).getByText("1", { selector: "h2 .numeric" })).toBeTruthy());
+    // A save still pending when leaving the checklist refreshes plans when it settles.
+    await user.click(screen.getByRole("link", { name: /Checklist/ }));
+    await user.click(screen.getAllByRole("button", { name: /\(AT\)$/ })[0]);
+    await user.click(screen.getByRole("link", { name: "Visão geral" }));
+    expect(plansApi.summaries).toHaveBeenCalledTimes(2);
+    plansApi.summaries.mockResolvedValue([plan("p1", 1, false)]);
+    await settleSave();
+    await waitFor(() => expect(plansApi.summaries).toHaveBeenCalledTimes(3));
+    // An observation-only save cannot change plans: no new read.
+    await user.click(screen.getByRole("link", { name: /Checklist/ }));
+    const [field] = screen.getAllByLabelText("Observação");
+    await user.type(field, "Ok");
+    await user.click(screen.getByRole("link", { name: "Visão geral" }));
+    await settleSave();
+    await waitFor(() => expect(screen.queryByText("Salvando…")).toBeNull());
+    expect(api.saveAnswer).toHaveBeenCalledTimes(3);
+    expect(plansApi.summaries).toHaveBeenCalledTimes(3);
+  });
   it("hides the action plan tab without action_plan.read", async () => {
     permissions.allowed = false;
     setup(summary(), [answer("item-001", null), answer("item-002", null), answer("item-003", null)], undefined, "/audit/inspections/i1");

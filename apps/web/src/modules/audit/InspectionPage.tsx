@@ -34,6 +34,9 @@ const TABS: Record<string, "overview" | "checklist" | "plans"> = {
   checklist: "checklist",
   plano: "plans",
 };
+/** Responses that source a checklist action plan (Action Plans sync trigger). */
+const isPlanSource = (response: Answer["response"]) =>
+  response === "AP" || response === "NAT";
 /** Band colors exist only for a finalized result. */
 const BAND_TONE: Record<Classification, BadgeTone> = {
   adequate: "success",
@@ -75,10 +78,23 @@ export function InspectionPage() {
     ),
   );
   const reloadPlans = plans.reload;
+  // A persisted answer entering/leaving AP/NAT (or switching between them)
+  // creates, reactivates or deactivates its plan server-side: the shown plans
+  // are stale until read again.
+  const [plansStale, setPlansStale] = useState(false);
+  const previousTab = useRef(tab);
   useEffect(() => {
-    // Checklist answers create/deactivate plans server-side: refresh on entering the tab.
-    if (tab === "plans") reloadPlans();
-  }, [tab]);
+    const entering = tab === "plans" && previousTab.current !== "plans";
+    previousTab.current = tab;
+    if (!canPlans) return;
+    // Refresh on entering the plans tab (other sessions may have changed them),
+    // or once stale saves settle while plans are on screen. The checklist shows
+    // no plans, so a stale read waits there and is coalesced into one request.
+    if (entering || (plansStale && tab !== "checklist")) {
+      setPlansStale(false);
+      reloadPlans();
+    }
+  }, [tab, plansStale, canPlans]);
   const [lifecycleTransition, setLifecycleTransition] = useState<{
     inspectionId: string;
     version: number;
@@ -111,7 +127,7 @@ export function InspectionPage() {
     reviewGeneration.current++;
     setLifecycleTransition(undefined);
     setPending(new Set());setAction(undefined);setReview(undefined);
-    setFinalPending(0);setPreparing(false);setEvidenceError("");setEvidenceConflict(false);setStale(false);
+    setFinalPending(0);setPreparing(false);setEvidenceError("");setEvidenceConflict(false);setStale(false);setPlansStale(false);
     return () => { reviewGeneration.current++; };
   }, [inspectionId]);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -127,15 +143,21 @@ export function InspectionPage() {
     [data],
   );
   const answers = saved && saved.from === data ? saved.rows : loaded;
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
   const onChange = useCallback(
-    (row: Answer) =>
+    (row: Answer) => {
+      const before = answersRef.current[row.item_key]?.response ?? null;
+      if (before !== row.response && (isPlanSource(before) || isPlanSource(row.response)))
+        setPlansStale(true);
       setSaved((s) => ({
         from: data,
         rows: {
           ...(s && s.from === data ? s.rows : loaded),
           [row.item_key]: row,
         },
-      })),
+      }));
+    },
     [data, loaded],
   );
   const reload = () => {
