@@ -175,88 +175,90 @@ function UnitSummary({
     );
   const current = state.current;
   return (
-    <div className="unit-summary" data-drafts={state.drafts.length > 0}>
-      <section className="audit-panel unit-situation" aria-labelledby="unit-current-title">
-        <div className="audit-panel-head">
-          <h2 id="unit-current-title">Situação atual</h2>
-          {current && (
-            <Link className="button-link" to={`/audit/inspections/${current.id}`}>
-              Abrir auditoria
-            </Link>
-          )}
-        </div>
-        {current ? (
-          <>
-            <p className="unit-situation-lead">{READING[current.final_classification!]}</p>
-            <p className="muted">
-              Auditoria finalizada de {formatDate(current.applied_on)} · Responsável:{" "}
-              {current.responsible_name}
-            </p>
-            <dl className="audit-counts">
-              {RESPONSES.map((r) => (
-                <div key={r} className={`audit-count ${r.toLowerCase()}`}>
-                  <dt>
-                    <abbr title={RESPONSE_LABELS[r]}>{r}</abbr>{" "}
-                    <span>{RESPONSE_LABELS[r]}</span>
-                  </dt>
-                  <dd className="numeric">
-                    {{ AT: current.at_count, AP: current.ap_count, NAT: current.nat_count, NAP: current.nap_count }[r]}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </>
-        ) : (
-          <p className="unit-situation-lead">
-            {state.finalized.length
-              ? "A última auditoria finalizada não tem critérios aplicáveis."
-              : "Nenhuma auditoria finalizada."}
-          </p>
-        )}
-        {state.drafts.length > 0 && (
-          <p className="muted unit-situation-note">
-            Há auditoria em andamento: a situação só muda quando ela for finalizada.
-          </p>
-        )}
-      </section>
-      {state.drafts.length > 0 && (
-        <section className="audit-panel unit-drafts" aria-labelledby="unit-drafts-title">
+    <div className="unit-summary-frame">
+      <div className="unit-summary" data-drafts={state.drafts.length > 0}>
+        <section className="audit-panel unit-situation" aria-labelledby="unit-current-title">
           <div className="audit-panel-head">
-            <h2 id="unit-drafts-title">
-              Em andamento <span className="audit-tab-count numeric">{state.drafts.length}</span>
-            </h2>
+            <h2 id="unit-current-title">Situação atual</h2>
+            {current && (
+              <Link className="button-link" to={`/audit/inspections/${current.id}`}>
+                Abrir auditoria
+              </Link>
+            )}
           </div>
-          <ul className="unit-draft-list">
-            {state.drafts.map((d) => (
-              <li key={d.id}>
-                <p>
-                  <strong className="numeric">{formatDate(d.applied_on)}</strong> · {d.responsible_name}
-                </p>
-                <Progress answered={d.answered} total={d.total_items} />
-                <p className="unit-draft-score">
-                  <Result summary={d} />
-                </p>
-                <Link className="button-link" to={`/audit/inspections/${d.id}/checklist`}>
-                  Continuar
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {current ? (
+            <>
+              <p className="unit-situation-lead">{READING[current.final_classification!]}</p>
+              <p className="muted">
+                Auditoria finalizada de {formatDate(current.applied_on)} · Responsável:{" "}
+                {current.responsible_name}
+              </p>
+              <dl className="audit-counts">
+                {RESPONSES.map((r) => (
+                  <div key={r} className={`audit-count ${r.toLowerCase()}`}>
+                    <dt>
+                      <abbr title={RESPONSE_LABELS[r]}>{r}</abbr>{" "}
+                      <span>{RESPONSE_LABELS[r]}</span>
+                    </dt>
+                    <dd className="numeric">
+                      {{ AT: current.at_count, AP: current.ap_count, NAT: current.nat_count, NAP: current.nap_count }[r]}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </>
+          ) : (
+            <p className="unit-situation-lead">
+              {state.finalized.length
+                ? "A última auditoria finalizada não tem critérios aplicáveis."
+                : "Nenhuma auditoria finalizada."}
+            </p>
+          )}
+          {state.drafts.length > 0 && (
+            <p className="muted unit-situation-note">
+              Há auditoria em andamento: a situação só muda quando ela for finalizada.
+            </p>
+          )}
         </section>
-      )}
-      <section className="audit-panel unit-trend-panel" aria-labelledby="unit-trend-title">
-        <div className="audit-panel-head">
-          <h2 id="unit-trend-title">Evolução recente</h2>
-          <Link className="button-link" to={`/audit/units/${unit.id}/historico`}>
-            Ver histórico
-          </Link>
-        </div>
-        {recent.length < 2 ? (
-          <p className="muted">A evolução fica disponível a partir de 2 auditorias finalizadas.</p>
-        ) : (
-          <ScoreTrend points={recent} height={180} label={`Resultado final das últimas ${recent.length} auditorias finalizadas de ${unit.name}`} />
+        {state.drafts.length > 0 && (
+          <section className="audit-panel unit-drafts" aria-labelledby="unit-drafts-title">
+            <div className="audit-panel-head">
+              <h2 id="unit-drafts-title">
+                Em andamento <span className="audit-tab-count numeric">{state.drafts.length}</span>
+              </h2>
+            </div>
+            <ul className="unit-draft-list">
+              {state.drafts.map((d) => (
+                <li key={d.id}>
+                  <p>
+                    <strong className="numeric">{formatDate(d.applied_on)}</strong> · {d.responsible_name}
+                  </p>
+                  <Progress answered={d.answered} total={d.total_items} />
+                  <p className="unit-draft-score">
+                    <Result summary={d} />
+                  </p>
+                  <Link className="button-link" to={`/audit/inspections/${d.id}/checklist`}>
+                    Continuar
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
-      </section>
+        <section className="audit-panel unit-trend-panel" aria-labelledby="unit-trend-title">
+          <div className="audit-panel-head">
+            <h2 id="unit-trend-title">Evolução recente</h2>
+            <Link className="button-link" to={`/audit/units/${unit.id}/historico`}>
+              Ver histórico
+            </Link>
+          </div>
+          {recent.length < 2 ? (
+            <p className="muted">A evolução fica disponível a partir de 2 auditorias finalizadas.</p>
+          ) : (
+            <ScoreTrend points={recent} height={180} label={`Resultado final das últimas ${recent.length} auditorias finalizadas de ${unit.name}`} />
+          )}
+        </section>
+      </div>
     </div>
   );
 }

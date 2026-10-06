@@ -2044,6 +2044,24 @@ try {
       }
       await page.setViewportSize({ width: 375, height: 812 });
     }
+    // A unit card opens the unit from its body, not only its cover; "Continuar"
+    // stays its own target above that area.
+    for (const width of [1440, 375]) {
+      await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
+      const card = page.locator(".unit-card", { has: page.locator(".unit-card-continue") }).first();
+      await page.goto(`${origin}/audit`);
+      await settle(page);
+      // A real pointer at the card body: the extended unit link must receive it.
+      await card.locator(".unit-card-foot").scrollIntoViewIfNeeded();
+      const foot = await card.locator(".unit-card-foot").boundingBox();
+      await page.mouse.click(foot.x + foot.width / 2, foot.y + foot.height / 2);
+      await page.waitForURL(/\/audit\/units\/[^/]+$/);
+      await page.goto(`${origin}/audit`);
+      await settle(page);
+      await card.locator(".unit-card-continue").click();
+      await page.waitForURL(/\/audit\/inspections\/[^/]+\/checklist$/);
+    }
+    await page.setViewportSize({ width: 375, height: 812 });
     // "Abrir critério N" lands on that criterion (not just its section), after
     // the shell's own route scroll/focus.
     await page.goto(`${origin}/audit/inspections/${planInspection}`);

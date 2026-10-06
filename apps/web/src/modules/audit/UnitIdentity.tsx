@@ -34,7 +34,7 @@ export function UnitCover({
   children: ReactNode;
 }) {
   return (
-    <div className={`unit-cover ${size}`} data-variant={variant(unit)}>
+    <div className={`unit-cover unit-cover-${size}`} data-variant={variant(unit)}>
       <span className="unit-cover-art" aria-hidden="true">
         <span className="unit-cover-monogram">{monogram(unit.name)}</span>
       </span>

@@ -195,10 +195,12 @@
   transform: translateY(-1px);
 }
 /* Single primary target: the unit link covers the card; "Continuar" sits above it. */
-.unit-card-link {
+.unit-card-link,
+.unit-card-link:hover {
   color: inherit;
   text-decoration: none;
 }
+/* Positioned against .unit-card: no ancestor between them may be positioned. */
 .unit-card-link::after {
   content: "";
   position: absolute;
@@ -460,12 +462,17 @@
 /* Honest fallback while the Core has no unit image: deep brand surface, faint
    texture and shapes, large monogram. A future Core cover replaces
    .unit-cover-art in the same slot; the scrim keeps the overlay text legible. */
+/* Layers stack in one grid cell instead of being absolutely positioned, so the
+   cover never becomes a containing block: the card link (inside the cover)
+   still extends over the whole .unit-card. */
 .unit-cover {
   --cover-glow: rgb(243 146 0 / 0.24);
   --cover-glow-at: 100% 0%;
   --cover-ring-x: -18%;
   --cover-ring-y: -46%;
-  position: relative;
+  display: grid;
+  /* One cell that fills the cover's min-height, so every layer spans it. */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   isolation: isolate;
   overflow: hidden;
   color: var(--on-brand);
@@ -493,9 +500,9 @@
   --cover-ring-y: -60%;
 }
 .unit-cover-art {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
+  grid-area: 1 / 1;
+  position: relative;
+  overflow: hidden;
   background-image: repeating-linear-gradient(
     135deg,
     transparent 0 26px,
@@ -525,20 +532,21 @@
   user-select: none;
 }
 /* Scrim: darkens the lower half where the overlay text sits. */
-.unit-cover::after {
+.unit-cover-art::after {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: -1;
   background: linear-gradient(180deg, rgb(4 15 10 / 0) 35%, rgb(4 15 10 / 0.5) 100%);
   pointer-events: none;
 }
 .unit-cover-content {
+  grid-area: 1 / 1;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   gap: var(--space-1);
-  min-height: inherit;
+  min-width: 0;
   padding: var(--space-5);
 }
 .unit-cover-code {
@@ -548,10 +556,10 @@
   text-transform: uppercase;
   color: var(--on-brand-secondary);
 }
-.unit-cover.card {
+.unit-cover-card {
   min-height: 176px;
 }
-.unit-cover.card h3 {
+.unit-cover-card h3 {
   margin: 0;
   font: 600 1.375rem/1.2 var(--font-display);
   letter-spacing: var(--tracking-title);
@@ -563,21 +571,21 @@
   container-type: inline-size;
   margin-bottom: var(--space-5);
 }
-.unit-cover.hero {
+.unit-cover-hero {
   min-height: 248px;
   border-radius: var(--radius-xl);
 }
-.unit-cover.hero .unit-cover-monogram {
+.unit-cover-hero .unit-cover-monogram {
   right: var(--space-8);
   top: var(--space-5);
   font-size: 8rem;
 }
-.unit-cover.hero .unit-cover-content {
+.unit-cover-hero .unit-cover-content {
   gap: var(--space-5);
   padding: var(--space-6);
 }
 @container (min-width: 760px) {
-  .unit-cover.hero .unit-cover-content {
+  .unit-cover-hero .unit-cover-content {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: flex-end;
@@ -678,11 +686,11 @@
   margin: 0;
 }
 @container (max-width: 520px) {
-  .unit-cover.hero .unit-cover-content {
+  .unit-cover-hero .unit-cover-content {
     gap: var(--space-4);
     padding: var(--space-5);
   }
-  .unit-cover.hero .unit-cover-monogram {
+  .unit-cover-hero .unit-cover-monogram {
     right: var(--space-4);
     font-size: 5.5rem;
   }
@@ -700,8 +708,11 @@
 }
 
 /* ---------- Audit: unit summary and history ---------- */
-.unit-summary {
+/* The summary grid queries its wrapper (an element cannot query itself). */
+.unit-summary-frame {
   container-type: inline-size;
+}
+.unit-summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
