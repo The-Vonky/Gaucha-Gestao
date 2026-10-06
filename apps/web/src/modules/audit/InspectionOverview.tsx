@@ -200,7 +200,7 @@ export function InspectionOverview() {
         </section>
 
         {plans.enabled && (
-          <section className="audit-panel" aria-labelledby="audit-plans-summary-title">
+          <section className="audit-panel quiet" aria-labelledby="audit-plans-summary-title">
             <div className="audit-panel-head">
               <h2 id="audit-plans-summary-title">
                 Planos de ação{plansRead && <> <span className="audit-tab-count numeric">{plans.rows.length}</span></>}
@@ -231,7 +231,7 @@ export function InspectionOverview() {
           </section>
         )}
 
-        <section className="audit-panel" aria-labelledby="audit-evidence-title">
+        <section className="audit-panel quiet" aria-labelledby="audit-evidence-title">
           <div className="audit-panel-head">
             <h2 id="audit-evidence-title">
               Evidências{evidenceRead && <> <span className="audit-tab-count numeric">{evidence.rows.length}</span></>}
@@ -275,7 +275,7 @@ export function InspectionOverview() {
           )}
         </section>
 
-        <section className="audit-panel" aria-labelledby="audit-info-title">
+        <section className="audit-panel quiet" aria-labelledby="audit-info-title">
           <div className="audit-panel-head">
             <h2 id="audit-info-title">Informações</h2>
           </div>

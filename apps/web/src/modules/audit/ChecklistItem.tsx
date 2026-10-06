@@ -118,6 +118,7 @@ export function ChecklistItem({
       tabIndex={-1}
       className="audit-item"
       data-answered={row.response ? "true" : "false"}
+      data-response={row.response?.toLowerCase()}
       aria-busy={busy || undefined}
     >
       <p className="audit-item-text" id={`${id}-text`}>

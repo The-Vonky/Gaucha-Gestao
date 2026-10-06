@@ -307,7 +307,13 @@ export function InspectionPage() {
             )}
           </ul>
         </div>
-        <section className="audit-hero-kpis" aria-label="Resumo da auditoria">
+        {/* Draft: progress leads and the partial score is secondary; finalized:
+            the final result leads. */}
+        <section
+          className="audit-hero-kpis"
+          data-lead={draft ? "progress" : "result"}
+          aria-label="Resumo da auditoria"
+        >
           <div className="metric audit-progress-kpi">
             <span className="metric-label">Progresso</span>
             <Progress

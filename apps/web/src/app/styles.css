@@ -961,17 +961,16 @@
 /* ---------- Audit: inspection context hero ---------- */
 .audit-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
   grid-template-areas:
     "main kpis"
     "main actions";
-  gap: var(--space-3) var(--space-6);
+  gap: var(--space-4) var(--space-8);
   align-items: start;
-  padding: var(--space-4) var(--space-5);
-  margin-bottom: var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  /* Editorial record header: no card, a hairline closes it. */
+  padding: var(--space-2) 0 var(--space-6);
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--color-border);
 }
 .audit-hero-main {
   grid-area: main;
@@ -981,7 +980,9 @@
   margin-bottom: var(--space-1);
 }
 .audit-hero h1 {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-size: 2rem;
+  letter-spacing: var(--tracking-display);
   overflow-wrap: anywhere;
 }
 .audit-meta {
@@ -1006,18 +1007,40 @@
   width: 16px;
   height: 16px;
 }
+/* Two readings in one strip; the leading one is wider and larger. */
 .audit-hero-kpis {
   grid-area: kpis;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 1px;
+  overflow: hidden;
+  background: var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
 }
 .audit-hero-kpis .metric {
-  background: var(--color-surface-subtle);
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border: 0;
+  border-radius: 0;
+  background: var(--color-surface);
+}
+.audit-hero-kpis .metric-label {
+  font: var(--text-label);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.audit-hero-kpis[data-lead="result"] > :last-child {
+  order: -1;
+}
+.audit-hero-kpis .metric-value {
+  font-size: 2.25rem;
+  letter-spacing: var(--tracking-display);
 }
 /* A draft only has a partial number: smaller type, info tone, no band. */
 .audit-hero-kpis .metric.info .metric-value {
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   color: var(--info);
 }
 .audit-progress-kpi .audit-progress {
@@ -1028,6 +1051,13 @@
 .audit-progress-kpi .audit-progress > span {
   font: 600 1.125rem/1.2 var(--font-display);
   color: var(--color-text);
+}
+.audit-hero-kpis[data-lead="result"] .audit-progress > span {
+  font-size: 1rem;
+}
+.audit-hero-kpis[data-lead="progress"] .audit-progress > span {
+  font-size: 1.5rem;
+  letter-spacing: var(--tracking-display);
 }
 .audit-progress-kpi .audit-progress progress {
   flex: none;
@@ -1106,7 +1136,7 @@
 /* ---------- Audit: inspection overview tab ---------- */
 .audit-overview {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
 }
@@ -1183,8 +1213,8 @@
 .audit-sr-status {
   color: var(--color-text-secondary);
 }
-/* Too narrow for one row: name beside "Abrir", figures on a second line. */
-@container (max-width: 34.5rem) {
+/* Too narrow for one row (or long final labels): name beside "Abrir", figures below. */
+@container (max-width: 46rem) {
   .audit-section-results li {
     grid-template-columns: 1.5rem minmax(0, 1fr) auto;
     grid-template-areas:
@@ -1289,8 +1319,9 @@
 }
 .audit-plan-counts > div {
   padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-surface-subtle);
+  background: var(--color-surface);
 }
 .audit-plan-counts dt {
   font: var(--text-caption);
@@ -1350,6 +1381,22 @@
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-5);
   min-width: 0;
+}
+/* Contextual blocks (plans, evidence, information): no box, a hairline above. */
+.audit-panel.quiet {
+  padding: var(--space-4) 0 0;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+}
+.audit-panel.quiet .audit-panel-head h2 {
+  font: 600 1rem/1.3 var(--font-display);
+}
+/* The result is the dominant reading of an inspection. */
+.audit-result-panel {
+  padding: var(--space-5) var(--space-6);
+  border-top: 3px solid var(--brand-green-600);
 }
 .audit-panel-head {
   display: flex;
@@ -1552,6 +1599,8 @@
 }
 .audit-section-head h2 {
   margin: 0;
+  font: 600 1.375rem/1.25 var(--font-display);
+  letter-spacing: var(--tracking-title);
   scroll-margin-top: calc(var(--header-height) + 88px);
 }
 .audit-section-head h2:focus {
@@ -1603,6 +1652,35 @@
   width: 3px;
   border-radius: 0 2px 2px 0;
   background: var(--info-border);
+}
+/* AP/NAT answers: a faint tint and an edge in the response colour. */
+.audit-item:first-child {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.audit-item:last-child {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+.audit-item:only-child {
+  border-radius: var(--radius-lg);
+}
+.audit-item[data-response="ap"] {
+  background: color-mix(in srgb, var(--warning-bg) 45%, var(--color-surface));
+}
+.audit-item[data-response="nat"] {
+  background: color-mix(in srgb, var(--danger-bg) 45%, var(--color-surface));
+}
+.audit-item[data-response="ap"]::before,
+.audit-item[data-response="nat"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--warning-solid);
+}
+.audit-item[data-response="nat"]::before {
+  background: var(--danger-solid);
 }
 /* D5: criterion evidence behind a quiet disclosure ("Evidências (n)"). */
 .audit-item-evidence {
@@ -2295,14 +2373,25 @@ button.file-remove:hover:not(:disabled) {
   }
 }
 
-@media (max-width: 1023px) {
-  .audit-kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+/* Inspection header: below ~950px of content, the title takes the full row. */
+@media (max-width: 1279px) {
+  .audit-hero {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "main main"
+      "kpis actions";
+    align-items: end;
   }
+  .audit-hero-kpis {
+    max-width: 520px;
+  }
+  /* One column: the side panels would be squeezed beside the results. */
   .audit-overview {
     grid-template-columns: minmax(0, 1fr);
   }
-  .unit-summary {
+}
+@media (max-width: 1023px) {
+  .audit-overview {
     grid-template-columns: minmax(0, 1fr);
   }
   .audit-layout {
@@ -2396,7 +2485,7 @@ button.file-remove:hover:not(:disabled) {
       "main"
       "kpis"
       "actions";
-    padding: var(--space-4);
+    padding: var(--space-1) 0 var(--space-5);
   }
   .audit-hero-actions {
     justify-content: flex-start;
