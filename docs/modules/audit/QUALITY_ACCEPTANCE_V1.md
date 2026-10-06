@@ -102,7 +102,8 @@ A rodada final deve manter como invariantes:
 - tokens Elo ([Design System Elo v1](../../briefs/DESIGN_SYSTEM_ELO_V1.md)): neutros frios do Login, sombras em tinta verde, `--radius-control` em campos e botões;
 - foco verde (`--brand-green-600`) em superfícies claras e `--on-brand-accent` em superfícies de marca;
 - `input/select/textarea` com 16 px em `pointer: coarse` ou abaixo de 1024 px (sem zoom de foco no iOS; verificar fisicamente em P2/P4);
-- loader com os dois elos alternando opacidade, sem rotação, e estático com `prefers-reduced-motion`.
+- loader com os dois elos alternando opacidade, sem rotação, e estático com `prefers-reduced-motion`;
+- Auditoria organizada por unidade ([Audit UX v2](../../briefs/AUDIT_UX_V2.md)): checklist em `/audit/inspections/:id/checklist` com comportamento preservado (autosave, concorrência, evidências, finalize/reopen), faixas só em resultado final e planos lidos pelo contrato público de Action Plans.
 
 ## Registro de execução
 

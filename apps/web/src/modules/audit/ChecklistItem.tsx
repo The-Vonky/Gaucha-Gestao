@@ -6,6 +6,7 @@ import { RESPONSE_LABELS, RESPONSES, type Response } from "./scoring";
 import type { Answer, Item } from "./types";
 import { ChecklistEvidence } from "./ChecklistEvidence";
 import type { EvidenceController } from "./useChecklistEvidence";
+import { itemAnchor } from "./InspectionContext";
 type SaveState = "idle" | "saving" | "saved" | "error" | "conflict";
 const CONFLICT = new Set(["PGRST116", "40001"]);
 const SAVE_ICON: Record<Exclude<SaveState, "idle">, IconName> = {
@@ -102,10 +103,22 @@ export function ChecklistItem({
   }
   const emphasis = row.response === "AP" || row.response === "NAT";
   const busy = state === "saving";
+  // D5: criterion evidence sits behind "Evidências (n)"; it stays mounted while
+  // closed and opens on its own while an upload is in progress or failed.
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const evidenceCount = evidence
+    ? evidence.rows.filter((e) => e.item_key === item.key).length
+    : 0;
+  const uploading = !!evidence?.uploads[item.key];
+  const showEvidence = evidenceOpen || uploading;
   return (
     <li
+      id={itemAnchor(item.key)}
+      // Focusable only programmatically: the target of "Abrir critério N".
+      tabIndex={-1}
       className="audit-item"
       data-answered={row.response ? "true" : "false"}
+      data-response={row.response?.toLowerCase()}
       aria-busy={busy || undefined}
     >
       <p className="audit-item-text" id={`${id}-text`}>
@@ -179,7 +192,25 @@ export function ChecklistItem({
         {state === "conflict" &&
           "Este critério foi alterado em outra sessão ou a auditoria mudou de estado. O valor atual foi carregado; revise antes de alterar novamente."}
       </p>
-      {evidence && <ChecklistEvidence item={item} editable={evidenceEditable} controller={evidence}/>}
+      {evidence && (
+        <div className="audit-item-evidence">
+          <button
+            type="button"
+            className="audit-evidence-toggle"
+            aria-expanded={showEvidence}
+            aria-controls={`${id}-evidence`}
+            aria-describedby={`${id}-text`}
+            onClick={() => setEvidenceOpen((open) => !open)}
+          >
+            <Icon name={showEvidence ? "chevronDown" : "chevronRight"} />
+            {/* The count needs a successful read; loading/error is not "no evidence". */}
+            {evidence.loading || evidence.error ? "Evidências" : `Evidências (${evidenceCount})`}
+          </button>
+          <div id={`${id}-evidence`} hidden={!showEvidence}>
+            <ChecklistEvidence item={item} editable={evidenceEditable} controller={evidence}/>
+          </div>
+        </div>
+      )}
     </li>
   );
 }

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Link, Navigate, NavLink, useParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { useResource } from "../../shared/useResource";
 import { Icon } from "../../shared/icons";
@@ -11,7 +11,11 @@ import {
   type BadgeTone,
 } from "../../shared/ui";
 import * as api from "./api";
-import { ChecklistItem } from "./ChecklistItem";
+import { InspectionChecklist } from "./InspectionChecklist";
+import { InspectionOverview } from "./InspectionOverview";
+import { InspectionPlans } from "./InspectionPlans";
+import { plansForInspection } from "../action-plans/public";
+import { InspectionProvider, itemAnchor, type InspectionView } from "./InspectionContext";
 import { useChecklistEvidence } from "./useChecklistEvidence";
 import * as evidenceApi from "./evidence";
 import { formatDate, Progress, StatusBadge } from "./Result";
@@ -22,9 +26,17 @@ import {
   tally,
   type Classification,
 } from "./scoring";
-import { SectionNav } from "./SectionNav";
 import type { Answer, ChecklistEvidence } from "./types";
 import { ReportingActions } from "./reporting/ReportingActions";
+/** Routed tabs below /audit/inspections/:id (D1: the overview is the index). */
+const TABS: Record<string, "overview" | "checklist" | "plans"> = {
+  "": "overview",
+  checklist: "checklist",
+  plano: "plans",
+};
+/** Responses that source a checklist action plan (Action Plans sync trigger). */
+const isPlanSource = (response: Answer["response"]) =>
+  response === "AP" || response === "NAT";
 /** Band colors exist only for a finalized result. */
 const BAND_TONE: Record<Classification, BadgeTone> = {
   adequate: "success",
@@ -32,7 +44,10 @@ const BAND_TONE: Record<Classification, BadgeTone> = {
   inadequate: "danger",
 };
 export function InspectionPage() {
-  const { inspectionId = "" } = useParams();
+  const { inspectionId = "", "*": tabPath = "" } = useParams();
+  const tab = TABS[tabPath];
+  const moreId = useId();
+  const [more, setMore] = useState(false);
   const auth = useAuth();
   const evidence = useChecklistEvidence(inspectionId);
   const [review,setReview]=useState<{inspectionId:string;version:number;rows:ChecklistEvidence[]}>();
@@ -53,6 +68,33 @@ export function InspectionPage() {
     }, [inspectionId]),
   );
   const data = r.data;
+  // Plans come from the Action Plans public read contract, only with action_plan.read.
+  const canPlans =
+    !!data && auth.can("action_plan.read", { unit_id: data.summary.unit_id });
+  const plans = useResource(
+    useCallback(
+      () => (canPlans ? plansForInspection(inspectionId) : Promise.resolve(null)),
+      [inspectionId, canPlans],
+    ),
+  );
+  const reloadPlans = plans.reload;
+  // A persisted answer entering/leaving AP/NAT (or switching between them)
+  // creates, reactivates or deactivates its plan server-side: the shown plans
+  // are stale until read again.
+  const [plansStale, setPlansStale] = useState(false);
+  const previousTab = useRef(tab);
+  useEffect(() => {
+    const entering = tab === "plans" && previousTab.current !== "plans";
+    previousTab.current = tab;
+    if (!canPlans) return;
+    // Refresh on entering the plans tab (other sessions may have changed them),
+    // or once stale saves settle while plans are on screen. The checklist shows
+    // no plans, so a stale read waits there and is coalesced into one request.
+    if (entering || (plansStale && tab !== "checklist")) {
+      setPlansStale(false);
+      reloadPlans();
+    }
+  }, [tab, plansStale, canPlans]);
   const [lifecycleTransition, setLifecycleTransition] = useState<{
     inspectionId: string;
     version: number;
@@ -85,7 +127,7 @@ export function InspectionPage() {
     reviewGeneration.current++;
     setLifecycleTransition(undefined);
     setPending(new Set());setAction(undefined);setReview(undefined);
-    setFinalPending(0);setPreparing(false);setEvidenceError("");setEvidenceConflict(false);setStale(false);
+    setFinalPending(0);setPreparing(false);setEvidenceError("");setEvidenceConflict(false);setStale(false);setPlansStale(false);setTarget(undefined);
     return () => { reviewGeneration.current++; };
   }, [inspectionId]);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -96,20 +138,41 @@ export function InspectionPage() {
     moved.current = false;
     heading.current?.focus();
   }, [section]);
+  // A criterion requested from the overview ("Abrir critério N").
+  const [target, setTarget] = useState<string>();
+  useEffect(() => {
+    if (!target || tab !== "checklist") return;
+    // Deferred past this commit: the shell scrolls to the top and focuses
+    // <main> on route change after this effect, and would undo it.
+    const timer = setTimeout(() => {
+      setTarget(undefined);
+      const row = document.getElementById(itemAnchor(target));
+      if (!row) return;
+      row.scrollIntoView?.({ block: "start" });
+      row.focus({ preventScroll: true });
+    });
+    return () => clearTimeout(timer);
+  }, [target, tab]);
   const loaded = useMemo(
     () => Object.fromEntries((data?.rows ?? []).map((a) => [a.item_key, a])),
     [data],
   );
   const answers = saved && saved.from === data ? saved.rows : loaded;
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
   const onChange = useCallback(
-    (row: Answer) =>
+    (row: Answer) => {
+      const before = answersRef.current[row.item_key]?.response ?? null;
+      if (before !== row.response && (isPlanSource(before) || isPlanSource(row.response)))
+        setPlansStale(true);
       setSaved((s) => ({
         from: data,
         rows: {
           ...(s && s.from === data ? s.rows : loaded),
           [row.item_key]: row,
         },
-      })),
+      }));
+    },
     [data, loaded],
   );
   const reload = () => {
@@ -162,6 +225,8 @@ export function InspectionPage() {
       </>
     );
   const { summary, sections, items } = data;
+  const base = `/audit/inspections/${summary.id}`;
+  if (!tab || (tab === "plans" && !canPlans)) return <Navigate to={base} replace />;
   const scope = { unit_id: summary.unit_id };
   const draft = summary.status === "draft";
   const editable = draft && auth.can("audit.inspection.edit", scope);
@@ -169,12 +234,38 @@ export function InspectionPage() {
   const remaining = overall.tally.total - overall.tally.answered;
   const current = sections.find((s) => s.key === section) ?? sections[0];
   const index = sections.indexOf(current);
-  const sectionResult = results.sections[current.key];
-  const select = (key: string) => {
-    moved.current = true;
+  const select = (key: string, item?: string) => {
+    // A requested criterion takes focus instead of the section heading.
+    moved.current = !item;
     setSection(key);
+    setTarget(item);
   };
   const band = summary.final_classification;
+  const view: InspectionView = {
+    summary,
+    sections,
+    items,
+    answers,
+    results,
+    editable,
+    stale,
+    confirming: !!action,
+    evidence,
+    current,
+    index,
+    select,
+    heading,
+    onChange,
+    onPending,
+    onConflict: () => void refreshSummary(),
+    plans: {
+      enabled: canPlans,
+      rows: plans.data ?? [],
+      loading: plans.loading,
+      error: plans.error,
+      reload: plans.reload,
+    },
+  };
   return (
     <>
       <nav className="breadcrumb" aria-label="Trilha">
@@ -216,7 +307,13 @@ export function InspectionPage() {
             )}
           </ul>
         </div>
-        <section className="audit-hero-kpis" aria-label="Resumo da auditoria">
+        {/* Draft: progress leads and the partial score is secondary; finalized:
+            the final result leads. */}
+        <section
+          className="audit-hero-kpis"
+          data-lead={draft ? "progress" : "result"}
+          aria-label="Resumo da auditoria"
+        >
           <div className="metric audit-progress-kpi">
             <span className="metric-label">Progresso</span>
             <Progress
@@ -251,7 +348,6 @@ export function InspectionPage() {
           )}
         </section>
         <div className="audit-hero-actions">
-          <ReportingActions kind="inspection" inspectionId={summary.id} unitId={summary.unit_id} blocked={pending.size > 0 || stale || r.loading} />
           {draft && auth.can("audit.inspection.finalize", scope) && (
             <button
               className="primary"
@@ -276,16 +372,34 @@ export function InspectionPage() {
           {!draft && auth.can("audit.inspection.reopen", scope) && (
             <button onClick={() => setAction("reopen")}>Reabrir</button>
           )}
-          {auth.can("action_plan.read", scope) && (
-            <Link
-              className="audit-plans-link"
-              to={`/action-plans?inspection=${summary.id}`}
-            >
-              Planos de ação desta auditoria
-            </Link>
-          )}
+          {/* Secondary actions stay mounted (report preview/state survive); on
+              narrow screens they collapse behind "Mais ações". */}
+          <button
+            type="button"
+            className="audit-more-toggle"
+            aria-expanded={more}
+            aria-controls={moreId}
+            onClick={() => setMore((open) => !open)}
+          >
+            Mais ações
+          </button>
+          <div id={moreId} className="audit-more" data-open={more}>
+            <ReportingActions kind="inspection" inspectionId={summary.id} unitId={summary.unit_id} blocked={pending.size > 0 || stale || r.loading} />
+          </div>
         </div>
       </header>
+      <nav className="audit-tabs" aria-label="Auditoria">
+        <NavLink end to={base}>
+          Visão geral
+        </NavLink>
+        <NavLink to={`${base}/checklist`}>
+          Checklist{" "}
+          <span className="audit-tab-count numeric">
+            {overall.tally.answered}/{overall.tally.total}
+          </span>
+        </NavLink>
+        {canPlans && <NavLink to={`${base}/plano`}>Plano de ação</NavLink>}
+      </nav>
       {evidenceError && <Notice error>{evidenceError}</Notice>}
       {evidenceConflict && <Notice error>O conjunto de evidências foi alterado. <button onClick={reload}>Recarregar evidências e revisar</button></Notice>}
       {Object.keys(evidence.uploads).length>0 && <Notice tone="warning">Há envios de evidência pendentes. Eles não entram no conjunto disponível e não poderão ser confirmados após a finalização.</Notice>}
@@ -312,77 +426,15 @@ export function InspectionPage() {
       {draft && !editable && (
         <Notice>Você pode consultar esta auditoria, mas não editá-la.</Notice>
       )}
-      <div className="audit-layout">
-        <SectionNav
-          sections={sections.map((s) => ({
-            key: s.key,
-            position: s.position,
-            name: s.name,
-            answered: results.sections[s.key].tally.answered,
-            total: results.sections[s.key].tally.total,
-          }))}
-          current={current.key}
-          answered={overall.tally.answered}
-          total={overall.tally.total}
-          onSelect={select}
-        />
-        <section
-          className="audit-checklist"
-          aria-labelledby="audit-section-title"
-        >
-          <header className="audit-section-head">
-            <h2 id="audit-section-title" ref={heading} tabIndex={-1}>
-              {current.position}. {current.name}
-            </h2>
-            <p className="numeric">
-              {sectionResult.tally.answered}/{sectionResult.tally.total}{" "}
-              respondidos · {formatScore(sectionResult.score)}{" "}
-              {sectionResult.classification
-                ? `· ${CLASSIFICATION_LABELS[sectionResult.classification]}`
-                : sectionResult.complete
-                  ? "· Sem critérios aplicáveis"
-                  : sectionResult.score !== null
-                    ? "· Parcial"
-                    : ""}
-            </p>
-          </header>
-          <ol className="audit-items">
-            {items
-              .filter((i) => i.section_key === current.key)
-              .map((item) =>
-                answers[item.key] ? (
-                  <ChecklistItem
-                    key={item.key}
-                    item={item}
-                    row={answers[item.key]}
-                    editable={editable && !stale}
-                    evidenceEditable={editable && !stale && !action}
-                    evidence={evidence}
-                    onChange={onChange}
-                    onPending={onPending}
-                    onConflict={() => void refreshSummary()}
-                  />
-                ) : null,
-              )}
-          </ol>
-          <div className="actions audit-pager">
-            <button
-              type="button"
-              disabled={index <= 0}
-              onClick={() => select(sections[index - 1].key)}
-            >
-              Seção anterior
-            </button>
-            <button
-              type="button"
-              disabled={index >= sections.length - 1}
-              onClick={() => select(sections[index + 1].key)}
-            >
-              Próxima seção
-            </button>
-          </div>
-        </section>
-      </div>
+      <InspectionProvider value={view}>
+        {tab === "overview" && <InspectionOverview />}
+        {tab === "plans" && <InspectionPlans />}
+        {/* The checklist stays mounted while other tabs show, so per-criterion
+            save queues and text being typed survive a tab switch. */}
+        <div className="audit-tab-panel" hidden={tab !== "checklist"}>
+          <InspectionChecklist />
+        </div>
+      </InspectionProvider>
       {action && (
         <Confirm
           title={

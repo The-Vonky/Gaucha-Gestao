@@ -10,10 +10,13 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { ChecklistEvidence } from "../apps/web/src/modules/audit/ChecklistEvidence";
 import type { EvidenceController } from "../apps/web/src/modules/audit/useChecklistEvidence";
 import { InspectionPage } from "../apps/web/src/modules/audit/InspectionPage";
+import { UnitPage } from "../apps/web/src/modules/audit/UnitPage";
+import { AuditOverview } from "../apps/web/src/modules/audit/AuditOverview";
+import { NewInspection } from "../apps/web/src/modules/audit/NewInspection";
 import { visibleNavigation } from "../apps/web/src/app/navigation";
 import type {
   Answer,
@@ -27,10 +30,15 @@ const api = vi.hoisted(() => ({
   saveAnswer: vi.fn(),
   finalize: vi.fn(),
   reopen: vi.fn(),
+  units: vi.fn(),
+  summaries: vi.fn(),
+  createInspection: vi.fn(),
 }));
 vi.mock("../apps/web/src/modules/audit/api", () => api);
 const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async()=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
 vi.mock("../apps/web/src/modules/audit/evidence",()=>evidenceApi);
+const plansApi = vi.hoisted(() => ({ summaries: vi.fn(async () => [] as unknown[]) }));
+vi.mock("../apps/web/src/modules/action-plans/api", () => plansApi);
 vi.mock("../apps/web/src/modules/audit/reporting/api", () => ({
   inspectionExport: vi.fn(), historyExport: vi.fn(),
 }));
@@ -52,6 +60,7 @@ afterEach(() => {
   permissions.allowed = true;
   evidenceApi.listEvidence.mockResolvedValue([]);
   evidenceApi.pendingCount.mockResolvedValue(0);
+  plansApi.summaries.mockResolvedValue([]);
 });
 const version = "v";
 const items = [
@@ -98,15 +107,16 @@ function summary(over: Partial<InspectionSummary> = {}): InspectionSummary {
     ...over,
   };
 }
-function setup(s: InspectionSummary | null, rows: Answer[], onRender?: React.ProfilerOnRenderCallback) {
+// D1: the inspection opens on its overview; the checklist lives at /checklist.
+function setup(s: InspectionSummary | null, rows: Answer[], onRender?: React.ProfilerOnRenderCallback, path = "/audit/inspections/i1/checklist") {
   api.inspection.mockResolvedValue(s);
   api.checklist.mockResolvedValue({ sections, items });
   api.answers.mockResolvedValue(rows);
   render(
-    <MemoryRouter initialEntries={["/audit/inspections/i1"]}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route
-          path="/audit/inspections/:inspectionId"
+          path="/audit/inspections/:inspectionId/*"
           element={<React.Profiler id="inspection" onRender={onRender ?? (() => undefined)}><InspectionPage /></React.Profiler>}
         />
       </Routes>
@@ -156,9 +166,9 @@ describe("inspection page", () => {
     api.inspection.mockImplementation(async(id:string)=>summary({id,answered:3,at_count:3}));
     api.checklist.mockResolvedValue({sections,items});
     api.answers.mockResolvedValue(items.map(i=>answer(i.key,"AT")));
-    render(<MemoryRouter initialEntries={["/audit/inspections/i1"]}>
-      <Link to="/audit/inspections/i2">Outra auditoria</Link>
-      <Routes><Route path="/audit/inspections/:inspectionId" element={<InspectionPage/>}/></Routes>
+    render(<MemoryRouter initialEntries={["/audit/inspections/i1/checklist"]}>
+      <Link to="/audit/inspections/i2/checklist">Outra auditoria</Link>
+      <Routes><Route path="/audit/inspections/:inspectionId/*" element={<InspectionPage/>}/></Routes>
     </MemoryRouter>);
     await screen.findByText("Finalizar");
     await waitFor(()=>expect(evidenceApi.listEvidence).toHaveBeenCalledWith("i1"));
@@ -223,6 +233,8 @@ describe("inspection page", () => {
       expect(screen.queryByRole("button", { name: /Anexar arquivo/ })).toBeNull();
     } else {
       await waitFor(() => expect((screen.getAllByRole("button", { name: "Atende (AT)" })[0] as HTMLButtonElement).disabled).toBe(false));
+      // D5: attach controls live behind each criterion's "Evidências (n)" disclosure.
+      for (const toggle of screen.getAllByRole("button", { name: /^Evidências \(/ })) await user.click(toggle);
       expect(screen.getAllByRole("button", { name: /Anexar arquivo/ }).length).toBe(2);
     }
   });
@@ -403,6 +415,192 @@ describe("inspection page", () => {
     expect(await screen.findByText(/não editá-la/)).toBeTruthy();
     expect(screen.queryByText("Finalizar")).toBeNull();
   });
+  it("opens on the overview tab and reaches the checklist through its tab", async () => {
+    const user = userEvent.setup();
+    setup(summary({ answered: 1, at_count: 1 }), [answer("item-001", "AT"), answer("item-002", null), answer("item-003", null)], undefined, "/audit/inspections/i1");
+    const overview = await screen.findByRole("link", { name: "Visão geral" });
+    expect(overview.getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("heading", { name: "Respostas" })).toBeTruthy();
+    // The checklist stays mounted but hidden, so its controls are not exposed.
+    expect(screen.queryAllByRole("button", { name: "Atende (AT)" })).toHaveLength(0);
+    expect(screen.getByText("Finalizar")).toBeTruthy();
+    await user.click(screen.getByRole("link", { name: /Checklist/ }));
+    expect(screen.getAllByRole("button", { name: "Atende (AT)" })).toHaveLength(2);
+    expect(screen.queryByRole("heading", { name: "Respostas" })).toBeNull();
+  });
+  it("summarizes a draft on the overview: partial result, sections and points of attention", async () => {
+    const user = userEvent.setup();
+    const nat = { ...answer("item-002", "NAT"), observation: "Teto com infiltração" };
+    setup(summary({ answered: 2, at_count: 1, nat_count: 1 }), [answer("item-001", "AT"), nat, answer("item-003", null)], undefined, "/audit/inspections/i1");
+    await screen.findByRole("heading", { name: "Conformidade parcial" });
+    expect(screen.getAllByText("Parcial · em andamento", { exact: false }).length).toBeGreaterThan(0);
+    // No result band label for a draft.
+    expect(screen.queryByText("Adequada")).toBeNull();
+    expect(within(screen.getByRole("region", { name: /Pontos de atenção/ })).getByText("Teto com infiltração")).toBeTruthy();
+    expect(screen.getByText("Sem respostas")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Abrir seção 2: ESTOQUE no checklist" }));
+    expect(screen.getByRole("heading", { name: "2. ESTOQUE" })).toBeTruthy();
+  });
+  it("opens the requested criterion, not just its section, after the shell's route focus", async () => {
+    const user = userEvent.setup();
+    const scrolled: Element[] = [];
+    const scrollIntoView = vi.fn(function (this: Element) { scrolled.push(this); });
+    Element.prototype.scrollIntoView = scrollIntoView;
+    // Mirrors the App Shell: every route change scrolls to top and focuses <main>.
+    function ShellFocus() {
+      const { pathname } = useLocation();
+      React.useEffect(() => { document.getElementById("main")?.focus({ preventScroll: true }); }, [pathname]);
+      return null;
+    }
+    api.inspection.mockResolvedValue(summary({ answered: 1, ap_count: 1 }));
+    api.checklist.mockResolvedValue({ sections, items });
+    api.answers.mockResolvedValue([answer("item-001", null), answer("item-002", null),
+      { ...answer("item-003", "AP"), observation: "Caixas no chão" }]);
+    render(
+      <MemoryRouter initialEntries={["/audit/inspections/i1"]}>
+        <main id="main" tabIndex={-1}>
+          <Routes>
+            <Route path="/audit/inspections/:inspectionId/*" element={<InspectionPage />} />
+          </Routes>
+        </main>
+        <ShellFocus />
+      </MemoryRouter>,
+    );
+    await user.click(await screen.findByRole("button", { name: "Abrir critério 3 na seção 2: ESTOQUE" }));
+    expect(screen.getByRole("heading", { name: "2. ESTOQUE" })).toBeTruthy();
+    await waitFor(() => expect(document.activeElement?.textContent).toContain("Estoque limpo?"));
+    const row = document.activeElement as HTMLElement;
+    expect(row.tagName).toBe("LI");
+    expect(row.classList.contains("audit-item")).toBe(true);
+    expect(scrolled).toEqual([row]);
+    // Plain section navigation keeps focusing the section heading, without a criterion scroll.
+    await user.click(screen.getByRole("link", { name: "Visão geral" }));
+    await user.click(screen.getByRole("button", { name: "Abrir seção 1: ESTRUTURA no checklist" }));
+    expect(screen.getByRole("heading", { name: "1. ESTRUTURA" })).toBeTruthy();
+    await new Promise((done) => setTimeout(done, 20));
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(document.activeElement?.closest(".audit-item")).toBeNull();
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+  it("lists the inspection's plans on its tab through the Action Plans contract", async () => {
+    plansApi.summaries.mockResolvedValue([{
+      plan: { id: "p1", status: "pending", source_type: "checklist", source_active: true, source_response: "NAT",
+        source_reactivated_after_verification: false, due_date: null, effectiveness: null,
+        improvement_point: "Teto íntegro?", responsible: "" },
+      item_number: 2, unit_name: "Unidade A", sector_name: null, inspection_applied_on: null,
+      verified_by_name: null, completed_by_name: null,
+    }]);
+    setup(summary(), [answer("item-001", null), answer("item-002", "NAT"), answer("item-003", null)], undefined, "/audit/inspections/i1/plano");
+    expect(await screen.findByRole("link", { name: "2. Teto íntegro?" })).toBeTruthy();
+    expect(plansApi.summaries).toHaveBeenCalledWith({ p_inspection: "i1" });
+    expect(screen.getByRole("link", { name: "Plano de ação" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "Abrir na fila de Planos de Ação" }).getAttribute("href")).toBe("/action-plans?inspection=i1");
+  });
+  it("reads plans again once an AP/NAT answer is persisted, including saves still pending on a tab switch", async () => {
+    const user = userEvent.setup();
+    const plan = (id: string, item_number: number, source_active = true) => ({
+      plan: { id, status: "pending", source_type: "checklist", source_active, source_response: "NAT",
+        source_reactivated_after_verification: false, due_date: null, effectiveness: null,
+        improvement_point: `Plano ${id}`, responsible: "" },
+      item_number, unit_name: "Unidade A", sector_name: null, inspection_applied_on: null,
+      verified_by_name: null, completed_by_name: null,
+    });
+    const saves: Array<() => void> = [];
+    api.saveAnswer.mockImplementation((row: Answer, values) =>
+      new Promise((done) => saves.push(() => done({ ...row, ...values, version: row.version + 1 }))));
+    const settleSave = async () => {
+      await waitFor(() => expect(saves).toHaveLength(1));
+      await act(async () => saves.shift()!());
+    };
+    setup(summary(), items.map((i) => answer(i.key, null)));
+    const nat = (await screen.findAllByRole("button", { name: /\(NAT\)$/ }))[0];
+    await waitFor(() => expect(plansApi.summaries).toHaveBeenCalledTimes(1));
+    // The checklist shows no plans: an answer saved there does not read them.
+    await user.click(nat);
+    await settleSave();
+    await waitFor(() => expect(nat.getAttribute("aria-pressed")).toBe("true"));
+    expect(plansApi.summaries).toHaveBeenCalledTimes(1);
+    plansApi.summaries.mockResolvedValue([plan("p1", 1)]);
+    await user.click(screen.getByRole("link", { name: "Visão geral" }));
+    await waitFor(() => expect(plansApi.summaries).toHaveBeenCalledTimes(2));
+    const plansPanel = screen.getByRole("region", { name: /Planos de ação/ });
+    await waitFor(() => expect(within(plansPanel).getByText("1", { selector: "h2 .numeric" })).toBeTruthy());
+    // A save still pending when leaving the checklist refreshes plans when it settles.
+    await user.click(screen.getByRole("link", { name: /Checklist/ }));
+    await user.click(screen.getAllByRole("button", { name: /\(AT\)$/ })[0]);
+    await user.click(screen.getByRole("link", { name: "Visão geral" }));
+    expect(plansApi.summaries).toHaveBeenCalledTimes(2);
+    plansApi.summaries.mockResolvedValue([plan("p1", 1, false)]);
+    await settleSave();
+    await waitFor(() => expect(plansApi.summaries).toHaveBeenCalledTimes(3));
+    // An observation-only save cannot change plans: no new read.
+    await user.click(screen.getByRole("link", { name: /Checklist/ }));
+    const [field] = screen.getAllByLabelText("Observação");
+    await user.type(field, "Ok");
+    await user.click(screen.getByRole("link", { name: "Visão geral" }));
+    await settleSave();
+    await waitFor(() => expect(screen.queryByText("Salvando…")).toBeNull());
+    expect(api.saveAnswer).toHaveBeenCalledTimes(3);
+    expect(plansApi.summaries).toHaveBeenCalledTimes(3);
+  });
+  it("never shows a zero count while plans or evidence are loading or failed", async () => {
+    const user = userEvent.setup();
+    plansApi.summaries.mockRejectedValue({ code: "XX000", message: "db detail" });
+    evidenceApi.listEvidence.mockImplementation(() => new Promise(() => undefined));
+    setup(summary(), items.map((i) => answer(i.key, null)), undefined, "/audit/inspections/i1");
+    const plansPanel = await screen.findByRole("region", { name: /Planos de ação/ });
+    await within(plansPanel).findByRole("button", { name: "Tentar novamente" });
+    expect(within(plansPanel).getByRole("heading").textContent).toBe("Planos de ação");
+    expect(within(plansPanel).queryByText("0")).toBeNull();
+    const evidencePanel = screen.getByRole("region", { name: /^Evidências/ });
+    expect(within(evidencePanel).getByRole("status").textContent).toBe("Carregando evidências…");
+    expect(within(evidencePanel).getByRole("heading").textContent).toBe("Evidências");
+    await user.click(screen.getByRole("link", { name: "Plano de ação" }));
+    const tab = await screen.findByRole("region", { name: /Planos de ação/ });
+    await within(tab).findByRole("button", { name: "Tentar novamente" });
+    expect(within(tab).getByRole("heading").textContent).toBe("Planos de ação");
+    expect(within(tab).queryByText("0")).toBeNull();
+    await user.click(screen.getByRole("link", { name: /Checklist/ }));
+    expect(screen.getAllByRole("button", { name: "Evidências" })).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: /Evidências \(0\)/ })).toBeNull();
+  });
+  it("hides the action plan tab without action_plan.read", async () => {
+    permissions.allowed = false;
+    setup(summary(), [answer("item-001", null), answer("item-002", null), answer("item-003", null)], undefined, "/audit/inspections/i1");
+    await screen.findByRole("link", { name: "Visão geral" });
+    expect(screen.queryByRole("link", { name: "Plano de ação" })).toBeNull();
+    expect(plansApi.summaries).not.toHaveBeenCalled();
+  });
+  it("keeps criterion evidence behind a closed \"Evidências (n)\" disclosure", async () => {
+    const user = userEvent.setup();
+    evidenceApi.listEvidence.mockResolvedValue([{ id: "e1", inspection_id: "i1", item_key: "item-001", object_key: "k",
+      original_name: "laudo.pdf", content_type: "application/pdf", size_bytes: 10, created_by: "u",
+      uploaded_by_name: "Ana", uploaded_at: "2026-09-24T12:00:00Z" }]);
+    setup(summary(), [answer("item-001", null), answer("item-002", null), answer("item-003", null)]);
+    const toggle = await screen.findByRole("button", { name: "Evidências (1)" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("button", { name: "Anexar arquivo ao critério 1" })).toBeNull();
+    await user.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "Anexar arquivo ao critério 1" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Baixar laudo.pdf" })).toBeTruthy();
+  });
+  it("keeps unsaved observation text and the pending gate across a tab switch", async () => {
+    const user = userEvent.setup();
+    api.saveAnswer.mockImplementation(() => new Promise(() => undefined));
+    setup(summary(), [answer("item-001", null), answer("item-002", null), answer("item-003", null)]);
+    const [field] = await screen.findAllByLabelText("Observação");
+    await user.type(field, "Ralo aberto");
+    // Leaving the tab blurs the field, which starts the (still pending) save.
+    await user.click(screen.getByRole("link", { name: "Visão geral" }));
+    expect(api.saveAnswer).toHaveBeenLastCalledWith(
+      expect.objectContaining({ item_key: "item-001" }),
+      expect.objectContaining({ observation: "Ralo aberto" }),
+    );
+    expect((screen.getByText("Exportar Excel") as HTMLButtonElement).disabled).toBe(true);
+    await user.click(screen.getByRole("link", { name: /Checklist/ }));
+    expect((screen.getAllByLabelText("Observação")[0] as HTMLTextAreaElement).value).toBe("Ralo aberto");
+  });
   it("handles unauthorized or unknown inspections and load errors", async () => {
     setup(null, []);
     expect(await screen.findByText("Auditoria indisponível")).toBeTruthy();
@@ -412,7 +610,7 @@ describe("inspection page", () => {
       <MemoryRouter initialEntries={["/audit/inspections/i1"]}>
         <Routes>
           <Route
-            path="/audit/inspections/:inspectionId"
+            path="/audit/inspections/:inspectionId/*"
             element={<InspectionPage />}
           />
         </Routes>
@@ -423,6 +621,132 @@ describe("inspection page", () => {
   });
 });
 
+describe("unit page", () => {
+  const unit = { id: "A", code: "UA-1", name: "Cozinha Central", active: true };
+  const final = (id: string, applied_on: string, final_score: number, final_classification: "adequate" | "partial") =>
+    summary({ id, applied_on, status: "finalized", final_score, final_classification, finalized_at: `${applied_on}T12:00:00Z`, answered: 3, at_count: 3 });
+  function renderUnit(path: string) {
+    api.units.mockResolvedValue([unit]);
+    api.summaries.mockResolvedValue([
+      summary({ id: "d1", applied_on: "2026-10-01", answered: 1, at_count: 1 }),
+      final("f2", "2026-09-20", 60, "partial"),
+      final("f1", "2026-08-20", 90, "adequate"),
+    ]);
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes><Route path="/audit/units/:unitId/*" element={<UnitPage />} /></Routes>
+      </MemoryRouter>,
+    );
+  }
+  it("summarizes the unit: situation derived from the latest final result, draft and trend", async () => {
+    renderUnit("/audit/units/A");
+    expect(await screen.findByRole("heading", { name: "Cozinha Central" })).toBeTruthy();
+    expect(api.summaries).toHaveBeenCalledWith({ p_unit: "A" });
+    // Latest finalized is partial: attention wins over the open draft (D6).
+    expect(screen.getByText("Em atenção")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Resumo" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "Continuar" }).getAttribute("href")).toBe("/audit/inspections/d1/checklist");
+    expect(screen.getByText(/-30,0 p\.p\. vs\. anterior/)).toBeTruthy();
+    expect(screen.getByRole("group", { name: /últimas 2 auditorias finalizadas/ })).toBeTruthy();
+  });
+  it("lists every inspection and the history report on the Histórico tab", async () => {
+    renderUnit("/audit/units/A/historico");
+    expect(await screen.findByRole("heading", { name: "Auditorias" })).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Abrir" })).toHaveLength(3);
+    expect(screen.getByRole("heading", { name: "Relatório do histórico" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Exportar histórico" })).toBeTruthy();
+  });
+});
+describe("audit overview by monitored unit", () => {
+  const units = [
+    { id: "u1", code: "U1", name: "Alfa", active: true },
+    { id: "u2", code: "U2", name: "Beta", active: true },
+    { id: "u3", code: "U3", name: "Gama", active: true },
+    { id: "u4", code: "U4", name: "Delta", active: true },
+  ];
+  const fin = (unit_id: string, unit_name: string, final_score: number, final_classification: "adequate" | "partial" | "inadequate") =>
+    summary({ id: `f-${unit_id}`, unit_id, unit_name, status: "finalized", final_score, final_classification, finalized_at: "2026-09-20T12:00:00Z", answered: 3, at_count: 3 });
+  function renderOverview() {
+    api.units.mockResolvedValue(units);
+    api.summaries.mockResolvedValue([
+      summary({ id: "d-u2", unit_id: "u2", unit_name: "Beta", applied_on: "2026-10-01", created_at: "2026-10-01T10:00:00Z" }),
+      fin("u1", "Alfa", 95, "adequate"),
+      fin("u3", "Gama", 40, "inadequate"),
+    ]);
+    render(<MemoryRouter><AuditOverview /></MemoryRouter>);
+  }
+  it("orders units by situation (attention, in progress, adequate, no data) and keeps the average neutral", async () => {
+    renderOverview();
+    await screen.findByRole("heading", { name: "Unidades monitoradas" });
+    expect(api.summaries).toHaveBeenCalledWith({ p_overview: true });
+    const names = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(names).toEqual(["Gama", "Beta", "Alfa", "Delta"]);
+    // (95 + 40) / 2 = 67.5, shown without a result band (D3).
+    const average = screen.getByText("67,5%");
+    expect(average.closest(".metric")?.className).toBe("metric");
+    expect(screen.getByRole("link", { name: "Continuar" }).getAttribute("href")).toBe("/audit/inspections/d-u2/checklist");
+  });
+  it("derives recent activity only from start and finalization, and covers each card with its unit code", async () => {
+    renderOverview();
+    const activity = await screen.findByRole("region", { name: "Atividade recente" });
+    const events = within(activity).getAllByRole("listitem").map((li) => li.textContent);
+    // Two finalized + one draft: three starts, two finalizations, nothing else.
+    expect(events.filter((t) => t?.startsWith("Auditoria iniciada"))).toHaveLength(3);
+    expect(events.filter((t) => t?.startsWith("Auditoria finalizada"))).toHaveLength(2);
+    expect(events).toHaveLength(5);
+    const card = screen.getByRole("heading", { level: 3, name: "Gama" }).closest(".unit-card")!;
+    expect(card.querySelector(".unit-cover .unit-cover-code")?.textContent).toBe("U3");
+    expect(within(card as HTMLElement).getAllByRole("link")).toHaveLength(1);
+  });
+  it("filters units by situation and clears the filter", async () => {
+    const user = userEvent.setup();
+    renderOverview();
+    await screen.findByRole("heading", { name: "Unidades monitoradas" });
+    await user.click(screen.getByRole("button", { name: /^Em atenção/ }));
+    expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Gama"]);
+    await user.click(screen.getByRole("button", { name: /^Adequadas/ }));
+    expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Alfa"]);
+    await user.click(screen.getByRole("button", { name: /^Todas/ }));
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(4);
+  });
+});
+describe("new inspection", () => {
+  const units = [
+    { id: "u1", code: "U1", name: "Alfa", active: true },
+    { id: "u2", code: "U2", name: "Beta", active: true },
+  ];
+  function renderNew(props: { unitId?: string }) {
+    render(
+      <MemoryRouter initialEntries={["/audit"]}>
+        <Routes>
+          <Route path="/audit" element={<NewInspection units={units} lastApplied={{ u1: "2026-09-20" }} onClose={() => undefined} {...props} />} />
+          <Route path="/audit/inspections/:inspectionId/*" element={<p>Checklist aberto</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+  it("fixes the unit from the unit page, suggests the previous visit and opens the checklist", async () => {
+    const user = userEvent.setup();
+    api.createInspection.mockResolvedValue("new-id");
+    renderNew({ unitId: "u1" });
+    expect(screen.queryByRole("combobox", { name: "Unidade" })).toBeNull();
+    expect(screen.getByText("Alfa")).toBeTruthy();
+    expect((screen.getByLabelText("Data da visita anterior (opcional)") as HTMLInputElement).value).toBe("2026-09-20");
+    await user.click(screen.getByText("Salvar"));
+    expect(api.createInspection).toHaveBeenCalledWith("u1", expect.any(String), "2026-09-20");
+    expect(await screen.findByText("Checklist aberto")).toBeTruthy();
+  });
+  it("suggests the previous visit per chosen unit until the user edits it", async () => {
+    const user = userEvent.setup();
+    renderNew({});
+    const previous = screen.getByLabelText("Data da visita anterior (opcional)") as HTMLInputElement;
+    expect(previous.value).toBe("");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Unidade" }), "u1");
+    expect(previous.value).toBe("2026-09-20");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Unidade" }), "u2");
+    expect(previous.value).toBe("");
+  });
+});
 describe("Checklist evidence removal errors", () => {
   it.each([
     ["55000", "Esta operação não é permitida no estado atual do registro."],

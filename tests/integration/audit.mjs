@@ -1997,26 +1997,91 @@ try {
       page
         .getByText("Carregando", { exact: false })
         .waitFor({ state: "hidden" });
+    // Overview tables stay legible at every width: section names keep real
+    // width and no row/count cell overflows internally.
+    const legibleOverview = async (page, label) => {
+      const result = await page.evaluate(() => ({
+        names: [...document.querySelectorAll(".audit-sr-name")].map((e) => e.getBoundingClientRect().width),
+        overflowing: [...document.querySelectorAll(".audit-section-results li, .audit-sr-meta, .audit-count")]
+          .filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.className),
+      }));
+      assert.equal(result.names.length, 9, `${label}: section results`);
+      assert.ok(Math.min(...result.names) >= 120, `${label}: section names squeezed ${result.names}`);
+      assert.deepEqual(result.overflowing, [], `${label}: internal overflow`);
+    };
     const page = await open("ui");
     const uiInspection = await create("ui");
+    // A second draft with AP/NAT answers: its plans and points of attention render links.
+    const planInspection = await create("ui");
+    await fill(planInspection, ["AP", "NAT"]);
     for (const route of [
       "/audit",
       `/audit/units/${A}`,
+      `/audit/units/${A}/historico`,
+      `/audit/inspections/${uiInspection}/checklist`,
+      `/audit/inspections/${uiInspection}/plano`,
+      `/audit/inspections/${planInspection}/plano`,
+      `/audit/inspections/${planInspection}`,
       `/audit/inspections/${uiInspection}`,
     ]) {
       await page.goto(`${origin}${route}`);
       await page.locator("h1").waitFor();
       await settle(page);
       await noOverflow(page, route);
-      if (route === "/audit") assert.ok(await page.locator(".audit-unit h3 a").count());
-      for (const width of [375, 768, 1440]) {
+      if (route === "/audit") {
+        assert.ok(await page.locator(".unit-card-link").count());
+        assert.ok(await page.locator(".audit-recent-list a").count());
+      }
+      if (route.endsWith("/plano"))
+        await page.getByRole("heading", { name: /^Planos de ação/ }).waitFor();
+      if (route === `/audit/inspections/${planInspection}/plano`)
+        assert.equal(await page.locator(".audit-plan-main a").count(), 2);
+      for (const width of [375, 768, 1024, 1440]) {
         await page.setViewportSize({ width, height: 900 });
         await qualityTouchTargets(page, `${route} ${width}px/coarse`);
+        if (/\/audit\/inspections\/[^/]+$/.test(route))
+          await legibleOverview(page, `${route} ${width}px`);
       }
       await page.setViewportSize({ width: 375, height: 812 });
     }
+    // A unit card opens the unit from its body, not only its cover; "Continuar"
+    // stays its own target above that area.
+    for (const width of [1440, 375]) {
+      await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
+      const card = page.locator(".unit-card", { has: page.locator(".unit-card-continue") }).first();
+      await page.goto(`${origin}/audit`);
+      await settle(page);
+      // A real pointer at the card body: the extended unit link must receive it.
+      await card.locator(".unit-card-foot").scrollIntoViewIfNeeded();
+      const foot = await card.locator(".unit-card-foot").boundingBox();
+      await page.mouse.click(foot.x + foot.width / 2, foot.y + foot.height / 2);
+      await page.waitForURL(/\/audit\/units\/[^/]+$/);
+      await page.goto(`${origin}/audit`);
+      await settle(page);
+      await card.locator(".unit-card-continue").click();
+      await page.waitForURL(/\/audit\/inspections\/[^/]+\/checklist$/);
+    }
+    await page.setViewportSize({ width: 375, height: 812 });
+    // "Abrir critério N" lands on that criterion (not just its section), after
+    // the shell's own route scroll/focus.
+    await page.goto(`${origin}/audit/inspections/${planInspection}`);
+    await settle(page);
+    await page.getByRole("button", { name: /^Abrir critério 2 na seção 1:/ }).tap();
+    await page.waitForFunction(() =>
+      document.activeElement?.matches("li.audit-item") &&
+      /^\s*2\./.test(document.activeElement.textContent));
+    const target = await page.evaluate(() => {
+      const box = document.activeElement.getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom, height: innerHeight, scrollY };
+    });
+    assert.ok(target.top >= 0 && target.top < target.height, `Criterion 2 in view ${JSON.stringify(target)}`);
+    await page.goto(`${origin}/audit/inspections/${uiInspection}`);
+    await page.locator("h1").waitFor();
+    await settle(page);
     // The official report controls use the full scoped RPC dataset. At 375px,
     // the dedicated print portal includes hidden checklist sections and no app chrome.
+    // At 375px the report controls sit behind the inspection's "Mais ações".
+    await page.getByRole("button", { name: "Mais ações" }).click();
     await page.getByRole("button", { name: "Imprimir / PDF", exact: true }).click();
     const print = page.getByRole("dialog", { name: "Prévia de impressão" });
     await print.waitFor();
@@ -2036,7 +2101,8 @@ try {
     ]);
     assert.match(inspectionDownload.suggestedFilename(), /^auditoria-[a-f0-9-]+-\d+\.xlsx$/);
     assert.deepEqual((await readExcelFile(await inspectionDownload.path())).map((sheet) => sheet.sheet), ["Resumo", "Checklist", "Secoes"]);
-    await page.goto(`${origin}/audit/units/${A}`);
+    // The history report lives on the unit's Histórico tab (D4).
+    await page.goto(`${origin}/audit/units/${A}/historico`);
     await page.getByLabel("De", { exact: true }).fill("2026-09-20");
     await page.getByLabel("Até", { exact: true }).fill("2026-09-20");
     const [historyDownload] = await Promise.all([
@@ -2049,7 +2115,7 @@ try {
     assert.ok(await page.locator(".report-history thead th").count());
     await noOverflow(page, "history print preview 375px");
     await page.keyboard.press("Escape");
-    await page.goto(`${origin}/audit/inspections/${uiInspection}`);
+    await page.goto(`${origin}/audit/inspections/${uiInspection}/checklist`);
     await settle(page);
     const itemByNumber = (p, number) =>
       p
@@ -2208,7 +2274,7 @@ try {
     // Finalize / reopen confirmations fit the viewport and use the server result.
     const flow = await create("ui");
     await fill(flow, repeat(["AT", 120], ["NAT", 38]));
-    await page.goto(`${origin}/audit/inspections/${flow}`);
+    await page.goto(`${origin}/audit/inspections/${flow}/checklist`);
     await settle(page);
     await page.getByRole("button", { name: "Finalizar" }).tap();
     const dialog = page.getByRole("dialog");
@@ -2259,7 +2325,7 @@ try {
     // Losing access while the page is open: the save fails and the inspection becomes unavailable.
     const revoked = await open("uiRevoked");
     const gone = await create("uiRevoked");
-    await revoked.goto(`${origin}/audit/inspections/${gone}`);
+    await revoked.goto(`${origin}/audit/inspections/${gone}/checklist`);
     await settle(revoked);
     await db.query(
       "update core.user_role_assignments set active=false where user_id=$1",

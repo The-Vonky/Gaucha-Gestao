@@ -14,7 +14,8 @@ export async function qualityTouchTargets(page, label) {
     const selectors = [
       "button.small", ".row-actions button", ".notice-body button",
       ".audit-evidence button", ".response", ".breadcrumb a", ".crumbs a",
-      ".audit-unit h3 a", ".audit-unit > a", ".quality-return", ".audit-plans-link",
+      ".unit-card-link", ".unit-card-continue", ".unit-filters button", ".quality-return", ".audit-tabs a", ".audit-more-toggle", ".audit-evidence-toggle",
+      ".audit-recent-list a", ".audit-plan-main a", ".audit-panel-head .button-link",
       ".ap-result .check", ".menu a", ".logout", ".mobile-menu", ".topbar-brand",
     ];
     const visible = element => element.getClientRects().length &&
@@ -26,7 +27,7 @@ export async function qualityTouchTargets(page, label) {
       return rect.height < 44 || rect.width < 44
         ? [`${element.className || element.tagName}: ${element.textContent.trim()} (${rect.width}×${rect.height})`] : [];
     });
-    const groups = [...document.querySelectorAll(".actions, .row-actions, .file-actions")].filter(visible);
+    const groups = [...document.querySelectorAll(".actions, .row-actions, .file-actions, .audit-overview-file")].filter(visible);
     const badGroups = groups.flatMap(group => {
       const children = [...group.children].filter(visible).map(element => element.getBoundingClientRect());
       const outside = children.some(rect => rect.left < 0 || rect.right > innerWidth + 1);

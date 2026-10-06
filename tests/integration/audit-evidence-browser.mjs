@@ -47,9 +47,19 @@ export async function runBrowser() {
       await page.getByRole("button", { name: "Entrar", exact: true }).click();
       await page.getByLabel(/^Senha$/i).waitFor({ state: "detached" });
       const uiInspection = await inspection();
-      await page.goto(origin + "/audit/inspections/" + uiInspection);
+      await page.goto(origin + "/audit/inspections/" + uiInspection + "/checklist");
       const section = page.getByRole("region", { name: "Evidências do critério 1", exact: true });
-      await section.waitFor();
+      // D5: criterion evidence sits behind "Evidências (n)"; open it after each (re)load.
+      // A reload/lifecycle change remounts the checklist (closed again), so retry until open.
+      const openEvidence = async () => {
+        const toggle = page.locator('li.audit-item:has([aria-label="Evidências do critério 1"]) .audit-evidence-toggle');
+        for (let attempt = 0; ; attempt++) {
+          await toggle.waitFor();
+          if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+          try { await section.waitFor({ timeout: 5000 }); return; } catch (error) { if (attempt >= 3) throw error; }
+        }
+      };
+      await openEvidence();
       const add = section.getByRole("button", { name: "Anexar arquivo ao critério 1", exact: true });
       await add.focus();
       assert.equal(await add.evaluate((element) => element === document.activeElement), true, "Add is keyboard-focusable");
@@ -72,7 +82,27 @@ export async function runBrowser() {
       const [downloaded] = await Promise.all([page.waitForEvent("download"), page.keyboard.press("Enter")]);
       assert.equal(downloaded.suggestedFilename(), name);
       assert.ok(readFileSync(await downloaded.path()).equals(bytes), "Browser download original bytes");
-      assert.equal(page.url(), origin + "/audit/inspections/" + uiInspection, "Download retains current route");
+      assert.equal(page.url(), origin + "/audit/inspections/" + uiInspection + "/checklist", "Download retains current route");
+      // Overview evidence list: the long name and "Baixar" each keep their own
+      // space (no overlap), stacking when the panel is narrow.
+      await page.getByRole("link", { name: "Visão geral", exact: true }).click();
+      const overviewFile = page.locator(".audit-overview-file").filter({ hasText: name });
+      for (const size of [375, 768, 1024, 1440]) {
+        await page.setViewportSize({ width: size, height: 812 });
+        await overviewFile.waitFor();
+        const layout = await overviewFile.evaluate((row) => {
+          const box = (element) => element.getBoundingClientRect();
+          const nameBox = box(row.querySelector(".audit-evidence-name")), action = box(row.querySelector("button"));
+          return { overlap: Math.min(nameBox.right, action.right) > Math.max(nameBox.left, action.left) + 1 &&
+            Math.min(nameBox.bottom, action.bottom) > Math.max(nameBox.top, action.top) + 1,
+          inside: nameBox.right <= box(row).right + 1 && action.right <= box(row).right + 1,
+          overflow: document.documentElement.scrollWidth > innerWidth };
+        });
+        assert.deepEqual(layout, { overlap: false, inside: true, overflow: false }, "Overview evidence layout at " + size + "px");
+      }
+      await page.setViewportSize({ width, height: 812 });
+      await page.getByRole("link", { name: /^Checklist/ }).click();
+      await downloadButton.waitFor();
       const available = await list("ui", uiInspection);
       assert.equal(available.length, 1);
       assert.equal(available[0].original_name, name);
@@ -179,7 +209,7 @@ export async function runBrowser() {
       // Lifecycle UI: finalized is readable, then reopen permits a new upload.
       await fill(uiInspection);
       await page.reload();
-      await section.waitFor();
+      await openEvidence();
       // Pending uploads from another section warn at review; concurrent available evidence causes a visible conflict.
       const hiddenPending = await begin("owner", uiInspection, "item-128", "pendente fora da seção.pdf");
       must(await upload("owner", hiddenPending.object_key));
@@ -190,6 +220,7 @@ export async function runBrowser() {
       await page.getByText("O conjunto de evidências foi alterado.", { exact: false }).first().waitFor();
       assert.equal((await row(uiInspection)).status, "draft", "Visible conflict never silently finalizes");
       await page.getByRole("button", { name: "Recarregar evidências e revisar", exact: true }).click();
+      await openEvidence();
       await section.getByRole("button", { name: "Baixar valid.pdf", exact: true }).waitFor();
       await page.getByRole("button", { name: "Finalizar", exact: true }).click();
       await page.getByRole("dialog").getByText("fora da seção.pdf", { exact: true }).waitFor();
@@ -197,6 +228,7 @@ export async function runBrowser() {
       // The finalize dialog itself says "somente leitura"; wait for the finalized page notice instead.
       await page.getByText(/^Auditoria finalizada em .+ Somente leitura\.$/).waitFor();
       await page.getByRole("dialog").waitFor({ state: "detached" });
+      await openEvidence();
       fails(await confirm("owner", hiddenPending.evidence_id), "55000");
       const browserSnapshot = (await db.query(
         "select metadata->'evidence_ids' ids from core.system_audit_log where module='audit' and action='finalize' and entity_id=$1",
@@ -212,6 +244,8 @@ export async function runBrowser() {
       assert.ok(readFileSync(await finalDownload.path()).equals(bytes));
       await page.getByRole("button", { name: "Reabrir", exact: true }).click();
       await page.getByRole("dialog").getByRole("button", { name: "Confirmar", exact: true }).click();
+      await page.getByRole("button", { name: "Finalizar", exact: true }).waitFor();
+      await openEvidence();
       await add.waitFor();
       assert.equal(await add.isEnabled(), true);
       await input.setInputFiles({ name: "reopened.pdf", mimeType: PDF, buffer: bytes });
