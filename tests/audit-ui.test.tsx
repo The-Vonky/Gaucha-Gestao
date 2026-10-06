@@ -686,6 +686,18 @@ describe("audit overview by monitored unit", () => {
     expect(average.closest(".metric")?.className).toBe("metric");
     expect(screen.getByRole("link", { name: "Continuar" }).getAttribute("href")).toBe("/audit/inspections/d-u2/checklist");
   });
+  it("derives recent activity only from start and finalization, and covers each card with its unit code", async () => {
+    renderOverview();
+    const activity = await screen.findByRole("region", { name: "Atividade recente" });
+    const events = within(activity).getAllByRole("listitem").map((li) => li.textContent);
+    // Two finalized + one draft: three starts, two finalizations, nothing else.
+    expect(events.filter((t) => t?.startsWith("Auditoria iniciada"))).toHaveLength(3);
+    expect(events.filter((t) => t?.startsWith("Auditoria finalizada"))).toHaveLength(2);
+    expect(events).toHaveLength(5);
+    const card = screen.getByRole("heading", { level: 3, name: "Gama" }).closest(".unit-card")!;
+    expect(card.querySelector(".unit-cover .unit-cover-code")?.textContent).toBe("U3");
+    expect(within(card as HTMLElement).getAllByRole("link")).toHaveLength(1);
+  });
   it("filters units by situation and clears the filter", async () => {
     const user = userEvent.setup();
     renderOverview();
