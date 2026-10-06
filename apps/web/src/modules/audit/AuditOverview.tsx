@@ -6,10 +6,10 @@ import { useResource } from "../../shared/useResource";
 import { Badge, Metric, Notice, PageTitle, Status } from "../../shared/ui";
 import * as api from "./api";
 import { NewInspection } from "./NewInspection";
-import { Delta, formatDate, Progress, Result, StatusBadge } from "./Result";
+import { Delta, formatDate, Progress, Result } from "./Result";
 import { formatScore } from "./scoring";
 import type { AuditUnit, InspectionSummary } from "./types";
-import { UnitMedia } from "./UnitIdentity";
+import { UnitCover } from "./UnitIdentity";
 import {
   SITUATION_LABELS,
   SITUATION_ORDER,
@@ -26,7 +26,7 @@ const FILTER_LABELS: Record<Filter, string> = {
   adequate: "Adequadas",
   no_data: "Sem dados",
 };
-/** Recent inspections shown (the overview contract holds drafts + 2 finalized per unit). */
+/** Recent events shown (the overview contract holds drafts + 2 finalized per unit). */
 const RECENT = 8;
 /** Auditorias — visão geral: monitored units first (Audit UX v2 §6.1). */
 export function AuditOverview() {
@@ -85,18 +85,13 @@ export function AuditOverview() {
   const drafts = (r.data?.rows ?? []).filter((x) => x.status === "draft");
   const draftUnits = new Set(drafts.map((d) => d.unit_id)).size;
   const withoutAudit = monitored.filter(({ state }) => !state.latest).length;
-  const recent = [...(r.data?.rows ?? [])]
-    .sort(
-      (a, b) =>
-        b.applied_on.localeCompare(a.applied_on) || b.created_at.localeCompare(a.created_at),
-    )
-    .slice(0, RECENT);
+  const activity = recentActivity(r.data?.rows ?? []);
   return (
     <>
       <PageTitle
         eyebrow="Qualidade"
         title="Auditorias"
-        description="Unidades monitoradas, conformidade e auditorias em andamento"
+        description="Unidades monitoradas, conformidade e auditorias em andamento."
       >
         {canCreate && (
           <button className="primary" onClick={() => setCreating(true)}>
@@ -117,7 +112,8 @@ export function AuditOverview() {
         </Notice>
       )}
       {r.data && r.data.units.length > 0 && (
-        <>
+        <div className="audit-dashboard">
+          {/* One strip, four readings (not four floating cards). */}
           <section className="audit-kpis" aria-label="Indicadores da Auditoria">
             <Metric
               label="Unidades monitoradas"
@@ -156,11 +152,18 @@ export function AuditOverview() {
           <div className="audit-home">
             <section className="audit-units-section" aria-labelledby="audit-units-title">
               <div className="audit-units-head">
-                <h2 id="audit-units-title">Unidades monitoradas</h2>
+                <div>
+                  <h2 id="audit-units-title">Unidades monitoradas</h2>
+                  <p>Resultado final atual, auditoria em andamento e última visita.</p>
+                </div>
                 <label className="audit-search">
-                  Buscar unidade
+                  <span className="visually-hidden">Buscar unidade</span>
+                  <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14m9 2-4-4" />
+                  </svg>
                   <input
                     type="search"
+                    placeholder="Buscar unidade"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
@@ -202,32 +205,40 @@ export function AuditOverview() {
                 </ul>
               )}
             </section>
-            <section className="audit-panel audit-recent" aria-labelledby="audit-recent-title">
-              <div className="audit-panel-head">
-                <h2 id="audit-recent-title">Auditorias recentes</h2>
+            <section className="audit-activity" aria-labelledby="audit-activity-title">
+              <div className="audit-activity-head">
+                <h2 id="audit-activity-title">Atividade recente</h2>
+                <p>
+                  Auditorias iniciadas e finalizadas, entre as em andamento e as duas
+                  últimas finalizadas de cada unidade.
+                </p>
               </div>
-              <p className="muted">
-                Por data de aplicação. Inclui as auditorias em andamento e as duas
-                últimas finalizadas de cada unidade.
-              </p>
-              {!recent.length ? (
+              {!activity.length ? (
                 <p className="muted">Nenhuma auditoria registrada.</p>
               ) : (
                 <ul className="audit-recent-list">
-                  {recent.map((x) => (
-                    <li key={x.id}>
-                      <Link to={`/audit/inspections/${x.id}`}>{x.unit_name}</Link>
+                  {activity.map(({ kind, at, row }) => (
+                    <li key={`${kind}-${row.id}`} data-kind={kind}>
+                      <span className="audit-recent-event">
+                        {kind === "finalized" ? "Auditoria finalizada" : "Auditoria iniciada"}
+                        {" · "}
+                        <time className="numeric" dateTime={at}>
+                          {formatTimestamp(at)}
+                        </time>
+                      </span>
+                      <Link to={`/audit/inspections/${row.id}`}>{row.unit_name}</Link>
                       <span className="audit-recent-meta">
-                        <span className="numeric">{formatDate(x.applied_on)}</span>{" "}
-                        <StatusBadge status={x.status} />
+                        Aplicação {formatDate(row.applied_on)} · {row.responsible_name}
                       </span>
                       <span className="audit-recent-result">
-                        {x.status === "draft" ? (
-                          <span className="numeric">
-                            {x.answered}/{x.total_items} respondidos
-                          </span>
+                        {kind === "finalized" ? (
+                          <Result summary={row} />
                         ) : (
-                          <Result summary={x} />
+                          row.status === "draft" && (
+                            <span className="numeric">
+                              {row.answered}/{row.total_items} respondidos
+                            </span>
+                          )
                         )}
                       </span>
                     </li>
@@ -236,7 +247,7 @@ export function AuditOverview() {
               )}
             </section>
           </div>
-        </>
+        </div>
       )}
       {creating && r.data && (
         <NewInspection
@@ -253,51 +264,84 @@ export function AuditOverview() {
     </>
   );
 }
-/** One monitored unit: identity, situation, current result, draft and last audit. */
+/**
+ * Only the events the overview contract represents with confidence: an
+ * inspection started (`created_at`) and finalized (`finalized_at`). Uploads,
+ * edits, reopenings or plans are never inferred.
+ */
+function recentActivity(rows: InspectionSummary[]) {
+  return rows
+    .flatMap((row) => [
+      { kind: "started" as const, at: row.created_at, row },
+      ...(row.finalized_at ? [{ kind: "finalized" as const, at: row.finalized_at, row }] : []),
+    ])
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, RECENT);
+}
+function formatTimestamp(at: string) {
+  return new Date(at).toLocaleDateString("pt-BR");
+}
+/** One monitored unit: cover, current result, open draft and last visit. */
 function UnitCard({ unit, state }: { unit: AuditUnit; state: UnitState }) {
   const draft = state.drafts[0];
   return (
     <article className="unit-card" data-situation={state.situation}>
-      <UnitMedia unit={unit} />
+      <UnitCover unit={unit}>
+        <span className="unit-cover-code">{unit.code}</span>
+        <h3>
+          {/* The whole card opens the unit through this single link. */}
+          <Link className="unit-card-link" to={`/audit/units/${unit.id}`}>
+            {unit.name}
+          </Link>
+        </h3>
+      </UnitCover>
       <div className="unit-card-body">
-        <header className="unit-card-head">
-          <h3>
-            {/* The whole card opens the unit through this single link. */}
-            <Link className="unit-card-link" to={`/audit/units/${unit.id}`}>
-              {unit.name}
-            </Link>
-          </h3>
-          <span className="unit-card-code">{unit.code}</span>
-        </header>
-        <p className="unit-card-badges">
-          <Badge tone={situationTone(state)}>{SITUATION_LABELS[state.situation]}</Badge>
-          {!unit.active && <Status active={false} />}
-        </p>
-        <div className="unit-card-result">
-          {state.current ? (
-            <>
+        <div className="unit-card-score">
+          <div className="unit-card-result">
+            <span className="unit-card-caption">Conformidade</span>
+            {state.current ? (
               <Result summary={state.current} />
+            ) : (
+              <span className="unit-card-empty">Sem resultado final</span>
+            )}
+          </div>
+          <p className="unit-card-badges">
+            <Badge tone={situationTone(state)}>{SITUATION_LABELS[state.situation]}</Badge>
+            {!unit.active && <Status active={false} />}
+          </p>
+        </div>
+        {state.current && (
+          <p className="unit-card-trend">
+            {state.previous ? (
               <Delta
                 current={state.current.final_score}
-                previous={state.previous?.final_score ?? null}
+                previous={state.previous.final_score}
               />
-            </>
-          ) : (
-            <span className="muted">Sem resultado final</span>
-          )}
-        </div>
+            ) : (
+              <span className="audit-delta">Primeira auditoria finalizada</span>
+            )}
+          </p>
+        )}
         {draft && (
           <div className="unit-card-draft">
-            <Progress answered={draft.answered} total={draft.total_items} />
+            <div>
+              <span className="unit-card-caption">Auditoria em andamento</span>
+              <Progress answered={draft.answered} total={draft.total_items} />
+            </div>
             <Link className="button-link unit-card-continue" to={`/audit/inspections/${draft.id}/checklist`}>
               Continuar
             </Link>
           </div>
         )}
         <p className="unit-card-foot">
-          {state.latest
-            ? `Última auditoria em ${formatDate(state.latest.applied_on)} · ${state.latest.responsible_name}`
-            : "Nenhuma auditoria registrada."}
+          <span>
+            {state.latest
+              ? `Última auditoria ${formatDate(state.latest.applied_on)} · ${state.latest.responsible_name}`
+              : "Nenhuma auditoria registrada"}
+          </span>
+          <span className="unit-card-open" aria-hidden="true">
+            Ver unidade →
+          </span>
         </p>
       </div>
     </article>
