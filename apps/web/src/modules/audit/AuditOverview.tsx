@@ -228,7 +228,7 @@ export function AuditOverview() {
                       </span>
                       <Link to={`/audit/inspections/${row.id}`}>{row.unit_name}</Link>
                       <span className="audit-recent-meta">
-                        Aplicação {formatDate(row.applied_on)} · {row.responsible_name}
+                        Data da auditoria {formatDate(row.applied_on)} · {row.responsible_name}
                       </span>
                       <span className="audit-recent-result">
                         {kind === "finalized" ? (

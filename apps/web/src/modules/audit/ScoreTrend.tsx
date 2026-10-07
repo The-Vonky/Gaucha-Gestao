@@ -129,7 +129,7 @@ export function ScoreTrend({
           <caption>{label}</caption>
           <thead>
             <tr>
-              <th scope="col">Aplicação</th>
+              <th scope="col">Data da auditoria</th>
               <th scope="col">Resultado</th>
               <th scope="col">Classificação</th>
             </tr>

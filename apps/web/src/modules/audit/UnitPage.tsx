@@ -190,7 +190,7 @@ function UnitSummary({
             <>
               <p className="unit-situation-lead">{READING[current.final_classification!]}</p>
               <p className="muted">
-                Auditoria finalizada de {formatDate(current.applied_on)} · Responsável:{" "}
+                Última finalizada · Data da auditoria {formatDate(current.applied_on)} · Responsável:{" "}
                 {current.responsible_name}
               </p>
               <dl className="audit-counts">
