@@ -23,11 +23,22 @@ export type UnitCover = {
 };
 type Entry = { cover: UnitCover | null; expiresAt: number };
 // Memory only: signed URLs are never written to localStorage, sessionStorage or the database.
+// Signed URLs are private to the principal that resolved them. `access` identifies the current
+// principal and its grants (set by the AuthProvider); every change bumps `epoch`, and a result
+// captured under an older epoch is never cached or returned. Per-unit `versions` do the same
+// for invalidations after a mutation.
+let access = "";
+let epoch = 0;
+const versions = new Map<string, number>();
 const cache = new Map<string, Entry>();
 const inflight = new Map<string, Promise<void>>();
 const listeners = new Set<() => void>();
+const version = (id: string) => versions.get(id) ?? 0;
 const fresh = (entry: Entry | undefined) =>
   !!entry && entry.expiresAt - RENEW_MARGIN_MS > Date.now();
+const notify = () => {
+  for (const listener of listeners) listener();
+};
 function sameOrigin(signed: string) {
   const origin = import.meta.env.VITE_SUPABASE_URL;
   try {
@@ -37,7 +48,7 @@ function sameOrigin(signed: string) {
   }
 }
 /** One RPC and one batch signing call for up to 100 units. */
-async function fetchBatch(ids: string[]) {
+async function fetchBatch(ids: string[], from: number, captured: number[]) {
   const { data, error } = await database().rpc("unit_covers", { p_units: ids });
   if (error) throw error;
   const rows = (data ?? []) as UnitCoverRow[];
@@ -56,13 +67,16 @@ async function fetchBatch(ids: string[]) {
       if (s.path && s.signedUrl && !s.error && sameOrigin(s.signedUrl))
         urls.set(s.path, s.signedUrl);
   }
+  // A response that finishes after an access change or an invalidation is dropped.
+  if (from !== epoch) return;
   const expiresAt = signedAt + COVER_URL_TTL * 1000;
+  const entries = new Map<string, Entry>();
   // Units without an authorized ready cover (or whose object could not be signed) use the fallback.
-  for (const id of ids) cache.set(id, { cover: null, expiresAt });
+  for (const id of ids) entries.set(id, { cover: null, expiresAt });
   for (const r of rows) {
     const url = urls.get(r.object_key);
     if (url)
-      cache.set(r.unit_id, {
+      entries.set(r.unit_id, {
         expiresAt,
         cover: {
           unitId: r.unit_id,
@@ -75,54 +89,104 @@ async function fetchBatch(ids: string[]) {
         },
       });
   }
+  ids.forEach((id, i) => {
+    if (version(id) === captured[i]) cache.set(id, entries.get(id)!);
+  });
 }
 /**
- * Resolves covers for many units with ceil(n/100) RPCs and as many batch signing calls,
- * reusing fresh cached entries and requests already in flight.
+ * Entries for many units with ceil(n/100) RPCs and as many batch signing calls, reusing fresh
+ * cached entries and requests in flight. A unit invalidated while its request was in flight is
+ * resolved again; after an access change nothing is returned.
  */
+async function resolveEntries(ids: readonly string[], force = false) {
+  const from = epoch;
+  const result = new Map<string, Entry>();
+  let todo = [...new Set(ids)];
+  while (todo.length) {
+    const missing = todo.filter(
+      (id) => force || (!fresh(cache.get(id)) && !inflight.has(id)),
+    );
+    for (let i = 0; i < missing.length; i += BATCH) {
+      const chunk = missing.slice(i, i + BATCH);
+      const request: Promise<void> = fetchBatch(
+        chunk,
+        from,
+        chunk.map(version),
+      ).finally(() => {
+        for (const id of chunk)
+          if (inflight.get(id) === request) inflight.delete(id);
+      });
+      for (const id of chunk) inflight.set(id, request);
+    }
+    await Promise.all(
+      new Set(todo.map((id) => inflight.get(id)).filter((p) => !!p)),
+    );
+    if (from !== epoch) return new Map<string, Entry>();
+    for (const id of todo) {
+      const entry = cache.get(id);
+      if (entry) result.set(id, entry);
+    }
+    todo = todo.filter((id) => !result.has(id));
+    force = false;
+  }
+  return result;
+}
+/** Resolves covers for many units; see resolveEntries. */
 export async function resolveUnitCovers(
   ids: readonly string[],
   force = false,
 ): Promise<Map<string, UnitCover | null>> {
-  const unique = [...new Set(ids)];
-  const missing = unique.filter(
-    (id) => force || (!fresh(cache.get(id)) && !inflight.has(id)),
+  const entries = await resolveEntries(ids, force);
+  return new Map(
+    [...new Set(ids)].map((id) => [id, entries.get(id)?.cover ?? null]),
   );
-  for (let i = 0; i < missing.length; i += BATCH) {
-    const chunk = missing.slice(i, i + BATCH);
-    const request: Promise<void> = fetchBatch(chunk).finally(() => {
-      for (const id of chunk)
-        if (inflight.get(id) === request) inflight.delete(id);
-    });
-    for (const id of chunk) inflight.set(id, request);
-  }
-  await Promise.all(
-    new Set(unique.map((id) => inflight.get(id)).filter((p) => !!p)),
-  );
-  return new Map(unique.map((id) => [id, cache.get(id)?.cover ?? null]));
 }
-/** Drops cached covers (after a change) and asks mounted views to resolve again. */
+/** Drops cached covers (after a change), voids their requests in flight and asks mounted views to resolve again. */
 export function invalidateUnitCovers(ids: readonly string[]) {
-  for (const id of ids) cache.delete(id);
-  for (const listener of listeners) listener();
+  for (const id of ids) {
+    versions.set(id, version(id) + 1);
+    cache.delete(id);
+    inflight.delete(id);
+  }
+  notify();
 }
-/** Test seam: forget every cached cover. */
-export function clearUnitCoverCache() {
+/**
+ * Called by the AuthProvider with a key of the current principal and its access (empty when
+ * signed out). Any change discards every private cover and hides covers already on screen.
+ */
+export function setUnitCoverAccess(key: string) {
+  if (key === access) return;
+  access = key;
+  epoch++;
   cache.clear();
   inflight.clear();
+  notify();
+}
+/** Test seam: forget every cached cover and the access context. */
+export function clearUnitCoverCache() {
+  access = "";
+  epoch++;
+  cache.clear();
+  inflight.clear();
+  versions.clear();
 }
 const EMPTY = new Map<string, UnitCover | null>();
+/** Floor for the renewal timer, so it can never spin. */
+const MIN_RENEW_DELAY_MS = 1_000;
+/** A URL re-signed after an error that fails again within this window keeps the fallback. */
+const RETRY_WINDOW_MS = 30_000;
 /**
- * Covers for the given units, batch-resolved once per id set. `reportError` is
- * called by an <img> that failed: its unit is re-signed once (batched with other
- * failures in the same tick); a second failure for the same asset keeps the fallback.
+ * Covers for the given units, batch-resolved once per id set and re-signed while mounted,
+ * before the earliest URL expires. `reportError` is called by an <img> that failed: its unit
+ * is re-signed (batched with other failures in the same tick). The retry belongs to the failing
+ * URL, not to the asset: only a URL obtained by such a re-sign that fails again right away
+ * keeps the fallback, until the next renewal brings a new URL.
  */
 export function useUnitCovers(ids: readonly string[]) {
   const key = [...new Set(ids)].sort().join(",");
-  const [state, setState] = useState({ key: "", covers: EMPTY });
+  const [state, setState] = useState({ key: "", epoch: -1, covers: EMPTY });
   const [revision, setRevision] = useState(0);
-  const retried = useRef(new Set<string>());
-  const failed = useRef(new Set<string>());
+  const retried = useRef(new Map<string, { url: string; at: number }>());
   const queue = useRef(new Set<string>());
   useEffect(() => {
     const listener = () => setRevision((r) => r + 1);
@@ -134,41 +198,66 @@ export function useUnitCovers(ids: readonly string[]) {
   useEffect(() => {
     if (!key) return;
     let current = true;
-    resolveUnitCovers(key.split(","))
-      .then((covers) => {
-        if (current) setState({ key, covers });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const from = epoch;
+    const units = key.split(",");
+    resolveEntries(units)
+      .then((entries) => {
+        if (!current || from !== epoch) return;
+        const covers = new Map<string, UnitCover | null>();
+        let renewAt = Infinity;
+        for (const id of units) {
+          const entry = entries.get(id);
+          covers.set(id, entry?.cover ?? null);
+          if (entry?.cover)
+            renewAt = Math.min(renewAt, entry.expiresAt - RENEW_MARGIN_MS);
+        }
+        setState({ key, epoch: from, covers });
+        // Resolving again re-signs only the entries that are due, in batches.
+        if (renewAt !== Infinity)
+          timer = setTimeout(
+            () => setRevision((r) => r + 1),
+            Math.max(renewAt - Date.now(), MIN_RENEW_DELAY_MS),
+          );
       })
       .catch(() => {
         // Covers are decorative: any failure keeps the fallback, never breaks the page.
-        if (current) setState({ key, covers: EMPTY });
+        if (current && from === epoch)
+          setState({ key, epoch: from, covers: EMPTY });
       });
     return () => {
       current = false;
+      clearTimeout(timer);
     };
   }, [key, revision]);
   const reportError = useCallback((cover: UnitCover) => {
-    if (retried.current.has(cover.assetId)) {
-      failed.current.add(cover.assetId);
+    const last = retried.current.get(cover.unitId);
+    if (last?.url === cover.url && Date.now() - last.at < RETRY_WINDOW_MS) {
       setState((s) => ({ ...s, covers: new Map(s.covers).set(cover.unitId, null) }));
       return;
     }
-    retried.current.add(cover.assetId);
     queue.current.add(cover.unitId);
     if (queue.current.size > 1) return;
     setTimeout(() => {
       const units = [...queue.current];
       queue.current.clear();
+      const from = epoch;
       resolveUnitCovers(units, true)
-        .then((covers) =>
+        .then((covers) => {
+          if (from !== epoch) return;
+          const at = Date.now();
+          for (const [id, c] of covers)
+            if (c) retried.current.set(id, { url: c.url, at });
           setState((s) => {
+            if (s.epoch !== from) return s;
             const next = new Map(s.covers);
-            for (const [id, c] of covers)
-              next.set(id, c && !failed.current.has(c.assetId) ? c : null);
+            for (const [id, c] of covers) next.set(id, c);
             return { ...s, covers: next };
-          }),
-        )
+          });
+        })
         .catch(() =>
           setState((s) => {
+            if (s.epoch !== from) return s;
             const next = new Map(s.covers);
             for (const id of units) next.set(id, null);
             return { ...s, covers: next };
@@ -176,7 +265,10 @@ export function useUnitCovers(ids: readonly string[]) {
         );
     }, 0);
   }, []);
-  return { covers: state.key === key ? state.covers : EMPTY, reportError };
+  return {
+    covers: state.key === key && state.epoch === epoch ? state.covers : EMPTY,
+    reportError,
+  };
 }
 
 export type CoverStep = "uploading" | "confirming";
