@@ -3,6 +3,7 @@ import React from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -21,12 +22,14 @@ import { LogsPage } from "../apps/web/src/core/admin/LogsPage";
 import type {
   Assignment,
   AuditLog,
+  Organization,
   Profile,
   Role,
 } from "../apps/web/src/core/types";
 const api = vi.hoisted(() => ({
   list: vi.fn(),
   users: vi.fn(),
+  organizations: vi.fn(),
   PAGE_SIZE: 25,
   saveOrganization: vi.fn(),
   all: vi.fn(),
@@ -153,11 +156,11 @@ describe("critical administration flows", () => {
     expect(close).not.toHaveBeenCalled();
   });
   it("creates a unit using an explicit form and refreshes the list", async () => {
-    api.list.mockResolvedValue({ rows: [], count: 0 });
+    api.organizations.mockResolvedValue({ rows: [], count: 0 });
     api.saveOrganization.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<OrganizationPage kind="units" />);
-    await screen.findByText("Nenhum registro encontrado.");
+    await screen.findByText("Nenhuma unidade encontrada");
     await user.click(screen.getByText("Nova unidade"));
     await user.type(screen.getByLabelText("Código"), "CMD");
     await user.type(screen.getByLabelText("Nome"), "Unidade CMD");
@@ -172,7 +175,7 @@ describe("critical administration flows", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
   it("does not close an edit after an optimistic conflict", async () => {
-    api.list.mockResolvedValue({
+    api.organizations.mockResolvedValue({
       rows: [
         { id: "u", version: 1, code: "CMD", name: "Unidade CMD", active: true },
       ],
@@ -187,7 +190,7 @@ describe("critical administration flows", () => {
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
   it("confirms unit deactivation, and cancelling does not mutate", async () => {
-    api.list.mockResolvedValue({
+    api.organizations.mockResolvedValue({
       rows: [
         { id: "u", version: 4, code: "CMD", name: "Unidade CMD", active: true },
       ],
@@ -216,10 +219,10 @@ describe("critical administration flows", () => {
         { code: "CMD", name: "Unidade CMD", active: false },
       ),
     );
-    await waitFor(() => expect(api.list).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(api.organizations).toHaveBeenCalledTimes(2));
   });
   it("keeps a failed activation dialog open with a safe error", async () => {
-    api.list.mockResolvedValue({
+    api.organizations.mockResolvedValue({
       rows: [
         { id: "u", version: 1, code: "X", name: "Unidade X", active: false },
       ],
@@ -243,7 +246,7 @@ describe("critical administration flows", () => {
   });
   it("hides unit actions without management permission", async () => {
     auth.denied = new Set(["admin.unit.manage"]);
-    api.list.mockResolvedValue({
+    api.organizations.mockResolvedValue({
       rows: [
         { id: "u", version: 1, code: "CMD", name: "Unidade CMD", active: true },
       ],
@@ -533,18 +536,21 @@ describe("roles and permissions", () => {
     expect(screen.queryByRole("checkbox")).toBeNull();
   });
   it("lists the permission catalog read-only with key, description and domain", async () => {
-    api.list.mockResolvedValue({ rows: permissions, count: 2 });
+    api.all.mockResolvedValue(permissions);
     render(<PermissionsPage />);
     expect(await screen.findByText("Gerenciar usuários")).toBeTruthy();
+    expect(api.all).toHaveBeenCalledWith("permissions");
     expect(screen.getByText("admin.user.manage").tagName).toBe("CODE");
-    const list = screen.getByRole("list", { name: "Permissões" });
-    expect(within(list).getByText("Administração")).toBeTruthy();
+    // Grouped by domain: one titled section and list per domain, in catalog order.
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent),
+    ).toEqual(["Administração1", "Auditoria1"]);
+    const admin = screen.getByRole("list", { name: "Administração" });
+    expect(within(admin).getByText("Gerenciar usuários")).toBeTruthy();
+    expect(within(admin).queryByText("Consultar auditorias")).toBeNull();
     expect(screen.getByText("Recurso: user · Ação: manage")).toBeTruthy();
-    // Only pagination controls: no editing.
-    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
-      "Anterior",
-      "Próxima",
-    ]);
+    // Read-only and complete on one screen: no editing, no pagination.
+    expect(screen.queryAllByRole("button")).toEqual([]);
   });
 });
 describe("sector links", () => {
@@ -572,9 +578,7 @@ describe("sector links", () => {
         onClose={() => {}}
       />,
     );
-    expect(
-      await screen.findByText("0 de 2 unidade(s) vinculada(s)"),
-    ).toBeTruthy();
+    expect(await screen.findByText("0 de 2 unidades vinculadas")).toBeTruthy();
     const blocked = screen.getByRole("button", {
       name: "Vincular Unidade Antiga",
     });
@@ -628,7 +632,7 @@ describe("logs", () => {
         action: "revoke",
       }),
     );
-    expect(screen.getByText("2 filtro(s) aplicado(s).")).toBeTruthy();
+    expect(screen.getByText("2 filtros aplicados")).toBeTruthy();
     await user.click(screen.getByText("Limpar"));
     await waitFor(() =>
       expect(api.logs).toHaveBeenLastCalledWith(0, {
@@ -649,7 +653,7 @@ describe("logs", () => {
     render(<LogsPage />);
     await user.click(
       await screen.findByRole("button", {
-        name: /^Detalhes: core \/ update em units/,
+        name: /^Detalhes: core \/ Alteração em Unidade/,
       }),
     );
     const dialog = screen.getByRole("dialog");
@@ -666,5 +670,152 @@ describe("logs", () => {
     expect(
       within(dialog).getByText("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
     ).toBeTruthy();
+  });
+  it("keeps the date range ordered, labels events in Portuguese and clears filters from an empty result", async () => {
+    api.logs.mockResolvedValue({ rows: [log()], count: 1 });
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    expect(await screen.findByText("Alteração")).toBeTruthy();
+    expect(screen.getByText("Unidade")).toBeTruthy();
+    expect(screen.getByText("1 evento")).toBeTruthy();
+    const from = screen.getByLabelText("De") as HTMLInputElement;
+    const to = screen.getByLabelText("Até") as HTMLInputElement;
+    fireEvent.change(from, { target: { value: "2026-10-10" } });
+    expect(to.min).toBe("2026-10-10");
+    fireEvent.change(to, { target: { value: "2026-10-20" } });
+    expect(from.max).toBe("2026-10-20");
+    expect(
+      within(screen.getByLabelText("Ação")).getByRole("option", {
+        name: "Revogação",
+      }),
+    ).toBeTruthy();
+    api.logs.mockResolvedValue({ rows: [], count: 0 });
+    await user.type(screen.getByLabelText("Módulo"), "x");
+    await user.click(screen.getByText("Filtrar"));
+    expect(await screen.findByText("Nenhum evento encontrado")).toBeTruthy();
+    expect(api.logs).toHaveBeenLastCalledWith(0, {
+      from: "2026-10-10",
+      to: "2026-10-20",
+      actor: "",
+      module: "x",
+      action: "",
+    });
+    await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    await waitFor(() =>
+      expect(api.logs).toHaveBeenLastCalledWith(0, {
+        from: "",
+        to: "",
+        actor: "",
+        module: "",
+        action: "",
+      }),
+    );
+    expect((screen.getByLabelText("Módulo") as HTMLInputElement).value).toBe(
+      "",
+    );
+    expect(from.value).toBe("");
+  });
+});
+describe("Elo lists", () => {
+  const unit = (over: Partial<Organization>): Organization => ({
+    id: "u",
+    version: 1,
+    code: "CMD",
+    name: "Unidade CMD",
+    active: true,
+    ...stamp,
+    ...over,
+  });
+  it("filters units by name and state, and offers to clear a search without results", async () => {
+    api.organizations.mockResolvedValue({ rows: [unit({})], count: 1 });
+    const user = userEvent.setup();
+    render(<OrganizationPage kind="units" />);
+    await screen.findByText("Unidade CMD");
+    expect(api.organizations).toHaveBeenLastCalledWith("units", 0, {
+      search: "",
+      inactive: false,
+    });
+    expect(screen.getByRole("status").textContent).toBe("1 unidade ativa");
+    await user.click(screen.getByLabelText("Exibir inativas"));
+    await waitFor(() =>
+      expect(api.organizations).toHaveBeenLastCalledWith("units", 0, {
+        search: "",
+        inactive: true,
+      }),
+    );
+    api.organizations.mockResolvedValue({ rows: [], count: 0 });
+    await user.type(screen.getByRole("searchbox"), "Zé");
+    expect(
+      await screen.findByText(/Nenhum nome corresponde a “Zé”/),
+    ).toBeTruthy();
+    api.organizations.mockResolvedValue({ rows: [unit({})], count: 1 });
+    await user.click(screen.getByRole("button", { name: "Limpar busca" }));
+    expect(await screen.findByText("Unidade CMD")).toBeTruthy();
+    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("");
+  });
+  it("confirms reactivation as a primary action and deactivation as a destructive one", async () => {
+    api.organizations.mockResolvedValue({
+      rows: [
+        unit({}),
+        unit({ id: "x", code: "OLD", name: "Unidade Antiga", active: false }),
+      ],
+      count: 2,
+    });
+    const user = userEvent.setup();
+    render(<OrganizationPage kind="units" />);
+    const confirmButton = () =>
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Confirmar",
+      });
+    await user.click(
+      await screen.findByRole("button", { name: "Ativar Unidade Antiga" }),
+    );
+    expect(confirmButton().className).toBe("primary");
+    await user.click(screen.getByText("Cancelar"));
+    await user.click(
+      screen.getByRole("button", { name: "Desativar Unidade CMD" }),
+    );
+    expect(confirmButton().className).toBe("danger");
+  });
+  it("paginates only when the result spans more than one page", async () => {
+    api.organizations.mockResolvedValue({ rows: [unit({})], count: 26 });
+    const user = userEvent.setup();
+    render(<OrganizationPage kind="sectors" />);
+    const pager = await screen.findByRole("navigation", { name: "Paginação" });
+    expect(
+      within(pager).getByText("26 registros · Página 1 de 2"),
+    ).toBeTruthy();
+    expect(
+      (within(pager).getByText("Anterior") as HTMLButtonElement).disabled,
+    ).toBe(true);
+    await user.click(within(pager).getByText("Próxima"));
+    await waitFor(() =>
+      expect(api.organizations).toHaveBeenLastCalledWith("sectors", 1, {
+        search: "",
+        inactive: false,
+      }),
+    );
+    cleanup();
+    api.organizations.mockResolvedValue({ rows: [unit({})], count: 25 });
+    render(<OrganizationPage kind="sectors" />);
+    await screen.findByText("Unidade CMD");
+    expect(screen.queryByRole("navigation", { name: "Paginação" })).toBeNull();
+  });
+  it("moves back to the last page when the current one empties", async () => {
+    api.users.mockResolvedValue({ rows: [profile()], count: 26 });
+    const user = userEvent.setup();
+    render(<UsersPage />);
+    const pager = await screen.findByRole("navigation", { name: "Paginação" });
+    // The only row of page 2 was deactivated elsewhere: 25 active users remain.
+    api.users.mockResolvedValue({ rows: [], count: 25 });
+    await user.click(within(pager).getByText("Próxima"));
+    await waitFor(() =>
+      expect(api.users).toHaveBeenLastCalledWith(0, {
+        search: "",
+        inactive: false,
+      }),
+    );
+    expect(api.users.mock.calls.map(([page]) => page)).toEqual([0, 1, 0]);
+    expect(screen.queryByText("Nenhum usuário encontrado")).toBeNull();
   });
 });

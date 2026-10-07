@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import type { Profile } from "../types";
 import { Icon } from "../../shared/icons";
 import { useResource } from "../../shared/useResource";
 import { Badge, Confirm, EmptyState, PageTitle, Pager } from "../../shared/ui";
 import * as api from "./api";
-import { ActiveBadge, Identifier, ListState } from "./parts";
+import {
+  ActiveBadge,
+  Identifier,
+  ListState,
+  ListToolbar,
+  useLatest,
+  useListFilters,
+  usePageClamp,
+} from "./parts";
 import { UserAssignments } from "./UserAssignments";
 const initials = (name: string) =>
   name
@@ -16,38 +24,19 @@ const initials = (name: string) =>
     .join("");
 export function UsersPage() {
   const auth = useAuth();
-  const [page, setPage] = useState(0);
-  const [term, setTerm] = useState("");
-  const [search, setSearch] = useState("");
-  const [inactive, setInactive] = useState(false);
-  // Waits for the user to stop typing before querying.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setSearch(term.trim());
-      setPage(0);
-    }, 300);
-    return () => clearTimeout(t);
-  }, [term]);
+  const filters = useListFilters();
+  const { page, search, inactive } = filters;
   const r = useResource(
     useCallback(
       () => api.users(page, { search, inactive }),
       [page, search, inactive],
     ),
   );
-  // Keeps the previous result on screen while a new search loads.
-  const [shown, setShown] = useState<typeof r.data>();
-  useEffect(() => {
-    if (r.data) setShown(r.data);
-  }, [r.data]);
-  const data = r.error ? undefined : (r.data ?? shown);
+  const data = useLatest(r);
+  usePageClamp(filters, data?.count);
   const [selected, setSelected] = useState<Profile>();
   const [toggle, setToggle] = useState<Profile>();
   const manage = auth.can("admin.user.manage");
-  const clear = () => {
-    setTerm("");
-    setSearch("");
-    setPage(0);
-  };
   return (
     <>
       <PageTitle
@@ -59,54 +48,31 @@ export function UsersPage() {
         Contas são criadas ou convidadas pela administração do Auth. Ativar uma
         conta não restaura suas atribuições revogadas.
       </p>
-      <form
-        className="filters adm-filters usr-toolbar"
-        aria-label="Filtros dos usuários"
-        onSubmit={(e) => e.preventDefault()}
-      >
-        <label className="adm-filter-wide">
-          Buscar
-          <input
-            type="search"
-            placeholder="Nome do usuário"
-            maxLength={160}
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-          />
-        </label>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={inactive}
-            onChange={(e) => {
-              setInactive(e.target.checked);
-              setPage(0);
-            }}
-          />
-          <span>Exibir inativos</span>
-        </label>
-        {data && (
-          <p className="usr-count" role="status">
-            <strong className="numeric">{data.count}</strong>{" "}
-            {data.count === 1 ? "usuário" : "usuários"}
-            {inactive ? "" : data.count === 1 ? " ativo" : " ativos"}
-            {search ? ` para “${search}”` : ""}
-          </p>
-        )}
-      </form>
+      <ListToolbar
+        label="Filtros dos usuários"
+        placeholder="Nome do usuário"
+        filters={filters}
+        count={data?.count}
+        noun={{
+          one: "usuário",
+          many: "usuários",
+          activeOne: "ativo",
+          activeMany: "ativos",
+          inactiveToggle: "Exibir inativos",
+        }}
+      />
       <ListState
         loading={r.loading && !data}
         error={r.error}
-        empty={false}
-        emptyText=""
+        label="Carregando usuários…"
         onRetry={r.reload}
       />
-      {data && !data.rows.length && (
+      {data?.count === 0 && (
         <EmptyState
           title="Nenhum usuário encontrado"
           actions={
             search && (
-              <button type="button" onClick={clear}>
+              <button type="button" onClick={filters.clear}>
                 Limpar busca
               </button>
             )
@@ -121,7 +87,7 @@ export function UsersPage() {
       )}
       {data && data.rows.length > 0 && (
         <ul
-          className={`adm-list usr-list${manage ? " manage" : ""}`}
+          className="adm-list adm-table"
           aria-label="Usuários"
           aria-busy={r.loading}
         >
@@ -131,9 +97,9 @@ export function UsersPage() {
             return (
               <li
                 key={row.id}
-                className={`adm-row usr-row${row.active ? "" : " inactive"}`}
+                className={`adm-row${row.active ? "" : " inactive"}`}
               >
-                <span className="usr-avatar" aria-hidden="true">
+                <span className="usr-avatar adm-lead" aria-hidden="true">
                   {initials(row.display_name) || "?"}
                 </span>
                 <div className="adm-main">
@@ -157,7 +123,7 @@ export function UsersPage() {
                   </button>
                   {manage && !self && (
                     <button
-                      className={`small ghost ${row.active ? "adm-danger" : "usr-activate"}`}
+                      className={`small ghost ${row.active ? "adm-danger" : "adm-activate"}`}
                       aria-label={`${row.active ? "Desativar" : "Ativar"} ${row.display_name}`}
                       onClick={() => setToggle(row)}
                     >
@@ -170,8 +136,13 @@ export function UsersPage() {
           })}
         </ul>
       )}
-      {data && data.count > api.PAGE_SIZE && (
-        <Pager page={page} count={data.count} onChange={setPage} />
+      {data && (
+        <Pager
+          page={page}
+          count={data.count}
+          size={api.PAGE_SIZE}
+          onChange={filters.setPage}
+        />
       )}
       {selected && (
         <UserAssignments
@@ -182,6 +153,7 @@ export function UsersPage() {
       {toggle && (
         <Confirm
           title={`${toggle.active ? "Desativar" : "Ativar"} usuário`}
+          tone={toggle.active ? "danger" : "primary"}
           description={
             toggle.active
               ? `${toggle.display_name} perderá o acesso e suas atribuições serão revogadas. O histórico será preservado.`

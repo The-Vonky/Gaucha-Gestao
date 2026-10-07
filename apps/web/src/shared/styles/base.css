@@ -750,6 +750,13 @@ dialog::backdrop {
   }
 }
 
+/* Page-level loading: the loader centered where the content will appear. */
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-12) var(--space-4);
+}
+
 /* ---------- Empty state (compact: never dominates the page) ---------- */
 .empty-state {
   display: flex;

@@ -2,14 +2,21 @@ import { useCallback, useState } from "react";
 import type { Role } from "../types";
 import { useAuth } from "../auth/AuthProvider";
 import { useResource } from "../../shared/useResource";
-import { PageTitle, Pager } from "../../shared/ui";
+import { EmptyState, PageTitle, Pager } from "../../shared/ui";
 import * as api from "./api";
-import { ActiveBadge, Identifier, ListState, RoleKind } from "./parts";
+import {
+  ActiveBadge,
+  Identifier,
+  ListState,
+  RoleKind,
+  useLatest,
+} from "./parts";
 import { RoleEditor } from "./RoleEditor";
 export function RolesPage() {
   const auth = useAuth();
   const [page, setPage] = useState(0);
   const r = useResource(useCallback(() => api.list("roles", page), [page]));
+  const data = useLatest(r);
   const [edit, setEdit] = useState<Role | null | undefined>();
   const manage = auth.can("admin.role.manage");
   return (
@@ -26,20 +33,34 @@ export function RolesPage() {
         )}
       </PageTitle>
       <ListState
-        loading={r.loading}
+        loading={r.loading && !data}
         error={r.error}
-        empty={!!r.data && !r.data.rows.length}
-        emptyText="Nenhum perfil encontrado."
+        label="Carregando perfis…"
         onRetry={r.reload}
       />
-      {r.data && r.data.rows.length > 0 && (
-        <ul className="adm-list" aria-label="Perfis de acesso">
-          {r.data.rows.map((row) => {
+      {data && !data.rows.length && (
+        <EmptyState title="Nenhum perfil cadastrado">
+          Os perfis de sistema são criados pela plataforma.
+          {manage
+            ? " Use “Novo perfil” para criar um perfil personalizado."
+            : ""}
+        </EmptyState>
+      )}
+      {data && data.rows.length > 0 && (
+        <ul
+          className="adm-list adm-table no-lead"
+          aria-label="Perfis de acesso"
+          aria-busy={r.loading}
+        >
+          {data.rows.map((row) => {
             // System roles are always read-only; the editor may still turn read-only
             // when the role holds permissions the current user lacks.
             const consult = row.system || !manage;
             return (
-              <li key={row.id} className="adm-row">
+              <li
+                key={row.id}
+                className={`adm-row${row.active ? "" : " inactive"}`}
+              >
                 <div className="adm-main">
                   <p className="adm-title">
                     <strong>{row.name}</strong>
@@ -55,7 +76,7 @@ export function RolesPage() {
                 </div>
                 <div className="adm-actions">
                   <button
-                    className={consult ? "ghost" : undefined}
+                    className={consult ? "small ghost" : "small"}
                     aria-label={`${consult ? "Consultar" : "Editar"} ${row.name}`}
                     onClick={() => setEdit(row)}
                   >
@@ -67,7 +88,14 @@ export function RolesPage() {
           })}
         </ul>
       )}
-      {r.data && <Pager page={page} count={r.data.count} onChange={setPage} />}
+      {data && (
+        <Pager
+          page={page}
+          count={data.count}
+          size={api.PAGE_SIZE}
+          onChange={setPage}
+        />
+      )}
       {edit !== undefined && (
         <RoleEditor
           selected={edit}

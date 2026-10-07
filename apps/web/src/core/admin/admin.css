@@ -94,17 +94,6 @@ button.adm-danger:hover:not(:disabled) {
   background: var(--danger-bg);
   color: var(--danger);
 }
-.adm-avatar {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  border-radius: var(--radius-full);
-  background: var(--color-surface-sunken);
-  color: var(--neutral-700);
-  font: 600 0.8125rem/1 var(--font-display);
-}
 .adm-code {
   flex: 0 0 auto;
   max-width: 12ch;
@@ -117,12 +106,17 @@ button.adm-danger:hover:not(:disabled) {
   overflow-wrap: anywhere;
 }
 
-/* ---------- Users (Elo) ---------- */
-/* Toolbar: search, the inactive toggle and the result count on one surface. */
-.usr-toolbar .check {
+/* ---------- Toolbar (Elo): search, inactive toggle and result count ---------- */
+/* The whole label is the toggle's target: control height, like the fields. */
+.adm-toolbar .check {
   align-self: end;
+  align-items: center;
+  min-height: var(--control-height);
 }
-.usr-count {
+.adm-toolbar .check input {
+  margin-top: 0;
+}
+.adm-total {
   display: flex;
   align-items: center;
   gap: var(--space-1);
@@ -132,38 +126,62 @@ button.adm-danger:hover:not(:disabled) {
   font: var(--text-body-sm);
   color: var(--color-text-secondary);
 }
-.usr-count strong {
+.adm-total strong {
   font: 600 1rem/1 var(--font-display);
   color: var(--color-text);
 }
-.usr-list {
-  overflow: hidden;
+.adm-list {
   transition: opacity var(--duration-base) var(--ease-standard);
 }
-.usr-list[aria-busy="true"] {
+.adm-list[aria-busy="true"] {
   opacity: 0.6;
 }
-/* Fixed state and action columns keep every row aligned like a table. */
-.usr-row {
+
+/* ---------- Record table (Elo) ---------- */
+/* Rows share the list's columns (subgrid): lead (avatar/code), identity, state
+   and actions stay aligned like a table, whatever each row contains. */
+.adm-table {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 6.5rem auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  column-gap: var(--space-4);
+  overflow: hidden;
+}
+.adm-table.no-lead {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.adm-table > .adm-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
-.usr-list.manage .usr-row {
-  grid-template-columns: 40px minmax(0, 1fr) 6.5rem 14.5rem;
-}
-.usr-row:hover {
+.adm-table > .adm-row:hover {
   background: var(--color-surface-subtle);
 }
-.usr-row .adm-actions {
+.adm-table .adm-actions {
   justify-content: flex-start;
 }
-.usr-row .adm-title strong {
+.adm-table .adm-title strong {
   font: 600 0.9375rem/1.35 var(--font-sans);
 }
-.usr-row .adm-id,
-.usr-row .adm-id code {
+.adm-table .adm-id,
+.adm-table .adm-id code {
   color: var(--color-text-tertiary);
+}
+/* Inactive records stay readable but step back. */
+.adm-row.inactive .adm-title strong {
+  color: var(--color-text-secondary);
+}
+.adm-row.inactive .adm-code {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-tertiary);
+}
+button.adm-activate {
+  color: var(--color-link);
+}
+button.adm-activate:hover:not(:disabled) {
+  background: var(--color-selected-bg);
+  color: var(--color-selected-text);
 }
 /* Elo avatar: brand gradient ring, as in the navigation user card. */
 .usr-avatar {
@@ -180,47 +198,61 @@ button.adm-danger:hover:not(:disabled) {
   font: 600 0.8125rem/1 var(--font-display);
   letter-spacing: 0.04em;
 }
-.usr-row.inactive .usr-avatar {
+.adm-row.inactive .usr-avatar {
   background: var(--color-surface-sunken);
   border-color: var(--color-border-strong);
   color: var(--color-text-tertiary);
 }
-.usr-row.inactive .adm-title strong {
-  color: var(--color-text-secondary);
-}
-button.usr-activate {
-  color: var(--color-link);
-}
-button.usr-activate:hover:not(:disabled) {
-  background: var(--color-selected-bg);
-  color: var(--color-selected-text);
-}
 @media (max-width: 767px) {
-  .usr-count {
+  .adm-total {
     flex-basis: 100%;
     margin: 0;
     min-height: 0;
   }
-  /* Identity and state on top; actions below, aligned with the name. */
-  .usr-row,
-  .usr-list.manage .usr-row {
-    grid-template-columns: 40px minmax(0, 1fr) auto;
+  /* Identity and state on top; actions below, aligned with the identity. */
+  .adm-table {
+    display: block;
+  }
+  .adm-table > .adm-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
-      "avatar main state"
+      "lead main state"
       ". actions actions";
+    gap: var(--space-2) var(--space-3);
   }
-  .usr-avatar {
-    grid-area: avatar;
+  .adm-table.no-lead > .adm-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "main state"
+      "actions actions";
   }
-  .usr-row .adm-main {
+  .adm-table .adm-lead {
+    grid-area: lead;
+  }
+  .adm-table .adm-main {
     grid-area: main;
   }
-  .usr-row .adm-state {
+  .adm-table .adm-state {
     grid-area: state;
   }
-  .usr-row .adm-actions {
+  .adm-table .adm-actions {
     grid-area: actions;
   }
+  .adm-table .adm-actions:empty {
+    display: none;
+  }
+}
+
+/* ---------- Permission catalog (grouped by domain) ---------- */
+.adm-domain + .adm-domain {
+  margin-top: var(--space-6);
+}
+.adm-domain > h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--text-card-title);
+  margin: 0 0 var(--space-3);
 }
 
 /* ---------- Modal content ---------- */
@@ -359,6 +391,16 @@ button.usr-activate:hover:not(:disabled) {
   display: flex;
   gap: var(--space-2);
   align-self: end;
+}
+.adm-log-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: calc(-1 * var(--space-1)) 0 var(--space-3);
+}
+.adm-log-status span + span::before {
+  content: "·";
+  margin-right: var(--space-2);
 }
 .adm-time {
   display: grid;

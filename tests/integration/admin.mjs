@@ -135,7 +135,8 @@ try {
       ),
       `Page overflow: ${what}`,
     );
-  /** Every visible enabled control in `scope` meets the target for this width. */
+  /** Every visible enabled control in `scope` meets the target for this width.
+   * A native checkbox/radio is targeted through its label, which toggles it. */
   const targets = async (page, scope, width, what) => {
     // Measure the settled UI, not the dialog entrance scale (0.985), which can
     // make a correct 44px target temporarily render at ~43.3px.
@@ -153,9 +154,13 @@ try {
         els
           .filter((e) => e.getClientRects().length && !e.disabled)
           .map((e) => [
-            e.textContent.trim() || e.getAttribute("aria-label"),
-            e.getBoundingClientRect(),
+            e.textContent.trim() ||
+              e.getAttribute("aria-label") ||
+              e.closest("label")?.textContent.trim(),
+            (/^(checkbox|radio)$/.test(e.type) && e.closest("label")) ||
+              e,
           ])
+          .map(([n, e]) => [n, e.getBoundingClientRect()])
           .filter(
             ([, r]) =>
               Math.round(r.height) < min || Math.round(r.width) < min - 12,
@@ -178,7 +183,7 @@ try {
     );
     await noOverflow(page, `${what} dialog`);
   };
-  /** Lists are ordered by id: walk the pager until `target` is on screen. */
+  /** Walk the pager (shown only for more than one page) until `target` is on screen. */
   const reach = async (page, target) => {
     const pager = page.getByRole("navigation", { name: "Paginação" });
     const first = () =>
@@ -193,7 +198,7 @@ try {
           !document.body.innerText.includes("Carregando") &&
           document
             .querySelector('nav[aria-label="Paginação"] span')
-            ?.textContent?.endsWith(`Página ${n}`) &&
+            ?.textContent?.includes(`Página ${n} de `) &&
           document.querySelector("main li")?.textContent !== b,
         [before, n + 1],
       );
@@ -291,12 +296,13 @@ try {
       await page.screenshot({ path: join(shots, `role-editor-${width}.png`) });
     await page.keyboard.press("Escape");
 
-    // Permissions: read-only catalog (only pagination buttons in main).
+    // Permissions: read-only catalog grouped by domain, on one screen (no buttons).
     await visit("/admin/permissions", "permissions");
-    assert.deepEqual(await page.locator("main button").allTextContents(), [
-      "Anterior",
-      "Próxima",
-    ]);
+    assert.deepEqual(await page.locator("main button").allTextContents(), []);
+    await page
+      .locator("main")
+      .getByRole("heading", { name: /^Administração/ })
+      .waitFor();
 
     // Units and sectors.
     await visit("/admin/units", "units");
@@ -306,7 +312,7 @@ try {
       .filter({ hasText: `Estoque ${tag}` });
     await reach(page, sectorRow);
     await sectorRow.getByRole("button", { name: /^Unidades de/ }).click();
-    await page.getByText(/unidade\(s\) vinculada\(s\)/).waitFor();
+    await page.getByText(/unidades? vinculadas?/).waitFor();
     await dialogFits(page, width, height, "sector units");
     await targets(page, "dialog button", width, "sector units");
     await page.keyboard.press("Escape");
@@ -315,7 +321,7 @@ try {
     await visit("/admin/logs", "logs");
     await page.getByLabel("Módulo").fill("core");
     await page.getByRole("button", { name: "Filtrar" }).click();
-    await page.getByText("1 filtro(s) aplicado(s).").waitFor();
+    await page.getByText("1 filtro aplicado").waitFor();
     await settle(page);
     await page
       .getByRole("button", { name: /^Detalhes:/ })

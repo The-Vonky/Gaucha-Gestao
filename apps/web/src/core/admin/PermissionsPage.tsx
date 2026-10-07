@@ -1,14 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useResource } from "../../shared/useResource";
-import { Badge, PageTitle, Pager } from "../../shared/ui";
+import { Badge, EmptyState, PageTitle } from "../../shared/ui";
 import * as api from "./api";
-import { domainLabel, ListState } from "./parts";
-/** Read-only catalog: changes only through migrations. */
+import { byDomain, domainLabel, ListState } from "./parts";
+/** Read-only catalog (changes only through migrations), grouped by domain. */
 export function PermissionsPage() {
-  const [page, setPage] = useState(0);
-  const r = useResource(
-    useCallback(() => api.list("permissions", page), [page]),
-  );
+  const r = useResource(useCallback(() => api.all("permissions"), []));
   return (
     <>
       <PageTitle
@@ -19,38 +16,54 @@ export function PermissionsPage() {
       <ListState
         loading={r.loading}
         error={r.error}
-        empty={!!r.data && !r.data.rows.length}
-        emptyText="Nenhuma permissão encontrada."
+        label="Carregando permissões…"
         onRetry={r.reload}
       />
-      {r.data && r.data.rows.length > 0 && (
-        <ul className="adm-list" aria-label="Permissões">
-          {r.data.rows.map((p) => (
-            <li key={p.key} className="adm-row">
-              <div className="adm-main">
-                <p className="adm-title">
-                  <strong>{p.description}</strong>
-                </p>
-                <p className="adm-key">
-                  <code>{p.key}</code>
-                </p>
-                <p className="adm-meta">
-                  Recurso: {p.resource} · Ação: {p.action}
-                </p>
-              </div>
-              <div className="adm-state">
-                <Badge tone="neutral">{domainLabel(p.domain)}</Badge>
-                {!p.active && (
-                  <Badge tone="neutral" icon="close">
-                    Inativa
-                  </Badge>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+      {r.data && !r.data.length && (
+        <EmptyState title="Catálogo vazio">
+          Nenhuma permissão está disponível no seu acesso.
+        </EmptyState>
       )}
-      {r.data && <Pager page={page} count={r.data.count} onChange={setPage} />}
+      {r.data &&
+        byDomain(r.data).map(([domain, rows]) => (
+          <section
+            key={domain}
+            className="adm-domain"
+            aria-labelledby={`perm-${domain}`}
+          >
+            <h2 id={`perm-${domain}`}>
+              {domainLabel(domain)}
+              <span className="adm-count numeric">{rows.length}</span>
+            </h2>
+            <ul className="adm-list" aria-label={domainLabel(domain)}>
+              {rows.map((p) => (
+                <li
+                  key={p.key}
+                  className={`adm-row${p.active ? "" : " inactive"}`}
+                >
+                  <div className="adm-main">
+                    <p className="adm-title">
+                      <strong>{p.description}</strong>
+                    </p>
+                    <p className="adm-key">
+                      <code>{p.key}</code>
+                    </p>
+                    <p className="adm-meta">
+                      Recurso: {p.resource} · Ação: {p.action}
+                    </p>
+                  </div>
+                  {!p.active && (
+                    <div className="adm-state">
+                      <Badge tone="neutral" icon="close">
+                        Inativa
+                      </Badge>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
     </>
   );
 }

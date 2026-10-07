@@ -1,17 +1,16 @@
 import { useCallback } from "react";
-import type { Permission, Role } from "../types";
+import type { Role } from "../types";
 import { useAuth } from "../auth/AuthProvider";
 import { useResource } from "../../shared/useResource";
-import { Form, Modal, Notice } from "../../shared/ui";
+import { Form, LoadingState, Modal, Notice } from "../../shared/ui";
 import * as api from "./api";
-import { ActiveBadge, domainLabel, Identifier, RoleKind } from "./parts";
-/** Permissions grouped by domain, in catalog order. */
-function byDomain(permissions: Permission[]) {
-  const groups = new Map<string, Permission[]>();
-  for (const p of permissions)
-    groups.set(p.domain, [...(groups.get(p.domain) ?? []), p]);
-  return [...groups];
-}
+import {
+  ActiveBadge,
+  byDomain,
+  domainLabel,
+  Identifier,
+  RoleKind,
+} from "./parts";
 export function RoleEditor({
   selected,
   onClose,
@@ -57,7 +56,7 @@ export function RoleEditor({
           <Identifier label="Chave">{row.key}</Identifier>
         </p>
       )}
-      {r.loading && <Notice>Carregando composição…</Notice>}
+      {r.loading && <LoadingState label="Carregando composição…" />}
       {r.error && (
         <Notice error>
           {r.error} <button onClick={r.reload}>Tentar novamente</button>

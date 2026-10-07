@@ -10,7 +10,8 @@ import {
   type FormEvent,
 } from "react";
 import { message } from "./errors";
-import { BrandMark } from "./brand";
+import { BrandMark, Loader } from "./brand";
+import { plural } from "./plural";
 import { Icon, type IconName } from "./icons";
 const PendingContext = createContext<((value: boolean) => void) | null>(null);
 type Tone = "info" | "success" | "warning" | "error";
@@ -185,18 +186,24 @@ export function Modal({
     </dialog>
   );
 }
+/**
+ * Explicit confirmation. `danger` is for actions that remove or revoke something;
+ * reversible state changes (activate, start, finalize) confirm with `primary`.
+ */
 export function Confirm({
   title,
   description,
   children,
   onConfirm,
   onClose,
+  tone = "danger",
 }: {
   title: string;
   description: string;
   children?: ReactNode;
   onConfirm: () => Promise<void>;
   onClose: () => void;
+  tone?: "danger" | "primary";
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -221,11 +228,7 @@ export function Confirm({
         <button disabled={busy} onClick={onClose}>
           Cancelar
         </button>
-        <button
-          className="danger"
-          disabled={busy}
-          onClick={() => void submit()}
-        >
+        <button className={tone} disabled={busy} onClick={() => void submit()}>
           {busy ? "Salvando…" : "Confirmar"}
         </button>
       </div>
@@ -276,30 +279,40 @@ export function Form({
     </form>
   );
 }
+/** Page navigation; rendered only when the result spans more than one page. */
 export function Pager({
   page,
   count,
   onChange,
+  size = 25,
 }: {
   page: number;
   count: number;
   onChange: (page: number) => void;
+  size?: number;
 }) {
+  const pages = Math.ceil(count / size);
+  if (pages <= 1) return null;
   return (
     <nav className="pager" aria-label="Paginação">
       <span>
-        {count} registro(s) · Página {page + 1}
+        {plural(count, "registro", "registros")} · Página {page + 1} de {pages}
       </span>
       <button disabled={page === 0} onClick={() => onChange(page - 1)}>
         Anterior
       </button>
-      <button
-        disabled={(page + 1) * 25 >= count}
-        onClick={() => onChange(page + 1)}
-      >
+      <button disabled={page + 1 >= pages} onClick={() => onChange(page + 1)}>
         Próxima
       </button>
     </nav>
+  );
+}
+/** Page-level loading: the brand loader, centered in the content area. */
+export function LoadingState({ label }: { label: string }) {
+  return (
+    <div className="loading-state">
+      <Loader label={label} />
+    </div>
   );
 }
 export type BadgeTone = "success" | "warning" | "danger" | "info" | "neutral";

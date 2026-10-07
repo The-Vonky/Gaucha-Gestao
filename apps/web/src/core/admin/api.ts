@@ -14,13 +14,20 @@ export async function list<K extends keyof RowMap>(table: K, page = 0) {
             ? "unit_id"
             : table === "role_permissions"
               ? "role_id"
-              : "id",
+              : table === "profiles"
+                ? "display_name"
+                : table === "user_role_assignments"
+                  ? "id"
+                  : "name",
       { ascending: table !== "system_audit_log" },
     );
   if (table === "role_permissions") query = query.order("permission_key");
   if (table === "unit_sectors") query = query.order("sector_id");
   if (table === "system_audit_log")
     query = query.order("id", { ascending: false });
+  // Named records read alphabetically; the id keeps each page boundary unique.
+  if (["profiles", "units", "sectors", "roles"].includes(table))
+    query = query.order("id");
   const { data, error, count } = await query.range(
     page * PAGE_SIZE,
     (page + 1) * PAGE_SIZE - 1,
@@ -53,26 +60,38 @@ export async function saveOrganization(
   const { error } = await query.select("id").single();
   if (error) throw error;
 }
-export async function users(
+export type ListFilter = { search: string; inactive: boolean };
+/** A page of named records, alphabetical, optionally filtered by name and active only. */
+async function named<K extends "profiles" | "units" | "sectors">(
+  table: K,
   page: number,
-  filters: { search: string; inactive: boolean },
+  filters: ListFilter,
 ) {
+  // The three tables share id/active and a name column; typed through one of them.
+  const name = (table === "profiles" ? "display_name" : "name") as "name";
   let query = database()
-    .from("profiles")
+    .from(table as "units")
     .select("*", { count: "exact" })
-    .order("display_name")
+    .order(name)
     .order("id");
   // LIKE wildcards typed by the user are matched literally.
   const search = filters.search.replace(/[\\%_]/g, (c) => `\\${c}`);
-  if (search) query = query.ilike("display_name", `%${search}%`);
+  if (search) query = query.ilike(name, `%${search}%`);
   if (!filters.inactive) query = query.eq("active", true);
   const { data, error, count } = await query.range(
     page * PAGE_SIZE,
     (page + 1) * PAGE_SIZE - 1,
   );
   if (error) throw error;
-  return { rows: data ?? [], count: count ?? 0 };
+  return { rows: (data ?? []) as unknown as RowMap[K][], count: count ?? 0 };
 }
+export const users = (page: number, filters: ListFilter) =>
+  named("profiles", page, filters);
+export const organizations = (
+  kind: "units" | "sectors",
+  page: number,
+  filters: ListFilter,
+) => named(kind, page, filters);
 export async function setProfileActive(
   id: string,
   version: number,

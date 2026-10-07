@@ -3,7 +3,14 @@ import { database } from "../client";
 import { useAuth } from "../auth/AuthProvider";
 import type { Assignment, Profile } from "../types";
 import { useResource } from "../../shared/useResource";
-import { Badge, Confirm, Form, Modal, Notice } from "../../shared/ui";
+import {
+  Badge,
+  Confirm,
+  Form,
+  LoadingState,
+  Modal,
+  Notice,
+} from "../../shared/ui";
 import * as api from "./api";
 import { ActiveBadge, Identifier } from "./parts";
 type Described = { role: string; unit: string | null; sector: string | null };
@@ -134,7 +141,7 @@ export function UserAssignments({
         <ActiveBadge active={profile.active} />
         <Identifier label="ID">{profile.id}</Identifier>
       </p>
-      {r.loading && <Notice>Carregando…</Notice>}
+      {r.loading && <LoadingState label="Carregando atribuições…" />}
       {r.error && <Notice error>{r.error}</Notice>}
       {r.data && (
         <>
