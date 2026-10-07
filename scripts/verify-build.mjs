@@ -25,6 +25,12 @@ const required = {
     "action-plan-evidence",
   ],
   "Core administration": ["save_role", "my_access"],
+  "Core unit covers": [
+    "unit_covers",
+    "begin_unit_cover_upload",
+    "confirm_unit_cover_upload",
+    "unit-covers",
+  ],
 };
 // Key material only; supabase-js itself contains the bare "sb_secret_" prefix check.
 const forbidden = [/service_role/, /sb_secret_[A-Za-z0-9_-]{8,}/];

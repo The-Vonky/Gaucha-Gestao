@@ -7,6 +7,7 @@ import { Icon } from "../../shared/icons";
 import { Confirm, Form, Modal, PageTitle, Pager } from "../../shared/ui";
 import { ActiveBadge, ListState } from "./parts";
 import { SectorUnits } from "./SectorUnits";
+import { UnitCoverEditor } from "./UnitCoverEditor";
 export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
   const auth = useAuth();
   const [page, setPage] = useState(0);
@@ -16,6 +17,7 @@ export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
   const [edit, setEdit] = useState<Organization | null | undefined>();
   const [toggle, setToggle] = useState<Organization>();
   const [links, setLinks] = useState<Organization>();
+  const [cover, setCover] = useState<Organization>();
   const unit = kind === "units";
   const noun = unit ? "unidade" : "setor";
   const permission = unit ? "admin.unit.manage" : "admin.sector.manage";
@@ -70,6 +72,15 @@ export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
                     >
                       Editar
                     </button>
+                    {unit && (
+                      <button
+                        className="ghost"
+                        aria-label={`Capa de ${row.name}`}
+                        onClick={() => setCover(row)}
+                      >
+                        Capa
+                      </button>
+                    )}
                     <button
                       className={row.active ? "ghost adm-danger" : "ghost"}
                       aria-label={`${row.active ? "Desativar" : "Ativar"} ${row.name}`}
@@ -152,6 +163,13 @@ export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
       )}
       {links && (
         <SectorUnits sector={links} onClose={() => setLinks(undefined)} />
+      )}
+      {cover && (
+        <UnitCoverEditor
+          unit={cover}
+          onClose={() => setCover(undefined)}
+          onChanged={resource.reload}
+        />
       )}
     </>
   );
