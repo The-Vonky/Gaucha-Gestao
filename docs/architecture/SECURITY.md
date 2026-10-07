@@ -79,7 +79,7 @@ Collect only data that has a business purpose.
 
 Uploaded content is untrusted.
 
-Evidence/Storage v1 defines these controls for Action Plans; Audit Checklist Evidence is governed by its [implementation contract](../modules/audit/CHECKLIST_EVIDENCE_V1.md) and approved brief. Each owning module must define:
+Evidence/Storage v1 defines these controls for Action Plans; Audit Checklist Evidence is governed by its [implementation contract](../modules/audit/CHECKLIST_EVIDENCE_V1.md) and approved brief. Unit cover photos are governed by the Core [Unit Cover v1 contract](../modules/core/UNIT_COVER_V1.md). Each owning module must define:
 - allowed file types;
 - maximum size;
 - object naming;
