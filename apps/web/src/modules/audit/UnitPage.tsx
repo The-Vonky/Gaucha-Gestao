@@ -325,7 +325,7 @@ function UnitHistoryTab({ unit, rows }: { unit: AuditUnit; rows: InspectionSumma
               <div className="audit-panel-head">
                 <h2 id="unit-report-title">Relatório do histórico</h2>
               </div>
-              <p>Filtre pela data de aplicação (limites inclusivos, até 5.000 registros). Sem datas, o relatório inclui todo o histórico.</p>
+              <p className="muted">Filtre pela data da auditoria (limites inclusivos, até 5.000 registros). Sem datas, o relatório inclui todo o histórico.</p>
               <div className="actions">
                 <label>De <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
                 <label>Até <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} /></label>

@@ -78,7 +78,7 @@ export function NewInspection({
             </label>
           )}
           <label>
-            Data de aplicação
+            Data da auditoria
             <input
               type="date"
               name="applied_on"
