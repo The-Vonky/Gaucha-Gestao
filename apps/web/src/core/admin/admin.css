@@ -117,6 +117,112 @@ button.adm-danger:hover:not(:disabled) {
   overflow-wrap: anywhere;
 }
 
+/* ---------- Users (Elo) ---------- */
+/* Toolbar: search, the inactive toggle and the result count on one surface. */
+.usr-toolbar .check {
+  align-self: end;
+}
+.usr-count {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: end;
+  min-height: var(--control-height);
+  margin: 0 0 0 auto;
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
+}
+.usr-count strong {
+  font: 600 1rem/1 var(--font-display);
+  color: var(--color-text);
+}
+.usr-list {
+  overflow: hidden;
+  transition: opacity var(--duration-base) var(--ease-standard);
+}
+.usr-list[aria-busy="true"] {
+  opacity: 0.6;
+}
+/* Fixed state and action columns keep every row aligned like a table. */
+.usr-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 6.5rem auto;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.usr-list.manage .usr-row {
+  grid-template-columns: 40px minmax(0, 1fr) 6.5rem 14.5rem;
+}
+.usr-row:hover {
+  background: var(--color-surface-subtle);
+}
+.usr-row .adm-actions {
+  justify-content: flex-start;
+}
+.usr-row .adm-title strong {
+  font: 600 0.9375rem/1.35 var(--font-sans);
+}
+.usr-row .adm-id,
+.usr-row .adm-id code {
+  color: var(--color-text-tertiary);
+}
+/* Elo avatar: brand gradient ring, as in the navigation user card. */
+.usr-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-full);
+  background:
+    linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
+    var(--gradient-brand) border-box;
+  color: var(--neutral-800);
+  font: 600 0.8125rem/1 var(--font-display);
+  letter-spacing: 0.04em;
+}
+.usr-row.inactive .usr-avatar {
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-tertiary);
+}
+.usr-row.inactive .adm-title strong {
+  color: var(--color-text-secondary);
+}
+button.usr-activate {
+  color: var(--color-link);
+}
+button.usr-activate:hover:not(:disabled) {
+  background: var(--color-selected-bg);
+  color: var(--color-selected-text);
+}
+@media (max-width: 767px) {
+  .usr-count {
+    flex-basis: 100%;
+    margin: 0;
+    min-height: 0;
+  }
+  /* Identity and state on top; actions below, aligned with the name. */
+  .usr-row,
+  .usr-list.manage .usr-row {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "avatar main state"
+      ". actions actions";
+  }
+  .usr-avatar {
+    grid-area: avatar;
+  }
+  .usr-row .adm-main {
+    grid-area: main;
+  }
+  .usr-row .adm-state {
+    grid-area: state;
+  }
+  .usr-row .adm-actions {
+    grid-area: actions;
+  }
+}
+
 /* ---------- Modal content ---------- */
 .adm-modal-meta {
   display: flex;

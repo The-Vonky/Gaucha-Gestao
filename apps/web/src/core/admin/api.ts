@@ -53,6 +53,26 @@ export async function saveOrganization(
   const { error } = await query.select("id").single();
   if (error) throw error;
 }
+export async function users(
+  page: number,
+  filters: { search: string; inactive: boolean },
+) {
+  let query = database()
+    .from("profiles")
+    .select("*", { count: "exact" })
+    .order("display_name")
+    .order("id");
+  // LIKE wildcards typed by the user are matched literally.
+  const search = filters.search.replace(/[\\%_]/g, (c) => `\\${c}`);
+  if (search) query = query.ilike("display_name", `%${search}%`);
+  if (!filters.inactive) query = query.eq("active", true);
+  const { data, error, count } = await query.range(
+    page * PAGE_SIZE,
+    (page + 1) * PAGE_SIZE - 1,
+  );
+  if (error) throw error;
+  return { rows: data ?? [], count: count ?? 0 };
+}
 export async function setProfileActive(
   id: string,
   version: number,

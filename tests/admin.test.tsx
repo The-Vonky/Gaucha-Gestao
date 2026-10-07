@@ -26,6 +26,8 @@ import type {
 } from "../apps/web/src/core/types";
 const api = vi.hoisted(() => ({
   list: vi.fn(),
+  users: vi.fn(),
+  PAGE_SIZE: 25,
   saveOrganization: vi.fn(),
   all: vi.fn(),
   setProfileActive: vi.fn(),
@@ -258,7 +260,7 @@ describe("critical administration flows", () => {
 });
 describe("users", () => {
   it("lists the name first, the UUID as secondary text and never offers self-deactivation", async () => {
-    api.list.mockResolvedValue({
+    api.users.mockResolvedValue({
       rows: [
         profile(),
         profile({ id: "me", display_name: "Eu Mesmo" }),
@@ -288,8 +290,48 @@ describe("users", () => {
       screen.getByRole("button", { name: "Atribuições de Eu Mesmo" }),
     ).toBeTruthy();
   });
+  it("hides inactive users by default and filters by name", async () => {
+    api.users.mockResolvedValue({ rows: [profile()], count: 1 });
+    const user = userEvent.setup();
+    render(<UsersPage />);
+    await screen.findByText("Ana Souza");
+    expect(api.users).toHaveBeenLastCalledWith(0, {
+      search: "",
+      inactive: false,
+    });
+    await user.click(screen.getByLabelText("Exibir inativos"));
+    await waitFor(() =>
+      expect(api.users).toHaveBeenLastCalledWith(0, {
+        search: "",
+        inactive: true,
+      }),
+    );
+    await user.type(screen.getByRole("searchbox"), " Ana ");
+    await waitFor(() =>
+      expect(api.users).toHaveBeenLastCalledWith(0, {
+        search: "Ana",
+        inactive: true,
+      }),
+    );
+  });
+  it("offers to clear a search without results and hides the pager on one page", async () => {
+    api.users.mockResolvedValue({ rows: [profile()], count: 1 });
+    const user = userEvent.setup();
+    render(<UsersPage />);
+    await screen.findByText("Ana Souza");
+    expect(screen.queryByRole("navigation", { name: "Paginação" })).toBeNull();
+    api.users.mockResolvedValue({ rows: [], count: 0 });
+    await user.type(screen.getByRole("searchbox"), "Zé");
+    expect(
+      await screen.findByText(/Nenhum nome corresponde a “Zé”/),
+    ).toBeTruthy();
+    api.users.mockResolvedValue({ rows: [profile()], count: 1 });
+    await user.click(screen.getByRole("button", { name: "Limpar busca" }));
+    expect(await screen.findByText("Ana Souza")).toBeTruthy();
+    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("");
+  });
   it("deactivates only after confirmation, using the row version", async () => {
-    api.list.mockResolvedValue({ rows: [profile()], count: 1 });
+    api.users.mockResolvedValue({ rows: [profile()], count: 1 });
     api.setProfileActive.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<UsersPage />);
@@ -308,7 +350,7 @@ describe("users", () => {
   });
   it("hides activation without admin.user.manage and opens assignments by keyboard", async () => {
     auth.denied = new Set(["admin.user.manage"]);
-    api.list.mockResolvedValue({ rows: [profile()], count: 1 });
+    api.users.mockResolvedValue({ rows: [profile()], count: 1 });
     api.all.mockResolvedValue([role()]);
     assignments.rows = [];
     const user = userEvent.setup();

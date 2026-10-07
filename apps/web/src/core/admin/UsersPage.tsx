@@ -1,9 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import type { Profile } from "../types";
 import { Icon } from "../../shared/icons";
 import { useResource } from "../../shared/useResource";
-import { Badge, Confirm, PageTitle, Pager } from "../../shared/ui";
+import { Badge, Confirm, EmptyState, PageTitle, Pager } from "../../shared/ui";
 import * as api from "./api";
 import { ActiveBadge, Identifier, ListState } from "./parts";
 import { UserAssignments } from "./UserAssignments";
@@ -17,10 +17,37 @@ const initials = (name: string) =>
 export function UsersPage() {
   const auth = useAuth();
   const [page, setPage] = useState(0);
-  const r = useResource(useCallback(() => api.list("profiles", page), [page]));
+  const [term, setTerm] = useState("");
+  const [search, setSearch] = useState("");
+  const [inactive, setInactive] = useState(false);
+  // Waits for the user to stop typing before querying.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(term.trim());
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [term]);
+  const r = useResource(
+    useCallback(
+      () => api.users(page, { search, inactive }),
+      [page, search, inactive],
+    ),
+  );
+  // Keeps the previous result on screen while a new search loads.
+  const [shown, setShown] = useState<typeof r.data>();
+  useEffect(() => {
+    if (r.data) setShown(r.data);
+  }, [r.data]);
+  const data = r.error ? undefined : (r.data ?? shown);
   const [selected, setSelected] = useState<Profile>();
   const [toggle, setToggle] = useState<Profile>();
   const manage = auth.can("admin.user.manage");
+  const clear = () => {
+    setTerm("");
+    setSearch("");
+    setPage(0);
+  };
   return (
     <>
       <PageTitle
@@ -32,21 +59,81 @@ export function UsersPage() {
         Contas são criadas ou convidadas pela administração do Auth. Ativar uma
         conta não restaura suas atribuições revogadas.
       </p>
+      <form
+        className="filters adm-filters usr-toolbar"
+        aria-label="Filtros dos usuários"
+        onSubmit={(e) => e.preventDefault()}
+      >
+        <label className="adm-filter-wide">
+          Buscar
+          <input
+            type="search"
+            placeholder="Nome do usuário"
+            maxLength={160}
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+          />
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={inactive}
+            onChange={(e) => {
+              setInactive(e.target.checked);
+              setPage(0);
+            }}
+          />
+          <span>Exibir inativos</span>
+        </label>
+        {data && (
+          <p className="usr-count" role="status">
+            <strong className="numeric">{data.count}</strong>{" "}
+            {data.count === 1 ? "usuário" : "usuários"}
+            {inactive ? "" : data.count === 1 ? " ativo" : " ativos"}
+            {search ? ` para “${search}”` : ""}
+          </p>
+        )}
+      </form>
       <ListState
-        loading={r.loading}
+        loading={r.loading && !data}
         error={r.error}
-        empty={!!r.data && !r.data.rows.length}
-        emptyText="Nenhum usuário encontrado."
+        empty={false}
+        emptyText=""
         onRetry={r.reload}
       />
-      {r.data && r.data.rows.length > 0 && (
-        <ul className="adm-list" aria-label="Usuários">
-          {r.data.rows.map((row) => {
+      {data && !data.rows.length && (
+        <EmptyState
+          title="Nenhum usuário encontrado"
+          actions={
+            search && (
+              <button type="button" onClick={clear}>
+                Limpar busca
+              </button>
+            )
+          }
+        >
+          {search
+            ? `Nenhum nome corresponde a “${search}”${inactive ? "" : " entre os usuários ativos"}.`
+            : inactive
+              ? "Ainda não há usuários cadastrados."
+              : "Não há usuários ativos. Marque “Exibir inativos” para ver os demais."}
+        </EmptyState>
+      )}
+      {data && data.rows.length > 0 && (
+        <ul
+          className={`adm-list usr-list${manage ? " manage" : ""}`}
+          aria-label="Usuários"
+          aria-busy={r.loading}
+        >
+          {data.rows.map((row) => {
             // The current user never gets an activation toggle for their own account.
             const self = row.id === auth.profile?.id;
             return (
-              <li key={row.id} className="adm-row">
-                <span className="adm-avatar" aria-hidden="true">
+              <li
+                key={row.id}
+                className={`adm-row usr-row${row.active ? "" : " inactive"}`}
+              >
+                <span className="usr-avatar" aria-hidden="true">
                   {initials(row.display_name) || "?"}
                 </span>
                 <div className="adm-main">
@@ -61,6 +148,7 @@ export function UsersPage() {
                 </div>
                 <div className="adm-actions">
                   <button
+                    className="small"
                     aria-label={`Atribuições de ${row.display_name}`}
                     onClick={() => setSelected(row)}
                   >
@@ -69,7 +157,7 @@ export function UsersPage() {
                   </button>
                   {manage && !self && (
                     <button
-                      className={row.active ? "ghost adm-danger" : "ghost"}
+                      className={`small ghost ${row.active ? "adm-danger" : "usr-activate"}`}
                       aria-label={`${row.active ? "Desativar" : "Ativar"} ${row.display_name}`}
                       onClick={() => setToggle(row)}
                     >
@@ -82,7 +170,9 @@ export function UsersPage() {
           })}
         </ul>
       )}
-      {r.data && <Pager page={page} count={r.data.count} onChange={setPage} />}
+      {data && data.count > api.PAGE_SIZE && (
+        <Pager page={page} count={data.count} onChange={setPage} />
+      )}
       {selected && (
         <UserAssignments
           profile={selected}
