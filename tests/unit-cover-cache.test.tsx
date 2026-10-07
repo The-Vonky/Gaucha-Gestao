@@ -96,6 +96,21 @@ describe("unit cover cache isolation across access contexts", () => {
     await expect(resolveUnitCovers([unit(1)])).rejects.toMatchObject({ code: "42501" });
     expect(coverCalls()).toHaveLength(4);
   });
+  it("never returns a cover of the previous context when it changes right before the public return", async () => {
+    withCover(1);
+    setUnitCoverAccess("user-a");
+    const warm = (await resolveUnitCovers([unit(1)])).get(unit(1))!;
+    const pending = resolveUnitCovers([unit(1)]);
+    queueMicrotask(() => setUnitCoverAccess("user-b"));
+    const result = await pending;
+    expect(result.get(unit(1))).toBeNull();
+    expect(JSON.stringify([...result])).not.toContain(warm.url);
+    expect(coverCalls()).toHaveLength(1);
+    // B is resolved and authorized on its own.
+    supa.state.allowed = false;
+    await expect(resolveUnitCovers([unit(1)])).rejects.toMatchObject({ code: "42501" });
+    expect(coverCalls()).toHaveLength(2);
+  });
   it("hides covers on screen immediately when the access context changes", async () => {
     withCover(1);
     setUnitCoverAccess("user-a");
@@ -147,6 +162,36 @@ describe("unit cover cache isolation across access contexts", () => {
     await act(async () => {});
     expect(seen.get(unit(1)) ?? null).toBeNull();
     expect(coverCalls().length).toBeGreaterThan(beforeB);
+  });
+  it("keeps the cache when the same grants come back in a different order", async () => {
+    withCover(1);
+    let refresh = () => {};
+    let seen = new Map<string, UnitCover | null>();
+    function Probe() {
+      refresh = useAuth().refresh;
+      seen = useUnitCovers([unit(1)]).covers;
+      return null;
+    }
+    render(<AuthProvider><Probe /></AuthProvider>);
+    const g1 = { permission: "core.unit_cover.read", scope_type: "global", unit_id: null, sector_id: null };
+    const g2 = { permission: "audit.view", scope_type: "unit", unit_id: unit(1), sector_id: null };
+    supa.state.grants = [g1, g2];
+    await act(async () => supa.state.emit("SIGNED_IN", { user: { id: "user-a" } }));
+    await act(async () => {});
+    expect(seen.get(unit(1))?.assetId).toBe("asset-1");
+    const rpcs = coverCalls().length;
+    const signs = supa.createSignedUrls.mock.calls.length;
+    supa.state.grants = [g2, g1];
+    await act(async () => refresh());
+    await act(async () => {});
+    expect(coverCalls()).toHaveLength(rpcs);
+    expect(supa.createSignedUrls).toHaveBeenCalledTimes(signs);
+    expect(seen.get(unit(1))?.assetId).toBe("asset-1");
+    // An effectively different grant still changes the context.
+    supa.state.grants = [g2, { ...g1, scope_type: "unit", unit_id: unit(1) }];
+    await act(async () => refresh());
+    await act(async () => {});
+    expect(coverCalls()).toHaveLength(rpcs + 1);
   });
 });
 describe("unit cover invalidation races", () => {
@@ -248,6 +293,50 @@ describe("unit cover renewal while mounted", () => {
     act(() => result.current.reportError(url4));
     await flush();
     expect(result.current.covers.get(unit(1))!.url).not.toBe(url4.url);
+  });
+  it("recovers on its own after a renewal fails once, without a tight loop", async () => {
+    withCover(1);
+    const { result, unmount } = renderHook(() => useUnitCovers([unit(1)]));
+    await flush();
+    expect(result.current.covers.get(unit(1))?.assetId).toBe("asset-1");
+    supa.rpc.mockResolvedValueOnce({ data: null, error: { code: "XX000" } } as never);
+    await advance(240_000);
+    expect(coverCalls()).toHaveLength(2);
+    expect(result.current.covers.get(unit(1)) ?? null).toBeNull();
+    await advance(19_000);
+    expect(coverCalls()).toHaveLength(2);
+    await advance(1_000);
+    expect(coverCalls()).toHaveLength(3);
+    expect(result.current.covers.get(unit(1))?.assetId).toBe("asset-1");
+    // Back to the normal schedule (expiresAt - 60 s).
+    await advance(239_000);
+    expect(coverCalls()).toHaveLength(3);
+    await advance(1_000);
+    expect(coverCalls()).toHaveLength(4);
+    unmount();
+    await advance(3_600_000);
+    expect(coverCalls()).toHaveLength(4);
+  });
+  it("drops a retry started under the previous access context", async () => {
+    withCover(1);
+    setUnitCoverAccess("user-a");
+    const { result } = renderHook(() => useUnitCovers([unit(1)]));
+    await flush();
+    supa.rpc.mockResolvedValueOnce({ data: null, error: { code: "XX000" } } as never);
+    await advance(240_000);
+    const release = hold();
+    await advance(20_000);
+    expect(coverCalls()).toHaveLength(3);
+    supa.state.allowed = false;
+    act(() => setUnitCoverAccess("user-b"));
+    await flush();
+    expect(result.current.covers.size).toBe(0);
+    await act(async () => release());
+    await flush();
+    expect(result.current.covers.get(unit(1)) ?? null).toBeNull();
+    const calls = coverCalls().length;
+    await expect(resolveUnitCovers([unit(1)])).rejects.toMatchObject({ code: "42501" });
+    expect(coverCalls()).toHaveLength(calls + 1);
   });
   it.each([
     [25, [25]],
