@@ -33,9 +33,19 @@ const initial: AuthState = {
 };
 const Context = createContext<AuthValue | null>(null);
 // Private client caches (unit cover signed URLs) are scoped to this key: user, active flag and
-// grants. A user whose access is not loaded yet gets a key of its own.
+// grants (order-insensitive). A user whose access is not loaded yet gets a key of its own.
 const accessKey = (userId: string, active?: boolean, grants?: AccessGrant[]) =>
-  JSON.stringify(grants ? [userId, !!active, grants] : [userId]);
+  JSON.stringify(
+    grants
+      ? [
+          userId,
+          !!active,
+          grants
+            .map((g) => JSON.stringify([g.permission, g.scope_type, g.unit_id, g.sector_id]))
+            .sort(),
+        ]
+      : [userId],
+  );
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(initial);
   const sequence = useRef(0);

@@ -131,14 +131,22 @@ async function resolveEntries(ids: readonly string[], force = false) {
   }
   return result;
 }
-/** Resolves covers for many units; see resolveEntries. */
+/**
+ * Resolves covers for many units; see resolveEntries. Never returns a cover resolved under an
+ * earlier access context, even if the context changes after resolveEntries settles.
+ */
 export async function resolveUnitCovers(
   ids: readonly string[],
   force = false,
 ): Promise<Map<string, UnitCover | null>> {
+  const from = epoch;
   const entries = await resolveEntries(ids, force);
+  const current = from === epoch;
   return new Map(
-    [...new Set(ids)].map((id) => [id, entries.get(id)?.cover ?? null]),
+    [...new Set(ids)].map((id) => [
+      id,
+      current ? (entries.get(id)?.cover ?? null) : null,
+    ]),
   );
 }
 /** Drops cached covers (after a change), voids their requests in flight and asks mounted views to resolve again. */
@@ -173,6 +181,8 @@ export function clearUnitCoverCache() {
 const EMPTY = new Map<string, UnitCover | null>();
 /** Floor for the renewal timer, so it can never spin. */
 const MIN_RENEW_DELAY_MS = 1_000;
+/** After a failed resolution or renewal, a mounted view tries again after this delay. */
+const RENEW_RETRY_MS = 20_000;
 /** A URL re-signed after an error that fails again within this window keeps the fallback. */
 const RETRY_WINDOW_MS = 30_000;
 /**
@@ -221,9 +231,11 @@ export function useUnitCovers(ids: readonly string[]) {
           );
       })
       .catch(() => {
-        // Covers are decorative: any failure keeps the fallback, never breaks the page.
-        if (current && from === epoch)
-          setState({ key, epoch: from, covers: EMPTY });
+        // Covers are decorative: any failure keeps the fallback, never breaks the page,
+        // and the view tries again later instead of giving up until it remounts.
+        if (!current || from !== epoch) return;
+        setState({ key, epoch: from, covers: EMPTY });
+        timer = setTimeout(() => setRevision((r) => r + 1), RENEW_RETRY_MS);
       });
     return () => {
       current = false;
