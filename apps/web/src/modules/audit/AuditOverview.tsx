@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
+import { useUnitCovers, type UnitCover as CoreCover } from "../../core/unitCovers";
 import { hasAnyScope } from "../../core/auth/permissions";
 import { useResource } from "../../shared/useResource";
 import { Badge, Metric, Notice, PageTitle, Status } from "../../shared/ui";
@@ -63,6 +64,10 @@ export function AuditOverview() {
           a.unit.name.localeCompare(b.unit.name, "pt-BR"),
       );
   }, [r.data]);
+  // One batch for every monitored unit (stable across search/filter): no request per card.
+  const { covers, reportError } = useUnitCovers(
+    useMemo(() => monitored.map(({ unit }) => unit.id), [monitored]),
+  );
   const term = search.trim().toLocaleLowerCase("pt-BR");
   const searched = monitored.filter(({ unit }) =>
     `${unit.code} ${unit.name}`.toLocaleLowerCase("pt-BR").includes(term),
@@ -199,7 +204,12 @@ export function AuditOverview() {
                 <ul className="unit-cards">
                   {shown.map(({ unit, state }) => (
                     <li key={unit.id}>
-                      <UnitCard unit={unit} state={state} />
+                      <UnitCard
+                        unit={unit}
+                        state={state}
+                        cover={covers.get(unit.id)}
+                        onCoverError={reportError}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -282,11 +292,21 @@ function formatTimestamp(at: string) {
   return new Date(at).toLocaleDateString("pt-BR");
 }
 /** One monitored unit: cover, current result, open draft and last visit. */
-function UnitCard({ unit, state }: { unit: AuditUnit; state: UnitState }) {
+function UnitCard({
+  unit,
+  state,
+  cover,
+  onCoverError,
+}: {
+  unit: AuditUnit;
+  state: UnitState;
+  cover?: CoreCover | null;
+  onCoverError: (cover: CoreCover) => void;
+}) {
   const draft = state.drafts[0];
   return (
     <article className="unit-card" data-situation={state.situation}>
-      <UnitCover unit={unit}>
+      <UnitCover unit={unit} cover={cover} onCoverError={onCoverError}>
         <span className="unit-cover-code">{unit.code}</span>
         <h3>
           {/* The whole card opens the unit through this single link. */}

@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Link, Navigate, NavLink, useParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
+import { useUnitCovers, type UnitCover as CoreCover } from "../../core/unitCovers";
 import { useResource } from "../../shared/useResource";
 import { Badge, Notice, Status } from "../../shared/ui";
 import * as api from "./api";
@@ -12,6 +13,7 @@ import { ScoreTrend, trendPoints } from "./ScoreTrend";
 import type { AuditUnit, InspectionSummary } from "./types";
 import { UnitCover } from "./UnitIdentity";
 import { SITUATION_LABELS, situationTone, unitState, type UnitState } from "./unitSituation";
+const NO_UNITS: string[] = [];
 /** Routed unit tabs (D4): Resumo is the index, Histórico lives at /historico. */
 const TABS: Record<string, "summary" | "history"> = { "": "summary", historico: "history" };
 /** Why the unit is where it is, stated from the latest final result only. */
@@ -35,6 +37,7 @@ export function UnitPage() {
     }, [unitId]),
   );
   const unit = r.data?.unit;
+  const { covers, reportError } = useUnitCovers(unit ? [unit.id] : NO_UNITS);
   const base = `/audit/units/${unitId}`;
   if (!tab) return <Navigate to={base} replace />;
   const state = r.data ? unitState(r.data.rows) : undefined;
@@ -57,7 +60,13 @@ export function UnitPage() {
       )}
       {r.data && unit && state && (
         <>
-          <UnitHero unit={unit} state={state} rows={r.data.rows} />
+          <UnitHero
+            unit={unit}
+            state={state}
+            rows={r.data.rows}
+            cover={covers.get(unit.id)}
+            onCoverError={reportError}
+          />
           <div className="unit-toolbar">
             <nav className="audit-tabs" aria-label="Unidade">
               <NavLink end to={base}>Resumo</NavLink>
@@ -94,14 +103,18 @@ function UnitHero({
   unit,
   state,
   rows,
+  cover,
+  onCoverError,
 }: {
   unit: AuditUnit;
   state: UnitState;
   rows: InspectionSummary[];
+  cover?: CoreCover | null;
+  onCoverError: (cover: CoreCover) => void;
 }) {
   return (
     <header className="unit-hero">
-      <UnitCover unit={unit} size="hero">
+      <UnitCover unit={unit} size="hero" cover={cover} onCoverError={onCoverError}>
         <div className="unit-hero-identity">
           <p className="unit-cover-code">Auditorias · {unit.code}</p>
           <h1>{unit.name}</h1>
