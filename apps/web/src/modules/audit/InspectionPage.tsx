@@ -273,18 +273,20 @@ export function InspectionPage() {
         <Link to={`/audit/units/${summary.unit_id}`}>{summary.unit_name}</Link>{" "}
         / <span>{formatDate(summary.applied_on)}</span>
       </nav>
+      {/* One composition: identity + status, then a single bar with the
+          readings on the left and the actions on the right. */}
       <header className="audit-hero">
         <div className="audit-hero-main">
           <p className="eyebrow">Auditoria · Checklist geral</p>
-          <h1>{summary.unit_name}</h1>
+          <div className="audit-hero-title">
+            <h1>{summary.unit_name}</h1>
+            <StatusBadge status={summary.status} />
+          </div>
           <ul className="audit-meta">
-            <li>
-              <StatusBadge status={summary.status} />
-            </li>
             <li>
               <Icon name="calendar" />
               <span>
-                Aplicação em{" "}
+                Data da auditoria{" "}
                 <span className="numeric">
                   {formatDate(summary.applied_on)}
                 </span>
@@ -301,6 +303,17 @@ export function InspectionPage() {
                   Visita anterior:{" "}
                   <span className="numeric">
                     {formatDate(summary.previous_visit_on)}
+                  </span>
+                </span>
+              </li>
+            )}
+            {!draft && summary.finalized_at && (
+              <li>
+                <Icon name="check" />
+                <span>
+                  Finalizada em{" "}
+                  <span className="numeric">
+                    {new Date(summary.finalized_at).toLocaleDateString("pt-BR")}
                   </span>
                 </span>
               </li>

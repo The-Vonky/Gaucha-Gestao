@@ -285,7 +285,7 @@ export function InspectionOverview() {
               <dd>{summary.unit_name}</dd>
             </div>
             <div>
-              <dt>Aplicação</dt>
+              <dt>Data da auditoria</dt>
               <dd className="numeric">{formatDate(summary.applied_on)}</dd>
             </div>
             <div>
