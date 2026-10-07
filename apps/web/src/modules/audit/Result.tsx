@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Badge } from "../../shared/ui";
 import {
   CLASSIFICATION_LABELS,
@@ -90,5 +91,24 @@ export function StatusBadge({
     <Badge tone="info" icon="clock">
       Em andamento
     </Badge>
+  );
+}
+/** An open draft: editors continue its checklist, readers follow its overview. */
+export function DraftLink({
+  id,
+  canEdit,
+  className,
+}: {
+  id: string;
+  canEdit: boolean;
+  className?: string;
+}) {
+  return (
+    <Link
+      className={className ? `button-link ${className}` : "button-link"}
+      to={`/audit/inspections/${id}${canEdit ? "/checklist" : ""}`}
+    >
+      {canEdit ? "Continuar" : "Acompanhar"}
+    </Link>
   );
 }

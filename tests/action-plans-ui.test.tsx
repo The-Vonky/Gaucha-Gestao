@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { can, type AccessGrant } from "../apps/web/src/core/auth/permissions";
@@ -248,16 +255,14 @@ describe("action plans UI", () => {
       summary(plan({ id: "soon", improvement_point: "B", due_date: soon })),
     ]);
     open("/action-plans");
-    expect(await screen.findByText(/dia\(s\) de atraso/)).toBeTruthy();
-    expect(screen.getByText("Vence em 2 dia(s)")).toBeTruthy();
+    expect(await screen.findByText(/^\d+ dias de atraso$/)).toBeTruthy();
+    expect(screen.getByText("Vence em 2 dias")).toBeTruthy();
     const rows = document.querySelectorAll(".ap-row");
     expect([...rows].map((r) => r.getAttribute("data-priority"))).toEqual([
       "overdue",
       "soon",
     ]);
-    expect(
-      screen.getByText("2 plano(s) · em ordem de prioridade"),
-    ).toBeTruthy();
+    expect(screen.getByText("2 planos · em ordem de prioridade")).toBeTruthy();
   });
   it("offers manual creation only with create permission", async () => {
     auth.grants = grants("read", "create_manual");
@@ -370,6 +375,70 @@ describe("action plans UI", () => {
     api.plan.mockResolvedValue(null);
     open("/action-plans/unknown");
     expect(await screen.findByText("Plano de ação indisponível")).toBeTruthy();
+    expect(
+      screen
+        .getByRole("link", { name: "Voltar para Planos de Ação" })
+        .getAttribute("href"),
+    ).toBe("/action-plans");
+  });
+  it("confirms status changes as a primary action, not a destructive one", async () => {
+    auth.grants = grants("read", "write");
+    api.plan.mockResolvedValue(summary(plan()));
+    open("/action-plans/p1");
+    const user = userEvent.setup();
+    await user.click(await screen.findByText("Iniciar execução"));
+    const confirm = within(screen.getByRole("dialog")).getByRole("button", {
+      name: "Confirmar",
+    });
+    expect(confirm.className).toBe("primary");
+  });
+  it("requires both monitoring dates, in order, once one is filled", async () => {
+    auth.grants = grants("read", "write");
+    api.plan.mockResolvedValue(summary(plan()));
+    open("/action-plans/p1");
+    const user = userEvent.setup();
+    await user.click(await screen.findByText("Editar planejamento"));
+    const start = screen.getByLabelText("Início") as HTMLInputElement;
+    const end = screen.getByLabelText("Fim") as HTMLInputElement;
+    // Optional: both empty is valid.
+    expect(start.checkValidity() && end.checkValidity()).toBe(true);
+    fireEvent.change(start, { target: { value: "2026-10-10" } });
+    expect(end.required).toBe(true);
+    expect(end.checkValidity()).toBe(false);
+    expect(screen.getByText(/Informe o início e o fim/)).toBeTruthy();
+    fireEvent.change(end, { target: { value: "2026-10-01" } });
+    expect(end.min).toBe("2026-10-10");
+    expect(end.validity.rangeUnderflow).toBe(true);
+    fireEvent.change(end, { target: { value: "2026-10-20" } });
+    expect(start.checkValidity() && end.checkValidity()).toBe(true);
+    expect(screen.queryByText(/Informe o início e o fim/)).toBeNull();
+  });
+  it("clears search and filters from an empty queue, or reveals inactive history", async () => {
+    auth.grants = grants("read");
+    api.summaries.mockResolvedValue([summary(plan())]);
+    open("/action-plans");
+    const user = userEvent.setup();
+    await screen.findByText("Telas danificadas");
+    await user.type(screen.getByRole("searchbox"), "inexistente");
+    expect(screen.getByText("Nenhum plano encontrado")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    expect(screen.getByText("Telas danificadas")).toBeTruthy();
+    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("");
+    cleanup();
+    api.summaries.mockResolvedValue([
+      summary(
+        checklist({
+          id: "old",
+          improvement_point: "Histórico C",
+          source_active: false,
+        }),
+      ),
+    ]);
+    open("/action-plans");
+    await user.click(
+      await screen.findByRole("button", { name: "Incluir origens inativas" }),
+    );
+    expect(screen.getByText(/Histórico C/)).toBeTruthy();
   });
 });
 const evidence = (over: Partial<Evidence> = {}): Evidence => ({

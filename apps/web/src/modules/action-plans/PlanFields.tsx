@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Plan, PlanValues } from "./types";
 const text = (data: FormData, name: string) =>
   String(data.get(name) ?? "").trim();
@@ -71,25 +72,7 @@ export function PlanFields({ plan }: { plan?: Plan }) {
           defaultValue={plan?.effectiveness_criterion}
         />
       </label>
-      <fieldset className="ap-period">
-        <legend>Período de acompanhamento (opcional)</legend>
-        <label>
-          Início
-          <input
-            type="date"
-            name="monitoring_start"
-            defaultValue={plan?.monitoring_start ?? ""}
-          />
-        </label>
-        <label>
-          Fim
-          <input
-            type="date"
-            name="monitoring_end"
-            defaultValue={plan?.monitoring_end ?? ""}
-          />
-        </label>
-      </fieldset>
+      <MonitoringPeriod plan={plan} />
       <label>
         Evidência esperada
         <textarea
@@ -100,5 +83,46 @@ export function PlanFields({ plan }: { plan?: Plan }) {
         />
       </label>
     </>
+  );
+}
+/**
+ * Optional, but complete when used: the database accepts both dates or none, with
+ * start ≤ end. The form enforces the same rule before submitting.
+ */
+function MonitoringPeriod({ plan }: { plan?: Plan }) {
+  const [start, setStart] = useState(plan?.monitoring_start ?? "");
+  const [end, setEnd] = useState(plan?.monitoring_end ?? "");
+  const partial = !!start !== !!end;
+  return (
+    <fieldset className="ap-period">
+      <legend>Período de acompanhamento (opcional)</legend>
+      <label>
+        Início
+        <input
+          type="date"
+          name="monitoring_start"
+          value={start}
+          max={end || undefined}
+          required={!!end}
+          onChange={(e) => setStart(e.target.value)}
+        />
+      </label>
+      <label>
+        Fim
+        <input
+          type="date"
+          name="monitoring_end"
+          value={end}
+          min={start || undefined}
+          required={!!start}
+          onChange={(e) => setEnd(e.target.value)}
+        />
+      </label>
+      {partial && (
+        <p className="muted ap-period-hint">
+          Informe o início e o fim, ou deixe os dois em branco.
+        </p>
+      )}
+    </fieldset>
   );
 }

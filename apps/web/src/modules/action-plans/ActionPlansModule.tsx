@@ -1,5 +1,5 @@
 import { Link, Route, Routes } from "react-router-dom";
-import { PageTitle } from "../../shared/ui";
+import { EmptyState } from "../../shared/ui";
 import { ActionPlanPage } from "./ActionPlanPage";
 import { ActionPlansOverview } from "./ActionPlansOverview";
 export function ActionPlansModule() {
@@ -10,13 +10,16 @@ export function ActionPlansModule() {
       <Route
         path="*"
         element={
-          <>
-            <PageTitle
-              title="Página não encontrada"
-              description="Qualidade · Planos de Ação"
-            />
-            <Link to="/action-plans">Voltar para Planos de Ação</Link>
-          </>
+          <EmptyState
+            title="Página não encontrada"
+            actions={
+              <Link className="button-link" to="/action-plans">
+                Voltar para Planos de Ação
+              </Link>
+            }
+          >
+            O endereço acessado não existe em Planos de Ação.
+          </EmptyState>
         }
       />
     </Routes>
