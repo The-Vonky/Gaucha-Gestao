@@ -2563,8 +2563,11 @@ button.file-remove:hover:not(:disabled) {
   .audit-progress-kpi .audit-progress {
     min-width: 0;
   }
+  /* "158/158 respondidos" stays on one line in a half-width column. */
+  .audit-hero-kpis .audit-progress > span,
   .audit-hero-kpis[data-lead="progress"] .audit-progress > span {
-    font-size: 1.125rem;
+    font-size: 1rem;
+    letter-spacing: 0;
   }
   .audit-hero h1 {
     font-size: 1.5rem;
