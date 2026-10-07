@@ -12,6 +12,7 @@ import { client, database } from "../client";
 import type { Profile } from "../types";
 import { can, type AccessGrant, type Scope } from "./permissions";
 import { message } from "../../shared/errors";
+import { setUnitCoverAccess } from "../unitCovers";
 type AuthState = {
   session: Session | null;
   profile: Profile | null;
@@ -31,6 +32,20 @@ const initial: AuthState = {
   error: "",
 };
 const Context = createContext<AuthValue | null>(null);
+// Private client caches (unit cover signed URLs) are scoped to this key: user, active flag and
+// grants (order-insensitive). A user whose access is not loaded yet gets a key of its own.
+const accessKey = (userId: string, active?: boolean, grants?: AccessGrant[]) =>
+  JSON.stringify(
+    grants
+      ? [
+          userId,
+          !!active,
+          grants
+            .map((g) => JSON.stringify([g.permission, g.scope_type, g.unit_id, g.sector_id]))
+            .sort(),
+        ]
+      : [userId],
+  );
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(initial);
   const sequence = useRef(0);
@@ -40,10 +55,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const sameUser = current.current?.user.id === session?.user.id;
     current.current = session;
     if (!session) {
+      setUnitCoverAccess("");
       setState({ ...initial, loading: false });
       return;
     }
-    if (!sameUser) setState({ ...initial, session, loading: true });
+    if (!sameUser) {
+      setUnitCoverAccess(accessKey(session.user.id));
+      setState({ ...initial, session, loading: true });
+    }
     try {
       const [
         { data: profile, error: profileError },
@@ -57,7 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         database().rpc("my_access"),
       ]);
       if (profileError || accessError) throw profileError ?? accessError;
-      if (request === sequence.current)
+      if (request === sequence.current) {
+        setUnitCoverAccess(
+          accessKey(session.user.id, profile?.active, grants ?? []),
+        );
         setState({
           session,
           profile,
@@ -65,9 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           loading: false,
           error: "",
         });
+      }
     } catch (e) {
-      if (request === sequence.current)
+      if (request === sequence.current) {
+        setUnitCoverAccess(accessKey(session.user.id));
         setState({ ...initial, session, loading: false, error: message(e) });
+      }
     }
   }, []);
   const refresh = useCallback(() => {
@@ -86,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timer = setInterval(refresh, 60000);
     return () => {
       ++sequence.current;
+      setUnitCoverAccess("");
       data.subscription.unsubscribe();
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);

@@ -14,6 +14,21 @@ export type Organization = Versioned & {
 export type Unit = Organization & {
   created_by: string | null;
   updated_by: string | null;
+  cover_asset_id?: string | null;
+  // PostgREST may serialize numeric as string.
+  cover_position_x?: number | string;
+  cover_position_y?: number | string;
+};
+/** Row of core.unit_covers: an authorized, ready cover (never a URL). */
+export type UnitCoverRow = {
+  unit_id: string;
+  asset_id: string;
+  object_key: string;
+  position_x: number | string;
+  position_y: number | string;
+  width: number;
+  height: number;
+  ready_at: string;
 };
 export type Role = Versioned & {
   key: string;
@@ -87,6 +102,40 @@ export type Database = {
         Returns: { role: Json; permission_keys: string[] }[];
       };
       my_access: { Args: Record<string, never>; Returns: AccessGrant[] };
+      unit_covers: { Args: { p_units: string[] }; Returns: UnitCoverRow[] };
+      begin_unit_cover_upload: {
+        Args: {
+          p_unit: string;
+          p_mime_type: string;
+          p_byte_size: number;
+          p_width: number;
+          p_height: number;
+        };
+        Returns: { asset_id: string; object_key: string }[];
+      };
+      confirm_unit_cover_upload: {
+        Args: {
+          p_unit: string;
+          p_asset: string;
+          p_position_x: number;
+          p_position_y: number;
+        };
+        Returns: undefined;
+      };
+      cancel_unit_cover_upload: { Args: { p_asset: string }; Returns: undefined };
+      remove_unit_cover: {
+        Args: { p_unit: string; p_expected_asset: string };
+        Returns: undefined;
+      };
+      set_unit_cover_position: {
+        Args: {
+          p_unit: string;
+          p_expected_asset: string;
+          p_position_x: number;
+          p_position_y: number;
+        };
+        Returns: undefined;
+      };
       save_role: {
         Args: {
           p_id: string | null;

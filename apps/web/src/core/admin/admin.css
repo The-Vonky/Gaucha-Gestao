@@ -321,3 +321,119 @@ button.adm-danger:hover:not(:disabled) {
     flex: 1 1 0;
   }
 }
+
+/* ---------- Unit cover editor (Unit Cover v1) ---------- */
+.cover-editor {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.cover-previews {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: var(--space-3);
+}
+@media (max-width: 540px) {
+  .cover-previews {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.cover-preview {
+  margin: 0;
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.cover-preview figcaption {
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
+}
+/* Same rendering rule as the Audit unit cover: object-fit cover + object-position. */
+.cover-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(125deg, #173d2b 0%, #285e43 100%);
+}
+.cover-frame-card {
+  aspect-ratio: 2 / 1;
+}
+.cover-frame-hero {
+  aspect-ratio: 4 / 1;
+  align-self: start;
+}
+.cover-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cover-frame-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 600 1.75rem/1 var(--font-display);
+  color: rgb(255 255 255 / 0.35);
+  overflow-wrap: anywhere;
+}
+.cover-description,
+.cover-hint {
+  margin: 0;
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
+}
+.cover-framing {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  min-width: 0;
+}
+.cover-framing legend {
+  padding: 0 var(--space-1);
+  font-weight: 600;
+}
+.cover-range {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-2);
+}
+.cover-range input {
+  grid-column: 1 / -1;
+}
+.cover-framing output {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+.cover-framing input[type="range"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--brand-green-600);
+}
+/* Field material does not suit a slider; keep the focus ring only. */
+.cover-framing input[type="range"]:not(:focus-visible) {
+  box-shadow: none;
+}
+.cover-framing button {
+  justify-self: start;
+}
+.cover-actions,
+.cover-confirm .actions {
+  flex-wrap: wrap;
+}
+.cover-confirm {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.cover-confirm p {
+  margin: 0;
+}

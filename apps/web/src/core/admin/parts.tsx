@@ -61,6 +61,7 @@ export function ListState({
   return empty ? <Notice>{emptyText}</Notice> : null;
 }
 const DOMAINS: Record<string, string> = {
+  core: "Plataforma",
   admin: "Administração",
   audit: "Auditoria",
   action_plan: "Planos de ação",

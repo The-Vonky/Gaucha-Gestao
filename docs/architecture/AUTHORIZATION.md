@@ -120,6 +120,9 @@ Administration:
 - `admin.sector.manage`
 - `admin.audit_log.read`
 
+Core:
+- `core.unit_cover.read` — view unit cover photos (Unit Cover v1); granted to the `platform_administrator`, `quality` and `quality_viewer` system roles only. Cover management requires `admin.unit.manage`. See `docs/modules/core/UNIT_COVER_V1.md`.
+
 Do not create future module permissions before those modules are implemented.
 
 ## Navigation

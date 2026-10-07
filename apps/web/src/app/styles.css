@@ -459,9 +459,9 @@
 }
 
 /* ---------- Audit: unit cover (card and hero) ---------- */
-/* Honest fallback while the Core has no unit image: deep brand surface, faint
-   texture and shapes, large monogram. A future Core cover replaces
-   .unit-cover-art in the same slot; the scrim keeps the overlay text legible. */
+/* Brand fallback: deep brand surface, faint texture and shapes, large monogram.
+   The Core unit photo (Unit Cover v1), when present, covers it inside
+   .unit-cover-art; the scrim keeps the overlay text legible. */
 /* Layers stack in one grid cell instead of being absolutely positioned, so the
    cover never becomes a containing block: the card link (inside the cover)
    still extends over the whole .unit-card. */
@@ -538,6 +538,23 @@
   inset: 0;
   background: linear-gradient(180deg, rgb(4 15 10 / 0) 35%, rgb(4 15 10 / 0.5) 100%);
   pointer-events: none;
+}
+/* Core unit photo: same rule as the Admin preview (cover + object-position). */
+.unit-cover-photo {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* A photo has unknown tones: an overall scrim plus a soft shadow on the white
+   overlay text keep it readable over bright areas at every width. */
+.unit-cover[data-photo] .unit-cover-art::after {
+  background: linear-gradient(180deg, rgb(4 15 10 / 0.42) 0%, rgb(4 15 10 / 0.55) 50%, rgb(4 15 10 / 0.85) 100%);
+}
+.unit-cover[data-photo] :is(.unit-cover-code, h1, h3, .unit-hero-status > span) {
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.55);
 }
 .unit-cover-content {
   grid-area: 1 / 1;

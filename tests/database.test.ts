@@ -57,7 +57,7 @@ describe.sequential("PostgreSQL Core migration and RLS", () => {
     const r = await db.query<{ relrowsecurity: boolean }>(
       "select relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='core' and c.relkind='r'",
     );
-    expect(r.rows).toHaveLength(9);
+    expect(r.rows).toHaveLength(10);
     expect(r.rows.every((x) => x.relrowsecurity)).toBe(true);
   });
   it("denies anonymous access to every exposed table", async () => {
@@ -462,7 +462,7 @@ describe.sequential("PostgreSQL Core migration and RLS", () => {
       )
     ).rows[0];
     expect(detail.role.version).toBe(1);
-    expect(detail.permission_keys).toHaveLength(19);
+    expect(detail.permission_keys).toHaveLength(20);
     await login(ids.empty);
     expect(
       (await db.query("select * from core.role_detail($1)", [id])).rows,
