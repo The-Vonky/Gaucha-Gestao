@@ -37,13 +37,18 @@ async function request(url, key, options = {}) {
 }
 const service = config.SERVICE_ROLE_KEY;
 const anon = config.ANON_KEY;
-const buckets = ['action-plan-evidence', 'audit-checklist-evidence'];
+// Private bucket contracts: [file_size_limit, required MIME type].
+const buckets = {
+  'action-plan-evidence': [10485760, 'application/pdf'],
+  'audit-checklist-evidence': [10485760, 'application/pdf'],
+  'unit-covers': [1048576, 'image/jpeg'],
+};
 const tag = randomBytes(8).toString('hex');
 const email = `infra-${tag}@example.invalid`;
 const password = randomBytes(32).toString('hex');
 const sentinel = randomUUID();
 const table = `infra_smoke_${tag}`;
-const storageBucket = buckets[0];
+const storageBucket = 'action-plan-evidence';
 const storageObject = `${randomUUID()}/${randomUUID()}.pdf`;
 let storagePending = false;
 let user;
@@ -154,11 +159,12 @@ try {
   const listed = await request('/storage/v1/bucket', service);
   assert.ok(listed.ok);
   const actual = await listed.json();
-  assert.deepEqual(actual.map(bucket=>bucket.id).sort(), [...buckets].sort());
+  assert.deepEqual(actual.map(bucket=>bucket.id).sort(), Object.keys(buckets).sort());
   for (const bucket of actual) {
+    const [limit, mime] = buckets[bucket.id];
     assert.equal(bucket.public, false);
-    assert.equal(Number(bucket.file_size_limit), 10485760);
-    assert.ok(bucket.allowed_mime_types.includes('application/pdf'));
+    assert.equal(Number(bucket.file_size_limit), limit);
+    assert.ok(bucket.allowed_mime_types.includes(mime));
     const blocked = await request(`/storage/v1/object/list/${bucket.id}`, anon, {method:'POST',body:JSON.stringify({prefix:'',limit:1})});
     if (blocked.ok) assert.deepEqual(await blocked.json(), []);
     else assert.ok([400,401,403].includes(blocked.status));
@@ -168,7 +174,7 @@ try {
     assert.equal(sql(`select ${routine}('smoke.pdf','application/pdf',10485760) is null`), 't');
     assert.equal(sql(`select ${routine}('smoke.pdf','application/pdf',10485761) is not null`), 't');
   }
-  console.log('smoke: exactly two private buckets and 10 MiB boundaries verified');
+  console.log('smoke: exactly three private buckets verified (two 10 MiB PDF evidence, one 1 MiB JPEG unit-covers) and evidence 10 MiB boundaries');
 
   step = 'Storage file upload/sign/download/delete';
   // A complete one-page PDF, with byte offsets and stream length computed in ASCII.
