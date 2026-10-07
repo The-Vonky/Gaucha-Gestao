@@ -2544,29 +2544,58 @@ button.file-remove:hover:not(:disabled) {
   }
 }
 @media (max-width: 599px) {
-  /* Two equal readings across the full width. */
+  /* The readings stack as full-width rows (label beside the value), so
+     "158/158 respondidos" gets the whole row instead of a half column and
+     stays on one line whatever the fallback font's metrics. */
   .audit-hero-kpis {
     flex-basis: 100%;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .audit-hero-kpis[data-lead="progress"] > .metric + .metric,
-  .audit-hero-kpis[data-lead="result"] > .metric:first-child {
-    padding-left: var(--space-4);
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
   }
   .audit-hero-kpis .metric {
-    padding-right: var(--space-4);
+    column-gap: var(--space-3);
+    padding: 0;
+  }
+  /* The second reading on screen: a hairline above instead of beside it. */
+  .audit-hero-kpis[data-lead="progress"] > .metric + .metric,
+  .audit-hero-kpis[data-lead="result"] > .metric:first-child {
+    padding: var(--space-3) 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--color-border);
+  }
+  .audit-hero-kpis .metric-label {
+    grid-column: auto;
+  }
+  /* Result: label, value and band label in one wrapping line. */
+  .audit-hero-kpis .metric:not(.audit-progress-kpi) {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-2);
+  }
+  .audit-hero-kpis .metric:not(.audit-progress-kpi) .metric-label {
+    margin-right: var(--space-1);
   }
   .audit-hero-kpis .metric-value {
     font-size: 1.5rem;
   }
+  /* Progress: label and count on the first row, the bar across below. */
   .audit-progress-kpi .audit-progress {
-    min-width: 0;
+    display: contents;
   }
-  /* "158/158 respondidos" stays on one line in a half-width column. */
+  .audit-progress-kpi .audit-progress > span {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .audit-progress-kpi .audit-progress progress {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
   .audit-hero-kpis .audit-progress > span,
   .audit-hero-kpis[data-lead="progress"] .audit-progress > span {
-    font-size: 1rem;
+    font-size: 1.125rem;
     letter-spacing: 0;
   }
   .audit-hero h1 {
