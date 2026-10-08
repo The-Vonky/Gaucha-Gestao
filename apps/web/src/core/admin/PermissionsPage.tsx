@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useResource } from "../../shared/useResource";
 import { Badge, EmptyState, PageTitle } from "../../shared/ui";
 import * as api from "./api";
-import { byDomain, domainLabel, ListState } from "./parts";
+import { byDomain, domainLabel, Identifier, ListState } from "./parts";
 /** Read-only catalog (changes only through migrations), grouped by domain. */
 export function PermissionsPage() {
   const r = useResource(useCallback(() => api.all("permissions"), []));
@@ -45,12 +45,7 @@ export function PermissionsPage() {
                     <p className="adm-title">
                       <strong>{p.description}</strong>
                     </p>
-                    <p className="adm-key">
-                      <code>{p.key}</code>
-                    </p>
-                    <p className="adm-meta">
-                      Recurso: {p.resource} · Ação: {p.action}
-                    </p>
+                    <Identifier label="Código">{p.key}</Identifier>
                   </div>
                   {!p.active && (
                     <div className="adm-state">

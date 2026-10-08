@@ -274,8 +274,8 @@ export function UserAssignments({
                   </label>
                 )}
                 <p className="muted">
-                  O banco valida se você pode conceder todas as permissões deste
-                  perfil no escopo escolhido.
+                  Só é possível conceder perfis cujas permissões você também
+                  pode conceder no escopo escolhido.
                 </p>
               </Form>
             </>

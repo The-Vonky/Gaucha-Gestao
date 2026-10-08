@@ -430,6 +430,8 @@ describe("assignments", () => {
     expect(screen.getByText("Conceder acesso")).toBeTruthy();
     expect(screen.getByText("11111111-2222-3333-4444-555555555555").tagName).toBe("CODE");
     expect(api.all).not.toHaveBeenCalledWith("role_permissions");
+    expect(screen.getByText(/Só é possível conceder perfis/)).toBeTruthy();
+    expect(screen.queryByText(/O banco/)).toBeNull();
   });
   it("never offers revocation on the current user's own assignments", async () => {
     assignments.rows = [a({ id: "g" })];
@@ -555,7 +557,8 @@ describe("roles and permissions", () => {
     const admin = screen.getByRole("list", { name: "Administração" });
     expect(within(admin).getByText("Gerenciar usuários")).toBeTruthy();
     expect(within(admin).queryByText("Consultar auditorias")).toBeNull();
-    expect(screen.getByText("Recurso: user · Ação: manage")).toBeTruthy();
+    // The description leads; the key is secondary and resource/action are not repeated.
+    expect(screen.queryByText(/Recurso:/)).toBeNull();
     // Read-only and complete on one screen: no editing, no pagination.
     expect(screen.queryAllByRole("button")).toEqual([]);
   });

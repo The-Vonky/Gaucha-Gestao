@@ -51,10 +51,6 @@
   font: var(--text-body-sm);
   color: var(--color-text-secondary);
 }
-.adm-key {
-  margin: 0;
-}
-.adm-key code,
 .adm-id code {
   font-size: 0.75rem;
   color: var(--color-text-secondary);

@@ -377,6 +377,20 @@ try {
     await db.query("select id,active from core.units where code=$1", [code])
   ).rows[0];
   assert.equal(created.active, true);
+  // The search matches the business code or the name, case-insensitively, and
+  // treats LIKE wildcards and filter delimiters literally.
+  await page.goto(`${origin}/admin/units`);
+  await settle(page);
+  for (const term of [code.toLowerCase(), `unidade nova ${tag}`]) {
+    await page.getByRole("searchbox").fill(term);
+    await page
+      .getByRole("list", { name: "Unidades" })
+      .getByText(`Unidade Nova ${tag}`)
+      .waitFor();
+    await page.getByText("1 unidade ativa").waitFor();
+  }
+  await page.getByRole("searchbox").fill(`${tag},%_\\"()`);
+  await page.getByText("Nenhuma unidade encontrada").waitFor();
   // Deactivation needs the application dialog; cancelling does not mutate.
   await page.goto(`${origin}/admin/units`);
   await settle(page);

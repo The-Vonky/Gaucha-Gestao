@@ -14,6 +14,15 @@ describe("safe client errors", () => {
   it("only diagnoses permission denial from its explicit error code", () => {
     expect(message({ code: "42501" })).toBe("Você não tem permissão para esta operação. Atualize seu acesso.");
   });
+  it.each([
+    ["23505", "Já existe um registro com esse código ou atribuição."],
+    ["23503", "Este vínculo possui referências. Preserve-o para manter o histórico."],
+    ["23514", "Confira os campos e o escopo. Usuário, perfil, unidade e setor precisam estar ativos."],
+    ["22P02", "Confira os campos e o escopo. Usuário, perfil, unidade e setor precisam estar ativos."],
+    ["55000", "Esta operação não é permitida no estado atual do registro."],
+  ])("keeps the specific message for %s", (code, text) => {
+    expect(message({ code })).toBe(text);
+  });
   it("does not expose unrecognized backend errors", () => {
     expect(message(new Error("private database detail"))).toBe("Não foi possível concluir a operação. Verifique sua conexão e tente novamente.");
   });
