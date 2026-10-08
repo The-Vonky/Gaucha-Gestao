@@ -30,6 +30,8 @@ const api = vi.hoisted(() => ({
   list: vi.fn(),
   users: vi.fn(),
   organizations: vi.fn(),
+  renameProfile: vi.fn(),
+  setRoleActive: vi.fn(),
   PAGE_SIZE: 25,
   saveOrganization: vi.fn(),
   all: vi.fn(),
@@ -326,7 +328,7 @@ describe("users", () => {
     api.users.mockResolvedValue({ rows: [], count: 0 });
     await user.type(screen.getByRole("searchbox"), "Zé");
     expect(
-      await screen.findByText(/Nenhum nome corresponde a “Zé”/),
+      await screen.findByText(/Nenhum nome ou e-mail corresponde a “Zé”/),
     ).toBeTruthy();
     api.users.mockResolvedValue({ rows: [profile()], count: 1 });
     await user.click(screen.getByRole("button", { name: "Limpar busca" }));
@@ -620,7 +622,7 @@ describe("logs", () => {
     expect(
       await screen.findByText("Operação administrativa do banco"),
     ).toBeTruthy();
-    await user.type(screen.getByLabelText("Módulo"), "core");
+    await user.selectOptions(screen.getByLabelText("Módulo"), "core");
     await user.selectOptions(screen.getByLabelText("Ação"), "revoke");
     await user.click(screen.getByText("Filtrar"));
     await waitFor(() =>
@@ -653,7 +655,7 @@ describe("logs", () => {
     render(<LogsPage />);
     await user.click(
       await screen.findByRole("button", {
-        name: /^Detalhes: core \/ Alteração em Unidade/,
+        name: /^Detalhes: Plataforma \/ Alteração em Unidade/,
       }),
     );
     const dialog = screen.getByRole("dialog");
@@ -690,14 +692,14 @@ describe("logs", () => {
       }),
     ).toBeTruthy();
     api.logs.mockResolvedValue({ rows: [], count: 0 });
-    await user.type(screen.getByLabelText("Módulo"), "x");
+    await user.selectOptions(screen.getByLabelText("Módulo"), "audit");
     await user.click(screen.getByText("Filtrar"));
     expect(await screen.findByText("Nenhum evento encontrado")).toBeTruthy();
     expect(api.logs).toHaveBeenLastCalledWith(0, {
       from: "2026-10-10",
       to: "2026-10-20",
       actor: "",
-      module: "x",
+      module: "audit",
       action: "",
     });
     await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
@@ -710,7 +712,7 @@ describe("logs", () => {
         action: "",
       }),
     );
-    expect((screen.getByLabelText("Módulo") as HTMLInputElement).value).toBe(
+    expect((screen.getByLabelText("Módulo") as HTMLSelectElement).value).toBe(
       "",
     );
     expect(from.value).toBe("");
@@ -817,5 +819,178 @@ describe("Elo lists", () => {
     );
     expect(api.users.mock.calls.map(([page]) => page)).toEqual([0, 1, 0]);
     expect(screen.queryByText("Nenhum usuário encontrado")).toBeNull();
+  });
+});
+describe("administration gaps closed for production", () => {
+  it("shows e-mail and last access, and renames other users at the shown version", async () => {
+    api.users.mockResolvedValue({
+      rows: [
+        {
+          ...profile(),
+          email: "ana@example.test",
+          last_sign_in_at: "2026-10-07T17:32:00Z",
+        },
+        {
+          ...profile({ id: "me", display_name: "Eu Mesmo" }),
+          email: "eu@example.test",
+          last_sign_in_at: null,
+        },
+      ],
+      count: 2,
+    });
+    api.renameProfile.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<UsersPage />);
+    expect(await screen.findByText("ana@example.test")).toBeTruthy();
+    expect(screen.getByText(/^Último acesso \d{2}\/10\/2026/)).toBeTruthy();
+    expect(screen.getByText("Nunca acessou")).toBeTruthy();
+    expect(screen.getByRole("searchbox").getAttribute("placeholder")).toBe(
+      "Nome ou e-mail",
+    );
+    // Never on the own account (the database policy forbids it too).
+    expect(
+      screen.queryByRole("button", { name: "Renomear Eu Mesmo" }),
+    ).toBeNull();
+    await user.click(
+      screen.getByRole("button", { name: "Renomear Ana Souza" }),
+    );
+    const input = within(screen.getByRole("dialog")).getByLabelText(
+      "Nome de exibição",
+    );
+    await user.clear(input);
+    await user.type(input, "  Ana Souza Lima ");
+    await user.click(screen.getByText("Salvar"));
+    await waitFor(() =>
+      expect(api.renameProfile).toHaveBeenCalledWith(
+        "11111111-2222-3333-4444-555555555555",
+        3,
+        "Ana Souza Lima",
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(api.users).toHaveBeenCalledTimes(2);
+  });
+  it("offers no rename without admin.user.manage", async () => {
+    auth.denied = new Set(["admin.user.manage"]);
+    api.users.mockResolvedValue({ rows: [profile()], count: 1 });
+    render(<UsersPage />);
+    await screen.findByText("Ana Souza");
+    expect(screen.queryByRole("button", { name: /^Renomear/ })).toBeNull();
+  });
+  it("deactivates and reactivates custom roles only, with the matching confirmation", async () => {
+    const custom = role({
+      id: "r2",
+      key: "custom",
+      name: "Custom",
+      system: false,
+    });
+    api.list.mockResolvedValue({ rows: [role(), custom], count: 2 });
+    api.setRoleActive.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<RolesPage />);
+    await user.click(
+      await screen.findByRole("button", { name: "Desativar Custom" }),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Desativar Quality" }),
+    ).toBeNull();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.textContent).toContain("As atribuições são mantidas");
+    const confirm = within(dialog).getByRole("button", { name: "Confirmar" });
+    expect(confirm.className).toBe("danger");
+    await user.click(confirm);
+    await waitFor(() =>
+      expect(api.setRoleActive).toHaveBeenCalledWith(custom, false),
+    );
+    cleanup();
+    auth.denied = new Set(["admin.role.manage"]);
+    render(<RolesPage />);
+    await screen.findByText("Custom");
+    expect(
+      screen.queryByRole("button", { name: /^(Desativar|Ativar) / }),
+    ).toBeNull();
+  });
+  it("keeps the assignments dialog open on Cancelar and resolves names for read-only administrators", async () => {
+    api.all.mockImplementation(async (table: string) =>
+      table === "roles"
+        ? [role()]
+        : table === "units"
+          ? [{ id: "U1", name: "Cozinha Central", active: true }]
+          : [],
+    );
+    assignments.rows = [
+      {
+        id: "a",
+        version: 1,
+        user_id: "u",
+        role_id: "r1",
+        scope_type: "unit",
+        unit_id: "U1",
+        sector_id: null,
+        active: true,
+        granted_by: null,
+        ...stamp,
+      },
+    ];
+    const user = userEvent.setup();
+    render(<UserAssignments profile={profile()} onClose={() => {}} />);
+    await screen.findByText("Cozinha Central");
+    await user.selectOptions(screen.getByLabelText("Perfil de acesso"), "r1");
+    await user.click(screen.getByText("Cancelar"));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(
+      (screen.getByLabelText("Perfil de acesso") as HTMLSelectElement).value,
+    ).toBe("");
+    cleanup();
+    auth.denied = new Set(["admin.user.manage"]);
+    render(<UserAssignments profile={profile()} onClose={() => {}} />);
+    // Without manage the unit name still resolves (RLS decides what is visible).
+    expect(await screen.findByText("Cozinha Central")).toBeTruthy();
+    expect(api.all).toHaveBeenCalledWith("units");
+  });
+  it("filters logs by every module and by domain events", async () => {
+    api.logs.mockResolvedValue({
+      rows: [
+        {
+          id: "l2",
+          occurred_at: "2026-10-01T12:00:00Z",
+          actor_user_id: null,
+          module: "audit",
+          action: "finalize",
+          entity_type: "inspection",
+          entity_id: "I1",
+          unit_id: null,
+          sector_id: null,
+          before_data: null,
+          after_data: null,
+          metadata: null,
+          correlation_id: null,
+        },
+      ],
+      count: 1,
+    });
+    render(<LogsPage />);
+    expect(await screen.findByText("Finalização")).toBeTruthy();
+    expect(screen.getAllByText("Auditoria").length).toBeGreaterThan(0);
+    const modules = within(screen.getByLabelText("Módulo"))
+      .getAllByRole("option")
+      .map((o) => o.textContent);
+    expect(modules).toEqual([
+      "Todos",
+      "Plataforma",
+      "Auditoria",
+      "Planos de ação",
+    ]);
+    const actions = within(screen.getByLabelText("Ação"))
+      .getAllByRole("option")
+      .map((o) => (o as HTMLOptionElement).value);
+    for (const action of [
+      "finalize",
+      "reopen",
+      "evidence_add",
+      "verify",
+      "grant",
+    ])
+      expect(actions).toContain(action);
   });
 });

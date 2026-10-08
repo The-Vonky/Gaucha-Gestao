@@ -12,7 +12,13 @@ const empty: api.LogFilters = {
   module: "",
   action: "",
 };
-/** Events written by core.record_change(); unknown values are shown as stored. */
+/** Modules that write to the log. */
+const MODULES: Record<string, string> = {
+  core: "Plataforma",
+  audit: "Auditoria",
+  action_plans: "Planos de ação",
+};
+/** Events written by Core, Audit and Action Plans; unknown values are shown as stored. */
 const ACTIONS: Record<string, string> = {
   insert: "Inclusão",
   update: "Alteração",
@@ -21,6 +27,22 @@ const ACTIONS: Record<string, string> = {
   deactivate: "Desativação",
   grant: "Concessão",
   revoke: "Revogação",
+  create: "Criação",
+  finalize: "Finalização",
+  reopen: "Reabertura",
+  status: "Mudança de situação",
+  verify: "Verificação de eficácia",
+  re_verify: "Reverificação de eficácia",
+  source_activate: "Origem reativada",
+  source_deactivate: "Origem desativada",
+  source_update: "Origem atualizada",
+  evidence_add: "Evidência anexada",
+  evidence_remove: "Evidência removida",
+  cover_upload_begin: "Envio de capa iniciado",
+  cover_ready: "Capa publicada",
+  cover_cancel: "Envio de capa cancelado",
+  cover_retire: "Capa retirada",
+  cover_purge: "Capa expurgada",
 };
 const ENTITIES: Record<string, string> = {
   profiles: "Usuário",
@@ -31,7 +53,15 @@ const ENTITIES: Record<string, string> = {
   roles: "Perfil de acesso",
   role_permissions: "Permissão do perfil",
   user_role_assignments: "Atribuição de acesso",
+  unit_cover_assets: "Capa da unidade",
+  inspection: "Auditoria",
+  checklist_evidence: "Evidência do checklist",
+  plan: "Plano de ação",
+  evidence: "Evidência do plano",
 };
+const byLabel = (entries: Record<string, string>) =>
+  Object.entries(entries).sort(([, a], [, b]) => a.localeCompare(b, "pt-BR"));
+const moduleLabel = (module: string) => MODULES[module] ?? module;
 const actionLabel = (action: string) => ACTIONS[action] ?? action;
 const entityLabel = (entity: string) => ENTITIES[entity] ?? entity;
 const DATABASE_ACTOR = "Operação administrativa do banco";
@@ -127,13 +157,20 @@ export function LogsPage() {
         </label>
         <label>
           Módulo
-          <input name="module" placeholder="core" maxLength={80} />
+          <select name="module">
+            <option value="">Todos</option>
+            {Object.entries(MODULES).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           Ação
           <select name="action">
             <option value="">Todas</option>
-            {Object.entries(ACTIONS).map(([value, label]) => (
+            {byLabel(ACTIONS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
@@ -194,7 +231,7 @@ export function LogsPage() {
               <Timestamp value={log.occurred_at} />
               <div className="adm-main">
                 <p className="adm-title">
-                  <Badge tone="neutral">{log.module}</Badge>
+                  <Badge tone="neutral">{moduleLabel(log.module)}</Badge>
                   <strong>{actionLabel(log.action)}</strong>
                   <span className="adm-entity">
                     {entityLabel(log.entity_type)}
@@ -209,7 +246,7 @@ export function LogsPage() {
               <div className="adm-actions">
                 <button
                   className="small ghost"
-                  aria-label={`Detalhes: ${log.module} / ${actionLabel(log.action)} em ${entityLabel(log.entity_type)}, ${new Date(log.occurred_at).toLocaleString("pt-BR")}`}
+                  aria-label={`Detalhes: ${moduleLabel(log.module)} / ${actionLabel(log.action)} em ${entityLabel(log.entity_type)}, ${new Date(log.occurred_at).toLocaleString("pt-BR")}`}
                   onClick={() => setSelected(log)}
                 >
                   Detalhes
@@ -242,8 +279,10 @@ export function LogsPage() {
             <div>
               <dt>Módulo / ação</dt>
               <dd>
-                {selected.module} / {actionLabel(selected.action)}{" "}
-                <code>{selected.action}</code>
+                {moduleLabel(selected.module)} / {actionLabel(selected.action)}{" "}
+                <code>
+                  {selected.module}.{selected.action}
+                </code>
               </dd>
             </div>
             <div>

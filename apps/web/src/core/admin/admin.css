@@ -198,6 +198,13 @@ button.adm-activate:hover:not(:disabled) {
   font: 600 0.8125rem/1 var(--font-display);
   letter-spacing: 0.04em;
 }
+/* E-mail first (the account's identity), then the last access. */
+.usr-email {
+  color: var(--color-text);
+}
+.usr-email + span::before {
+  content: " · ";
+}
 .adm-row.inactive .usr-avatar {
   background: var(--color-surface-sunken);
   border-color: var(--color-border-strong);
@@ -209,7 +216,7 @@ button.adm-activate:hover:not(:disabled) {
     margin: 0;
     min-height: 0;
   }
-  /* Identity and state on top; actions below, aligned with the identity. */
+  /* Identity and state on top; actions below across the whole row. */
   .adm-table {
     display: block;
   }
@@ -217,7 +224,7 @@ button.adm-activate:hover:not(:disabled) {
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
       "lead main state"
-      ". actions actions";
+      "actions actions actions";
     gap: var(--space-2) var(--space-3);
   }
   .adm-table.no-lead > .adm-row {

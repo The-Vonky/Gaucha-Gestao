@@ -61,37 +61,56 @@ export async function saveOrganization(
   if (error) throw error;
 }
 export type ListFilter = { search: string; inactive: boolean };
-/** A page of named records, alphabetical, optionally filtered by name and active only. */
-async function named<K extends "profiles" | "units" | "sectors">(
-  table: K,
+/** A page of units or sectors, alphabetical, optionally filtered by name and active only. */
+export async function organizations(
+  kind: "units" | "sectors",
   page: number,
   filters: ListFilter,
 ) {
-  // The three tables share id/active and a name column; typed through one of them.
-  const name = (table === "profiles" ? "display_name" : "name") as "name";
   let query = database()
-    .from(table as "units")
+    .from(kind as "units")
     .select("*", { count: "exact" })
-    .order(name)
+    .order("name")
     .order("id");
   // LIKE wildcards typed by the user are matched literally.
   const search = filters.search.replace(/[\\%_]/g, (c) => `\\${c}`);
-  if (search) query = query.ilike(name, `%${search}%`);
+  if (search) query = query.ilike("name", `%${search}%`);
   if (!filters.inactive) query = query.eq("active", true);
   const { data, error, count } = await query.range(
     page * PAGE_SIZE,
     (page + 1) * PAGE_SIZE - 1,
   );
   if (error) throw error;
-  return { rows: (data ?? []) as unknown as RowMap[K][], count: count ?? 0 };
+  return { rows: (data ?? []) as Organization[], count: count ?? 0 };
 }
-export const users = (page: number, filters: ListFilter) =>
-  named("profiles", page, filters);
-export const organizations = (
-  kind: "units" | "sectors",
-  page: number,
-  filters: ListFilter,
-) => named(kind, page, filters);
+/** Users with their Auth e-mail and last sign-in; the search matches name or e-mail. */
+export async function users(page: number, filters: ListFilter) {
+  const { data, error, count } = await database()
+    .rpc(
+      "user_directory",
+      { p_search: filters.search, p_inactive: filters.inactive },
+      { count: "exact" },
+    )
+    .order("display_name")
+    .order("id")
+    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+  if (error) throw error;
+  return { rows: data ?? [], count: count ?? 0 };
+}
+export async function renameProfile(
+  id: string,
+  version: number,
+  display_name: string,
+) {
+  const { error } = await database()
+    .from("profiles")
+    .update({ display_name })
+    .eq("id", id)
+    .eq("version", version)
+    .select("id")
+    .single();
+  if (error) throw error;
+}
 export async function setProfileActive(
   id: string,
   version: number,
@@ -144,6 +163,17 @@ export async function saveRole(
     p_description: values.description,
     p_permissions: values.permissions,
   });
+  if (error) throw error;
+}
+/** Deactivating keeps the role's assignments; they grant nothing until it is reactivated. */
+export async function setRoleActive(row: Role, active: boolean) {
+  const { error } = await database()
+    .from("roles")
+    .update({ active })
+    .eq("id", row.id)
+    .eq("version", row.version)
+    .select("id")
+    .single();
   if (error) throw error;
 }
 export async function setUnitSector(

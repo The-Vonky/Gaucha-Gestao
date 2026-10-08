@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import type { Role } from "../types";
 import { useAuth } from "../auth/AuthProvider";
 import { useResource } from "../../shared/useResource";
-import { EmptyState, PageTitle, Pager } from "../../shared/ui";
+import { Confirm, EmptyState, PageTitle, Pager } from "../../shared/ui";
 import * as api from "./api";
 import {
   ActiveBadge,
@@ -18,6 +18,7 @@ export function RolesPage() {
   const r = useResource(useCallback(() => api.list("roles", page), [page]));
   const data = useLatest(r);
   const [edit, setEdit] = useState<Role | null | undefined>();
+  const [toggle, setToggle] = useState<Role>();
   const manage = auth.can("admin.role.manage");
   return (
     <>
@@ -82,6 +83,15 @@ export function RolesPage() {
                   >
                     {consult ? "Consultar" : "Editar"}
                   </button>
+                  {!consult && (
+                    <button
+                      className={`small ghost ${row.active ? "adm-danger" : "adm-activate"}`}
+                      aria-label={`${row.active ? "Desativar" : "Ativar"} ${row.name}`}
+                      onClick={() => setToggle(row)}
+                    >
+                      {row.active ? "Desativar" : "Ativar"}
+                    </button>
+                  )}
                 </div>
               </li>
             );
@@ -94,6 +104,23 @@ export function RolesPage() {
           count={data.count}
           size={api.PAGE_SIZE}
           onChange={setPage}
+        />
+      )}
+      {toggle && (
+        <Confirm
+          title={`${toggle.active ? "Desativar" : "Ativar"} perfil`}
+          tone={toggle.active ? "danger" : "primary"}
+          description={
+            toggle.active
+              ? `${toggle.name}: quem tem este perfil deixa de receber as permissões dele enquanto estiver inativo. As atribuições são mantidas e voltam a valer se o perfil for reativado.`
+              : `${toggle.name}: as atribuições existentes deste perfil voltam a conceder as permissões dele.`
+          }
+          onClose={() => setToggle(undefined)}
+          onConfirm={async () => {
+            await api.setRoleActive(toggle, !toggle.active);
+            r.reload();
+            auth.refresh();
+          }}
         />
       )}
       {edit !== undefined && (

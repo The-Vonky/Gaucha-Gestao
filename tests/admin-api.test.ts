@@ -3,7 +3,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const calls = vi.hoisted(() => [] as unknown[][]);
 vi.mock("../apps/web/src/core/client", () => {
   const builder: Record<string, unknown> = {};
-  for (const method of ["from", "select", "order", "ilike", "eq", "range"])
+  for (const method of [
+    "from",
+    "rpc",
+    "select",
+    "update",
+    "order",
+    "ilike",
+    "eq",
+    "range",
+    "single",
+  ])
     builder[method] = (...args: unknown[]) => {
       calls.push([method, ...args]);
       return builder;
@@ -42,10 +52,30 @@ describe("admin list queries", () => {
       ["range", 0, 24],
     ]);
   });
-  it("searches users by display name", async () => {
-    await api.users(0, { search: "Ana", inactive: false });
-    expect(calls).toContainEqual(["order", "display_name"]);
-    expect(calls).toContainEqual(["ilike", "display_name", "%Ana%"]);
+  it("reads users from the directory RPC, which searches name or e-mail server-side", async () => {
+    await api.users(2, { search: "ana@", inactive: true });
+    expect(calls).toEqual([
+      [
+        "rpc",
+        "user_directory",
+        { p_search: "ana@", p_inactive: true },
+        { count: "exact" },
+      ],
+      ["order", "display_name"],
+      ["order", "id"],
+      ["range", 50, 74],
+    ]);
+  });
+  it("renames a profile only at the version that was shown", async () => {
+    await api.renameProfile("u1", 7, "Novo Nome");
+    expect(calls).toEqual([
+      ["from", "profiles"],
+      ["update", { display_name: "Novo Nome" }],
+      ["eq", "id", "u1"],
+      ["eq", "version", 7],
+      ["select", "id"],
+      ["single"],
+    ]);
   });
   it("reads named catalogs by name (never by UUID) with a unique page boundary", async () => {
     await api.list("roles");

@@ -319,7 +319,7 @@ try {
 
     // Logs: filter bar, rows and JSON details that never widen the page.
     await visit("/admin/logs", "logs");
-    await page.getByLabel("Módulo").fill("core");
+    await page.getByLabel("Módulo").selectOption("core");
     await page.getByRole("button", { name: "Filtrar" }).click();
     await page.getByText("1 filtro aplicado").waitFor();
     await settle(page);

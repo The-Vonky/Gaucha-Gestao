@@ -6,6 +6,11 @@ export type Versioned = {
   updated_at: string;
 };
 export type Profile = Versioned & { display_name: string; active: boolean };
+/** Profile plus the Auth e-mail and last sign-in (core.user_directory, user admins only). */
+export type DirectoryUser = Profile & {
+  email: string | null;
+  last_sign_in_at: string | null;
+};
 export type Organization = Versioned & {
   code: string;
   name: string;
@@ -102,6 +107,10 @@ export type Database = {
         Returns: { role: Json; permission_keys: string[] }[];
       };
       my_access: { Args: Record<string, never>; Returns: AccessGrant[] };
+      user_directory: {
+        Args: { p_search?: string; p_inactive?: boolean };
+        Returns: DirectoryUser[];
+      };
       unit_covers: { Args: { p_units: string[] }; Returns: UnitCoverRow[] };
       begin_unit_cover_upload: {
         Args: {

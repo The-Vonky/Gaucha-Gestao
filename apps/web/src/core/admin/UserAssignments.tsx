@@ -97,6 +97,14 @@ export function UserAssignments({
   const [unit, setUnit] = useState("");
   const [role, setRole] = useState("");
   const [revoke, setRevoke] = useState<Assignment>();
+  // Remounts the grant form: "Cancelar" and a successful grant start it over.
+  const [grantForm, setGrantForm] = useState(0);
+  const resetGrant = () => {
+    setRole("");
+    setScope("global");
+    setUnit("");
+    setGrantForm((n) => n + 1);
+  };
   const r = useResource(
     useCallback(async () => {
       const { data: assignments, error } = await database()
@@ -105,10 +113,11 @@ export function UserAssignments({
         .eq("user_id", profile.id)
         .order("created_at");
       if (error) throw error;
+      // Names resolve wherever the reader may see them (RLS returns only those rows).
       const [roles, units, sectors, links, rp] = await Promise.all([
         api.all("roles"),
-        manage ? api.all("units") : Promise.resolve([]),
-        manage ? api.all("sectors") : Promise.resolve([]),
+        api.all("units"),
+        api.all("sectors"),
         manage ? api.all("unit_sectors") : Promise.resolve([]),
         manage ? api.all("role_permissions") : Promise.resolve([]),
       ]);
@@ -127,7 +136,7 @@ export function UserAssignments({
   const revoked = r.data?.assignments.filter((a) => !a.active) ?? [];
   const name = (list: { id: string; name: string }[] = [], id: string) =>
     list.find((x) => x.id === id)?.name;
-  // Names only resolve when the lists were loaded (manage); otherwise the id is shown.
+  // A unit or sector outside the reader's visibility keeps its id.
   const describe = (a: Assignment): Described => ({
     role: name(r.data?.roles, a.role_id) ?? a.role_id,
     unit: a.unit_id ? (name(r.data?.units, a.unit_id) ?? a.unit_id) : null,
@@ -169,7 +178,8 @@ export function UserAssignments({
             <>
               <h3 className="adm-subhead">Conceder acesso</h3>
               <Form
-                onCancel={onClose}
+                key={grantForm}
+                onCancel={resetGrant}
                 onSave={async (data) => {
                   await api.grantAssignment({
                     user_id: profile.id,
@@ -179,6 +189,7 @@ export function UserAssignments({
                     sector_id:
                       scope === "sector" ? String(data.get("sector")) : null,
                   });
+                  resetGrant();
                   r.reload();
                 }}
               >

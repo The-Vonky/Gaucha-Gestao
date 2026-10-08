@@ -1,9 +1,17 @@
 import { useCallback, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
-import type { Profile } from "../types";
+import type { DirectoryUser } from "../types";
 import { Icon } from "../../shared/icons";
 import { useResource } from "../../shared/useResource";
-import { Badge, Confirm, EmptyState, PageTitle, Pager } from "../../shared/ui";
+import {
+  Badge,
+  Confirm,
+  EmptyState,
+  Form,
+  Modal,
+  PageTitle,
+  Pager,
+} from "../../shared/ui";
 import * as api from "./api";
 import {
   ActiveBadge,
@@ -15,6 +23,11 @@ import {
   usePageClamp,
 } from "./parts";
 import { UserAssignments } from "./UserAssignments";
+/** "Último acesso 07/10/2026 14:32" from the Auth last sign-in. */
+const lastAccess = (at: string | null) =>
+  at
+    ? `Último acesso ${new Date(at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`
+    : "Nunca acessou";
 const initials = (name: string) =>
   name
     .split(/\s+/)
@@ -34,8 +47,9 @@ export function UsersPage() {
   );
   const data = useLatest(r);
   usePageClamp(filters, data?.count);
-  const [selected, setSelected] = useState<Profile>();
-  const [toggle, setToggle] = useState<Profile>();
+  const [selected, setSelected] = useState<DirectoryUser>();
+  const [toggle, setToggle] = useState<DirectoryUser>();
+  const [renaming, setRenaming] = useState<DirectoryUser>();
   const manage = auth.can("admin.user.manage");
   return (
     <>
@@ -50,7 +64,7 @@ export function UsersPage() {
       </p>
       <ListToolbar
         label="Filtros dos usuários"
-        placeholder="Nome do usuário"
+        placeholder="Nome ou e-mail"
         filters={filters}
         count={data?.count}
         noun={{
@@ -79,7 +93,7 @@ export function UsersPage() {
           }
         >
           {search
-            ? `Nenhum nome corresponde a “${search}”${inactive ? "" : " entre os usuários ativos"}.`
+            ? `Nenhum nome ou e-mail corresponde a “${search}”${inactive ? "" : " entre os usuários ativos"}.`
             : inactive
               ? "Ainda não há usuários cadastrados."
               : "Não há usuários ativos. Marque “Exibir inativos” para ver os demais."}
@@ -107,6 +121,12 @@ export function UsersPage() {
                     <strong>{row.display_name}</strong>
                     {self && <Badge tone="info">Você</Badge>}
                   </p>
+                  <p className="adm-meta">
+                    {row.email && (
+                      <span className="usr-email">{row.email}</span>
+                    )}
+                    <span>{lastAccess(row.last_sign_in_at)}</span>
+                  </p>
                   <Identifier label="ID">{row.id}</Identifier>
                 </div>
                 <div className="adm-state">
@@ -121,6 +141,15 @@ export function UsersPage() {
                     <Icon name="roles" />
                     Atribuições
                   </button>
+                  {manage && !self && (
+                    <button
+                      className="small ghost"
+                      aria-label={`Renomear ${row.display_name}`}
+                      onClick={() => setRenaming(row)}
+                    >
+                      Renomear
+                    </button>
+                  )}
                   {manage && !self && (
                     <button
                       className={`small ghost ${row.active ? "adm-danger" : "adm-activate"}`}
@@ -149,6 +178,41 @@ export function UsersPage() {
           profile={selected}
           onClose={() => setSelected(undefined)}
         />
+      )}
+      {renaming && (
+        <Modal title="Renomear usuário" onClose={() => setRenaming(undefined)}>
+          <Form
+            onCancel={() => setRenaming(undefined)}
+            onSave={async (data) => {
+              await api.renameProfile(
+                renaming.id,
+                renaming.version,
+                String(data.get("display_name")).trim(),
+              );
+              setRenaming(undefined);
+              r.reload();
+            }}
+          >
+            {renaming.email && (
+              <p className="muted adm-modal-meta">{renaming.email}</p>
+            )}
+            <label>
+              Nome de exibição
+              <input
+                name="display_name"
+                required
+                maxLength={160}
+                pattern=".*\S.*"
+                title="Informe um nome."
+                defaultValue={renaming.display_name}
+              />
+            </label>
+            <p className="muted">
+              O nome aparece na navegação, nas auditorias e nos planos de ação.
+              O e-mail de acesso não muda.
+            </p>
+          </Form>
+        </Modal>
       )}
       {toggle && (
         <Confirm
