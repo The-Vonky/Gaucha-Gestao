@@ -84,8 +84,26 @@
   align-items: center;
   min-height: var(--touch-target, 44px);
   font: var(--text-label);
+  gap: var(--space-2);
+  list-style: none;
   cursor: pointer;
   border-radius: var(--radius-sm);
+}
+/* Flex drops the native marker: draw one so the section reads as expandable. */
+.log-tech > summary::-webkit-details-marker {
+  display: none;
+}
+.log-tech > summary::before {
+  content: "";
+  width: 0.45em;
+  height: 0.45em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--duration-base) var(--ease-standard);
+}
+.log-tech[open] > summary::before {
+  transform: rotate(45deg);
 }
 .log-tech > summary:focus-visible {
   outline: 2px solid var(--color-focus);
