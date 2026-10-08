@@ -93,6 +93,37 @@ describe("admin list queries", () => {
       ["range", 50, 74],
     ]);
   });
+  it("reads log pages from the audit log RPC, sending blank filters as null", async () => {
+    const result = await api.auditLogPage(1, {
+      from: "2026-10-01T03:00:00.000Z",
+      to: "2026-10-02T03:00:00.000Z",
+      actor: "",
+      actorSearch: "ana",
+      module: "core",
+      action: "",
+      entityType: "units",
+      entityId: "u1",
+    });
+    expect(calls).toEqual([
+      [
+        "rpc",
+        "audit_log_page",
+        {
+          p_limit: 25,
+          p_offset: 25,
+          p_from: "2026-10-01T03:00:00.000Z",
+          p_to: "2026-10-02T03:00:00.000Z",
+          p_actor: null,
+          p_actor_search: "ana",
+          p_module: "core",
+          p_action: null,
+          p_entity_type: "units",
+          p_entity_id: "u1",
+        },
+      ],
+    ]);
+    expect(result).toEqual({ rows: [], count: 0 });
+  });
   it("renames a profile only at the version that was shown", async () => {
     await api.renameProfile("u1", 7, "Novo Nome");
     expect(calls).toEqual([
