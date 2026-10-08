@@ -34,7 +34,7 @@ beforeAll(async () => {
   db = new PGlite();
   // Minimal Supabase Auth contract; real PostgreSQL roles, grants, triggers and RLS.
   await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
- create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}');
+ create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}', last_sign_in_at timestamptz);
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
  grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;`);
   await db.exec(STORAGE_STUB);
@@ -467,5 +467,76 @@ describe.sequential("PostgreSQL Core migration and RLS", () => {
     expect(
       (await db.query("select * from core.role_detail($1)", [id])).rows,
     ).toEqual([]);
+  });
+  it("returns e-mail and last sign-in only to user administrators, searching name or e-mail literally", async () => {
+    await db.exec("reset role");
+    await db.exec(
+      `update auth.users set last_sign_in_at='2026-10-01T12:00:00Z' where id='${ids.admin}';
+       update core.profiles set display_name='Bia 100% Silva' where id='${ids.user}';`,
+    );
+    await login(ids.admin);
+    type Row = { id: string; email: string; last_sign_in_at: string | null };
+    const directory = async (search = "", inactive = false) =>
+      (
+        await db.query<Row>("select * from core.user_directory($1,$2)", [
+          search,
+          inactive,
+        ])
+      ).rows;
+    const all = await directory();
+    expect(all.find((r) => r.id === ids.admin)).toMatchObject({
+      email: "admin@example.test",
+    });
+    expect(
+      new Date(all.find((r) => r.id === ids.admin)!.last_sign_in_at!).toISOString(),
+    ).toBe("2026-10-01T12:00:00.000Z");
+    // Inactive profiles only when asked for.
+    expect(all.some((r) => r.id === ids.inactive)).toBe(false);
+    expect((await directory("", true)).some((r) => r.id === ids.inactive)).toBe(
+      true,
+    );
+    // Name or e-mail, case-insensitive; % and _ are literal characters.
+    expect((await directory("USER@EXAMPLE")).map((r) => r.id)).toEqual([
+      ids.user,
+    ]);
+    expect((await directory("100%")).map((r) => r.id)).toEqual([ids.user]);
+    expect((await directory("%")).map((r) => r.id)).toEqual([ids.user]);
+    expect(await directory("_")).toEqual([]);
+    // Everyone else gets nothing: no assignment, a non-user admin role, or inactive.
+    for (const id of [ids.user, ids.empty, ids.inactive]) {
+      await login(id);
+      expect(await directory("", true)).toEqual([]);
+    }
+    await login("", "anon");
+    await expect(db.query("select * from core.user_directory()")).rejects.toThrow();
+  });
+  it("lets a user manager rename others only, logging the change", async () => {
+    await login(ids.admin);
+    const rename = (id: string, name: string) =>
+      db.query(
+        "update core.profiles set display_name=$2 where id=$1 returning id",
+        [id, name],
+      );
+    expect((await rename(ids.user, "Beatriz Silva")).rows).toHaveLength(1);
+    // Never the own profile (profiles_update), and the name stays required.
+    expect((await rename(ids.admin, "Outro nome")).rows).toHaveLength(0);
+    await expect(rename(ids.user, "   ")).rejects.toThrow();
+    // Only display_name and active are updatable columns.
+    await expect(
+      db.query("update core.profiles set created_at=now() where id=$1", [
+        ids.user,
+      ]),
+    ).rejects.toThrow();
+    await login(ids.empty);
+    expect((await rename(ids.user, "Sem permissão")).rows).toHaveLength(0);
+    await db.exec("reset role");
+    const log = (
+      await db.query<{ actor_user_id: string; after_data: { display_name: string } }>(
+        "select actor_user_id,after_data from core.system_audit_log where entity_type='profiles' and entity_id=$1 and action='update' order by occurred_at desc,id desc limit 1",
+        [ids.user],
+      )
+    ).rows[0];
+    expect(log.actor_user_id).toBe(ids.admin);
+    expect(log.after_data.display_name).toBe("Beatriz Silva");
   });
 });
