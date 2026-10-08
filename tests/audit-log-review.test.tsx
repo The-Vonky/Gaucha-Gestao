@@ -448,6 +448,22 @@ describe("LogsPage", () => {
       within(tech).getByRole("region", { name: "Metadados" }).textContent,
     ).toContain("admin");
   });
+  it("states missing before/after content instead of rendering empty regions", async () => {
+    rpc.next.push(
+      ok([row({ before_data: null, after_data: null, metadata: undefined })]),
+    );
+    const user = userEvent.setup();
+    render(<LogsPage />);
+    await user.click(await screen.findByRole("button", { name: /^Detalhes:/ }));
+    const tech = screen.getByRole("dialog").querySelector("details")!;
+    await user.click(within(tech).getByText("Detalhes técnicos"));
+    for (const label of ["Antes", "Depois", "Metadados"]) {
+      expect(within(tech).getByRole("heading", { name: label })).toBeTruthy();
+      expect(within(tech).queryByRole("region", { name: label })).toBeNull();
+    }
+    expect(within(tech).getAllByText("Sem conteúdo registrado.")).toHaveLength(3);
+    expect(tech.textContent).not.toContain("null");
+  });
   it("filters by the person or the record of an event from its details", async () => {
     rpc.fallback = ok([row()]);
     const user = userEvent.setup();
