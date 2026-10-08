@@ -1,0 +1,126 @@
+/*
+ * Unit Access Review v1: read-only review of who covers a unit. Builds on the
+ * Administration rows (admin.css) and Elo tokens; nothing here is shared.
+ */
+.uar {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.uar[aria-busy="true"] .uar-metrics {
+  opacity: 0.6;
+}
+.uar-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+.uar-head h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.uar-head .eyebrow {
+  margin: 0;
+}
+.uar-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--space-3);
+  transition: opacity var(--duration-base) var(--ease-standard);
+}
+.uar-filters {
+  margin-bottom: 0;
+}
+.uar-filter-note {
+  align-self: center;
+}
+.uar-people > .uar-person {
+  align-items: flex-start;
+}
+.uar-assignments {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+.uar-assignment {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  min-width: 0;
+}
+/* Revoked history stays readable but steps back. */
+.uar-assignment.revoked {
+  background: var(--color-surface);
+  border-style: dashed;
+}
+.uar-assignment.revoked .uar-role {
+  color: var(--color-text-secondary);
+}
+.uar-role {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.uar-states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+}
+.uar-details summary {
+  cursor: pointer;
+  width: fit-content;
+  font: var(--text-body-sm);
+  color: var(--color-link);
+}
+.uar-details[open] {
+  display: grid;
+  gap: var(--space-2);
+}
+.uar-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.uar-keys code,
+.uar-details .adm-meta code {
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.uar-ids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+}
+.uar-ids .adm-id {
+  min-height: 0;
+  margin: 0;
+}
+@media (max-width: 767px) {
+  .uar-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .uar-filters label:not(.check) {
+    flex-basis: 100%;
+  }
+}
+@media (max-width: 400px) {
+  .uar-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
