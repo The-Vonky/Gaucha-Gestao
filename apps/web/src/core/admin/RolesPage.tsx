@@ -6,7 +6,6 @@ import { Confirm, EmptyState, PageTitle, Pager } from "../../shared/ui";
 import * as api from "./api";
 import {
   ActiveBadge,
-  Identifier,
   ListState,
   RoleKind,
   useLatest,
@@ -70,7 +69,6 @@ export function RolesPage() {
                   {row.description && (
                     <p className="adm-meta">{row.description}</p>
                   )}
-                  <Identifier label="Chave">{row.key}</Identifier>
                 </div>
                 <div className="adm-state">
                   <ActiveBadge active={row.active} />

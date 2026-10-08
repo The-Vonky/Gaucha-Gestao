@@ -240,16 +240,12 @@ try {
         });
     };
 
-    // Users: name first, UUID secondary and wrapping, grouped actions, no self toggle.
+    // Users: readable list, diagnostic UUID in assignments, no self toggle.
     await visit("/admin/users", "users");
     const row = page.getByRole("listitem").filter({ hasText: LONG_NAME });
     await reach(page, row);
     await noOverflow(page, "users page with long name");
-    const id = row.locator("code", { hasText: other.id });
-    assert.ok(
-      await id.evaluate((e) => e.scrollWidth <= e.clientWidth + 1),
-      "UUID must wrap",
-    );
+    assert.equal(await row.locator("code", { hasText: other.id }).count(), 0);
     assert.equal(
       await row.getByRole("button", { name: `Desativar ${LONG_NAME}` }).count(),
       1,
@@ -262,6 +258,11 @@ try {
     const dialog = page.getByRole("dialog");
     await dialog.getByText("Atribuições vigentes").waitFor();
     await dialog.getByText(LONG_UNIT).waitFor();
+    const id = dialog.locator("code", { hasText: other.id });
+    assert.ok(
+      await id.evaluate((e) => e.scrollWidth <= e.clientWidth + 1),
+      "Diagnostic UUID must wrap in the assignments dialog",
+    );
     assert.ok(
       await page.evaluate(() =>
         document.activeElement?.closest("dialog")?.hasAttribute("open"),

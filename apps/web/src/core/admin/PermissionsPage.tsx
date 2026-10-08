@@ -11,7 +11,7 @@ export function PermissionsPage() {
       <PageTitle
         eyebrow="Administração"
         title="Permissões"
-        description="Catálogo controlado pela plataforma. Alterações são realizadas por migrations."
+        description="Catálogo de permissões. Sua composição é mantida pela equipe responsável pela plataforma."
       />
       <ListState
         loading={r.loading}

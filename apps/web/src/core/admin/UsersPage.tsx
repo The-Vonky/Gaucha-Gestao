@@ -15,7 +15,6 @@ import {
 import * as api from "./api";
 import {
   ActiveBadge,
-  Identifier,
   ListState,
   ListToolbar,
   useLatest,
@@ -59,8 +58,8 @@ export function UsersPage() {
         description="Identidades corporativas, situação e atribuições de acesso."
       />
       <p className="muted adm-intro">
-        Contas são criadas ou convidadas pela administração do Auth. Ativar uma
-        conta não restaura suas atribuições revogadas.
+        Contas são criadas ou convidadas pela equipe responsável pelos acessos.
+        Ativar uma conta não restaura suas atribuições revogadas.
       </p>
       <ListToolbar
         label="Filtros dos usuários"
@@ -127,7 +126,6 @@ export function UsersPage() {
                     )}
                     <span>{lastAccess(row.last_sign_in_at)}</span>
                   </p>
-                  <Identifier label="ID">{row.id}</Identifier>
                 </div>
                 <div className="adm-state">
                   <ActiveBadge active={row.active} />

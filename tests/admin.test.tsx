@@ -264,7 +264,7 @@ describe("critical administration flows", () => {
   });
 });
 describe("users", () => {
-  it("lists the name first, the UUID as secondary text and never offers self-deactivation", async () => {
+  it("keeps the user list readable and never offers self-deactivation", async () => {
     api.users.mockResolvedValue({
       rows: [
         profile(),
@@ -276,9 +276,9 @@ describe("users", () => {
     render(<UsersPage />);
     const name = await screen.findByText("Ana Souza");
     expect(name.tagName).toBe("STRONG");
-    expect(
-      screen.getByText("11111111-2222-3333-4444-555555555555").tagName,
-    ).toBe("CODE");
+    expect(screen.queryByText("11111111-2222-3333-4444-555555555555")).toBeNull();
+    expect(screen.getByText(/Ativar uma conta não restaura suas atribuições revogadas/)).toBeTruthy();
+    expect(screen.queryByText(/administração do Auth/)).toBeNull();
     expect(screen.getByText("Você")).toBeTruthy();
     expect(screen.getAllByText("Ativo")).toHaveLength(2);
     expect(screen.getByText("Inativo")).toBeTruthy();
@@ -428,6 +428,7 @@ describe("assignments", () => {
       within(revoked).queryByRole("button", { name: /Revogar/ }),
     ).toBeNull();
     expect(screen.getByText("Conceder acesso")).toBeTruthy();
+    expect(screen.getByText("11111111-2222-3333-4444-555555555555").tagName).toBe("CODE");
   });
   it("never offers revocation on the current user's own assignments", async () => {
     assignments.rows = [a({ id: "g" })];
@@ -456,6 +457,7 @@ describe("roles and permissions", () => {
     });
     render(<RolesPage />);
     expect(await screen.findByText("Sistema · protegido")).toBeTruthy();
+    expect(screen.queryByText("quality")).toBeNull();
     expect(screen.getByText("Personalizado")).toBeTruthy();
     expect(screen.getByText("Inativo")).toBeTruthy();
     expect(
@@ -541,6 +543,8 @@ describe("roles and permissions", () => {
     api.all.mockResolvedValue(permissions);
     render(<PermissionsPage />);
     expect(await screen.findByText("Gerenciar usuários")).toBeTruthy();
+    expect(screen.queryByText(/migrations/)).toBeNull();
+    expect(screen.getByText(/composição é mantida pela equipe responsável pela plataforma/)).toBeTruthy();
     expect(api.all).toHaveBeenCalledWith("permissions");
     expect(screen.getByText("admin.user.manage").tagName).toBe("CODE");
     // Grouped by domain: one titled section and list per domain, in catalog order.
