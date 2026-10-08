@@ -22,6 +22,7 @@ import {
   usePageClamp,
 } from "./parts";
 import { UserAssignments } from "./UserAssignments";
+import { UserAccessReview } from "./UserAccessReview";
 /** "Último acesso 07/10/2026 14:32" from the Auth last sign-in. */
 const lastAccess = (at: string | null) =>
   at
@@ -47,6 +48,7 @@ export function UsersPage() {
   const data = useLatest(r);
   usePageClamp(filters, data?.count);
   const [selected, setSelected] = useState<DirectoryUser>();
+  const [reviewing, setReviewing] = useState<DirectoryUser>();
   const [toggle, setToggle] = useState<DirectoryUser>();
   const [renaming, setRenaming] = useState<DirectoryUser>();
   const manage = auth.can("admin.user.manage");
@@ -139,6 +141,14 @@ export function UsersPage() {
                     <Icon name="roles" />
                     Atribuições
                   </button>
+                  <button
+                    className="small ghost"
+                    aria-label={`Revisar acesso de ${row.display_name}`}
+                    onClick={() => setReviewing(row)}
+                  >
+                    <Icon name="permissions" />
+                    Revisar acesso
+                  </button>
                   {manage && !self && (
                     <button
                       className="small ghost"
@@ -175,6 +185,12 @@ export function UsersPage() {
         <UserAssignments
           profile={selected}
           onClose={() => setSelected(undefined)}
+        />
+      )}
+      {reviewing && (
+        <UserAccessReview
+          profile={reviewing}
+          onClose={() => setReviewing(undefined)}
         />
       )}
       {renaming && (
