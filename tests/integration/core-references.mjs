@@ -48,7 +48,14 @@ try {
   await db.query("insert into core.unit_sectors values($1,$3),($2,$3),($1,$4)", [A, B, S, T]);
   await db.query("insert into core.roles(key,name) values($1,$1)", [`refs-user-reader-${tag}`]);
   await db.query("insert into core.role_permissions select id,'admin.user.read' from core.roles where key=$1", [`refs-user-reader-${tag}`]);
-  for (const name of ["member", "reader", "former", "leaver"]) await authUser(name);
+  for (const name of ["member", "reader", "former", "leaver", "planner", "revoked"]) await authUser(name);
+  await db.query("insert into core.roles(key,name) values($1,$1)", [`refs-planner-${tag}`]);
+  await db.query("insert into core.role_permissions select id,'action_plan.read' from core.roles where key=$1", [`refs-planner-${tag}`]);
+  await db.query("insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id) select $1,id,'unit',$2 from core.roles where key=$3",
+    [users.planner, A, `refs-planner-${tag}`]);
+  await db.query("insert into core.user_role_assignments(user_id,role_id,scope_type) select $1,id,'global' from core.roles where key='quality'",
+    [users.revoked]);
+  await db.query("update core.user_role_assignments set active=false where user_id=$1", [users.revoked]);
   await db.query("insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id,sector_id) select $1,id,'sector',$2,$3 from core.roles where key='quality_viewer'",
     [users.member, A, S]);
   await db.query("insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id,sector_id) select $1,id,'sector',$2,$3 from core.roles where key='quality_viewer'",
@@ -72,6 +79,17 @@ try {
   assert.deepEqual(must(await rpc("member", "sector_references", { p_ids: [T, S] }), "sectors").map((s) => s.id), [S]);
   assert.deepEqual(must(await rpc("member", "unit_sector_references", { p_units: [A, B, A], p_sectors: [S, S, T] }), "pairs"),
     [{ unit_id: A, sector_id: S, unit_active: true, sector_active: true }]);
+
+  phase = "label is not module access";
+  assert.deepEqual(must(await rpc("planner", "unit_references", { p_ids: [A, B] }), "planner units").map((u) => u.id), [A]);
+  assert.deepEqual(must(await core(clients.planner).from("units").select("id").eq("id", A), "planner catalog"), []);
+  assert.deepEqual(must(await clients.planner.schema("audit").rpc("units"), "planner audit units"), []);
+
+  phase = "revoked grants and private helpers";
+  assert.deepEqual(must(await rpc("revoked", "unit_references", { p_ids: [A, B] }), "revoked units"), []);
+  assert.deepEqual(must(await rpc("revoked", "sector_references", { p_ids: [S, T] }), "revoked sectors"), []);
+  const probe = await clients.member.schema("private").rpc("reference_batch", { p_ids: [A] });
+  assert.ok(probe.error && probe.data === null, "private schema is not exposed through PostgREST");
 
   phase = "guessed IDs";
   const guessed = must(await rpc("member", "unit_references", { p_ids: [randomUUID()] }), "guessed unit");

@@ -13,6 +13,10 @@ const ids = {
   inactive: "00000000-0000-0000-0000-000000000005",
   former: "00000000-0000-0000-0000-000000000006",
   userReader: "00000000-0000-0000-0000-000000000007",
+  emptyRole: "00000000-0000-0000-0000-000000000008",
+  inactiveRole: "00000000-0000-0000-0000-000000000009",
+  inactivePermission: "00000000-0000-0000-0000-00000000000a",
+  revokedOnly: "00000000-0000-0000-0000-00000000000b",
   a: "10000000-0000-0000-0000-000000000001",
   b: "10000000-0000-0000-0000-000000000002",
   c: "10000000-0000-0000-0000-000000000003",
@@ -65,6 +69,10 @@ beforeAll(async () => {
     ids.inactive,
     ids.former,
     ids.userReader,
+    ids.emptyRole,
+    ids.inactiveRole,
+    ids.inactivePermission,
+    ids.revokedOnly,
   ]
     .map((id) => `('${id}','${id}@example.test',now(),now())`)
     .join(",");
@@ -80,6 +88,16 @@ beforeAll(async () => {
  insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id) select '${ids.unitMember}',id,'unit','${ids.b}' from core.roles where key='plan_reader';
  insert into core.user_role_assignments(user_id,role_id,scope_type) select '${ids.userReader}',id,'global' from core.roles where key='user_reader';
  insert into core.user_role_assignments(user_id,role_id,scope_type) select '${ids.inactive}',id,'global' from core.roles where key='quality';
+ insert into core.permissions(key,domain,resource,action,description,active) values ('fixture.reference.read','fixture','reference','read','Inactive fixture',false);
+ insert into core.roles(key,name) values ('no_permissions','No permissions'),('retired_role','Retired role'),('inactive_permission','Inactive permission');
+ insert into core.role_permissions select id,'action_plan.read' from core.roles where key='retired_role';
+ insert into core.role_permissions select id,'fixture.reference.read' from core.roles where key='inactive_permission';
+ insert into core.user_role_assignments(user_id,role_id,scope_type) select '${ids.emptyRole}',id,'global' from core.roles where key='no_permissions';
+ insert into core.user_role_assignments(user_id,role_id,scope_type) select '${ids.inactiveRole}',id,'global' from core.roles where key='retired_role';
+ insert into core.user_role_assignments(user_id,role_id,scope_type) select '${ids.inactivePermission}',id,'global' from core.roles where key='inactive_permission';
+ insert into core.user_role_assignments(user_id,role_id,scope_type) select '${ids.revokedOnly}',id,'global' from core.roles where key='quality';
+ update core.user_role_assignments set active=false where user_id='${ids.revokedOnly}';
+ update core.roles set active=false where key='retired_role';
  update core.profiles set active=false where id in ('${ids.inactive}','${ids.former}');
  update core.units set active=false where id='${ids.c}';
  update core.sectors set active=false where id='${ids.u}';`);
@@ -185,6 +203,84 @@ describe.sequential("Core reference resolvers", () => {
         sector_active: false,
       },
     ]);
+  });
+
+  it("resolves nothing through assignments without a current effective grant", async () => {
+    // Global assignments only, so any leak would cover every target.
+    for (const id of [
+      ids.emptyRole,
+      ids.inactiveRole,
+      ids.inactivePermission,
+      ids.revokedOnly,
+    ]) {
+      await login(id);
+      expect(await rows("unit_references", allUnits)).toEqual([]);
+      expect(await rows("sector_references", allSectors)).toEqual([]);
+      expect(await pairs([ids.a, ids.b, ids.c], [ids.s, ids.u, ids.t])).toEqual(
+        [],
+      );
+      expect(
+        idsOf(await rows("profile_references", [ids.admin, ids.former, id])),
+      ).toEqual([id]);
+    }
+  });
+
+  it("does not turn a resolved label into catalog or module access", async () => {
+    // Unrelated permission (action_plan.read) in the same unit: label only.
+    await login(ids.unitMember);
+    expect(idsOf(await rows("unit_references", [ids.b]))).toEqual([ids.b]);
+    expect(
+      (
+        await db.query<{ ok: boolean }>(
+          "select private.has_scoped_permission('audit.inspection.read',$1) as ok",
+          [ids.b],
+        )
+      ).rows[0].ok,
+    ).toBe(false);
+    expect((await db.query("select * from audit.units()")).rows).toEqual([]);
+    expect(
+      (
+        await db.query("select * from core.unit_covers($1::uuid[])", [
+          arr([ids.b]),
+        ])
+      ).rows,
+    ).toEqual([]);
+    for (const table of ["units", "sectors", "unit_sectors"])
+      expect((await db.query(`select * from core.${table}`)).rows).toEqual([]);
+    expect(idsOf((await db.query("select * from core.profiles")).rows)).toEqual(
+      [ids.unitMember],
+    );
+    expect(
+      (
+        await db.query(
+          "update core.units set name='Hacked' where id=$1 returning id",
+          [ids.b],
+        )
+      ).rows,
+    ).toEqual([]);
+    // A global user reader labels the organization but still cannot read its catalogs.
+    await login(ids.userReader);
+    expect(idsOf(await rows("sector_references", allSectors))).toEqual([
+      ids.s,
+      ids.t,
+      ids.u,
+    ]);
+    for (const table of ["units", "sectors", "unit_sectors"])
+      expect((await db.query(`select * from core.${table}`)).rows).toEqual([]);
+  });
+
+  it("offers no listing: only the IDs asked for, never other users", async () => {
+    await login(ids.member);
+    expect(await rows("unit_references", [])).toEqual([]);
+    const guesses = Array.from(
+      { length: 90 },
+      (_, i) => `00000000-0000-0000-0000-${String(i + 1).padStart(12, "0")}`,
+    );
+    expect(idsOf(await rows("profile_references", guesses))).toEqual([
+      ids.member,
+    ]);
+    await login(ids.unitMember);
+    expect(idsOf(await rows("unit_references", [ids.a, ids.c]))).toEqual([]);
   });
 
   it("keeps inactive organization resolvable for historical reading", async () => {
@@ -302,16 +398,35 @@ describe.sequential("Core reference resolvers", () => {
     for (const f of fns.rows) {
       expect(f.config).toEqual(['search_path=""']);
       expect(f.anon).toBe(false);
-      expect(f.member).toBe(!f.fn.startsWith("private.can_resolve"));
+      expect(f.member).toBe(f.fn.startsWith("core."));
+      expect(f.definer).toBe(
+        f.fn.startsWith("private.can_resolve") ||
+          /^core\.(unit|sector|unit_sector)_references/.test(f.fn),
+      );
     }
     expect(
       fns.rows.find((f) => f.fn.startsWith("core.profile_references"))?.definer,
     ).toBe(false);
     // Private predicates cannot be probed directly.
     await login(ids.member);
-    await expect(
-      db.query("select private.can_resolve_unit($1)", [ids.b]),
-    ).rejects.toThrow(/permission denied/);
+    for (const probe of [
+      "select private.can_resolve_unit($1::uuid)",
+      "select private.can_resolve_sector($1::uuid)",
+      "select private.can_resolve_unit_sector($1::uuid,$1::uuid)",
+      "select private.reference_batch(array[$1::uuid])",
+    ])
+      await expect(db.query(probe, [ids.b])).rejects.toThrow(
+        /permission denied/,
+      );
+    // No table privilege, policy or RLS setting was added for the resolvers.
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select count(*)::int as n from pg_policies where schemaname='core' and (qual ~ 'resolve|reference' or with_check ~ 'resolve|reference')",
+        )
+      ).rows,
+    ).toEqual([{ n: 0 }]);
   });
 
   it("stops resolving as soon as the grant that covered it is revoked", async () => {
