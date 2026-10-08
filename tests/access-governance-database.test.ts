@@ -12,11 +12,13 @@ const users = {
   unitOnly: uid(5),
   empty: uid(6),
   inactiveCaller: uid(7),
+  unitReviewer: uid(8),
   bruno: uid(10),
   carla: uid(11),
   dora: uid(12),
   leaver: uid(13),
   eli: uid(14),
+  fabio: uid(15),
 };
 const A = "10000000-0000-0000-0000-000000000001";
 const B = "10000000-0000-0000-0000-000000000002";
@@ -90,11 +92,13 @@ beforeAll(async () => {
     unitOnly: "Ulisses Unidade",
     empty: "Eva Vazia",
     inactiveCaller: "Igor Inativo",
+    unitReviewer: "Vera Unidades",
     bruno: "Bruno",
     carla: "Carla",
     dora: "Dora",
     leaver: "Lia Desligada",
     eli: "Eli",
+    fabio: "Fabio",
   };
   await db.exec(
     `insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data) values ${Object.entries(users)
@@ -117,7 +121,10 @@ beforeAll(async () => {
   await role("gov-reviewer", ["admin.user.read", "admin.role.read", "admin.unit.read"]);
   await role("gov-role-read", ["admin.role.read"]);
   await role("gov-unit-read", ["admin.unit.read"]);
+  await role("gov-unit-reviewer", ["admin.user.read", "admin.unit.read"]);
   await role("legacy", ["audit.inspection.read"]);
+  // An active role without any permission: holding it grants nothing.
+  await role("hollow", []);
   const grant = (user: string, key: string, scope = "global", unit: string | null = null, sector: string | null = null) =>
     db.query(
       "insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id,sector_id) values ($1,$2,$3,$4,$5)",
@@ -127,6 +134,7 @@ beforeAll(async () => {
   await grant(users.reviewer, "gov-reviewer");
   await grant(users.roleOnly, "gov-role-read");
   await grant(users.unitOnly, "gov-unit-read", "unit", A);
+  await grant(users.unitReviewer, "gov-unit-reviewer");
   await grant(users.inactiveCaller, "gov-reviewer");
   // Bruno: overlapping Quality grants (global and unit A) plus a sector-only viewer grant.
   await grant(users.bruno, "quality");
@@ -149,6 +157,8 @@ beforeAll(async () => {
   // Eli: one role a read-only user admin also holds (composition readable) and one it does not.
   await grant(users.eli, "gov-user-read");
   await grant(users.eli, "quality_viewer", "unit", B);
+  // Fabio: only the permission-less role, in unit A.
+  await grant(users.fabio, "hollow", "unit", A);
 }, 30000);
 afterAll(async () => {
   await db?.close();
@@ -182,9 +192,8 @@ describe.sequential("Core access governance read v1", () => {
       effective_assignment_count: 3,
       composition_coverage: "complete",
     });
-    const keys = (await userSummary(users.bruno))[0].active_permission_keys as string[];
-    expect(keys).toContain("action_plan.write");
-    expect(keys).not.toContain("admin.user.read");
+    // Keys are only returned per assignment, paired with their scope, never as a flat union.
+    expect((await userSummary(users.bruno))[0]).not.toHaveProperty("active_permission_keys");
     const bruno = await userAssignments(users.bruno);
     expect(bruno.map((a) => a.scope_type).sort()).toEqual(["global", "sector", "unit"]);
     const sector = bruno.find((a) => a.scope_type === "sector")!;
@@ -244,15 +253,23 @@ describe.sequential("Core access governance read v1", () => {
     expect((await userSummary(users.dora))[0]).toMatchObject({
       active_assignment_count: 1,
       effective_assignment_count: 0,
-      active_permission_keys: [],
     });
+    // Reactivating or recomposing it could affect Dora; today nobody derives access from it.
     expect((await roleSummary(roles.legacy))[0]).toMatchObject({
+      impact_kind: "potential",
       role_active: false,
+      active_permission_count: 1,
+      role_grants_capabilities: false,
       holders_visibility: "available",
       holder_count: 1,
-      active_holder_count: 1,
-      immediately_affected_count: 0,
+      inactive_user_holder_count: 0,
+      potentially_affected_user_count: 1,
+      currently_effective_user_count: 0,
     });
+    // An inactive user's revoked assignment is history, not a holder.
+    const quality = (await roleSummary(roles.quality))[0];
+    expect(quality).toMatchObject({ holder_count: 1, inactive_user_holder_count: 0 });
+    expect(quality.revoked_assignment_count).toBe(2);
   });
   it("gives a read-only user admin people but not hidden composition, catalogs or logs", async () => {
     await login(users.userRead);
@@ -260,7 +277,6 @@ describe.sequential("Core access governance read v1", () => {
       active_assignment_count: 3,
       effective_assignment_count: null,
       composition_coverage: "restricted",
-      active_permission_keys: null,
     });
     const sector = (await userAssignments(users.bruno)).find((a) => a.scope_type === "sector")!;
     expect(sector).toMatchObject({
@@ -283,10 +299,16 @@ describe.sequential("Core access governance read v1", () => {
     });
     // Role holders need U + R; unit coverage needs the unit to be readable.
     expect((await roleSummary(roles.quality))[0]).toMatchObject({
+      impact_kind: "potential",
       composition_visibility: "restricted",
       active_permission_count: null,
+      inactive_permission_count: null,
+      role_grants_capabilities: null,
       holders_visibility: "restricted",
       holder_count: null,
+      potentially_affected_user_count: null,
+      currently_effective_user_count: null,
+      holders_with_other_roles_count: null,
       active_assignment_count: null,
     });
     expect(await roleHolders(roles.quality)).toEqual([]);
@@ -299,7 +321,6 @@ describe.sequential("Core access governance read v1", () => {
       active_assignment_count: 2,
       effective_assignment_count: null,
       composition_coverage: "partial",
-      active_permission_keys: ["admin.user.read"],
     });
     const byRole = Object.fromEntries((await userAssignments(users.eli)).map((a) => [a.role_id, a]));
     expect(byRole[roles["gov-user-read"]]).toMatchObject({ composition_visibility: "available", effective: true });
@@ -313,13 +334,20 @@ describe.sequential("Core access governance read v1", () => {
   it("lists role holders once per person despite overlapping assignments", async () => {
     await login(users.reviewer);
     expect((await roleSummary(roles.quality))[0]).toMatchObject({
+      impact_kind: "potential",
+      overlap_evaluated: false,
       role_key: "quality",
       composition_visibility: "available",
       active_permission_count: 11,
+      inactive_permission_count: 0,
+      role_grants_capabilities: true,
       holders_visibility: "available",
       holder_count: 1,
-      active_holder_count: 1,
-      immediately_affected_count: 1,
+      potentially_affected_user_count: 1,
+      currently_effective_user_count: 1,
+      // Bruno also holds Quality Viewer: some capabilities may survive a change, which this
+      // potential-impact summary flags but does not evaluate per permission.
+      holders_with_other_roles_count: 1,
       active_assignment_count: 2,
       revoked_assignment_count: 2,
     });
@@ -341,10 +369,13 @@ describe.sequential("Core access governance read v1", () => {
     expect(summary).toMatchObject({
       composition_visibility: "available",
       active_permission_count: 11,
+      role_grants_capabilities: true,
       holders_visibility: "restricted",
       holder_count: null,
-      active_holder_count: null,
-      immediately_affected_count: null,
+      inactive_user_holder_count: null,
+      potentially_affected_user_count: null,
+      currently_effective_user_count: null,
+      holders_with_other_roles_count: null,
       active_assignment_count: null,
       revoked_assignment_count: null,
     });
@@ -357,6 +388,7 @@ describe.sequential("Core access governance read v1", () => {
       unit_code: "A",
       people_visibility: "restricted",
       people_count: null,
+      effective_people_count: null,
       global_assignment_count: null,
       unit_assignment_count: null,
       sector_assignment_count: null,
@@ -366,6 +398,35 @@ describe.sequential("Core access governance read v1", () => {
     expect(await unitSummary(GUESS)).toEqual([]);
     await nothingVisible(users.bruno);
     expect(await roleSummary(roles.quality)).toEqual([]);
+  });
+  it("does not treat an active assignment without effective permission as usable access", async () => {
+    await login(users.admin);
+    expect((await userAssignments(users.fabio))[0]).toMatchObject({
+      assignment_active: true,
+      role_active: true,
+      composition_visibility: "available",
+      effective: false,
+      active_permission_keys: [],
+    });
+    expect((await userSummary(users.fabio))[0]).toMatchObject({
+      active_assignment_count: 1,
+      effective_assignment_count: 0,
+      composition_coverage: "complete",
+    });
+    expect((await roleSummary(roles.hollow))[0]).toMatchObject({
+      role_active: true,
+      active_permission_count: 0,
+      role_grants_capabilities: false,
+      holder_count: 1,
+      potentially_affected_user_count: 1,
+      currently_effective_user_count: 0,
+      holders_with_other_roles_count: 0,
+    });
+    // People counts follow assignments; the effective figure is unknown without composition access.
+    await login(users.unitReviewer);
+    const [unit] = await unitSummary(A);
+    expect(unit).toMatchObject({ people_visibility: "available", effective_people_count: null });
+    expect(unit.people_count).toBeGreaterThan(0);
   });
   it("covers a unit with global, unit and only matching sector assignments", async () => {
     await login(users.admin);
@@ -383,7 +444,7 @@ describe.sequential("Core access governance read v1", () => {
     expect(list.every((a) => a.total_count === list.length)).toBe(true);
     expect(list[0].people_count).toBe(people.size);
     // Dora (inactive role) is still listed in A; Carla (B only) and the revoked are not.
-    // Unit grants in A: Bruno (quality), Dora (legacy) and the unit-only admin.
+    // Unit grants in A: Bruno (quality), Dora (legacy), Fabio (hollow) and the unit-only admin.
     expect(people.has(users.dora)).toBe(true);
     expect(people.has(users.carla)).toBe(false);
     expect(people.has(users.leaver)).toBe(false);
@@ -391,7 +452,9 @@ describe.sequential("Core access governance read v1", () => {
     expect((await unitSummary(A))[0]).toMatchObject({
       people_visibility: "available",
       people_count: people.size,
-      unit_assignment_count: 3,
+      // Dora (inactive role) and Fabio (no permission) hold assignments but no usable access.
+      effective_people_count: people.size - 2,
+      unit_assignment_count: 4,
       sector_assignment_count: 1,
       global_assignment_count: list.filter((a) => a.scope_type === "global").length,
     });
@@ -445,6 +508,10 @@ describe.sequential("Core access governance read v1", () => {
     await login(users.admin);
     await userAssignments(users.carla, true);
     await roleHolders(roles.quality, true);
+    await roleSummary(roles.quality);
+    await userSummary(users.bruno);
+    await unitSummary(A);
+    await unitAssignments(A, null, true);
     await db.exec("reset role");
     expect(await count()).toBe(before);
     for (const name of [
