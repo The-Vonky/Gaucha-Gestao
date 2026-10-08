@@ -7,8 +7,12 @@ begin;
 -- for an unknown UUID and for one the caller may not see. Inactive references are returned with
 -- active=false for historical reading; eligibility for new use is the consumer's own check.
 -- No e-mail, Auth data, timestamps, roles or permissions leave these functions.
+-- This is reference metadata visibility only: resolving a label never authorizes reading or
+-- operating a business record, the administrative catalogs or another module. Consumers keep
+-- verifying their own permission, resource scope and domain rules.
 
--- Shared input contract: active caller, explicit batch bound, duplicates and nulls ignored.
+-- Shared input contract of the definer resolvers: active caller, explicit batch bound,
+-- duplicates and nulls ignored.
 create function private.reference_batch(p_ids uuid[]) returns uuid[]
 language plpgsql stable set search_path='' as $$
 begin
@@ -21,13 +25,16 @@ end $$;
 -- Users: SECURITY INVOKER, so visibility is exactly profiles_read (own profile, or a global
 -- admin.user.read/manage grant). No business-user directory is approved (PO-02); business
 -- modules resolve actors of their own authorized records through their own projections.
+-- The guard is repeated here so the private helper needs no client EXECUTE grant.
 create function core.profile_references(p_ids uuid[])
 returns table(id uuid,display_name text,active boolean)
 language plpgsql stable security invoker set search_path='' as $$
-declare ids uuid[]=private.reference_batch(p_ids);
 begin
+ if not private.is_active_user() then raise exception 'Forbidden' using errcode='42501'; end if;
+ if p_ids is null or cardinality(p_ids)>100 then
+ raise exception 'Between 0 and 100 references per call' using errcode='22023'; end if;
  return query select p.id,p.display_name,p.active from core.profiles p
- where p.id=any(ids) order by p.id;
+ where p.id=any(p_ids) order by p.id;
 end $$;
 
 -- Units, sectors and unit/sector pairs: visible when covered by one of the caller's effective
@@ -90,7 +97,7 @@ end $$;
 revoke all on function private.reference_batch(uuid[]),private.can_resolve_unit(uuid),private.can_resolve_sector(uuid),
 private.can_resolve_unit_sector(uuid,uuid),core.profile_references(uuid[]),core.unit_references(uuid[]),
 core.sector_references(uuid[]),core.unit_sector_references(uuid[],uuid[]) from public,anon,authenticated;
--- The invoker profile resolver runs the batch guard as the caller; the predicates stay private.
-grant execute on function private.reference_batch(uuid[]),core.profile_references(uuid[]),core.unit_references(uuid[]),
+-- Only the four resolvers are callable; every private helper stays without client EXECUTE.
+grant execute on function core.profile_references(uuid[]),core.unit_references(uuid[]),
 core.sector_references(uuid[]),core.unit_sector_references(uuid[],uuid[]) to authenticated;
 commit;
