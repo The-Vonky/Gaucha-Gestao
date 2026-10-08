@@ -229,6 +229,36 @@ export async function logs(page: number, filters: LogFilters) {
   return { rows: data ?? [], count: count ?? 0 };
 }
 
+export type AuditLogQuery = {
+  /** Half-open ISO interval [from,to); pin `to` on the first page for stable pages. */
+  from?: string;
+  to?: string;
+  actor?: string;
+  /** Matches only actor names the reader already sees; never a directory search. */
+  actorSearch?: string;
+  module?: string;
+  action?: string;
+  entityType?: string;
+  entityId?: string;
+};
+/** A page of readable log events with authorized labels (core.audit_log_page). */
+export async function auditLogPage(page: number, filters: AuditLogQuery) {
+  const { data, error } = await database().rpc("audit_log_page", {
+    p_limit: PAGE_SIZE,
+    p_offset: page * PAGE_SIZE,
+    p_from: filters.from || null,
+    p_to: filters.to || null,
+    p_actor: filters.actor || null,
+    p_actor_search: filters.actorSearch || null,
+    p_module: filters.module || null,
+    p_action: filters.action || null,
+    p_entity_type: filters.entityType || null,
+    p_entity_id: filters.entityId || null,
+  });
+  if (error) throw error;
+  const rows = data ?? [];
+  return { rows, count: rows.length ? Number(rows[0].total_count) : 0 };
+}
 export async function roleDetail(id: string) {
   const { data, error } = await database()
     .rpc("role_detail", { p_id: id })
