@@ -27,6 +27,11 @@ create type core.access_assignment_row as (
  revoked_at timestamptz, revoked_by uuid, revoked_by_name text, revocation_evidence text,
  -- 'available' when the caller may read the role composition (R, admin.user.manage, or owning
  -- the role, as rp_read); otherwise 'restricted' and effective/keys are null, never "empty".
+ -- effective: an active assignment is NOT usable access by itself. true only when assignment,
+ -- user and role are active and the role holds at least one active permission; it then covers
+ -- only those keys at this assignment's scope (never other domains or scopes) and never proves
+ -- access to a business record, whose own rules still apply. Unit/sector activity is reported
+ -- separately and is not part of the Core helper equation.
  composition_visibility text, effective boolean,
  active_permission_keys text[], inactive_permission_keys text[],
  -- Totals of the whole filtered set, not of the page; people are distinct users.
@@ -96,12 +101,14 @@ create index audit_log_assignment_revoke on core.system_audit_log(entity_id,occu
  where entity_type='user_role_assignments' and action='revoke';
 
 -- Which access does a user hold? Requires U. Composition coverage is explicit: 'complete',
--- 'partial' or 'restricted' over the active assignments; effective counts/keys are null when
--- incomplete instead of pretending the hidden part is empty.
+-- 'partial' or 'restricted' over the active assignments; the effective count is null when
+-- incomplete instead of pretending the hidden part is empty. Permission keys are deliberately
+-- returned only per assignment (user_access_assignments), paired with their scope: a flat union
+-- would read as "these rights everywhere".
 create function core.user_access_summary(p_user uuid)
 returns table(user_id uuid,display_name text,user_active boolean,user_version integer,
  active_assignment_count bigint,revoked_assignment_count bigint,effective_assignment_count bigint,
- composition_coverage text,active_permission_keys text[],evaluated_at timestamptz)
+ composition_coverage text,evaluated_at timestamptz)
 language plpgsql stable security invoker set search_path='' as $$
 declare v_composition boolean;
 begin
@@ -113,11 +120,6 @@ begin
   from core.user_role_assignments x join core.roles r on r.id=x.role_id where x.user_id=p_user),
  e as (
   select a.role_id,a.visible,a.role_active from a where a.active),
- keys as (
-  select distinct pm.key from e join core.profiles p on p.id=p_user and p.active
-  join core.role_permissions rp on rp.role_id=e.role_id
-  join core.permissions pm on pm.key=rp.permission_key and pm.active
-  where e.visible and e.role_active),
  s as (
   select count(*) filter(where a.active) as active_n,count(*) filter(where not a.active) as revoked_n,
    count(*) filter(where a.active and not a.visible) as hidden_n from a)
@@ -127,8 +129,6 @@ begin
     select 1 from core.role_permissions rp join core.permissions pm on pm.key=rp.permission_key and pm.active
     where rp.role_id=e.role_id)) end,
   case when s.hidden_n=0 then 'complete' when s.hidden_n=s.active_n then 'restricted' else 'partial' end,
-  case when s.hidden_n>0 and s.hidden_n=s.active_n then null
-   else array(select keys.key from keys order by keys.key) end,
   now()
  from core.profiles p cross join s where p.id=p_user;
 end $$;
@@ -157,23 +157,33 @@ language sql stable security invoker set search_path='' as $$
   and (p_sector is null or exists(select 1 from core.unit_sectors where unit_id=p_unit and sector_id=p_sector))
 $$;
 
+-- people_count and the *_assignment_count columns count ACTIVE ASSIGNMENTS covering the unit,
+-- not usable access. effective_people_count counts active users with at least one effective
+-- covering assignment (see access_assignment_row.effective); it needs the global composition
+-- audience (R or admin.user.manage) and is null (unknown) otherwise, never zero.
 create function core.unit_access_summary(p_unit uuid,p_sector uuid default null)
 returns table(unit_id uuid,unit_code text,unit_name text,unit_active boolean,unit_version integer,sector_id uuid,
- people_visibility text,people_count bigint,global_assignment_count bigint,unit_assignment_count bigint,
- sector_assignment_count bigint,evaluated_at timestamptz)
+ people_visibility text,people_count bigint,effective_people_count bigint,global_assignment_count bigint,
+ unit_assignment_count bigint,sector_assignment_count bigint,evaluated_at timestamptz)
 language plpgsql stable security invoker set search_path='' as $$
-declare v_people boolean;
+declare v_people boolean; v_composition boolean;
 begin
  if not private.is_active_user() or not private.unit_access_covers(p_unit,p_sector) then return; end if;
  v_people=private.has_user_audience();
+ v_composition=private.has_role_audience() or private.has_global_permission('admin.user.manage');
  return query
  with a as (
-  select x.user_id,x.scope_type from core.user_role_assignments x
+  select x.user_id,x.role_id,x.scope_type from core.user_role_assignments x
   where v_people and x.active and (x.scope_type='global' or (x.unit_id=p_unit and
    (x.scope_type='unit' or (x.scope_type='sector' and (p_sector is null or x.sector_id=p_sector))))))
  select u.id,u.code,u.name,u.active,u.version,p_sector,
   case when v_people then 'available' else 'restricted' end,
   case when v_people then (select count(distinct a.user_id) from a) end,
+  case when v_people and v_composition then (
+   select count(distinct a.user_id) from a join core.profiles p on p.id=a.user_id and p.active
+   join core.roles r on r.id=a.role_id and r.active
+   where exists(select 1 from core.role_permissions rp join core.permissions pm on pm.key=rp.permission_key and pm.active
+    where rp.role_id=a.role_id)) end,
   case when v_people then (select count(*) from a where a.scope_type='global') end,
   case when v_people then (select count(*) from a where a.scope_type='unit') end,
   case when v_people then (select count(*) from a where a.scope_type='sector') end,
@@ -200,34 +210,59 @@ begin
  return query select * from private.access_assignment_page(v_ids,v_total,v_people);
 end $$;
 
--- Who is affected by changing a role? The role row requires U or R; holder counts require U + R
--- ('restricted' otherwise, never zero). People with overlapping assignments count once.
--- immediately_affected_count: active holders whose capabilities follow the composition right now
--- (zero while the role is inactive; active_holder_count is who a reactivation would affect).
+-- POTENTIAL impact of changing a role: a current-state snapshot of who holds it. It does NOT
+-- simulate a proposed permission delta, does not evaluate overlapping grants and is not a
+-- preview or confirmation for a future save (impact_kind='potential', overlap_evaluated=false).
+-- The role row requires U or R. Holder figures require U + R and are null with
+-- holders_visibility='restricted' otherwise; composition figures are null with
+-- composition_visibility='restricted' when unreadable. Null means unknown, never zero.
+--  holder_count: distinct users with an active assignment (overlapping assignments count once);
+--   active_assignment_count/revoked_assignment_count count assignments.
+--  inactive_user_holder_count: holders whose user is inactive (the assignment grants them nothing).
+--  potentially_affected_user_count: active users with an active assignment; their access may
+--   change if the composition or the activation of this role changes.
+--  currently_effective_user_count: of those, who derive at least one capability from this role
+--   right now (0 when the role is inactive or has no active permission). An active assignment
+--   alone is not usable access.
+--  holders_with_other_roles_count: potentially affected users who also hold an active assignment
+--   of another role and may keep equivalent capabilities through it; not evaluated per permission.
 create function core.role_impact_summary(p_role uuid)
-returns table(role_id uuid,role_key text,role_name text,role_active boolean,role_system boolean,role_global_only boolean,
- role_version integer,composition_visibility text,active_permission_count bigint,holders_visibility text,
- holder_count bigint,active_holder_count bigint,immediately_affected_count bigint,active_assignment_count bigint,
- revoked_assignment_count bigint,evaluated_at timestamptz)
+returns table(impact_kind text,overlap_evaluated boolean,role_id uuid,role_key text,role_name text,role_active boolean,
+ role_system boolean,role_global_only boolean,role_version integer,
+ composition_visibility text,active_permission_count bigint,inactive_permission_count bigint,role_grants_capabilities boolean,
+ holders_visibility text,holder_count bigint,inactive_user_holder_count bigint,potentially_affected_user_count bigint,
+ currently_effective_user_count bigint,holders_with_other_roles_count bigint,
+ active_assignment_count bigint,revoked_assignment_count bigint,evaluated_at timestamptz)
 language plpgsql stable security invoker set search_path='' as $$
-declare v_user boolean; v_role boolean; v_composition boolean;
+declare v_holders boolean; v_composition boolean; v_active_permissions bigint; v_inactive_permissions bigint;
 begin
- v_user=private.has_user_audience(); v_role=private.has_role_audience();
- if not (v_user or v_role) then return; end if;
- v_composition=v_role or private.has_global_permission('admin.user.manage') or private.owns_role(p_role);
+ if not (private.has_user_audience() or private.has_role_audience()) then return; end if;
+ v_holders=private.has_user_audience() and private.has_role_audience();
+ v_composition=private.has_role_audience() or private.has_global_permission('admin.user.manage') or private.owns_role(p_role);
+ if v_composition then
+  select count(*) filter(where pm.active),count(*) filter(where not pm.active) into v_active_permissions,v_inactive_permissions
+  from core.role_permissions rp join core.permissions pm on pm.key=rp.permission_key where rp.role_id=p_role;
+ end if;
  return query
  with a as (
   select x.user_id,x.active,p.active as user_active from core.user_role_assignments x join core.profiles p on p.id=x.user_id
-  where v_user and v_role and x.role_id=p_role)
- select r.id,r.key,r.name,r.active,r.system,r.global_only,r.version,
+  where v_holders and x.role_id=p_role),
+ h as (select distinct a.user_id,a.user_active from a where a.active),
+ affected as (select h.user_id from h where h.user_active)
+ select 'potential'::text,false,r.id,r.key,r.name,r.active,r.system,r.global_only,r.version,
   case when v_composition then 'available' else 'restricted' end,
-  case when v_composition then (select count(*) from core.role_permissions rp join core.permissions pm on pm.key=rp.permission_key and pm.active where rp.role_id=r.id) end,
-  case when v_user and v_role then 'available' else 'restricted' end,
-  case when v_user and v_role then (select count(distinct a.user_id) from a where a.active) end,
-  case when v_user and v_role then (select count(distinct a.user_id) from a where a.active and a.user_active) end,
-  case when v_user and v_role then case when r.active then (select count(distinct a.user_id) from a where a.active and a.user_active) else 0 end end,
-  case when v_user and v_role then (select count(*) from a where a.active) end,
-  case when v_user and v_role then (select count(*) from a where not a.active) end,
+  v_active_permissions,v_inactive_permissions,
+  case when not r.active then false when v_composition then v_active_permissions>0 end,
+  case when v_holders then 'available' else 'restricted' end,
+  case when v_holders then (select count(*) from h) end,
+  case when v_holders then (select count(*) from h where not h.user_active) end,
+  case when v_holders then (select count(*) from affected) end,
+  case when not v_holders then null when not r.active then 0 when not v_composition then null
+   when v_active_permissions=0 then 0 else (select count(*) from affected) end,
+  case when v_holders then (select count(*) from affected where exists(
+   select 1 from core.user_role_assignments o where o.user_id=affected.user_id and o.active and o.role_id<>p_role)) end,
+  case when v_holders then (select count(*) from a where a.active) end,
+  case when v_holders then (select count(*) from a where not a.active) end,
   now()
  from core.roles r where r.id=p_role;
 end $$;
