@@ -167,6 +167,9 @@ Criar atribuição exige usuário/papel ativos, organização ativa quando infor
 | `action_plans.creation_scopes()` | `action_plan.create_manual` no alvo; unidades/setores ativos e pares válidos | Alvos elegíveis para criar plano manual, inclusive restrição setorial. |
 | `action_plans.plan_summaries(...)` | `action_plan.read` no escopo do plano | Contexto de unidade/setor e nomes de atores históricos; não é diretório de usuários. |
 | `core.unit_covers(p_units)` / helper Core | `core.unit_cover.read` ou `admin.unit.manage` por unidade; capa atual pronta | Consumir o contrato [Unit Cover v1](../modules/core/UNIT_COVER_V1.md); sem acesso direto aos assets nem persistência de URL assinada como identidade. |
+| `core.profile_references(p_ids)` | SECURITY INVOKER sobre `profiles_read`: próprio cadastro ou `admin.user.read/manage` global; até 100 UUIDs; `id`, `display_name`, `active` | Resolução de UUID conhecido, inclusive inativo para história. Não é diretório nem seletor de responsáveis (PO-02); sem e-mail, Auth, papéis ou permissões. |
+| `core.unit_references(p_ids)`, `core.sector_references(p_ids)` | Leitor ativo; alvo coberto por um escopo efetivo do próprio leitor (`my_access`): global, unidade, ou setor/unidade da atribuição setorial; setor também pelos vínculos de uma atribuição de unidade; até 100 UUIDs; `id`, `code`, `name`, `active` | Rótulo de referência conhecida, inclusive inativa. Sem busca/listagem; ausente = inexistente ou não visível, indistinguíveis. Elegibilidade para novo uso é validada pelo consumidor na gravação. |
+| `core.unit_sector_references(p_units, p_sectors)` | Pares posicionais (até 100); vínculo existente e coberto pelo escopo efetivo do leitor; `unit_active`, `sector_active` | Validade do par unidade/setor. Vínculo não tem lifecycle próprio (PO-07); atividade é informada, não filtrada. |
 
 **S —** As projeções SECURITY DEFINER existentes podem consultar dados não visíveis pela RLS administrativa, mas aplicam explicitamente a autorização do recurso/capacidade e restringem a saída. Elas não legitimam uma função genérica sem controle de acesso. A leitura administrativa permanece inalterada.
 
@@ -180,7 +183,7 @@ Criar atribuição exige usuário/papel ativos, organização ativa quando infor
 | Seleção de responsável com conta | UUID e nome de exibição; atividade para explicar elegibilidade | Leitor autorizado para a operação; candidato conforme política PO-02/PO-03. Sem e-mail, último sign-in ou papéis por padrão. |
 | Resolução de referência histórica | UUID e rótulo autorizado; estado inativo quando pertinente | Permissão de leitura do registro que contém a referência; não exigir atividade do alvo. Sem revelar cadastro completo. |
 
-Não há novo RPC compartilhado ou diretório operacional implementado. Estes são contratos semânticos recomendados; nomes, assinaturas e regras de visibilidade serão especificados somente no brief aprovado da capacidade necessária.
+Os resolvedores de referência por UUID conhecido da seção 8.1 ([Core Reference Resolvers v1](../briefs/CORE_REFERENCE_RESOLVERS_V1.md)) não implementam seleção de novo alvo nem de responsável. Não há diretório operacional implementado. Estes são contratos semânticos recomendados; nomes, assinaturas e regras de visibilidade serão especificados somente no brief aprovado da capacidade necessária.
 
 **R — Regras para qualquer futura leitura aprovada:**
 
