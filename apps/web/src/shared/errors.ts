@@ -3,7 +3,9 @@ export function message(error: unknown): string {
     typeof error === "object" && error !== null && "code" in error
       ? String(error.code)
       : "";
-  if (code === "40001" || code === "PGRST116")
+  if (code === "PGRST116")
+    return "Não foi possível concluir a operação. O registro pode ter sido alterado, estar indisponível ou seu acesso pode ter mudado. Atualize a página e tente novamente.";
+  if (code === "40001")
     return "Este registro foi alterado ou não está mais disponível. Atualize a página e tente novamente.";
   if (code === "23505")
     return "Já existe um registro com esse código ou atribuição.";

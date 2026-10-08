@@ -188,7 +188,7 @@ describe("critical administration flows", () => {
     render(<OrganizationPage kind="units" />);
     await user.click(await screen.findByText("Editar"));
     await user.click(screen.getByText("Salvar"));
-    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect((await screen.findByRole("alert")).textContent).toContain("seu acesso pode ter mudado");
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
   it("confirms unit deactivation, and cancelling does not mutate", async () => {
