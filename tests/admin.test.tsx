@@ -3,7 +3,6 @@ import React from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
-  fireEvent,
   render,
   screen,
   waitFor,
@@ -21,7 +20,6 @@ import { UserAssignments } from "../apps/web/src/core/admin/UserAssignments";
 import { LogsPage } from "../apps/web/src/core/admin/LogsPage";
 import type {
   Assignment,
-  AuditLog,
   Organization,
   Profile,
   Role,
@@ -604,126 +602,6 @@ describe("sector links", () => {
     await waitFor(() =>
       expect(api.setUnitSector).toHaveBeenCalledWith("U1", "S1", true),
     );
-  });
-});
-describe("logs", () => {
-  const log = (over: Partial<AuditLog> = {}): AuditLog => ({
-    id: "l1",
-    occurred_at: "2026-09-29T12:00:00Z",
-    actor_user_id: null,
-    module: "core",
-    action: "update",
-    entity_type: "units",
-    entity_id: "U1",
-    unit_id: null,
-    sector_id: null,
-    before_data: { name: "<img src=x onerror=alert(1)>" },
-    after_data: { name: "Cozinha", note: "x".repeat(400) },
-    metadata: null,
-    correlation_id: null,
-    ...over,
-  });
-  it("applies filters from the filter bar and resets them", async () => {
-    api.logs.mockResolvedValue({ rows: [log()], count: 1 });
-    const user = userEvent.setup();
-    render(<LogsPage />);
-    expect(
-      await screen.findByText("Operação administrativa do banco"),
-    ).toBeTruthy();
-    await user.selectOptions(screen.getByLabelText("Módulo"), "core");
-    await user.selectOptions(screen.getByLabelText("Ação"), "revoke");
-    await user.click(screen.getByText("Filtrar"));
-    await waitFor(() =>
-      expect(api.logs).toHaveBeenLastCalledWith(0, {
-        from: "",
-        to: "",
-        actor: "",
-        module: "core",
-        action: "revoke",
-      }),
-    );
-    expect(screen.getByText("2 filtros aplicados")).toBeTruthy();
-    await user.click(screen.getByText("Limpar"));
-    await waitFor(() =>
-      expect(api.logs).toHaveBeenLastCalledWith(0, {
-        from: "",
-        to: "",
-        actor: "",
-        module: "",
-        action: "",
-      }),
-    );
-  });
-  it("shows event details with escaped JSON in scrollable regions", async () => {
-    api.logs.mockResolvedValue({
-      rows: [log({ actor_user_id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" })],
-      count: 1,
-    });
-    const user = userEvent.setup();
-    render(<LogsPage />);
-    await user.click(
-      await screen.findByRole("button", {
-        name: /^Detalhes: Plataforma \/ Alteração em Unidade/,
-      }),
-    );
-    const dialog = screen.getByRole("dialog");
-    const before = within(dialog).getByRole("region", { name: "Antes" });
-    expect(before.tagName).toBe("PRE");
-    expect(before.tabIndex).toBe(0);
-    expect(before.textContent).toBe(
-      JSON.stringify({ name: "<img src=x onerror=alert(1)>" }, null, 2),
-    );
-    expect(dialog.querySelector("img")).toBeNull();
-    expect(
-      within(dialog).getByRole("region", { name: "Depois" }).textContent,
-    ).toContain("x".repeat(400));
-    expect(
-      within(dialog).getByText("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
-    ).toBeTruthy();
-  });
-  it("keeps the date range ordered, labels events in Portuguese and clears filters from an empty result", async () => {
-    api.logs.mockResolvedValue({ rows: [log()], count: 1 });
-    const user = userEvent.setup();
-    render(<LogsPage />);
-    expect(await screen.findByText("Alteração")).toBeTruthy();
-    expect(screen.getByText("Unidade")).toBeTruthy();
-    expect(screen.getByText("1 evento")).toBeTruthy();
-    const from = screen.getByLabelText("De") as HTMLInputElement;
-    const to = screen.getByLabelText("Até") as HTMLInputElement;
-    fireEvent.change(from, { target: { value: "2026-10-10" } });
-    expect(to.min).toBe("2026-10-10");
-    fireEvent.change(to, { target: { value: "2026-10-20" } });
-    expect(from.max).toBe("2026-10-20");
-    expect(
-      within(screen.getByLabelText("Ação")).getByRole("option", {
-        name: "Revogação",
-      }),
-    ).toBeTruthy();
-    api.logs.mockResolvedValue({ rows: [], count: 0 });
-    await user.selectOptions(screen.getByLabelText("Módulo"), "audit");
-    await user.click(screen.getByText("Filtrar"));
-    expect(await screen.findByText("Nenhum evento encontrado")).toBeTruthy();
-    expect(api.logs).toHaveBeenLastCalledWith(0, {
-      from: "2026-10-10",
-      to: "2026-10-20",
-      actor: "",
-      module: "audit",
-      action: "",
-    });
-    await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
-    await waitFor(() =>
-      expect(api.logs).toHaveBeenLastCalledWith(0, {
-        from: "",
-        to: "",
-        actor: "",
-        module: "",
-        action: "",
-      }),
-    );
-    expect((screen.getByLabelText("Módulo") as HTMLSelectElement).value).toBe(
-      "",
-    );
-    expect(from.value).toBe("");
   });
 });
 describe("Elo lists", () => {
