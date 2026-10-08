@@ -61,7 +61,7 @@ export async function saveOrganization(
   if (error) throw error;
 }
 export type ListFilter = { search: string; inactive: boolean };
-/** A page of units or sectors, alphabetical, optionally filtered by name and active only. */
+/** A page of units or sectors, alphabetical, optionally filtered by code or name and active only. */
 export async function organizations(
   kind: "units" | "sectors",
   page: number,
@@ -74,7 +74,11 @@ export async function organizations(
     .order("id");
   // LIKE wildcards typed by the user are matched literally.
   const search = filters.search.replace(/[\\%_]/g, (c) => `\\${c}`);
-  if (search) query = query.ilike("name", `%${search}%`);
+  if (search) {
+    // Quoting also protects the OR grammar (commas, parentheses, quotes).
+    const pattern = JSON.stringify(`%${search}%`);
+    query = query.or(`code.ilike.${pattern},name.ilike.${pattern}`);
+  }
   if (!filters.inactive) query = query.eq("active", true);
   const { data, error, count } = await query.range(
     page * PAGE_SIZE,

@@ -728,7 +728,7 @@ describe("Elo lists", () => {
     ...stamp,
     ...over,
   });
-  it("filters units by name and state, and offers to clear a search without results", async () => {
+  it("filters units by code or name and state, and offers to clear a search without results", async () => {
     api.organizations.mockResolvedValue({ rows: [unit({})], count: 1 });
     const user = userEvent.setup();
     render(<OrganizationPage kind="units" />);
@@ -748,12 +748,22 @@ describe("Elo lists", () => {
     api.organizations.mockResolvedValue({ rows: [], count: 0 });
     await user.type(screen.getByRole("searchbox"), "Zé");
     expect(
-      await screen.findByText(/Nenhum nome corresponde a “Zé”/),
+      await screen.findByText(/Nenhum código ou nome corresponde a “Zé”/),
     ).toBeTruthy();
     api.organizations.mockResolvedValue({ rows: [unit({})], count: 1 });
     await user.click(screen.getByRole("button", { name: "Limpar busca" }));
     expect(await screen.findByText("Unidade CMD")).toBeTruthy();
     expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("");
+  });
+  it.each(["units", "sectors"] as const)("advertises code-or-name search for %s", async (kind) => {
+    api.organizations.mockResolvedValue({ rows: [], count: 0 });
+    const user = userEvent.setup();
+    render(<OrganizationPage kind={kind} />);
+    expect(screen.getByRole("searchbox").getAttribute("placeholder")).toBe(
+      kind === "units" ? "Código ou nome da unidade" : "Código ou nome do setor",
+    );
+    await user.type(screen.getByRole("searchbox"), "CMD");
+    expect(await screen.findByText(/Nenhum código ou nome corresponde a “CMD”/)).toBeTruthy();
   });
   it("confirms reactivation as a primary action and deactivation as a destructive one", async () => {
     api.organizations.mockResolvedValue({

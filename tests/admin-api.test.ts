@@ -10,6 +10,7 @@ vi.mock("../apps/web/src/core/client", () => {
     "update",
     "order",
     "ilike",
+    "or",
     "eq",
     "range",
     "single",
@@ -27,7 +28,7 @@ afterEach(() => {
   calls.length = 0;
 });
 describe("admin list queries", () => {
-  it("lists units alphabetically, active only by default, with a literal name search", async () => {
+  it("lists units alphabetically, active only by default, with a literal code-or-name search", async () => {
     await api.organizations("units", 1, {
       search: "50%_a\\b",
       inactive: false,
@@ -37,10 +38,36 @@ describe("admin list queries", () => {
       ["select", "*", { count: "exact" }],
       ["order", "name"],
       ["order", "id"],
-      ["ilike", "name", "%50\\%\\_a\\\\b%"],
+      [
+        "or",
+        'code.ilike."%50\\\\%\\\\_a\\\\\\\\b%",name.ilike."%50\\\\%\\\\_a\\\\\\\\b%"',
+      ],
       ["eq", "active", true],
       ["range", 25, 49],
     ]);
+  });
+  it.each(["units", "sectors"] as const)(
+    "searches %s by code or name",
+    async (kind) => {
+      await api.organizations(kind, 0, { search: "CMD", inactive: false });
+      expect(calls).toContainEqual([
+        "or",
+        'code.ilike."%CMD%",name.ilike."%CMD%"',
+      ]);
+      expect(calls).toContainEqual(["eq", "active", true]);
+      expect(calls).toContainEqual(["range", 0, 24]);
+    },
+  );
+  it("quotes filter syntax so input cannot add a predicate", async () => {
+    await api.organizations("sectors", 0, {
+      search: 'A,B).or(active.eq.false),"C',
+      inactive: false,
+    });
+    expect(calls).toContainEqual([
+      "or",
+      'code.ilike."%A,B).or(active.eq.false),\\"C%",name.ilike."%A,B).or(active.eq.false),\\"C%"',
+    ]);
+    expect(calls).toContainEqual(["eq", "active", true]);
   });
   it("includes inactive records and skips an empty search when asked", async () => {
     await api.organizations("sectors", 0, { search: "", inactive: true });

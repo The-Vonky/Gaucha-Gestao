@@ -78,7 +78,9 @@ export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
       </PageTitle>
       <ListToolbar
         label={unit ? "Filtros das unidades" : "Filtros dos setores"}
-        placeholder={unit ? "Nome da unidade" : "Nome do setor"}
+        placeholder={
+          unit ? "Código ou nome da unidade" : "Código ou nome do setor"
+        }
         filters={filters}
         count={data?.count}
         noun={noun}
@@ -103,7 +105,7 @@ export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
           }
         >
           {search
-            ? `Nenhum nome corresponde a “${search}”${inactive ? "" : ` entre ${unit ? "as unidades ativas" : "os setores ativos"}`}.`
+            ? `Nenhum código ou nome corresponde a “${search}”${inactive ? "" : ` entre ${unit ? "as unidades ativas" : "os setores ativos"}`}.`
             : inactive
               ? unit
                 ? "Ainda não há unidades cadastradas."
