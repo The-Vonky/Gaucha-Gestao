@@ -429,6 +429,7 @@ describe("assignments", () => {
     ).toBeNull();
     expect(screen.getByText("Conceder acesso")).toBeTruthy();
     expect(screen.getByText("11111111-2222-3333-4444-555555555555").tagName).toBe("CODE");
+    expect(api.all).not.toHaveBeenCalledWith("role_permissions");
   });
   it("never offers revocation on the current user's own assignments", async () => {
     assignments.rows = [a({ id: "g" })];

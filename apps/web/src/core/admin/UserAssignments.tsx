@@ -114,12 +114,11 @@ export function UserAssignments({
         .order("created_at");
       if (error) throw error;
       // Names resolve wherever the reader may see them (RLS returns only those rows).
-      const [roles, units, sectors, links, rp] = await Promise.all([
+      const [roles, units, sectors, links] = await Promise.all([
         api.all("roles"),
         api.all("units"),
         api.all("sectors"),
         manage ? api.all("unit_sectors") : Promise.resolve([]),
-        manage ? api.all("role_permissions") : Promise.resolve([]),
       ]);
       return {
         assignments: assignments ?? [],
@@ -127,7 +126,6 @@ export function UserAssignments({
         units,
         sectors,
         links,
-        rp,
       };
     }, [profile.id, manage]),
   );
