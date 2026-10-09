@@ -159,7 +159,7 @@ function EventDetail({
   const { actor, unit, sector } = entry;
   return (
     <Modal title="Detalhes do evento" onClose={onClose}>
-      <dl className="adm-facts">
+      <dl className="adm-facts log-summary">
         <Fact term="Quando">
           <span className="numeric">{dateTime(entry.occurredAt)}</span>
         </Fact>
@@ -224,7 +224,7 @@ function EventDetail({
       </div>
       <details className="log-tech">
         <summary>Detalhes técnicos</summary>
-        <dl className="adm-facts">
+        <dl className="adm-facts log-tech-facts">
           <Fact term="Evento">
             <code>{entry.id}</code>
           </Fact>

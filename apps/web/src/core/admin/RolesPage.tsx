@@ -7,15 +7,23 @@ import * as api from "./api";
 import {
   ActiveBadge,
   ListState,
+  ListToolbar,
   RoleKind,
   useLatest,
+  useListFilters,
+  usePageClamp,
 } from "./parts";
 import { RoleEditor } from "./RoleEditor";
 export function RolesPage() {
   const auth = useAuth();
-  const [page, setPage] = useState(0);
-  const r = useResource(useCallback(() => api.list("roles", page), [page]));
+  // Roles list active and inactive together (no toggle): only the search narrows it.
+  const filters = useListFilters();
+  const { page, search } = filters;
+  const r = useResource(
+    useCallback(() => api.roles(page, search), [page, search]),
+  );
   const data = useLatest(r);
+  usePageClamp(filters, data?.count);
   const [edit, setEdit] = useState<Role | null | undefined>();
   const [toggle, setToggle] = useState<Role>();
   const manage = auth.can("admin.role.manage");
@@ -32,20 +40,39 @@ export function RolesPage() {
           </button>
         )}
       </PageTitle>
+      <ListToolbar
+        label="Filtros dos perfis de acesso"
+        placeholder="Nome ou chave do perfil"
+        filters={filters}
+        count={data?.count}
+        noun={{ one: "perfil", many: "perfis" }}
+      />
       <ListState
         loading={r.loading && !data}
         error={r.error}
         label="Carregando perfis…"
         onRetry={r.reload}
       />
-      {data && !data.rows.length && (
-        <EmptyState title="Nenhum perfil cadastrado">
-          Os perfis de sistema são criados pela plataforma.
-          {manage
-            ? " Use “Novo perfil” para criar um perfil personalizado."
-            : ""}
-        </EmptyState>
-      )}
+      {data?.count === 0 &&
+        (search ? (
+          <EmptyState
+            title="Nenhum perfil encontrado"
+            actions={
+              <button type="button" onClick={filters.clear}>
+                Limpar busca
+              </button>
+            }
+          >
+            {`Nenhum nome ou chave de perfil corresponde a “${search}”.`}
+          </EmptyState>
+        ) : (
+          <EmptyState title="Nenhum perfil cadastrado">
+            Os perfis de sistema são criados pela plataforma.
+            {manage
+              ? " Use “Novo perfil” para criar um perfil personalizado."
+              : ""}
+          </EmptyState>
+        ))}
       {data && data.rows.length > 0 && (
         <ul
           className="adm-list adm-table no-lead"
@@ -101,7 +128,7 @@ export function RolesPage() {
           page={page}
           count={data.count}
           size={api.PAGE_SIZE}
-          onChange={setPage}
+          onChange={filters.setPage}
         />
       )}
       {toggle && (

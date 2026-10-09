@@ -270,6 +270,7 @@ export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
         <Modal
           key={access.id}
           title={`Acessos · ${access.name}`}
+          wide
           onClose={() => setAccess(undefined)}
         >
           <UnitAccessReview unitId={access.id} />

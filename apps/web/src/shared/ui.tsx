@@ -140,16 +140,19 @@ export function Drawer({
     </dialog>
   );
 }
+/** Centered modal dialog; `wide` is for read-only reviews with KPIs and long lists. */
 export function Modal({
   title,
   children,
   onClose,
   busy = false,
+  wide = false,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   busy?: boolean;
+  wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -163,6 +166,7 @@ export function Modal({
   return (
     <dialog
       ref={ref}
+      className={wide ? "wide" : undefined}
       aria-labelledby={id}
       onCancel={(e) => {
         e.preventDefault();

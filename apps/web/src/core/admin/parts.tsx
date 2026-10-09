@@ -112,15 +112,18 @@ export function useLatest<T>(resource: { data?: T; error: string }) {
   }, [resource.data]);
   return resource.error ? undefined : (resource.data ?? shown);
 }
-/** Grammatical forms for the result count ("3 unidades ativas"). */
+/**
+ * Grammatical forms for the result count ("3 unidades ativas"). Lists without the
+ * "show inactive" toggle omit the active forms and always count every record.
+ */
 export type Noun = {
   one: string;
   many: string;
-  activeOne: string;
-  activeMany: string;
-  inactiveToggle: string;
+  activeOne?: string;
+  activeMany?: string;
+  inactiveToggle?: string;
 };
-/** Search, inactive toggle and the result count on one surface. */
+/** Search, inactive toggle (when the noun names one) and the result count on one surface. */
 export function ListToolbar({
   label,
   placeholder,
@@ -150,21 +153,23 @@ export function ListToolbar({
           onChange={(e) => filters.setTerm(e.target.value)}
         />
       </label>
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={filters.inactive}
-          onChange={(e) => filters.setInactive(e.target.checked)}
-        />
-        <span>{noun.inactiveToggle}</span>
-      </label>
+      {noun.inactiveToggle && (
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={filters.inactive}
+            onChange={(e) => filters.setInactive(e.target.checked)}
+          />
+          <span>{noun.inactiveToggle}</span>
+        </label>
+      )}
       {count !== undefined && (
         <p className="adm-total" role="status">
           <strong className="numeric">{count}</strong>{" "}
           {count === 1 ? noun.one : noun.many}
-          {filters.inactive
-            ? ""
-            : ` ${count === 1 ? noun.activeOne : noun.activeMany}`}
+          {noun.inactiveToggle && !filters.inactive
+            ? ` ${(count === 1 ? noun.activeOne : noun.activeMany) ?? ""}`
+            : ""}
           {filters.search ? ` para “${filters.search}”` : ""}
         </p>
       )}

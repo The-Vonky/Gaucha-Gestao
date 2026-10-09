@@ -28,6 +28,7 @@ import type {
 const api = vi.hoisted(() => ({
   list: vi.fn(),
   users: vi.fn(),
+  roles: vi.fn(),
   organizations: vi.fn(),
   renameProfile: vi.fn(),
   setRoleActive: vi.fn(),
@@ -452,7 +453,7 @@ describe("assignments", () => {
 });
 describe("roles and permissions", () => {
   it("distinguishes system from custom roles and consult from edit", async () => {
-    api.list.mockResolvedValue({
+    api.roles.mockResolvedValue({
       rows: [
         role(),
         role({
@@ -481,6 +482,45 @@ describe("roles and permissions", () => {
       await screen.findByRole("button", { name: "Consultar Custom" }),
     ).toBeTruthy();
     expect(screen.queryByText("Novo perfil")).toBeNull();
+  });
+  it("searches roles by name or key, listing active and inactive together", async () => {
+    api.roles.mockResolvedValue({
+      rows: [role(), role({ id: "r2", key: "custom", name: "Custom", system: false, active: false })],
+      count: 2,
+    });
+    const user = userEvent.setup();
+    render(<RolesPage />);
+    await screen.findByText("Custom");
+    expect(api.roles).toHaveBeenLastCalledWith(0, "");
+    // No inactive toggle: inactive roles stay listed, and the count names every role.
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.getByRole("status").textContent).toBe("2 perfis");
+    const search = screen.getByRole("searchbox");
+    expect(search.getAttribute("placeholder")).toBe("Nome ou chave do perfil");
+    api.roles.mockResolvedValue({ rows: [role()], count: 1 });
+    await user.type(search, " quality ");
+    await waitFor(() => expect(api.roles).toHaveBeenLastCalledWith(0, "quality"));
+    await waitFor(() =>
+      expect(screen.getByRole("status").textContent).toBe("1 perfil para “quality”"),
+    );
+    expect(screen.queryByText("Custom")).toBeNull();
+  });
+  it("offers to clear a role search without results, keeping the catalog empty state apart", async () => {
+    api.roles.mockResolvedValue({ rows: [role()], count: 1 });
+    const user = userEvent.setup();
+    render(<RolesPage />);
+    await screen.findByText("Quality");
+    api.roles.mockResolvedValue({ rows: [], count: 0 });
+    await user.type(screen.getByRole("searchbox"), "Zé");
+    expect(
+      await screen.findByText(/Nenhum nome ou chave de perfil corresponde a “Zé”/),
+    ).toBeTruthy();
+    expect(screen.queryByText("Nenhum perfil cadastrado")).toBeNull();
+    api.roles.mockResolvedValue({ rows: [role()], count: 1 });
+    await user.click(screen.getByRole("button", { name: "Limpar busca" }));
+    expect(await screen.findByText("Quality")).toBeTruthy();
+    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("");
+    expect(api.roles).toHaveBeenLastCalledWith(0, "");
   });
   it("shows a system role read-only, grouped by domain", async () => {
     api.roleDetail.mockResolvedValue({
@@ -770,6 +810,8 @@ describe("unit access navigation", () => {
     });
     await user.click(trigger);
     expect(within(dialog()).getByRole("heading", { name: "Acessos · Unidade CMD" })).toBeTruthy();
+    // KPIs and assignment lists get the wide review dialog, not the 640px form width.
+    expect(dialog().className).toBe("wide");
     expect(await within(dialog()).findByRole("heading", { name: /CMD Unidade CMD/ })).toBeTruthy();
     expect(await within(dialog()).findByText("Nenhuma atribuição encontrada")).toBeTruthy();
     expect(review.unitAccessSummary).toHaveBeenCalledWith("u", null);
@@ -929,7 +971,7 @@ describe("administration gaps closed for production", () => {
       name: "Custom",
       system: false,
     });
-    api.list.mockResolvedValue({ rows: [role(), custom], count: 2 });
+    api.roles.mockResolvedValue({ rows: [role(), custom], count: 2 });
     api.setRoleActive.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<RolesPage />);

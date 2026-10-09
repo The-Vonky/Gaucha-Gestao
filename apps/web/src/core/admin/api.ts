@@ -61,6 +61,15 @@ export async function saveOrganization(
   if (error) throw error;
 }
 export type ListFilter = { search: string; inactive: boolean };
+/** PostgREST `or` filter matching the search in any of the columns; null when it is blank. */
+function containsAny(columns: string[], search: string) {
+  // LIKE wildcards typed by the user are matched literally.
+  const literal = search.replace(/[\\%_]/g, (c) => `\\${c}`);
+  if (!literal) return null;
+  // Quoting also protects the OR grammar (commas, parentheses, quotes).
+  const pattern = JSON.stringify(`%${literal}%`);
+  return columns.map((column) => `${column}.ilike.${pattern}`).join(",");
+}
 /** A page of units or sectors, alphabetical, optionally filtered by code or name and active only. */
 export async function organizations(
   kind: "units" | "sectors",
@@ -72,13 +81,8 @@ export async function organizations(
     .select("*", { count: "exact" })
     .order("name")
     .order("id");
-  // LIKE wildcards typed by the user are matched literally.
-  const search = filters.search.replace(/[\\%_]/g, (c) => `\\${c}`);
-  if (search) {
-    // Quoting also protects the OR grammar (commas, parentheses, quotes).
-    const pattern = JSON.stringify(`%${search}%`);
-    query = query.or(`code.ilike.${pattern},name.ilike.${pattern}`);
-  }
+  const search = containsAny(["code", "name"], filters.search);
+  if (search) query = query.or(search);
   if (!filters.inactive) query = query.eq("active", true);
   const { data, error, count } = await query.range(
     page * PAGE_SIZE,
@@ -86,6 +90,22 @@ export async function organizations(
   );
   if (error) throw error;
   return { rows: (data ?? []) as Organization[], count: count ?? 0 };
+}
+/** A page of access profiles (active and inactive), alphabetical, optionally filtered by name or key. */
+export async function roles(page: number, search: string) {
+  let query = database()
+    .from("roles")
+    .select("*", { count: "exact" })
+    .order("name")
+    .order("id");
+  const filter = containsAny(["name", "key"], search);
+  if (filter) query = query.or(filter);
+  const { data, error, count } = await query.range(
+    page * PAGE_SIZE,
+    (page + 1) * PAGE_SIZE - 1,
+  );
+  if (error) throw error;
+  return { rows: (data ?? []) as Role[], count: count ?? 0 };
 }
 /** Users with their Auth e-mail and last sign-in; the search matches name or e-mail. */
 export async function users(page: number, filters: ListFilter) {

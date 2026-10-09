@@ -79,6 +79,24 @@ describe("admin list queries", () => {
       ["range", 0, 24],
     ]);
   });
+  it("lists roles alphabetically, active and inactive, with a literal name-or-key search", async () => {
+    await api.roles(1, 'gestor_%,"x');
+    expect(calls).toEqual([
+      ["from", "roles"],
+      ["select", "*", { count: "exact" }],
+      ["order", "name"],
+      ["order", "id"],
+      [
+        "or",
+        'name.ilike."%gestor\\\\_\\\\%,\\"x%",key.ilike."%gestor\\\\_\\\\%,\\"x%"',
+      ],
+      ["range", 25, 49],
+    ]);
+    calls.length = 0;
+    await api.roles(0, "");
+    expect(calls.map(([m]) => m)).not.toContain("or");
+    expect(calls.map(([m]) => m)).not.toContain("eq");
+  });
   it("reads users from the directory RPC, which searches name or e-mail server-side", async () => {
     await api.users(2, { search: "ana@", inactive: true });
     expect(calls).toEqual([

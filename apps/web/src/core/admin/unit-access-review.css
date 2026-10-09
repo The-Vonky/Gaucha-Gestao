@@ -1,126 +1,223 @@
 /*
  * Unit Access Review v1: read-only review of who covers a unit. Builds on the
- * Administration rows (admin.css) and Elo tokens; nothing here is shared.
+ * Administration rows (admin.css) and Elo tokens. Own `unit-review-` prefix: the
+ * User Access Review (user-access-review.css) owns `uar-`, and both load globally.
  */
-.uar {
+.unit-review {
   display: grid;
   gap: var(--space-4);
   min-width: 0;
 }
-.uar[aria-busy="true"] .uar-metrics {
+.unit-review[aria-busy="true"] .unit-review-metrics {
   opacity: 0.6;
 }
-.uar-head {
+
+/* ---------- Context: the dialog title already names the unit ---------- */
+.unit-review-head {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
 }
-.uar-head h2 {
+.unit-review-head > div {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.unit-review-head h2 {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   margin: 0;
+  font: var(--text-card-title);
   overflow-wrap: anywhere;
 }
-.uar-head .eyebrow {
+.unit-review-head .adm-code {
+  max-width: none;
+  white-space: nowrap;
+}
+.unit-review-head .eyebrow {
   margin: 0;
 }
-.uar-metrics {
+
+/* ---------- KPIs: one row on desktop, two columns on narrow screens ---------- */
+.unit-review-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-3);
   transition: opacity var(--duration-base) var(--ease-standard);
 }
-.uar-filters {
+.unit-review-metrics .metric {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+}
+.unit-review-metrics .metric-value {
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Filters ---------- */
+.unit-review-filters {
+  align-items: center;
   margin-bottom: 0;
 }
-.uar-filter-note {
+.unit-review-filters label:not(.check) {
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+.unit-review-filters .check {
+  align-self: end;
+  align-items: center;
+  min-height: var(--control-height);
+}
+.unit-review-filter-note {
   align-self: center;
 }
-.uar-people > .uar-person {
-  align-items: flex-start;
+
+/* ---------- People: divided rows, assignments as the only cards ---------- */
+.unit-review-people {
+  background: none;
+  border: 0;
+  border-radius: 0;
 }
-.uar-assignments {
+.unit-review-people > .unit-review-person {
+  align-items: flex-start;
+  padding-inline: 0;
+}
+.unit-review-assignments {
   display: grid;
   gap: var(--space-2);
   list-style: none;
   margin: var(--space-2) 0 0;
   padding: 0;
 }
-.uar-assignment {
+.unit-review-assignment {
   display: grid;
-  gap: var(--space-1);
+  gap: var(--space-2);
   padding: var(--space-3);
   background: var(--color-surface-subtle);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   min-width: 0;
 }
+/* Long origins (sector · unit names) wrap inside the card instead of widening it. */
+.unit-review-assignment .badge {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 /* Revoked history stays readable but steps back. */
-.uar-assignment.revoked {
+.unit-review-assignment.revoked {
   background: var(--color-surface);
   border-style: dashed;
 }
-.uar-assignment.revoked .uar-role {
+.unit-review-assignment.revoked .unit-review-role {
   color: var(--color-text-secondary);
 }
-.uar-role {
+.unit-review-role {
   font-weight: 600;
   overflow-wrap: anywhere;
 }
-.uar-states {
+.unit-review-states {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-2);
   margin: 0;
 }
-.uar-details summary {
+.unit-review-details summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target, 44px);
   cursor: pointer;
   width: fit-content;
+  list-style: none;
   font: var(--text-body-sm);
   color: var(--color-link);
 }
-.uar-details[open] {
+/* Flex drops the native marker: draw one so the section reads as expandable. */
+.unit-review-details summary::-webkit-details-marker {
+  display: none;
+}
+.unit-review-details summary::before {
+  content: "";
+  width: 0.4em;
+  height: 0.4em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--duration-base) var(--ease-standard);
+}
+.unit-review-details[open] summary::before {
+  transform: rotate(45deg);
+}
+.unit-review-details {
+  margin-block: calc(-1 * var(--space-2));
+}
+.unit-review-details[open] {
   display: grid;
   gap: var(--space-2);
+  padding-bottom: var(--space-2);
 }
-.uar-keys {
+.unit-review-keys {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
+  gap: var(--space-1);
   list-style: none;
   margin: 0;
   padding: 0;
 }
-.uar-keys code,
-.uar-details .adm-meta code {
+.unit-review-keys li {
+  min-width: 0;
+  max-width: 100%;
+}
+.unit-review-keys code {
+  display: inline-block;
+  max-width: 100%;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunken);
+  font: var(--text-caption);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.unit-review-details .adm-meta code {
   font-size: 0.75rem;
   overflow-wrap: anywhere;
   word-break: break-all;
 }
-.uar-ids {
+.unit-review-ids {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-3);
   margin: 0;
 }
-.uar-ids .adm-id {
+.unit-review-ids .adm-id {
   min-height: 0;
   margin: 0;
 }
+
 @media (max-width: 767px) {
-  .uar-metrics {
+  .unit-review-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .uar-filters label:not(.check) {
+  /* An odd last tile takes the whole row instead of leaving a hole. */
+  .unit-review-metrics .metric:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  .unit-review-filters label:not(.check) {
     flex-basis: 100%;
+    max-width: none;
+  }
+  .unit-review-filters .adm-total {
+    margin-left: 0;
   }
 }
-@media (max-width: 400px) {
-  .uar-metrics {
+@media (max-width: 359px) {
+  .unit-review-metrics {
     grid-template-columns: minmax(0, 1fr);
   }
 }

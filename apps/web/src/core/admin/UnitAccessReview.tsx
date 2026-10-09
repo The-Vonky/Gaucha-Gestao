@@ -46,7 +46,7 @@ function Review({ unitId }: { unitId: string }) {
   const data = latest?.row;
   return (
     <section
-      className="uar"
+      className="unit-review"
       aria-labelledby={headingId}
       aria-busy={summary.loading}
     >
@@ -104,7 +104,7 @@ function UnitHeader({
   summary: UnitAccessSummary;
 }) {
   return (
-    <header className="uar-head">
+    <header className="unit-review-head">
       <div>
         <p className="eyebrow">Acessos da unidade</p>
         <h2 id={headingId}>
@@ -122,7 +122,11 @@ function UnitHeader({
 function Counts({ summary }: { summary: UnitAccessSummary }) {
   const restricted = summary.people_visibility === "restricted";
   return (
-    <div className="uar-metrics" aria-label="Resumo dos acessos">
+    <div
+      className="unit-review-metrics"
+      role="group"
+      aria-label="Resumo dos acessos"
+    >
       <Metric
         label="Pessoas com atribuição ativa"
         value={figure(summary.people_count)}
@@ -204,7 +208,7 @@ function Assignments({
   return (
     <>
       <form
-        className="filters adm-filters uar-filters"
+        className="filters adm-filters unit-review-filters"
         aria-label="Filtros dos acessos da unidade"
         onSubmit={(e) => e.preventDefault()}
       >
@@ -226,7 +230,7 @@ function Assignments({
             </select>
           </label>
         ) : (
-          <p className="adm-meta uar-filter-note">
+          <p className="adm-meta unit-review-filter-note">
             Filtro por setor indisponível: seu acesso não inclui o catálogo de
             setores.
           </p>
@@ -258,7 +262,7 @@ function Assignments({
         </Notice>
       )}
       {sectorCatalog && sectors.data?.length === 0 && (
-        <p className="adm-meta uar-filter-note">
+        <p className="adm-meta unit-review-filter-note">
           Nenhum setor vinculado a esta unidade.
         </p>
       )}
@@ -288,7 +292,7 @@ function Assignments({
       )}
       {groups.length > 0 && (
         <ul
-          className="adm-list uar-people"
+          className="adm-list unit-review-people"
           aria-label="Pessoas com atribuições na unidade"
           aria-busy={resource.loading}
         >
@@ -320,7 +324,7 @@ function Person({ rows }: { rows: UnitAccessAssignment[] }) {
   const active = rows.filter((r) => r.assignment_active).length;
   return (
     <li
-      className={`adm-row uar-person${person.user_active ? "" : " inactive"}`}
+      className={`adm-row unit-review-person${person.user_active ? "" : " inactive"}`}
     >
       <div className="adm-main">
         <p className="adm-title">
@@ -335,7 +339,7 @@ function Person({ rows }: { rows: UnitAccessAssignment[] }) {
           )}
         </p>
         <ul
-          className="uar-assignments"
+          className="unit-review-assignments"
           aria-label={`Atribuições de ${person.user_display_name}`}
         >
           {rows.map((row) => (
@@ -385,15 +389,17 @@ function AssignmentItem({ row }: { row: UnitAccessAssignment }) {
   const active = row.active_permission_keys ?? [];
   const inactive = row.inactive_permission_keys ?? [];
   return (
-    <li className={`uar-assignment${row.assignment_active ? "" : " revoked"}`}>
+    <li
+      className={`unit-review-assignment${row.assignment_active ? "" : " revoked"}`}
+    >
       <p className="adm-title">
-        <span className="uar-role">{row.role_name}</span>
+        <span className="unit-review-role">{row.role_name}</span>
         {!row.role_active && <Badge tone="neutral">Perfil inativo</Badge>}
         <Badge tone={row.scope_type === "global" ? "info" : "neutral"}>
           {origin(row)}
         </Badge>
       </p>
-      <p className="uar-states">
+      <p className="unit-review-states">
         {row.assignment_active ? (
           <Badge tone="success">Ativa</Badge>
         ) : (
@@ -417,7 +423,7 @@ function AssignmentItem({ row }: { row: UnitAccessAssignment }) {
             ? ` Revogada em ${dateTime(row.revoked_at)}${row.revoked_by_name ? ` por ${row.revoked_by_name}` : row.revoked_by ? " por usuário restrito" : ""}.`
             : " Autor e data da revogação indisponíveis para o seu acesso.")}
       </p>
-      <details className="uar-details">
+      <details className="unit-review-details">
         <summary>
           {row.composition_visibility === "available"
             ? `Permissões neste escopo (${active.length})`
@@ -426,7 +432,7 @@ function AssignmentItem({ row }: { row: UnitAccessAssignment }) {
         {row.composition_visibility === "available" ? (
           <>
             {active.length ? (
-              <ul className="uar-keys" aria-label="Permissões ativas">
+              <ul className="unit-review-keys" aria-label="Permissões ativas">
                 {active.map((key) => (
                   <li key={key}>
                     <code>{key}</code>
@@ -457,7 +463,7 @@ function AssignmentItem({ row }: { row: UnitAccessAssignment }) {
             O seu acesso não permite ler a composição deste perfil.
           </p>
         )}
-        <p className="uar-ids">
+        <p className="unit-review-ids">
           <Identifier label="Perfil">{row.role_key}</Identifier>
           <Identifier label="Atribuição">{row.assignment_id}</Identifier>
         </p>
