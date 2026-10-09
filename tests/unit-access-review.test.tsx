@@ -530,3 +530,23 @@ describe("unit-access-review-api", () => {
     ).rejects.toThrow("negado");
   });
 });
+describe("unit access review styles", () => {
+  // Every component stylesheet loads globally: a selector shared with the User Access
+  // Review would let one review restyle the other (it once squeezed these KPIs).
+  it("shares no class selector with the user access review", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const classes = async (file: string) =>
+      new Set(
+        (
+          await readFile(join(process.cwd(), "apps/web/src/core/admin", file), "utf8")
+        ).match(/\.[a-z][\w-]*/g),
+      );
+    const unit = await classes("unit-access-review.css");
+    const user = await classes("user-access-review.css");
+    const own = [...unit].filter((c) => c.startsWith(".unit-review"));
+    expect(own.length).toBeGreaterThan(0);
+    expect(own.filter((c) => user.has(c))).toEqual([]);
+    expect([...unit].filter((c) => c.startsWith(".uar"))).toEqual([]);
+  });
+});

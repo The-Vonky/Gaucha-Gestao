@@ -770,6 +770,8 @@ describe("unit access navigation", () => {
     });
     await user.click(trigger);
     expect(within(dialog()).getByRole("heading", { name: "Acessos · Unidade CMD" })).toBeTruthy();
+    // KPIs and assignment lists get the wide review dialog, not the 640px form width.
+    expect(dialog().className).toBe("wide");
     expect(await within(dialog()).findByRole("heading", { name: /CMD Unidade CMD/ })).toBeTruthy();
     expect(await within(dialog()).findByText("Nenhuma atribuição encontrada")).toBeTruthy();
     expect(review.unitAccessSummary).toHaveBeenCalledWith("u", null);

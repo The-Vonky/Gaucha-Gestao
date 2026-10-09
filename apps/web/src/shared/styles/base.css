@@ -668,6 +668,9 @@ dialog {
   color: var(--color-text);
   background: var(--color-surface);
 }
+dialog.wide {
+  width: min(880px, calc(100% - 32px));
+}
 dialog[open] {
   animation: dialog-in var(--duration-slow) var(--ease-elo);
 }

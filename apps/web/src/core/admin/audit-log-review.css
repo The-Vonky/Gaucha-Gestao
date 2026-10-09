@@ -63,6 +63,45 @@
   font-style: italic;
   color: var(--color-text-secondary);
 }
+/* Event detail: the plain summary reads as one panel, apart from actions and raw data. */
+.log-summary {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.log-summary dd {
+  margin-top: var(--space-1);
+}
+/* Technical facts as label/value rows: identifiers keep the full line width. */
+.log-tech-facts {
+  grid-template-columns: minmax(7.5rem, max-content) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+.log-tech-facts > div {
+  display: contents;
+}
+.log-tech-facts dt {
+  padding-top: 2px;
+}
+.log-tech-facts dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  min-width: 0;
+}
+/* An identifier moves whole to the next line before it is split. */
+.log-tech-facts code {
+  max-width: 100%;
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
 .log-hint {
   margin: 0 0 var(--space-3);
 }
@@ -119,6 +158,17 @@
 @media (max-width: 599px) {
   .log-field {
     flex-basis: 100%;
+  }
+  .log-summary {
+    padding: var(--space-3);
+    gap: var(--space-3);
+  }
+  .log-tech-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .log-tech-facts dd {
+    margin-bottom: var(--space-3);
   }
 }
 @media (max-width: 767px) {
