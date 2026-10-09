@@ -406,6 +406,24 @@ describe("UnitAccessReview", () => {
     );
     expect(total()).toMatch(/12 pessoas · 30 atribuições ativas/);
   });
+
+  it("moves back to the last page when the current one empties", async () => {
+    api.unitAccessAssignments.mockResolvedValue(page([row()], 26, 2));
+    render(<UnitAccessReview unitId={UNIT} />);
+    const next = await screen.findByRole("button", { name: "Próxima" });
+    // The only assignment of page 2 was revoked meanwhile: 25 remain.
+    api.unitAccessAssignments.mockImplementation(async (_u, p: number) =>
+      p ? page([], 25, 2) : page([row()], 25, 2),
+    );
+    await userEvent.click(next);
+    await waitFor(() =>
+      expect(
+        api.unitAccessAssignments.mock.calls.map(([, p]) => p),
+      ).toEqual([0, 1, 0]),
+    );
+    expect(total()).toMatch(/2 pessoas · 25 atribuições ativas/);
+    expect(screen.queryByText("Nenhuma atribuição encontrada")).toBeNull();
+  });
 });
 
 describe("unit-access-review-api", () => {
@@ -466,6 +484,39 @@ describe("unit-access-review-api", () => {
     });
     expect(result.count).toBe(40);
     expect(result.people).toBe(7);
+  });
+
+  it("reads the totals from the first page when a later page is empty", async () => {
+    const real = await load();
+    rpc
+      .mockResolvedValueOnce({ data: [], error: null })
+      .mockResolvedValueOnce({
+        data: [{ ...row(), total_count: "25", people_count: "4" }],
+        error: null,
+      });
+    const result = await real.unitAccessAssignments(UNIT, 1, {
+      sector: null,
+      includeRevoked: false,
+    });
+    expect(rpc).toHaveBeenLastCalledWith("unit_access_assignments", {
+      p_unit: UNIT,
+      p_sector: null,
+      p_include_revoked: false,
+      p_limit: 1,
+      p_offset: 0,
+    });
+    expect(result).toEqual({ rows: [], count: 25, people: 4 });
+  });
+
+  it("an empty first page is a true zero, read once", async () => {
+    const real = await load();
+    rpc.mockResolvedValueOnce({ data: [], error: null });
+    const result = await real.unitAccessAssignments(UNIT, 0, {
+      sector: null,
+      includeRevoked: false,
+    });
+    expect(rpc).toHaveBeenCalledOnce();
+    expect(result).toEqual({ rows: [], count: 0, people: 0 });
   });
 
   it("propagates RPC errors", async () => {

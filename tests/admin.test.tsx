@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import React from "react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -42,6 +43,14 @@ const api = vi.hoisted(() => ({
   roleDetail: vi.fn(),
 }));
 vi.mock("../apps/web/src/core/admin/api", () => api);
+// The unit access review answers as the server (RPCs/RLS) would; null = unavailable.
+const review = vi.hoisted(() => ({
+  UNIT_ACCESS_PAGE_SIZE: 25,
+  unitAccessSummary: vi.fn(),
+  unitAccessAssignments: vi.fn(),
+  unitSectors: vi.fn(),
+}));
+vi.mock("../apps/web/src/core/admin/unit-access-review-api", () => review);
 // Mutable per test: which permissions the signed-in user holds.
 const auth = vi.hoisted(() => ({
   denied: new Set<string>(),
@@ -715,6 +724,146 @@ describe("Elo lists", () => {
     );
     expect(api.users.mock.calls.map(([page]) => page)).toEqual([0, 1, 0]);
     expect(screen.queryByText("Nenhum usuário encontrado")).toBeNull();
+  });
+});
+describe("unit access navigation", () => {
+  const unitRow = (over: Partial<Organization> = {}): Organization => ({
+    id: "u",
+    version: 1,
+    code: "CMD",
+    name: "Unidade CMD",
+    active: true,
+    ...stamp,
+    ...over,
+  });
+  const summaryOf = ({ id, code, name }: Organization) => ({
+    unit_id: id,
+    unit_code: code,
+    unit_name: name,
+    unit_active: true,
+    unit_version: 1,
+    sector_id: null,
+    people_visibility: "available",
+    people_count: 0,
+    effective_people_count: 0,
+    global_assignment_count: 0,
+    unit_assignment_count: 0,
+    sector_assignment_count: 0,
+    evaluated_at: "2026-10-08T12:00:00Z",
+  });
+  const rows = [unitRow(), unitRow({ id: "v", code: "POA", name: "Porto Alegre" })];
+  beforeEach(() => {
+    api.organizations.mockResolvedValue({ rows, count: 2 });
+    review.unitAccessSummary.mockImplementation(async (id: string) =>
+      summaryOf(rows.find((r) => r.id === id)!),
+    );
+    review.unitAccessAssignments.mockResolvedValue({ rows: [], count: 0, people: 0 });
+    review.unitSectors.mockResolvedValue([]);
+  });
+  const dialog = () => screen.getByRole("dialog");
+
+  it("opens the read-only review of the row's unit and restores focus on close", async () => {
+    const user = userEvent.setup();
+    render(<OrganizationPage kind="units" />);
+    const trigger = await screen.findByRole("button", {
+      name: "Acessos de Unidade CMD",
+    });
+    await user.click(trigger);
+    expect(within(dialog()).getByRole("heading", { name: "Acessos · Unidade CMD" })).toBeTruthy();
+    expect(await within(dialog()).findByRole("heading", { name: /CMD Unidade CMD/ })).toBeTruthy();
+    expect(await within(dialog()).findByText("Nenhuma atribuição encontrada")).toBeTruthy();
+    expect(review.unitAccessSummary).toHaveBeenCalledWith("u", null);
+    expect(review.unitAccessAssignments).toHaveBeenCalledWith("u", 0, {
+      sector: null,
+      includeRevoked: false,
+    });
+    for (const name of [/editar/i, /desativar/i, /revogar/i, /conceder/i, /salvar/i])
+      expect(within(dialog()).queryByRole("button", { name })).toBeNull();
+    await user.click(within(dialog()).getByRole("button", { name: "Fechar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    expect(api.saveOrganization).not.toHaveBeenCalled();
+    expect(api.organizations).toHaveBeenCalledOnce();
+  });
+
+  it("opens by keyboard, closes with Escape and keeps filters and page", async () => {
+    api.organizations.mockResolvedValue({ rows, count: 30 });
+    const user = userEvent.setup();
+    render(<OrganizationPage kind="units" />);
+    await user.click(await screen.findByLabelText("Exibir inativas"));
+    await user.type(screen.getByRole("searchbox"), "a");
+    // Page only after the search debounce settled (it returns to the first page).
+    await waitFor(() =>
+      expect(api.organizations).toHaveBeenLastCalledWith("units", 0, {
+        search: "a",
+        inactive: true,
+      }),
+    );
+    await user.click(within(await screen.findByRole("navigation", { name: "Paginação" })).getByText("Próxima"));
+    await waitFor(() =>
+      expect(api.organizations).toHaveBeenLastCalledWith("units", 1, {
+        search: "a",
+        inactive: true,
+      }),
+    );
+    await screen.findByText("30 registros · Página 2 de 2");
+    const calls = api.organizations.mock.calls.length;
+    const trigger = screen.getByRole("button", { name: "Acessos de Porto Alegre" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    expect(await within(dialog()).findByRole("heading", { name: /POA Porto Alegre/ })).toBeTruthy();
+    fireEvent(dialog(), new Event("cancel", { cancelable: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    expect(screen.getByText("30 registros · Página 2 de 2")).toBeTruthy();
+    expect((screen.getByLabelText("Exibir inativas") as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("a");
+    expect(api.organizations).toHaveBeenCalledTimes(calls);
+  });
+
+  it("shows the server's neutral answer when the unit is restricted", async () => {
+    review.unitAccessSummary.mockResolvedValue(null);
+    const user = userEvent.setup();
+    render(<OrganizationPage kind="units" />);
+    await user.click(await screen.findByRole("button", { name: "Acessos de Unidade CMD" }));
+    expect(await within(dialog()).findByText(/Unidade indisponível/)).toBeTruthy();
+    expect(review.unitAccessAssignments).not.toHaveBeenCalled();
+  });
+
+  it("is offered without admin.unit.manage; management actions stay hidden", async () => {
+    auth.denied = new Set(["admin.unit.manage"]);
+    const user = userEvent.setup();
+    render(<OrganizationPage kind="units" />);
+    await user.click(await screen.findByRole("button", { name: "Acessos de Unidade CMD" }));
+    expect(await within(dialog()).findByRole("heading", { name: /CMD Unidade CMD/ })).toBeTruthy();
+    expect(screen.queryByText("Nova unidade")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^(Editar|Capa de|Desativar|Ativar) / })).toBeNull();
+  });
+
+  it("does not carry a previous unit into the next review", async () => {
+    const user = userEvent.setup();
+    render(<OrganizationPage kind="units" />);
+    await user.click(await screen.findByRole("button", { name: "Acessos de Unidade CMD" }));
+    await within(dialog()).findByRole("heading", { name: /CMD Unidade CMD/ });
+    await user.click(within(dialog()).getByRole("button", { name: "Fechar" }));
+    let resolve!: (v: unknown) => void;
+    review.unitAccessSummary.mockReturnValueOnce(new Promise((r) => (resolve = r)));
+    await user.click(screen.getByRole("button", { name: "Acessos de Porto Alegre" }));
+    expect(within(dialog()).queryByText(/Unidade CMD/)).toBeNull();
+    expect(within(dialog()).getByText("Carregando acessos da unidade…")).toBeTruthy();
+    resolve(summaryOf(rows[1]));
+    expect(await within(dialog()).findByRole("heading", { name: /POA Porto Alegre/ })).toBeTruthy();
+    expect(within(dialog()).queryByText(/Unidade CMD/)).toBeNull();
+  });
+
+  it("leaves sectors unchanged: no access review, sector units still offered", async () => {
+    render(<OrganizationPage kind="sectors" />);
+    await screen.findByText("Unidade CMD");
+    expect(screen.queryByRole("button", { name: /^Acessos de/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Unidades de Unidade CMD" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Editar Unidade CMD" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Capa de/ })).toBeNull();
+    expect(review.unitAccessSummary).not.toHaveBeenCalled();
   });
 });
 describe("administration gaps closed for production", () => {

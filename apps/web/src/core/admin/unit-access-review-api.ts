@@ -141,19 +141,25 @@ export async function unitAccessAssignments(
   page: number,
   query: AssignmentQuery,
 ) {
-  const { data, error } = await db().rpc("unit_access_assignments", {
-    p_unit: unit,
-    p_sector: query.sector,
-    p_include_revoked: query.includeRevoked,
-    p_limit: UNIT_ACCESS_PAGE_SIZE,
-    p_offset: page * UNIT_ACCESS_PAGE_SIZE,
-  });
-  if (error) throw error;
-  const rows = data ?? [];
+  const read = async (limit: number, offset: number) => {
+    const { data, error } = await db().rpc("unit_access_assignments", {
+      p_unit: unit,
+      p_sector: query.sector,
+      p_include_revoked: query.includeRevoked,
+      p_limit: limit,
+      p_offset: offset,
+    });
+    if (error) throw error;
+    return data ?? [];
+  };
+  const rows = await read(UNIT_ACCESS_PAGE_SIZE, page * UNIT_ACCESS_PAGE_SIZE);
+  // Totals travel on each row. An empty page past the first (the set shrank meanwhile) says
+  // nothing about them, so they are read from the first row instead of reported as zero.
+  const first = rows[0] ?? (page > 0 ? (await read(1, 0))[0] : undefined);
   return {
     rows,
-    count: rows.length ? Number(rows[0].total_count) : 0,
-    people: rows.length ? Number(rows[0].people_count) : 0,
+    count: first ? Number(first.total_count) : 0,
+    people: first ? Number(first.people_count) : 0,
   };
 }
 /**

@@ -307,6 +307,35 @@ try {
 
     // Units and sectors.
     await visit("/admin/units", "units");
+    // Unit access review: read-only, opened by keyboard from the unit row; Escape
+    // closes it and focus returns to the row action.
+    const unitRow = page.getByRole("listitem").filter({ hasText: LONG_UNIT });
+    await reach(page, unitRow);
+    const access = unitRow.getByRole("button", {
+      name: `Acessos de ${LONG_UNIT}`,
+    });
+    await access.focus();
+    await page.keyboard.press("Enter");
+    const review = page.getByRole("dialog");
+    await review.getByRole("heading", { name: `Acessos · ${LONG_UNIT}` }).waitFor();
+    await review
+      .getByRole("list", { name: `Atribuições de ${LONG_NAME}` })
+      .waitFor();
+    await settle(page);
+    assert.equal(
+      await review.getByRole("button", { name: /Editar|Revogar|Desativar|Salvar/ }).count(),
+      0,
+    );
+    await dialogFits(page, width, height, "unit access");
+    await targets(page, "dialog button, dialog select, dialog input", width, "unit access");
+    if (shots)
+      await page.screenshot({ path: join(shots, `unit-access-${width}.png`) });
+    await page.keyboard.press("Escape");
+    await review.waitFor({ state: "detached" });
+    assert.ok(
+      await access.evaluate((e) => e === document.activeElement),
+      "Focus returns to the unit access action",
+    );
     await visit("/admin/sectors", "sectors");
     const sectorRow = page
       .getByRole("listitem")

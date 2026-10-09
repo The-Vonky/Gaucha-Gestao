@@ -1,4 +1,4 @@
-import { useCallback, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import { useResource } from "../../shared/useResource";
 import { plural } from "../../shared/plural";
@@ -190,6 +190,11 @@ function Assignments({
     ),
   );
   const data = useLatest(resource);
+  // A page left past the end (assignments changed meanwhile) moves back to the last one.
+  useEffect(() => {
+    if (!data || page === 0 || data.rows.length) return;
+    setPage(Math.max(0, Math.ceil(data.count / api.UNIT_ACCESS_PAGE_SIZE) - 1));
+  }, [data, page]);
   const selectedSector = sectors.data?.find((s) => s.id === sector);
   const chooseSector = (value: string | null) => {
     onSector(value);
@@ -263,7 +268,7 @@ function Assignments({
         label="Carregando atribuições…"
         onRetry={resource.reload}
       />
-      {data?.count === 0 && (
+      {data?.count === 0 && page === 0 && (
         <EmptyState
           title="Nenhuma atribuição encontrada"
           actions={
