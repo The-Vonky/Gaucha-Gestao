@@ -43,6 +43,14 @@ Baseline de aplicação verificada e integrada pela PR #18: commit `22334995b5b2
 
 A rodada final de Qualidade (PR #18) removeu estilos legados do Login, reforçou safe areas e ergonomia mobile, alinhou Checklist Evidence aos tokens compartilhados e adicionou regressão dedicada do controle mostrar/ocultar senha. O fechamento factual e os aceites restantes estão em [Qualidade v1 — matriz factual](docs/modules/audit/QUALITY_COMPLETION_V1.md) e [Qualidade v1 — aceite final](docs/modules/audit/QUALITY_ACCEPTANCE_V1.md).
 
+## Fundação Core v2 — estado da branch de integração (2026-10-09)
+
+As PRs #25–#31 entregaram contratos de leitura de referências Core, revisão de acessos por usuário e unidade, logs administrativos e a navegação por unidade. Essas alterações estão na branch `integration/core-foundation-v2-wave2`, **não** na `main`. O HEAD integrado `9d5a6866` passou na CI `37933225921` (validação e integração reais no runner descartável), sem re-run.
+
+Para avaliar em computador/Android, com banco **local atualizado** e sem tocar em ambiente compartilhado, siga [Teste manual Core v2](docs/development/CORE_V2_MANUAL_TEST.md). A [matriz de prontidão de consolidação](docs/briefs/CORE_V2_CONSOLIDATION_READINESS.md) registra o que falta para considerar promoção à `main`, incluindo revisão dos módulos fora do Core e sincronização documental.
+
+O novo serviço privilegiado de criação/recuperação de contas **não está implementado**; o ADR-007 permanece proposto no PR #24. CI verde da integração não é aprovação de produção.
+
 **Production ready: NÃO enquanto P1–P9 e O1–O8 não estiverem registrados como aprovados.** Código/CI não substituem teste físico, backup/restore, observabilidade e aprovação operacional. Não há autorização implícita para deploy ou migração de dados de produção.
 
 Consulte `docs/architecture/OVERVIEW.md` antes de iniciar implementação estrutural.
