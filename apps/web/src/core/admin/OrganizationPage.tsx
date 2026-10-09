@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Organization } from "../types";
 import { useAuth } from "../auth/AuthProvider";
 import * as api from "./api";
@@ -22,6 +22,7 @@ import {
 } from "./parts";
 import { SectorUnits } from "./SectorUnits";
 import { UnitCoverEditor } from "./UnitCoverEditor";
+import { UnitAccessReview } from "./UnitAccessReview";
 const NOUNS = {
   units: {
     one: "unidade",
@@ -54,6 +55,14 @@ export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
   const [toggle, setToggle] = useState<Organization>();
   const [links, setLinks] = useState<Organization>();
   const [cover, setCover] = useState<Organization>();
+  const [access, setAccess] = useState<Organization>();
+  // Closing the access review returns focus to the row action that opened it.
+  const accessTrigger = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (access) return;
+    accessTrigger.current?.focus();
+    accessTrigger.current = null;
+  }, [access]);
   const unit = kind === "units";
   const noun = NOUNS[kind];
   const permission = unit ? "admin.unit.manage" : "admin.sector.manage";
@@ -155,6 +164,19 @@ export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
                     Capa
                   </button>
                 )}
+                {/* Read visibility is decided by the review RPCs/RLS, not by manage permission. */}
+                {unit && (
+                  <button
+                    className="small ghost"
+                    aria-label={`Acessos de ${row.name}`}
+                    onClick={(e) => {
+                      accessTrigger.current = e.currentTarget;
+                      setAccess(row);
+                    }}
+                  >
+                    Acessos
+                  </button>
+                )}
                 {!unit && (
                   <button
                     className="small ghost"
@@ -243,6 +265,15 @@ export function OrganizationPage({ kind }: { kind: "units" | "sectors" }) {
       )}
       {links && (
         <SectorUnits sector={links} onClose={() => setLinks(undefined)} />
+      )}
+      {access && (
+        <Modal
+          key={access.id}
+          title={`Acessos · ${access.name}`}
+          onClose={() => setAccess(undefined)}
+        >
+          <UnitAccessReview unitId={access.id} />
+        </Modal>
       )}
       {cover && (
         <UnitCoverEditor
