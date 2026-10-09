@@ -1,6 +1,8 @@
 # Fundação Core v2 — contratos canônicos
 
 Status: DESIGN ONLY — consolidação da arquitetura aceita e recomendações para revisão.
+> **Atualização factual em 2026-10-09:** esta peça permanece um documento de arquitetura com recomendações e decisões PO não aprovadas; `DESIGN ONLY` identifica a natureza original deste documento, **não** o estado de todas as funcionalidades da plataforma. Na branch de integração `integration/core-foundation-v2-wave2` foram implementados os contratos de leitura Core descritos nos briefs [Governança](../briefs/CORE_ACCESS_GOVERNANCE_READ_V1.md), [Referências](../briefs/CORE_REFERENCE_RESOLVERS_V1.md) e [Logs](../briefs/CORE_AUDIT_LOG_READ_MODEL_V1.md), bem como consumidores administrativos. Consulte o [registro de prontidão](../briefs/CORE_V2_CONSOLIDATION_READINESS.md) para evidências e pendências. Essa implementação ainda não está na `main` e não aprova automaticamente propostas arquiteturais restantes.
+
 Data: 2026-10-08.
 Brief: [Core Foundation Contract v2](../briefs/CORE_FOUNDATION_CONTRACT_V2.md).
 Base examinada: `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`.
