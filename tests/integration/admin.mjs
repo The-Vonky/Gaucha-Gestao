@@ -318,23 +318,44 @@ try {
     await targets(page, "dialog button", width, "sector units");
     await page.keyboard.press("Escape");
 
-    // Logs: filter bar, rows and JSON details that never widen the page.
+    // Logs: filter bar, readable rows, and a plain summary with the raw JSON in a
+    // collapsed technical section that never widens the page. The unit's own
+    // insert event: written by the database (no actor), after = the new row, no before.
     await visit("/admin/logs", "logs");
     await page.getByLabel("Módulo").selectOption("core");
+    await page.getByLabel("Tipo de registro").selectOption("units");
+    await page.getByLabel("Identificador do registro").fill(unit);
     await page.getByRole("button", { name: "Filtrar" }).click();
-    await page.getByText("1 filtro aplicado").waitFor();
+    await page.getByText("3 filtros aplicados").waitFor();
     await settle(page);
-    await page
-      .getByRole("button", { name: /^Detalhes:/ })
-      .first()
-      .click();
+    const event = page
+      .getByRole("listitem")
+      .filter({ hasText: "Inclusão" })
+      .filter({ hasText: LONG_UNIT });
+    await event.getByText("Operação administrativa do banco").waitFor();
+    await event.getByRole("button", { name: /^Detalhes:/ }).click();
     const details = page.getByRole("dialog");
+    await details.getByText(LONG_UNIT).first().waitFor();
     const json = details.getByRole("region", { name: "Depois" });
+    // Identifiers and JSON are secondary: hidden until the operator asks for them.
+    assert.equal(await json.isVisible(), false, "JSON starts collapsed");
+    await details.getByText("Detalhes técnicos").click();
     await json.waitFor();
+    assert.ok(
+      (await json.textContent()).includes(LONG_UNIT),
+      "after_data shows the inserted row",
+    );
     assert.ok(
       await json.evaluate((e) => e.scrollWidth <= e.clientWidth + 1),
       "JSON wraps inside its region",
     );
+    // An insert has no before: stated, not an empty or "null" region.
+    assert.equal(
+      await details.getByRole("region", { name: "Antes" }).count(),
+      0,
+    );
+    await details.getByText("Sem conteúdo registrado.").first().waitFor();
+    await targets(page, "dialog summary, dialog button", width, "log details");
     await dialogFits(page, width, height, "log details");
     if (shots)
       await page.screenshot({ path: join(shots, `log-details-${width}.png`) });
@@ -419,20 +440,29 @@ try {
       .rows[0].active,
     false,
   );
-  // The change is logged and readable in Logs with the actor.
+  // The change is logged and readable in Logs: by actor id and by visible name,
+  // with the actor's name in the summary and the UUID in the technical details.
+  const deactivation = page
+    .getByRole("listitem")
+    .filter({ hasText: "Desativação" })
+    .filter({ hasText: `Unidade Nova ${tag}` });
   await page.goto(`${origin}/admin/logs`);
-  await page.getByLabel("Ator (UUID)").fill(admin.id);
-  await page.getByRole("button", { name: "Filtrar" }).tap();
-  await settle(page);
-  await page
-    .getByRole("button", { name: /^Detalhes:/ })
-    .first()
-    .tap();
-  const actor = page
-    .getByRole("dialog")
-    .locator("dt", { hasText: /^Ator$/ })
-    .locator("xpath=following-sibling::dd");
-  assert.equal((await actor.textContent()).trim(), admin.id);
+  for (const who of [`Admin UI ${tag}`, admin.id]) {
+    await page.getByLabel("Quem").fill(who);
+    await page.getByRole("button", { name: "Filtrar" }).tap();
+    await settle(page);
+    await deactivation.getByText(`Admin UI ${tag}`).waitFor();
+    await deactivation.getByText("Inativa").waitFor();
+  }
+  await deactivation.getByRole("button", { name: /^Detalhes:/ }).tap();
+  const dialog = page.getByRole("dialog");
+  const fact = (term) =>
+    dialog
+      .locator("dt", { hasText: new RegExp(`^${term}$`) })
+      .locator("xpath=following-sibling::dd");
+  assert.equal((await fact("Quem").textContent()).trim(), `Admin UI ${tag}`);
+  await dialog.getByText("Detalhes técnicos").tap();
+  assert.equal((await fact("Pessoa").textContent()).trim(), admin.id);
   await noOverflow(page, "actor log details");
   console.log(
     "PASS admin UI at 375/768/1024/1440: no page overflow, touch targets, UUID wrap, self toggle hidden, keyboard dialog, system role read-only, read-only permissions, sector links, log filters and wrapped JSON; create/deactivate with confirm/cancel and actor log",
