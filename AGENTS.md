@@ -109,6 +109,8 @@ Never claim a check passed without running it.
 - Otherwise choose the narrowest implementation consistent with the brief and architecture.
 - Completion reports should contain only relevant files, migrations, validations, real pending issues and commits.
 
+> **Snapshot de desenvolvimento — 2026-10-09:** a Fundação Core v2 na branch `integration/core-foundation-v2-wave2` integra PRs #25–#31, CI `37933225921` aprovada. O texto histórico abaixo trata da baseline de Qualidade integrada à `main` e não significa que o Core v2 já esteja na `main`. Consulte `docs/briefs/CORE_V2_CONSOLIDATION_READINESS.md` e `docs/development/CORE_V2_MANUAL_TEST.md` para limites atuais. PR #24/ADR-007 continua proposto; nenhuma implementação administrativa privilegiada está autorizada automaticamente.
+
 ## Current phase
 
 Core/authorization, Audit Domain v1 (including reopen), Action Plans, Action Plan Evidence, Audit Export & Reporting and Audit Checklist Evidence are implemented. Quality v1 functional software and pre-homologation hardening are integrated. Do not restart those domains.
