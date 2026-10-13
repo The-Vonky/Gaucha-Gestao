@@ -109,7 +109,7 @@ Never claim a check passed without running it.
 - Otherwise choose the narrowest implementation consistent with the brief and architecture.
 - Completion reports should contain only relevant files, migrations, validations, real pending issues and commits.
 
-> **Snapshot de desenvolvimento — 2026-10-09:** a Fundação Core v2 na branch `integration/core-foundation-v2-wave2` integra PRs #25–#31, CI `37933225921` aprovada. O texto histórico abaixo trata da baseline de Qualidade integrada à `main` e não significa que o Core v2 já esteja na `main`. Consulte `docs/briefs/CORE_V2_CONSOLIDATION_READINESS.md` e `docs/development/CORE_V2_MANUAL_TEST.md` para limites atuais. PR #24/ADR-007 continua proposto; nenhuma implementação administrativa privilegiada está autorizada automaticamente.
+> **Snapshot de consolidação — 2026-10-13:** Fundação Core v2 em `integration/core-foundation-v2-wave2`, HEAD `14900b63` pós-merges #35 e #36, ainda fora da `main`. PRs #25–#33, #35 e #36 integrados somente na branch de integração. PR #35 corrige as vulnerabilidades de desenvolvimento; PR #36 reforça testes reais JWT/RLS. Testes manuais comunicados como concluídos pelo responsável, sem evidências técnicas anexadas; proteção da `main` adiada temporariamente por decisão dele, não considerada aprovada. A CI final do HEAD combinado e o PR à `main` dependem de fechamento específico. PR #24/ADR-007 continua proposta e não autoriza identidade privilegiada. Os números da baseline histórica de Qualidade abaixo referem-se exclusivamente à `main` de época, não à fundação Core v2. Consulte `docs/briefs/CORE_V2_CONSOLIDATION_READINESS.md`.
 
 ## Current phase
 

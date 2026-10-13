@@ -1,39 +1,46 @@
-# Auditoria de prontidão de consolidação — Core v2
+# Auditoria de prontidão de consolidação — Fundação Core v2
 
-Registro inicial: 2026-10-09. Status: **REVISÃO EM ANDAMENTO**, não é autorização de merge, deploy ou execução de migrations em banco compartilhado.
+Revisão: **2026-10-13**. Estado: **candidata à consolidação em `main`, sob revisão**, sem deploy de produção e sem autorização implícita para mesclar na `main`. Registro detalhado: [Issue #34](https://github.com/The-Vonky/Gaucha-Gestao/issues/34).
 
-## Baseline imutável consultada
+## Baseline antes desta atualização documental
 
 - `main`: `70cfbae24d10093d1ee94a8e87ce4d0a4af117e5`.
-- `integration/core-foundation-v2-wave2`: `9d5a68661bce9cee667ff2b7a88259a58cb7446e`.
-- `main...integration` via GitHub compare: **61 commits à frente, zero atrás, 83 arquivos diferentes** (snapshot antes deste PR documental). Não somar contagens de branches filhas: herdam histórico da integração.
-- PRs #25–#31: mergeados **na integração**, não na `main`. PR #23 fechado sem merge direto; conteúdo segue na ancestralidade da integração. PR #24 (Identity Boundary/ADR-007) segue **aberto**, não aceito nem integrado.
-- CI de integração `37933225921`: 1ª tentativa, jobs `validate` e `action-plans-integration` com sucesso, sem jobs skipped/cancelled.
-- `main` run `37669780765`: sucesso **após re-run** (attempt=2); 1ª tentativa: `action-plans-integration` falhou em `node tests/integration/audit-evidence.mjs` com `CHECK_FAILED`; etapas seguintes `unit-cover` e `admin` foram puladas por interrupção. O log registra também `toomanyrequests` em pulls externos de imagens Docker, **sem relação causal comprovada** com o `CHECK_FAILED`. Não catalogar como defeito corrigido nem erro transitório comprovado.
-- Evidência de infra reproduzível na `main`: run `37669780931` verde. Não é homologação de produção.
+- `integration/core-foundation-v2-wave2`: `14900b63cacfab79d5bb398c9d9a8d6bfe3deab2`, depois dos merges #35 e #36.
+- Comparação GitHub `main...integration`: **81 commits adiante, zero atrás, 91 arquivos distintos** antes do commit documental. Recalcular para qualquer PR final; nunca tratar estes números como invariantes.
+- PRs #25–#33, [#35](https://github.com/The-Vonky/Gaucha-Gestao/pull/35) e [#36](https://github.com/The-Vonky/Gaucha-Gestao/pull/36) integrados **somente na branch de integração**. [PR #24](https://github.com/The-Vonky/Gaucha-Gestao/pull/24) continua aberto e propõe uma fronteira de identidade privilegiada (ADR-007), **não implementada**.
+- PR #35 corrige dependências dev (`vitest@5.0.4`, `@vitest/mocker@5.0.4`, `source-map-js@1.2.2`) e adapta nove suítes; auditoria npm completa com **zero vulnerabilidades** no diagnóstico validado e 483/483 testes. Evidências: [CI #38396140782](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/38396140782) e [infra #38396140662](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/38396140662), verdes.
+- PR #36 agrega testes de autorização negativa por JWT/PostgREST reais para usuários anônimos, inativos, com papéis parciais e permissões revogadas. Evidências: [CI #38397119936](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/38397119936) e [infra #38397119924](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/38397119924), verdes.
+- **Pendente comprovação da CI do HEAD combinado** após os dois merges e esta documentação.
 
-## Escopo de mudanças na integração
+## Inventário e avaliação
 
-- Core/Admin: consultas de referências, governança, logs, novas interfaces, montagem da visão por unidade.
-- Alterações existentes em Qualidade/Audit, Planos de Ação, App Shell, shared, workflows, quatro migrations e testes. A revisão de escopo deve verificar as mudanças **fora do Core**, não presumir que 83 arquivos sejam apenas dessa fundação.
-- Nenhuma migration aplicada à produção por este trabalho.
+Inventário da comparação anterior: 20 arquivos de Core/Admin frontend; 16 de App Shell, Shared e Qualidade; 23 documentos; 4 migrações SQL; 22 testes; 1 workflow; `README.md` e `AGENTS.md`. Após os PRs #35/#36, há mais mudanças de testes e dependências. Inspecionados os quatro contratos SQL do Core v2, proteções RLS relevantes, APIs administrativas e alterações funcionais nos consumidores; **não foi realizado parecer de revisão independente linha a linha dos 91 arquivos**, e não é correto afirmar revisão exaustiva.
 
-## Gatilhos de promoção à main (todos requerem evidência)
+Alterações de consumo a aceitar expressamente:
+- `PlanFields.tsx`: datas do período de acompanhamento em par e ordenadas (teste automatizado disponível).
+- `Result.tsx`, `AuditOverview.tsx`, `UnitPage.tsx`: rascunhos levam editores ao checklist; leitores à visão geral.
+- App Shell/Shared: estados de carregamento e vazio, foco, responsividade, mensagens seguras.
 
-- [ ] Revisão dos 83 arquivos e dos 61 commits, aprovação explícita de alterações não-Core, dependências e compatibilidade.
-- [ ] Revisão de permissões efetivas, escopos/RLS e ausência de enumeração de usuários por consumidores/UI.
-- [ ] Guia de teste manual executado com banco descartável atualizado, desktop e Android real, perfis autorizados/restritos e histórico de revogações.
-- [ ] README, AGENTS, arquitetura e briefs com estado factual sincronizado (design histórico × implementação integrada × decisões pendentes).
-- [ ] Investigar/reproduzir a causa de `CHECK_FAILED` em `audit-evidence.mjs` no primeiro run da main; registrar evidência, mesmo que não se reproduza.
-- [ ] Branch protection/ruleset e checks requeridos da `main` confirmados (a API anteriormente informou `protected=false`).
-- [ ] CI completa no HEAD candidato final; sem jobs cancelados/ignorados relevantes. Registrar tentativas e motivos de re-runs, se ocorrerem.
-- [ ] PR específico de consolidação para `main`, revisado e **autorizado explicitamente** pelo responsável.
-- [ ] CI pós-merge de `main` aprovada; limpar branches somente após checar ancestralidade e ausência de trabalho não promovido.
-- [ ] Homologação para produção tratada em gate separado: backup/restore, observabilidade, critérios de Qualidade P1–P9 e O1–O8. Nunca inferir prontidão de produção da CI.
+Os logs têm RLS para o leitor autorizado, mas `before_data` e `after_data` são históricos brutos, exigindo política de retenção/privacidade antes de produção.
 
-## Estratégia de segurança e continuidade
+## Gates da Issue #34
 
-- Não fazer force-push, reset, migração destrutiva, deploy ou exclusão antecipada de branches.
-- Preservar PR #24 como Proposed; não implementar serviço privilegiado de contas antes das decisões de segurança e aprovação do ADR.
-- Usar worktrees separados para agentes, testes e integração. Evitar banco Supabase compartilhado.
-- A documentação deste PR é **preparatória**; não conclui nenhum gate automaticamente.
+| Gate | Situação em 2026-10-13 |
+| --- | --- |
+| S1 dependências | **PASS** no patch testado do PR #35; confirmar novamente no HEAD combinado |
+| S2 proteção da `main` | **ADIADO POR DECISÃO DO RESPONSÁVEL** nesta etapa; `main.protected=false`, sem rulesets; risco residual explícito, não equivale a PASS |
+| A1 inventário / alterações externas | **Inventário completo; revisão focal feita**. Aceite independente do delta completo pendente |
+| A2 RBAC / RLS | **Testes negativos e inspeção focal PASS**, incluindo JWT reais do PR #36. Revisão de segurança final/escopo total pendente |
+| A3 regressões em consumidores | **Revisão focal e automação PASS**; aceite manual foi reportado pelo responsável sem relatório detalhado anexado |
+| Q1 manual PC / Android | **CONCLUÍDO CONFORME DECLARAÇÃO DO RESPONSÁVEL em 2026-10-13**. Não foram fornecidos ao repositório, nesta etapa, dispositivos, ambiente, matriz por perfil ou capturas de tela; resultado não auditado independentemente. Não confundir com P1–P9 |
+| Q2 `CHECK_FAILED` antigo | **CAUSA INDETERMINADA**: tentativa 1 de [run #37669780765](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/37669780765) falhou em `audit-evidence.mjs`; nova tentativa aprovou. Há `toomanyrequests` Docker no log, mas nexo causal não comprovado. Risco histórico ainda documentado |
+| D1 documentação | **Atualizada nesta PR documental**; revalidar antes do merge à `main` |
+| C1 CI final | **PENDENTE do HEAD exato após os merges e documentação** |
+| M1 PR para `main` | **A preparar para revisão**; merge depende de autorização humana específica |
+| Produção P1–P9/O1–O8 | **SEPARADA / PENDENTE**, nunca promovida automaticamente |
+
+## Restrições operacionais
+
+Não executar `supabase db reset`, `db push`, seed, migrações nem consultas destrutivas em ambientes compartilhados ou produção. Não realizar force-push, deploy, release ou promover `main` sem decisão final. A ausência de ruleset significa **risco de governança aceito temporariamente** e deverá ser sanado depois. CI verde não é prova de produção pronta.
+
+O checklist de PC/Android é `docs/development/CORE_V2_MANUAL_TEST.md`. Para liberação operacional, exigir aceites P1–P9 e O1–O8 em `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md`.

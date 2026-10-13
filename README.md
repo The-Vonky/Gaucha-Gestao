@@ -43,9 +43,11 @@ Baseline de aplicação verificada e integrada pela PR #18: commit `22334995b5b2
 
 A rodada final de Qualidade (PR #18) removeu estilos legados do Login, reforçou safe areas e ergonomia mobile, alinhou Checklist Evidence aos tokens compartilhados e adicionou regressão dedicada do controle mostrar/ocultar senha. O fechamento factual e os aceites restantes estão em [Qualidade v1 — matriz factual](docs/modules/audit/QUALITY_COMPLETION_V1.md) e [Qualidade v1 — aceite final](docs/modules/audit/QUALITY_ACCEPTANCE_V1.md).
 
-## Fundação Core v2 — estado da branch de integração (2026-10-09)
+## Fundação Core v2 — consolidação da integração (2026-10-13)
 
-As PRs #25–#31 entregaram contratos de leitura de referências Core, revisão de acessos por usuário e unidade, logs administrativos e a navegação por unidade. Essas alterações estão na branch `integration/core-foundation-v2-wave2`, **não** na `main`. O HEAD integrado `9d5a6866` passou na CI `37933225921` (validação e integração reais no runner descartável), sem re-run.
+As PRs #25–#33, #35 e #36 entregaram resolvers de referências, governança e revisão de acessos por usuário/unidade, logs administrativos, correções de dependências de desenvolvimento e testes de autorização com JWT/PostgREST reais. Estão em `integration/core-foundation-v2-wave2` e **ainda não estão na `main`**. Snapshot pós-PR #36: `14900b63` (81 commits/91 arquivos em relação à `main`, antes desta documentação); os PRs #35 e #36 passaram em CI, mas a CI do HEAD combinado deve ser revalidada.
+
+O responsável informou ter concluído os testes manuais em 13/10/2026; detalhes/evidências individuais não foram anexados e não equivalem à homologação P1–P9/O1–O8. A configuração de proteção da `main` foi **adiada por decisão do responsável**, permanecendo risco de governança explícito.
 
 Para avaliar em computador/Android, com banco **local atualizado** e sem tocar em ambiente compartilhado, siga [Teste manual Core v2](docs/development/CORE_V2_MANUAL_TEST.md). A [matriz de prontidão de consolidação](docs/briefs/CORE_V2_CONSOLIDATION_READINESS.md) registra o que falta para considerar promoção à `main`, incluindo revisão dos módulos fora do Core e sincronização documental.
 
