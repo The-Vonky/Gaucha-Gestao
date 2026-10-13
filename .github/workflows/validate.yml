@@ -24,7 +24,9 @@ jobs:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci-build-placeholder
       - run: npm run verify:build
-      - run: npm audit --omit=dev
+      # Security gate covers production and development dependencies (including CI/test tools).
+      # The PR #35 upgrade eliminated the previous 4 findings; fail on moderate or worse.
+      - run: npm audit --audit-level=moderate
   action-plans-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 30
