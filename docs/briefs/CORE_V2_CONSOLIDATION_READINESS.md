@@ -36,7 +36,7 @@ Os logs têm RLS para o leitor autorizado, mas `before_data` e `after_data` são
 | Q2 `CHECK_FAILED` antigo | **CAUSA INDETERMINADA**: tentativa 1 de [run #37669780765](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/37669780765) falhou em `audit-evidence.mjs`; nova tentativa aprovou. Há `toomanyrequests` Docker no log, mas nexo causal não comprovado. Risco histórico ainda documentado |
 | D1 documentação | **Atualizada nesta PR documental**; revalidar antes do merge à `main` |
 | C1 CI final | **PENDENTE do HEAD exato após os merges e documentação** |
-| M1 PR para `main` | **A preparar para revisão**; merge depende de autorização humana específica |
+| M1 PR para `main` | **[PR #38 aberto em Draft](https://github.com/The-Vonky/Gaucha-Gestao/pull/38)**; merge depende de revisão e autorização humana específica |
 | Produção P1–P9/O1–O8 | **SEPARADA / PENDENTE**, nunca promovida automaticamente |
 
 ## Restrições operacionais
