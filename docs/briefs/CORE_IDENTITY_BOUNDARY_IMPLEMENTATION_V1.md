@@ -21,6 +21,18 @@ Esta proposta foi redirecionada à `main` após o merge Core v2 de 2026-10-13. A
 
 A falha histórica de Chromium em Anexos segue documentada na [Issue #41](https://github.com/The-Vonky/Gaucha-Gestao/issues/41); não alterar a suíte de Auditoria para acomodar o serviço de identidade. O banco Supabase hospedado não foi identificado como recurso deste repositório; desenvolvimento usa **somente stacks descartáveis**, nunca confundir com o projeto Co-Living conectado.
 
+## 0.1 Correções contratuais obrigatórias para remover NO-GO arquitetural
+
+A revisão externa de 2026-10-13 classificou **NO-GO** a proposta até que os cinco itens a seguir tenham plano e evidência verificável; o ADR foi atualizado, mas **não está aprovado** apenas por documentação ou CI:
+
+1. **Último administrador:** invariante I-ADMIN (ADR §5) exige pelo menos um administrador global recuperável após toda transação administrativa suportada; implementar guard com lock `BEFORE STATEMENT` + verificação diferida para PostgREST, `core.save_role`, Core profile, assignment, roles, role_permissions, permissions e lifecycle. Bootstrap zero-to-one é operador-only. Reset/ban/hold do último admin não inicia sem administrador alternativo e runbook break-glass com dupla autorização independente.
+2. **Login tardio:** `auth.sessions.created_at > cutoff` **não basta** se password grant antigo validar antes do reset e concluir sessão depois. Para credencial nova, exigir admissão por sessão/geração vinculada à **prova de senha vigente iniciada após o commit da mutação Auth**. Incluir `identity_session_admissions` e contrato `/me/credential-proof`, negar ausência/geração errada; provar o interleaving em GoTrue real e reconsiderar implementação se o método não for viável.
+3. **AMR e recovery:** `auth.sessions` não demonstra `password`; consultar `auth.mfa_amr_claims` por session_id/titular via função mínima e correlacionar com `amr` de JWT validado, método/timestamp; recovery/OTP/MFA-only não concede recência para reset administrativo. Se a AMR pinada não oferecer prova verificável, bloquear.
+4. **Locks existentes:** triggers de escrita em **todas** as superfícies da autoridade de administrador, inclusive update via RLS/PostgREST e `core.save_role`, compartilham lock e incrementam `authority_revision`; duas sessões SQL devem provar não haver perda de permissão entre begin/commit sem fail-closed e auditoria.
+5. **Correlação Auth:** ledger commitado previamente reserva UUID e e-mail normalizado; trigger `private.create_profile` consulta `NEW.id` e reserva privada, **não** app_metadata, que a imagem GoTrue aplica após INSERT. Marker posterior só auxilia reconciliação; sem reserva, `unmanaged_pending`, nunca `ready`.
+
+**Critério de aceite da arquitetura:** arquiteto independente confirma que os cinco contratos não possuem ambiguidades antes de registrar aprovação do [PR #24](https://github.com/The-Vonky/Gaucha-Gestao/pull/24). **Critério de aceite da Etapa 1:** testes negativos reais em PostgreSQL descartável, incluindo proteções do último admin e corrida com escritores Core legados, sem cutover G3/sem alteração de produção. As hipóteses de GoTrue são **testes exigidos**, não fatos provados pela documentação. Recuperação de último admin depende ainda de aprovação do procedimento PO-14 para produção.
+
 ## 1. Instrução para Claude Code e fontes
 
 Execute este brief como implementação técnica; leia `AGENTS.md`, ADR-007 completo, ACCOUNT_LIFECYCLE_V1, SECURITY, AUTHORIZATION, ADR-004/005, Compose/Kong/UPSTREAM e workflows relevantes. Confirme o HEAD inicial da `main`, o merge Core v2 (`ac2f5482`) e os contratos A/B/C agora nela antes de criar migration: não copiar interfaces antigas de outra branch nem reabrir o desenho do runtime.
@@ -97,10 +109,10 @@ Formato externo e semântica de endpoints são ADR §6; não implementar aliases
 
 | Condição perigosa | Teste e resultado obrigatório |
 | --- | --- |
-| JWT antigo é renovado depois do cutoff | Mesma `session_id`/created_at continua negada em Core, REST/GraphQL e Storage; `iat` novo não libera |
+| JWT antigo é renovado depois do cutoff | Mesma `session_id`/created_at continua negada em Core, REST/GraphQL e Storage; `iat` novo não libera. Após reset, a admissão de sessão exige geração/prova pós-commit mesmo se `created_at` for maior que cutoff |
 | Executor morre enquanto Auth ainda pode completar request | Lease vencida não lança segundo reset; conta continua hold; retomar só após quiescência/evidência |
-| E-mail existente ou resposta create perdida | UUID reservado/marker decide reconciliação; conta com mesmo e-mail e UUID diferente é conflito |
-| Permissão do admin/composição da role muda durante a operação | Nova fase revalida; segredo não é entregue se perdeu autoridade; efeito Auth ocorrido é auditado |
+| E-mail existente ou resposta create perdida | UUID **reservado em ledger antes do HTTP** decide trigger por `NEW.id`; marker escrito após INSERT é somente conferência posterior; conta de mesmo e-mail/UUID diferente é conflito |
+| Permissão do admin/composição da role muda durante a operação | Writer via `core.save_role` **ou** PostgREST incrementa revisão sob lock comum, nova fase revalida; segredo não é entregue se perdeu autoridade; efeito Auth ocorrido é auditado |
 | Restore ressuscita senha/sessão antiga e Kong recebe URL/método alternativo | Cutoff/revisão de conta impede acesso Core; allowlist normalizada não abre Admin/PUT bypass |
 
 ## 6. Etapas de implementação
@@ -109,11 +121,12 @@ Formato externo e semântica de endpoints são ADR §6; não implementar aliases
 
 **Consome:** ADR §§5/7/8 e helpers atuais; **produz na Etapa 1:** schema/ledger/`IdentityStore` e **novos predicados privados de sessão/lifecycle para futuras operações de identidade**, exercitados de forma independente. **Não ativa ainda a barreira compartilhada das APIs de negócio.** A conexão dos predicados ao `private.is_active_user()` e às policies Core/REST/Storage ocorre **somente no gate G3, após a reconciliação G2**.
 
-- [ ] Criar testes DB que falhem para sessão inexistente/alheia/pré-cutoff, lifecycle ausente/pending/hold, inativo, escopo insuficiente, auto-reset, autoridade parcial sobre alvo e tentativa EXECUTE por `anon`/`authenticated`/role runtime fora da allowlist.
+- [ ] Criar testes DB que falhem para sessão inexistente/alheia/pré-cutoff, lifecycle ausente/pending/hold, inativo, escopo insuficiente, auto-reset, autoridade parcial sobre alvo e tentativa EXECUTE por `anon`/`authenticated`/role runtime fora da allowlist. Incluir prova de AMR `password` recente em `auth.mfa_amr_claims` e negativas recovery/OTP/ausente; não deduzir método de sessão pela criação.
 - [ ] Executar `npx vitest run tests/core-identity-database.test.ts`; registrar falhas por ausência do contrato, não por erro de fixture.
 - [ ] Gerar migration pelo CLI disponível após `supabase migration new --help`; implementar estruturas, trigger complementar e funções privadas. Owners/search_path/grants explícitos. Função de decisão retorna apenas fatos necessários; sem acesso geral a Auth. Preservar semântica `can_manage_profile`/`can_revoke`.
 - [ ] Implementar e testar **funções privadas novas de autorização de identidade** que validam ator e sessão reais e preservam o modelo existente de `can_manage_profile`/`can_revoke`. Na Etapa 1, **não modificar a definição nem o comportamento de `private.is_active_user()`**, seus callers, RLS de negócio, wrappers REST/GraphQL, policies Storage ou ingress Kong. O vínculo entre os helpers novos e a autorização operacional compartilhada fica explicitamente para G3, **após** reconciliação G2. Adaptar somente fixtures/testes novos de identidade a sessão/lifecycle reais, sem condicional que ignore sessão; contas legadas mantêm semântica e acessos anteriores enquanto G3 não ocorre. Adoção de contas em volume compartilhado é proibida nesta etapa; testar apenas lista explícita e auditada em ambiente descartável, com bootstrap do primeiro admin também isolado.
-- [ ] Exercitar duas sessões PostgreSQL em concorrência: grants/role edit/inativação contra begin/finalização. Confirmar locks, geração e deny; rodar suite DB existente e `npm test` sem alterar assertions de negócio.
+- [ ] Implementar/testar invariante **I-ADMIN** com lock antes de mutações + trigger de verificação diferida sob transação para writers Core existentes (profile/assignment/role/permission e `core.save_role`). Provar proteção do último administrador e condição inicial bootstrap operator-only; não iniciar reset Auth do último admin.
+- [ ] Exercitar **duas sessões PostgreSQL reais** em concorrência: grants/revogações via PostgREST, `core.save_role`, inativação, lifecycle e begin/finalização. Confirmar locks compartilhados, revisão de autoridade, geração, deny e ausência de deadlock; rodar suite DB existente e `npm test` sem alterar assertions de negócio. Se proteção do último admin exigir impacto antes de G3, publicar teste de regressão mostrando que contas legadas não ficam bloqueadas nem recebem permissão nova.
 - [ ] Commit atômico de migration/fixtures/contratos DB com evidência de privilégio negativo.
 
 ### Etapa 2 — Runtime, JWT e adaptador Auth
