@@ -1,7 +1,8 @@
 # Teste manual da Fundação Core v2 (PC e Android via USB)
 
-Status: **disponível para teste de desenvolvimento; NÃO homologado e NÃO implantado em produção**.
-Base técnica verificada: `integration/core-foundation-v2-wave2`, commit `9d5a68661bce9cee667ff2b7a88259a58cb7446e`. CI integrada: [run 37933225921](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/37933225921), jobs `validate` e `action-plans-integration` aprovados na primeira tentativa.
+Status: **testes manuais concluídos conforme declaração do responsável em 2026-10-13**, mas sem relatório detalhado anexado nesta etapa; **NÃO homologado e NÃO implantado em produção**.
+Baseline de consolidação: `integration/core-foundation-v2-wave2` @ `14900b63cacfab79d5bb398c9d9a8d6bfe3deab2` (snapshot anterior à atualização documental). PRs #25–#33, #35 e #36 estão integrados apenas nessa branch. CI do HEAD combinado precisa ser confirmada separadamente.
+A confirmação dos testes foi comunicada pelo responsável; **não foram informados/validados independentemente modelo de dispositivo, perfis usados, URL/porta de banco local ou capturas sem dados pessoais**. Registrar na [Issue #34](https://github.com/The-Vonky/Gaucha-Gestao/issues/34) se houver evidências. Não tratar esta confirmação como homologação completa P1–P9/O1–O8.
 A CI no runner descartável não garante que o Supabase de quem testa esteja atualizado nem substitui validação em dispositivo real.
 
 ## Pré-requisitos
