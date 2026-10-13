@@ -3,11 +3,13 @@ import { Link, Navigate, NavLink, useParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { useResource } from "../../shared/useResource";
 import { Icon } from "../../shared/icons";
+import { plural } from "../../shared/plural";
 import {
   Confirm,
+  EmptyState,
+  LoadingState,
   Metric,
   Notice,
-  PageTitle,
   type BadgeTone,
 } from "../../shared/ui";
 import * as api from "./api";
@@ -201,7 +203,7 @@ export function InspectionPage() {
       ),
     };
   }, [data, answers]);
-  if (r.loading && !data) return <Notice>Carregando auditoria…</Notice>;
+  if (r.loading && !data) return <LoadingState label="Carregando auditoria…" />;
   if (r.error)
     return (
       <Notice error>
@@ -216,13 +218,16 @@ export function InspectionPage() {
     </Notice>;
   if (!data || !results)
     return (
-      <>
-        <PageTitle
-          title="Auditoria indisponível"
-          description="A auditoria não existe ou você não tem acesso a ela."
-        />
-        <Link className="quality-return" to="/audit">Voltar para Auditorias</Link>
-      </>
+      <EmptyState
+        title="Auditoria indisponível"
+        actions={
+          <Link className="button-link quality-return" to="/audit">
+            Voltar para Auditorias
+          </Link>
+        }
+      >
+        A auditoria não existe ou você não tem acesso a ela.
+      </EmptyState>
     );
   const { summary, sections, items } = data;
   const base = `/audit/inspections/${summary.id}`;
@@ -453,9 +458,10 @@ export function InspectionPage() {
           title={
             action === "finalize" ? "Finalizar auditoria" : "Reabrir auditoria"
           }
+          tone="primary"
           description={
             action === "finalize"
-              ? `O resultado será calculado pelo servidor e a auditoria ficará somente leitura. Esta finalização considera ${review?.rows.length??0} evidência(s) disponível(is) em toda a auditoria. ${finalPending>0||Object.keys(evidence.uploads).length>0?"Há envios pendentes; eles não entrarão no conjunto e não poderão ser confirmados após finalizar.":""}`
+              ? `O resultado será calculado pelo servidor e a auditoria ficará somente leitura. Esta finalização considera ${plural(review?.rows.length??0,"evidência disponível","evidências disponíveis")} em toda a auditoria. ${finalPending>0||Object.keys(evidence.uploads).length>0?"Há envios pendentes; eles não entrarão no conjunto e não poderão ser confirmados após finalizar.":""}`
               : "A auditoria voltará a ficar editável. As respostas serão preservadas e o resultado final será removido até nova finalização."
           }
           onClose={() => setAction(undefined)}

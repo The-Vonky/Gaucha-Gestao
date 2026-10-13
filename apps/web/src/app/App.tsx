@@ -19,13 +19,7 @@ import { AuditModule } from "../modules/audit/AuditModule";
 import { ActionPlansModule } from "../modules/action-plans/ActionPlansModule";
 import { BrandMark, Loader } from "../shared/brand";
 import { Icon } from "../shared/icons";
-import {
-  Drawer,
-  EmptyState,
-  IconButton,
-  Notice,
-  PageTitle,
-} from "../shared/ui";
+import { Drawer, EmptyState, IconButton, Notice } from "../shared/ui";
 import {
   destinations,
   groupDescriptions,
@@ -297,15 +291,17 @@ function Guard({ path, children }: { path: string; children: ReactNode }) {
   return visible.some((d) => d.path === path) ? (
     children
   ) : (
-    <>
-      <PageTitle
-        title="Acesso não autorizado"
-        description="Você não possui a permissão necessária para esta área."
-      />
-      <Link className="button-link" to="/">
-        Voltar ao início
-      </Link>
-    </>
+    <EmptyState
+      title="Acesso não autorizado"
+      actions={
+        <Link className="button-link" to="/">
+          Voltar ao início
+        </Link>
+      }
+    >
+      Você não possui a permissão necessária para esta área. Solicite o acesso à
+      administração.
+    </EmptyState>
   );
 }
 function Shell() {
@@ -323,8 +319,9 @@ function Shell() {
     "/admin/users": <UsersPage />,
     "/admin/roles": <RolesPage />,
     "/admin/permissions": <PermissionsPage />,
-    "/admin/units": <OrganizationPage kind="units" />,
-    "/admin/sectors": <OrganizationPage kind="sectors" />,
+    // Same component on both routes: the key keeps filters and page per list.
+    "/admin/units": <OrganizationPage key="units" kind="units" />,
+    "/admin/sectors": <OrganizationPage key="sectors" kind="sectors" />,
     "/admin/logs": <LogsPage />,
   };
   const current = destinations.find(

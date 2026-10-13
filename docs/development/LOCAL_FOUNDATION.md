@@ -1,5 +1,7 @@
 # Fundação v1 — desenvolvimento e validação
 
+> **Core v2 em teste (2026-10-09):** este guia registra a fundação histórica e contém o comando `supabase db reset` somente para **banco local descartável sob controle exclusivo**. Para testar as interfaces novas sem risco ao banco compartilhado e sem confundir versões locais, use [Core v2 — teste manual PC/Android](CORE_V2_MANUAL_TEST.md); no desenvolvimento corrente, não execute reset em instâncias compartilhadas.
+
 Requisitos: Node 22.12+ e npm. Na raiz:
 
 ```sh

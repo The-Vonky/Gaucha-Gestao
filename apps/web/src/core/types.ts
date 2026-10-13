@@ -6,6 +6,11 @@ export type Versioned = {
   updated_at: string;
 };
 export type Profile = Versioned & { display_name: string; active: boolean };
+/** Profile plus the Auth e-mail and last sign-in (core.user_directory, user admins only). */
+export type DirectoryUser = Profile & {
+  email: string | null;
+  last_sign_in_at: string | null;
+};
 export type Organization = Versioned & {
   code: string;
   name: string;
@@ -68,6 +73,23 @@ export type AuditLog = {
   metadata: Json;
   correlation_id: string | null;
 };
+/** Where a log reference label comes from: the current authorized row, or none readable. */
+export type LabelSource = "current" | "unavailable";
+/** core.audit_log_page row: an event plus the labels the reader's own RLS resolves. */
+export type AuditLogEntry = AuditLog & {
+  actor_display_name: string | null;
+  actor_active: boolean | null;
+  actor_label_source: LabelSource | null;
+  unit_code: string | null;
+  unit_name: string | null;
+  unit_active: boolean | null;
+  unit_label_source: LabelSource | null;
+  sector_code: string | null;
+  sector_name: string | null;
+  sector_active: boolean | null;
+  sector_label_source: LabelSource | null;
+  total_count: number;
+};
 export type Json =
   | string
   | number
@@ -102,6 +124,25 @@ export type Database = {
         Returns: { role: Json; permission_keys: string[] }[];
       };
       my_access: { Args: Record<string, never>; Returns: AccessGrant[] };
+      user_directory: {
+        Args: { p_search?: string; p_inactive?: boolean };
+        Returns: DirectoryUser[];
+      };
+      audit_log_page: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+          p_from?: string | null;
+          p_to?: string | null;
+          p_actor?: string | null;
+          p_actor_search?: string | null;
+          p_module?: string | null;
+          p_action?: string | null;
+          p_entity_type?: string | null;
+          p_entity_id?: string | null;
+        };
+        Returns: AuditLogEntry[];
+      };
       unit_covers: { Args: { p_units: string[] }; Returns: UnitCoverRow[] };
       begin_unit_cover_upload: {
         Args: {

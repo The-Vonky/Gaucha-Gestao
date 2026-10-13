@@ -30,6 +30,6 @@
     "playwright": "1.62.1",
     "read-excel-file": "9.3.10",
     "typescript-eslint": "^8.48.0",
-    "vitest": "^3.2.4"
+    "vitest": "5.0.4"
   }
 }

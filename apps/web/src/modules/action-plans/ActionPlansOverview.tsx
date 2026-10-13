@@ -5,7 +5,14 @@ import { hasAnyScope } from "../../core/auth/permissions";
 import { formatDate } from "../../shared/dates";
 import { useResource } from "../../shared/useResource";
 import { Icon } from "../../shared/icons";
-import { Metric, Notice, PageTitle } from "../../shared/ui";
+import { plural } from "../../shared/plural";
+import {
+  EmptyState,
+  LoadingState,
+  Metric,
+  Notice,
+  PageTitle,
+} from "../../shared/ui";
 import * as api from "./api";
 import {
   daysUntilDue,
@@ -139,18 +146,18 @@ export function ActionPlansOverview() {
           </button>
         </Notice>
       )}
-      {r.loading && <Notice>Carregando planos de ação…</Notice>}
+      {r.loading && <LoadingState label="Carregando planos de ação…" />}
       {r.error && (
         <Notice error>
           {r.error} <button onClick={r.reload}>Tentar novamente</button>
         </Notice>
       )}
       {r.data && !all.length && (
-        <Notice>
+        <EmptyState title="Nenhum plano de ação">
           {inspection
             ? "Nenhum plano de ação disponível para esta auditoria no seu acesso."
             : "Nenhum plano de ação disponível no seu acesso."}
-        </Notice>
+        </EmptyState>
       )}
       {r.data && all.length > 0 && (
         <>
@@ -198,7 +205,9 @@ export function ActionPlansOverview() {
               {refined > 0 && (
                 <span className="ap-filters-count numeric">
                   {refined}
-                  <span className="visually-hidden"> ativo(s)</span>
+                  <span className="visually-hidden">
+                    {refined === 1 ? " ativo" : " ativos"}
+                  </span>
                 </span>
               )}
             </button>
@@ -275,17 +284,38 @@ export function ActionPlansOverview() {
             </div>
           </form>
           {!visible.length ? (
-            <Notice>Nenhum plano corresponde aos filtros.</Notice>
+            // Without search or filters, only inactive-source history is hidden.
+            <EmptyState
+              title="Nenhum plano encontrado"
+              actions={
+                refined || term ? (
+                  <button type="button" onClick={() => setFilters(initial)}>
+                    Limpar filtros
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => set("history", true)}>
+                    Incluir origens inativas
+                  </button>
+                )
+              }
+            >
+              {refined || term
+                ? "Nenhum plano corresponde à busca e aos filtros aplicados."
+                : "Os planos disponíveis são históricos de critérios que deixaram de ser AP/NAT."}
+            </EmptyState>
           ) : (
             <p className="ap-queue-head numeric" role="status">
-              {visible.length} plano(s) · em ordem de prioridade
+              {plural(visible.length, "plano", "planos")} · em ordem de
+              prioridade
             </p>
           )}
-          <ul className="ap-queue">
-            {visible.map((x) => (
-              <QueueRow key={x.plan.id} summary={x} />
-            ))}
-          </ul>
+          {visible.length > 0 && (
+            <ul className="ap-queue">
+              {visible.map((x) => (
+                <QueueRow key={x.plan.id} summary={x} />
+              ))}
+            </ul>
+          )}
         </>
       )}
       {creating && r.data && (
@@ -327,13 +357,15 @@ function QueueRow({ summary: x }: { summary: PlanSummary }) {
         <span className="ap-due-date numeric">{formatDate(plan.due_date)}</span>
         {overdue && days !== null && (
           <span className="ap-due-note danger numeric">
-            {-days} dia(s) de atraso
+            {plural(-days, "dia", "dias")} de atraso
           </span>
         )}
         {soon && days !== null && (
           <span className="ap-due-note warning numeric">
             <Icon name="clock" />
-            {days === 0 ? "Vence hoje" : `Vence em ${days} dia(s)`}
+            {days === 0
+              ? "Vence hoje"
+              : `Vence em ${plural(days, "dia", "dias")}`}
           </span>
         )}
       </div>

@@ -3,10 +3,23 @@ import { Link, Navigate, NavLink, useParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { useUnitCovers, type UnitCover as CoreCover } from "../../core/unitCovers";
 import { useResource } from "../../shared/useResource";
-import { Badge, Notice, Status } from "../../shared/ui";
+import {
+  Badge,
+  EmptyState,
+  LoadingState,
+  Notice,
+  Status,
+} from "../../shared/ui";
 import * as api from "./api";
 import { NewInspection } from "./NewInspection";
-import { Delta, formatDate, Progress, Result, StatusBadge } from "./Result";
+import {
+  Delta,
+  DraftLink,
+  formatDate,
+  Progress,
+  Result,
+  StatusBadge,
+} from "./Result";
 import { ReportingActions } from "./reporting/ReportingActions";
 import { RESPONSE_LABELS, RESPONSES } from "./scoring";
 import { ScoreTrend, trendPoints } from "./ScoreTrend";
@@ -49,14 +62,23 @@ export function UnitPage() {
         <Link to="/audit">Auditorias</Link> /{" "}
         <span>{unit?.name ?? "Unidade"}</span>
       </nav>
-      {r.loading && <Notice>Carregando unidade…</Notice>}
+      {r.loading && <LoadingState label="Carregando unidade…" />}
       {r.error && (
         <Notice error>
           {r.error} <button onClick={r.reload}>Tentar novamente</button>
         </Notice>
       )}
       {r.data && !unit && (
-        <Notice error>Unidade não encontrada ou sem acesso de Auditoria.</Notice>
+        <EmptyState
+          title="Unidade indisponível"
+          actions={
+            <Link className="button-link quality-return" to="/audit">
+              Voltar para Auditorias
+            </Link>
+          }
+        >
+          A unidade não existe ou você não tem acesso de Auditoria a ela.
+        </EmptyState>
       )}
       {r.data && unit && state && (
         <>
@@ -81,7 +103,12 @@ export function UnitPage() {
             )}
           </div>
           {tab === "summary" ? (
-            <UnitSummary unit={unit} state={state} rows={r.data.rows} />
+            <UnitSummary
+              unit={unit}
+              state={state}
+              rows={r.data.rows}
+              canEdit={auth.can("audit.inspection.edit", { unit_id: unitId })}
+            />
           ) : (
             <UnitHistoryTab unit={unit} rows={r.data.rows} />
           )}
@@ -174,17 +201,19 @@ function UnitSummary({
   unit,
   state,
   rows,
+  canEdit,
 }: {
   unit: AuditUnit;
   state: UnitState;
   rows: InspectionSummary[];
+  canEdit: boolean;
 }) {
   const recent = trendPoints(rows).slice(-6);
   if (!rows.length)
     return (
-      <section className="audit-panel unit-empty">
-        <p className="muted">Nenhuma auditoria registrada para esta unidade.</p>
-      </section>
+      <EmptyState title="Nenhuma auditoria registrada">
+        A situação, a evolução e o histórico aparecem a partir da primeira auditoria desta unidade.
+      </EmptyState>
     );
   const current = state.current;
   return (
@@ -250,9 +279,7 @@ function UnitSummary({
                   <p className="unit-draft-score">
                     <Result summary={d} />
                   </p>
-                  <Link className="button-link" to={`/audit/inspections/${d.id}/checklist`}>
-                    Continuar
-                  </Link>
+                  <DraftLink id={d.id} canEdit={canEdit} />
                 </li>
               ))}
             </ul>

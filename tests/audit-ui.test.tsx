@@ -649,6 +649,14 @@ describe("unit page", () => {
     expect(screen.getByText(/-30,0 p\.p\. vs\. anterior/)).toBeTruthy();
     expect(screen.getByRole("group", { name: /últimas 2 auditorias finalizadas/ })).toBeTruthy();
   });
+  it("lets readers follow an open draft instead of offering to continue it", async () => {
+    permissions.allowed = false;
+    renderUnit("/audit/units/A");
+    const follow = await screen.findByRole("link", { name: "Acompanhar" });
+    expect(follow.getAttribute("href")).toBe("/audit/inspections/d1");
+    expect(screen.queryByRole("link", { name: "Continuar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Nova auditoria" })).toBeNull();
+  });
   it("lists every inspection and the history report on the Histórico tab", async () => {
     renderUnit("/audit/units/A/historico");
     expect(await screen.findByRole("heading", { name: "Auditorias" })).toBeTruthy();

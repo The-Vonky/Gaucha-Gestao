@@ -2,7 +2,8 @@ import { useCallback, useState } from "react";
 import type { Organization } from "../types";
 import { useAuth } from "../auth/AuthProvider";
 import { useResource } from "../../shared/useResource";
-import { Badge, Confirm, Modal, Notice } from "../../shared/ui";
+import { plural } from "../../shared/plural";
+import { Badge, Confirm, LoadingState, Modal, Notice } from "../../shared/ui";
 import * as api from "./api";
 import { ActiveBadge } from "./parts";
 export function SectorUnits({
@@ -39,11 +40,16 @@ export function SectorUnits({
         <ActiveBadge active={sector.active} />
         {r.data && (
           <span className="muted numeric">
-            {linkedCount} de {r.data.units.length} unidade(s) vinculada(s)
+            {linkedCount} de{" "}
+            {plural(
+              r.data.units.length,
+              "unidade vinculada",
+              "unidades vinculadas",
+            )}
           </span>
         )}
       </p>
-      {r.loading && <Notice>Carregando vínculos…</Notice>}
+      {r.loading && <LoadingState label="Carregando vínculos…" />}
       {r.error && <Notice error>{r.error}</Notice>}
       {r.data && !r.data.units.length && (
         <Notice>Nenhuma unidade disponível.</Notice>
@@ -100,6 +106,7 @@ export function SectorUnits({
       {change && (
         <Confirm
           title={change.linked ? "Desvincular unidade" : "Vincular unidade"}
+          tone={change.linked ? "danger" : "primary"}
           description={`${sector.name} / ${change.name}. Vínculos referenciados por atribuições não podem ser removidos.`}
           onClose={() => setChange(undefined)}
           onConfirm={async () => {

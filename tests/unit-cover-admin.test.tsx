@@ -4,7 +4,11 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OrganizationPage } from "../apps/web/src/core/admin/OrganizationPage";
-const api = vi.hoisted(() => ({ list: vi.fn(), saveOrganization: vi.fn() }));
+const api = vi.hoisted(() => ({
+  organizations: vi.fn(),
+  saveOrganization: vi.fn(),
+  PAGE_SIZE: 25,
+}));
 vi.mock("../apps/web/src/core/admin/api", () => api);
 const auth = vi.hoisted(() => ({ denied: new Set<string>() }));
 vi.mock("../apps/web/src/core/auth/AuthProvider", () => ({
@@ -44,7 +48,7 @@ afterEach(() => {
   auth.denied = new Set();
 });
 async function open(cover: typeof current | null = null) {
-  api.list.mockResolvedValue({ rows: [UNIT], count: 1 });
+  api.organizations.mockResolvedValue({ rows: [UNIT], count: 1 });
   covers.resolveUnitCovers.mockResolvedValue(new Map([["u1", cover]]));
   const user = userEvent.setup();
   render(<OrganizationPage kind="units" />);
@@ -91,7 +95,7 @@ describe("unit cover self-service in Administration", () => {
     await user.click(within(dialog).getByRole("button", { name: "Salvar foto" }));
     expect(await within(dialog).findByText("Foto salva. A capa já aparece nas telas desta unidade.")).toBeTruthy();
     expect(covers.uploadUnitCover).toHaveBeenCalledWith("u1", prepared, { x: 0, y: 100 }, expect.any(Function));
-    await waitFor(() => expect(api.list).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(api.organizations).toHaveBeenCalledTimes(2));
     expect(covers.resolveUnitCovers).toHaveBeenCalledTimes(2);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:prepared");
   });
@@ -174,7 +178,7 @@ describe("unit cover self-service in Administration", () => {
   });
   it("offers no cover action without admin.unit.manage and shows a server denial safely", async () => {
     auth.denied = new Set(["admin.unit.manage"]);
-    api.list.mockResolvedValue({ rows: [UNIT], count: 1 });
+    api.organizations.mockResolvedValue({ rows: [UNIT], count: 1 });
     render(<OrganizationPage kind="units" />);
     await screen.findByText("Unidade CMD");
     expect(screen.queryByRole("button", { name: /Capa/ })).toBeNull();

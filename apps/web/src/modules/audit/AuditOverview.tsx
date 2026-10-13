@@ -4,10 +4,19 @@ import { useAuth } from "../../core/auth/AuthProvider";
 import { useUnitCovers, type UnitCover as CoreCover } from "../../core/unitCovers";
 import { hasAnyScope } from "../../core/auth/permissions";
 import { useResource } from "../../shared/useResource";
-import { Badge, Metric, Notice, PageTitle, Status } from "../../shared/ui";
+import { Icon } from "../../shared/icons";
+import {
+  Badge,
+  EmptyState,
+  LoadingState,
+  Metric,
+  Notice,
+  PageTitle,
+  Status,
+} from "../../shared/ui";
 import * as api from "./api";
 import { NewInspection } from "./NewInspection";
-import { Delta, formatDate, Progress, Result } from "./Result";
+import { Delta, DraftLink, formatDate, Progress, Result } from "./Result";
 import { formatScore } from "./scoring";
 import type { AuditUnit, InspectionSummary } from "./types";
 import { UnitCover } from "./UnitIdentity";
@@ -104,17 +113,17 @@ export function AuditOverview() {
           </button>
         )}
       </PageTitle>
-      {r.loading && <Notice>Carregando auditorias…</Notice>}
+      {r.loading && <LoadingState label="Carregando auditorias…" />}
       {r.error && (
         <Notice error>
           {r.error} <button onClick={r.reload}>Tentar novamente</button>
         </Notice>
       )}
       {r.data && !r.data.units.length && (
-        <Notice>
+        <EmptyState title="Nenhuma unidade disponível">
           Nenhuma unidade disponível para Auditoria no seu acesso. Solicite uma
           atribuição por unidade à administração.
-        </Notice>
+        </EmptyState>
       )}
       {r.data && r.data.units.length > 0 && (
         <div className="audit-dashboard">
@@ -163,9 +172,7 @@ export function AuditOverview() {
                 </div>
                 <label className="audit-search">
                   <span className="visually-hidden">Buscar unidade</span>
-                  <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                    <path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14m9 2-4-4" />
-                  </svg>
+                  <Icon name="search" />
                   <input
                     type="search"
                     placeholder="Buscar unidade"
@@ -187,19 +194,24 @@ export function AuditOverview() {
                 ))}
               </div>
               {!shown.length ? (
-                <Notice>
-                  Nenhuma unidade encontrada.{" "}
-                  {(term || filter !== "all") && (
-                    <button
-                      onClick={() => {
-                        setSearch("");
-                        setFilter("all");
-                      }}
-                    >
-                      Limpar filtros
-                    </button>
-                  )}
-                </Notice>
+                <EmptyState
+                  title="Nenhuma unidade encontrada"
+                  actions={
+                    (term || filter !== "all") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearch("");
+                          setFilter("all");
+                        }}
+                      >
+                        Limpar filtros
+                      </button>
+                    )
+                  }
+                >
+                  Nenhuma unidade monitorada corresponde à busca e à situação selecionadas.
+                </EmptyState>
               ) : (
                 <ul className="unit-cards">
                   {shown.map(({ unit, state }) => (
@@ -207,6 +219,7 @@ export function AuditOverview() {
                       <UnitCard
                         unit={unit}
                         state={state}
+                        canEdit={auth.can("audit.inspection.edit", { unit_id: unit.id })}
                         cover={covers.get(unit.id)}
                         onCoverError={reportError}
                       />
@@ -295,11 +308,14 @@ function formatTimestamp(at: string) {
 function UnitCard({
   unit,
   state,
+  canEdit,
   cover,
   onCoverError,
 }: {
   unit: AuditUnit;
   state: UnitState;
+  /** Editors continue the checklist; readers follow the audit's overview. */
+  canEdit: boolean;
   cover?: CoreCover | null;
   onCoverError: (cover: CoreCover) => void;
 }) {
@@ -348,9 +364,7 @@ function UnitCard({
               <span className="unit-card-caption">Auditoria em andamento</span>
               <Progress answered={draft.answered} total={draft.total_items} />
             </div>
-            <Link className="button-link unit-card-continue" to={`/audit/inspections/${draft.id}/checklist`}>
-              Continuar
-            </Link>
+            <DraftLink id={draft.id} canEdit={canEdit} className="unit-card-continue" />
           </div>
         )}
         <p className="unit-card-foot">
@@ -360,7 +374,7 @@ function UnitCard({
               : "Nenhuma auditoria registrada"}
           </span>
           <span className="unit-card-open" aria-hidden="true">
-            Ver unidade →
+            Ver unidade <Icon name="arrowRight" />
           </span>
         </p>
       </div>

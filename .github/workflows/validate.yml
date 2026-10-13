@@ -24,7 +24,9 @@ jobs:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci-build-placeholder
       - run: npm run verify:build
-      - run: npm audit --omit=dev
+      # Security gate covers production and development dependencies (including CI/test tools).
+      # The PR #35 upgrade eliminated the previous 4 findings; fail on moderate or worse.
+      - run: npm audit --audit-level=moderate
   action-plans-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -47,6 +49,10 @@ jobs:
       - run: node tests/integration/audit-evidence.mjs
       # Unit Cover v1: real Auth/Storage upload, batch signing, bucket limits and denials.
       - run: node tests/integration/unit-cover.mjs
+      # Core Reference Resolvers v1: real JWTs/PostgREST, denials, guessed IDs and batch limit.
+      - run: node tests/integration/core-references.mjs
+      # Core governance and logs: real JWT/PostgREST negative authorization matrix.
+      - run: node tests/integration/core-security-matrix.mjs
       # Admin UI at 375/768/1024/1440; adds uniquely tagged rows only, so it runs last.
       - run: node tests/integration/admin.mjs
       - if: always()

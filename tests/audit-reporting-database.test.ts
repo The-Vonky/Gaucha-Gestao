@@ -21,7 +21,7 @@ async function report(name: string, args: unknown[]) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
-    create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}');
+    create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}', last_sign_in_at timestamptz);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;`);
   await db.exec(STORAGE_STUB);
@@ -62,7 +62,7 @@ beforeAll(async () => {
 }, 60000);
 afterAll(async () => { await db?.close(); });
 
-describe.sequential("Audit reporting RPCs", () => {
+describe("Audit reporting RPCs", { concurrent: false }, () => {
   it("returns the complete ordered draft with undefined score", async () => {
     await as(2);
     const data = await report("inspection_export", [inspectionA]);

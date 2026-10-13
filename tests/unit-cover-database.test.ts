@@ -33,7 +33,7 @@ async function rows<T = Record<string, unknown>>(sql: string, params: unknown[] 
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
- create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}');
+ create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}', last_sign_in_at timestamptz);
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
  grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;`);
   await db.exec(STORAGE_STUB);
@@ -115,7 +115,7 @@ async function age(id: string, interval = "2 hours") {
   await db.exec("alter table core.unit_cover_assets enable trigger guard_unit_cover_asset");
 }
 
-describe.sequential("Core unit cover contract", () => {
+describe("Core unit cover contract", { concurrent: false }, () => {
   // Each case starts without live pending uploads, so the per-unit cap is tested explicitly.
   beforeEach(() => asOperator(() => db.query("update core.unit_cover_assets set status='retired',retired_at=now() where status='pending'")));
   it("adds the schema append-only with FKs, checks, RLS and no table grants", async () => {

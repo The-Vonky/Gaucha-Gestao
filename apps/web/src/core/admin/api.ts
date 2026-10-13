@@ -14,13 +14,20 @@ export async function list<K extends keyof RowMap>(table: K, page = 0) {
             ? "unit_id"
             : table === "role_permissions"
               ? "role_id"
-              : "id",
+              : table === "profiles"
+                ? "display_name"
+                : table === "user_role_assignments"
+                  ? "id"
+                  : "name",
       { ascending: table !== "system_audit_log" },
     );
   if (table === "role_permissions") query = query.order("permission_key");
   if (table === "unit_sectors") query = query.order("sector_id");
   if (table === "system_audit_log")
     query = query.order("id", { ascending: false });
+  // Named records read alphabetically; the id keeps each page boundary unique.
+  if (["profiles", "units", "sectors", "roles"].includes(table))
+    query = query.order("id");
   const { data, error, count } = await query.range(
     page * PAGE_SIZE,
     (page + 1) * PAGE_SIZE - 1,
@@ -51,6 +58,81 @@ export async function saveOrganization(
         .eq("version", row.version)
     : database().from(table).insert(values);
   const { error } = await query.select("id").single();
+  if (error) throw error;
+}
+export type ListFilter = { search: string; inactive: boolean };
+/** PostgREST `or` filter matching the search in any of the columns; null when it is blank. */
+function containsAny(columns: string[], search: string) {
+  // LIKE wildcards typed by the user are matched literally.
+  const literal = search.replace(/[\\%_]/g, (c) => `\\${c}`);
+  if (!literal) return null;
+  // Quoting also protects the OR grammar (commas, parentheses, quotes).
+  const pattern = JSON.stringify(`%${literal}%`);
+  return columns.map((column) => `${column}.ilike.${pattern}`).join(",");
+}
+/** A page of units or sectors, alphabetical, optionally filtered by code or name and active only. */
+export async function organizations(
+  kind: "units" | "sectors",
+  page: number,
+  filters: ListFilter,
+) {
+  let query = database()
+    .from(kind as "units")
+    .select("*", { count: "exact" })
+    .order("name")
+    .order("id");
+  const search = containsAny(["code", "name"], filters.search);
+  if (search) query = query.or(search);
+  if (!filters.inactive) query = query.eq("active", true);
+  const { data, error, count } = await query.range(
+    page * PAGE_SIZE,
+    (page + 1) * PAGE_SIZE - 1,
+  );
+  if (error) throw error;
+  return { rows: (data ?? []) as Organization[], count: count ?? 0 };
+}
+/** A page of access profiles (active and inactive), alphabetical, optionally filtered by name or key. */
+export async function roles(page: number, search: string) {
+  let query = database()
+    .from("roles")
+    .select("*", { count: "exact" })
+    .order("name")
+    .order("id");
+  const filter = containsAny(["name", "key"], search);
+  if (filter) query = query.or(filter);
+  const { data, error, count } = await query.range(
+    page * PAGE_SIZE,
+    (page + 1) * PAGE_SIZE - 1,
+  );
+  if (error) throw error;
+  return { rows: (data ?? []) as Role[], count: count ?? 0 };
+}
+/** Users with their Auth e-mail and last sign-in; the search matches name or e-mail. */
+export async function users(page: number, filters: ListFilter) {
+  const { data, error, count } = await database()
+    .rpc(
+      "user_directory",
+      { p_search: filters.search, p_inactive: filters.inactive },
+      { count: "exact" },
+    )
+    .order("display_name")
+    .order("id")
+    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+  if (error) throw error;
+  return { rows: data ?? [], count: count ?? 0 };
+}
+export async function renameProfile(
+  id: string,
+  version: number,
+  display_name: string,
+) {
+  const { error } = await database()
+    .from("profiles")
+    .update({ display_name })
+    .eq("id", id)
+    .eq("version", version)
+    .select("id")
+    .single();
   if (error) throw error;
 }
 export async function setProfileActive(
@@ -107,6 +189,17 @@ export async function saveRole(
   });
   if (error) throw error;
 }
+/** Deactivating keeps the role's assignments; they grant nothing until it is reactivated. */
+export async function setRoleActive(row: Role, active: boolean) {
+  const { error } = await database()
+    .from("roles")
+    .update({ active })
+    .eq("id", row.id)
+    .eq("version", row.version)
+    .select("id")
+    .single();
+  if (error) throw error;
+}
 export async function setUnitSector(
   unit_id: string,
   sector_id: string,
@@ -156,6 +249,36 @@ export async function logs(page: number, filters: LogFilters) {
   return { rows: data ?? [], count: count ?? 0 };
 }
 
+export type AuditLogQuery = {
+  /** Half-open ISO interval [from,to); pin `to` on the first page for stable pages. */
+  from?: string;
+  to?: string;
+  actor?: string;
+  /** Matches only actor names the reader already sees; never a directory search. */
+  actorSearch?: string;
+  module?: string;
+  action?: string;
+  entityType?: string;
+  entityId?: string;
+};
+/** A page of readable log events with authorized labels (core.audit_log_page). */
+export async function auditLogPage(page: number, filters: AuditLogQuery) {
+  const { data, error } = await database().rpc("audit_log_page", {
+    p_limit: PAGE_SIZE,
+    p_offset: page * PAGE_SIZE,
+    p_from: filters.from || null,
+    p_to: filters.to || null,
+    p_actor: filters.actor || null,
+    p_actor_search: filters.actorSearch || null,
+    p_module: filters.module || null,
+    p_action: filters.action || null,
+    p_entity_type: filters.entityType || null,
+    p_entity_id: filters.entityId || null,
+  });
+  if (error) throw error;
+  const rows = data ?? [];
+  return { rows, count: rows.length ? Number(rows[0].total_count) : 0 };
+}
 export async function roleDetail(id: string) {
   const { data, error } = await database()
     .rpc("role_detail", { p_id: id })

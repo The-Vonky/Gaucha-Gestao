@@ -172,7 +172,7 @@ beforeAll(async () => {
       ) as unknown as PGlite)
     : new PGlite();
   await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
- create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}');
+ create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}', last_sign_in_at timestamptz);
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
  grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;`);
   await db.exec(STORAGE_STUB);
@@ -229,7 +229,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await db?.close();
 });
-describe.sequential("Action Plans database", () => {
+describe("Action Plans database", { concurrent: false }, () => {
   it("backfills plans only for current AP/NAT answers and logs them", async () => {
     await db.exec("reset role");
     const plans = await rows(
@@ -729,7 +729,7 @@ async function completedPlan(sector: string | null = null) {
 }
 const affected = (r: { affectedRows?: number; rowCount?: number | null }) =>
   r.affectedRows ?? r.rowCount ?? 0;
-describe.sequential("Action Plan evidence", () => {
+describe("Action Plan evidence", { concurrent: false }, () => {
   it("installs a private bucket, RLS and only INSERT/SELECT Storage policies", async () => {
     await db.exec("reset role");
     expect(

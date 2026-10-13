@@ -4,7 +4,15 @@ import { useAuth } from "../../core/auth/AuthProvider";
 import { formatDate, today } from "../../shared/dates";
 import { Icon } from "../../shared/icons";
 import { useResource } from "../../shared/useResource";
-import { Confirm, Form, Modal, Notice, PageTitle } from "../../shared/ui";
+import {
+  Confirm,
+  EmptyState,
+  Form,
+  LoadingState,
+  Modal,
+  Notice,
+  PageTitle,
+} from "../../shared/ui";
 import * as api from "./api";
 import { EvidenceList, EvidenceUpload } from "./PlanEvidence";
 import { listEvidence, removeEvidence } from "./evidence";
@@ -67,7 +75,7 @@ export function ActionPlanPage() {
     }
     r.reload();
   }
-  if (r.loading) return <Notice>Carregando plano de ação…</Notice>;
+  if (r.loading) return <LoadingState label="Carregando plano de ação…" />;
   if (r.error)
     return (
       <Notice error>
@@ -76,13 +84,16 @@ export function ActionPlanPage() {
     );
   if (!r.data)
     return (
-      <>
-        <PageTitle
-          title="Plano de ação indisponível"
-          description="O plano não existe ou você não tem acesso a ele."
-        />
-        <Link className="quality-return" to="/action-plans">Voltar para Planos de Ação</Link>
-      </>
+      <EmptyState
+        title="Plano de ação indisponível"
+        actions={
+          <Link className="button-link quality-return" to="/action-plans">
+            Voltar para Planos de Ação
+          </Link>
+        }
+      >
+        O plano não existe ou você não tem acesso a ele.
+      </EmptyState>
     );
   const s = r.data;
   const plan = s.plan;
@@ -132,36 +143,39 @@ export function ActionPlanPage() {
         title={plan.improvement_point}
         description={`${s.unit_name}${s.sector_name ? ` / ${s.sector_name}` : ""}`}
       >
-        <div className="row-actions">
-          {canWrite && (
-            <button onClick={() => setEditing(true)}>
-              Editar planejamento
-            </button>
-          )}
-          {canWrite &&
-            TRANSITIONS[plan.status].map((t) => (
-              <button
-                key={t.to}
-                className={t.to === "completed" ? "primary" : undefined}
-                disabled={t.to !== "pending" && missing.length > 0}
-                onClick={() => setTransition(t.to)}
-              >
-                {t.label}
+        {/* Header actions share the page-action size used across the app. */}
+        {(canWrite || canVerify) && (
+          <>
+            {canWrite && (
+              <button onClick={() => setEditing(true)}>
+                Editar planejamento
               </button>
-            ))}
-          {canVerify && (
-            <button
-              className="primary"
-              onClick={() => {
-                evidence.reload();
-                setEvidenceChanged(false);
-                setVerifying(true);
-              }}
-            >
-              {verified ? "Reverificar eficácia" : "Verificar eficácia"}
-            </button>
-          )}
-        </div>
+            )}
+            {canWrite &&
+              TRANSITIONS[plan.status].map((t) => (
+                <button
+                  key={t.to}
+                  className={t.to === "completed" ? "primary" : undefined}
+                  disabled={t.to !== "pending" && missing.length > 0}
+                  onClick={() => setTransition(t.to)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            {canVerify && (
+              <button
+                className="primary"
+                onClick={() => {
+                  evidence.reload();
+                  setEvidenceChanged(false);
+                  setVerifying(true);
+                }}
+              >
+                {verified ? "Reverificar eficácia" : "Verificar eficácia"}
+              </button>
+            )}
+          </>
+        )}
       </PageTitle>
       <div className="ap-status-strip">
         <PlanBadges plan={plan} />
@@ -371,6 +385,7 @@ export function ActionPlanPage() {
       {transition && (
         <Confirm
           title={`Alterar para ${STATUS_LABELS[transition]}`}
+          tone="primary"
           description={
             transition === "completed"
               ? "Concluir registra você como responsável pela conclusão. A eficácia será verificada separadamente."

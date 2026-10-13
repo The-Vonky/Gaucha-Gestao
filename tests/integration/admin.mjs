@@ -135,7 +135,8 @@ try {
       ),
       `Page overflow: ${what}`,
     );
-  /** Every visible enabled control in `scope` meets the target for this width. */
+  /** Every visible enabled control in `scope` meets the target for this width.
+   * A native checkbox/radio is targeted through its label, which toggles it. */
   const targets = async (page, scope, width, what) => {
     // Measure the settled UI, not the dialog entrance scale (0.985), which can
     // make a correct 44px target temporarily render at ~43.3px.
@@ -153,9 +154,13 @@ try {
         els
           .filter((e) => e.getClientRects().length && !e.disabled)
           .map((e) => [
-            e.textContent.trim() || e.getAttribute("aria-label"),
-            e.getBoundingClientRect(),
+            e.textContent.trim() ||
+              e.getAttribute("aria-label") ||
+              e.closest("label")?.textContent.trim(),
+            (/^(checkbox|radio)$/.test(e.type) && e.closest("label")) ||
+              e,
           ])
+          .map(([n, e]) => [n, e.getBoundingClientRect()])
           .filter(
             ([, r]) =>
               Math.round(r.height) < min || Math.round(r.width) < min - 12,
@@ -178,7 +183,7 @@ try {
     );
     await noOverflow(page, `${what} dialog`);
   };
-  /** Lists are ordered by id: walk the pager until `target` is on screen. */
+  /** Walk the pager (shown only for more than one page) until `target` is on screen. */
   const reach = async (page, target) => {
     const pager = page.getByRole("navigation", { name: "Paginação" });
     const first = () =>
@@ -193,7 +198,7 @@ try {
           !document.body.innerText.includes("Carregando") &&
           document
             .querySelector('nav[aria-label="Paginação"] span')
-            ?.textContent?.endsWith(`Página ${n}`) &&
+            ?.textContent?.includes(`Página ${n} de `) &&
           document.querySelector("main li")?.textContent !== b,
         [before, n + 1],
       );
@@ -235,16 +240,12 @@ try {
         });
     };
 
-    // Users: name first, UUID secondary and wrapping, grouped actions, no self toggle.
+    // Users: readable list, diagnostic UUID in assignments, no self toggle.
     await visit("/admin/users", "users");
     const row = page.getByRole("listitem").filter({ hasText: LONG_NAME });
     await reach(page, row);
     await noOverflow(page, "users page with long name");
-    const id = row.locator("code", { hasText: other.id });
-    assert.ok(
-      await id.evaluate((e) => e.scrollWidth <= e.clientWidth + 1),
-      "UUID must wrap",
-    );
+    assert.equal(await row.locator("code", { hasText: other.id }).count(), 0);
     assert.equal(
       await row.getByRole("button", { name: `Desativar ${LONG_NAME}` }).count(),
       1,
@@ -257,6 +258,11 @@ try {
     const dialog = page.getByRole("dialog");
     await dialog.getByText("Atribuições vigentes").waitFor();
     await dialog.getByText(LONG_UNIT).waitFor();
+    const id = dialog.locator("code", { hasText: other.id });
+    assert.ok(
+      await id.evaluate((e) => e.scrollWidth <= e.clientWidth + 1),
+      "Diagnostic UUID must wrap in the assignments dialog",
+    );
     assert.ok(
       await page.evaluate(() =>
         document.activeElement?.closest("dialog")?.hasAttribute("open"),
@@ -291,43 +297,94 @@ try {
       await page.screenshot({ path: join(shots, `role-editor-${width}.png`) });
     await page.keyboard.press("Escape");
 
-    // Permissions: read-only catalog (only pagination buttons in main).
+    // Permissions: read-only catalog grouped by domain, on one screen (no buttons).
     await visit("/admin/permissions", "permissions");
-    assert.deepEqual(await page.locator("main button").allTextContents(), [
-      "Anterior",
-      "Próxima",
-    ]);
+    assert.deepEqual(await page.locator("main button").allTextContents(), []);
+    await page
+      .locator("main")
+      .getByRole("heading", { name: /^Administração/ })
+      .waitFor();
 
     // Units and sectors.
     await visit("/admin/units", "units");
+    // Unit access review: read-only, opened by keyboard from the unit row; Escape
+    // closes it and focus returns to the row action.
+    const unitRow = page.getByRole("listitem").filter({ hasText: LONG_UNIT });
+    await reach(page, unitRow);
+    const access = unitRow.getByRole("button", {
+      name: `Acessos de ${LONG_UNIT}`,
+    });
+    await access.focus();
+    await page.keyboard.press("Enter");
+    const review = page.getByRole("dialog");
+    await review.getByRole("heading", { name: `Acessos · ${LONG_UNIT}` }).waitFor();
+    await review
+      .getByRole("list", { name: `Atribuições de ${LONG_NAME}` })
+      .waitFor();
+    await settle(page);
+    assert.equal(
+      await review.getByRole("button", { name: /Editar|Revogar|Desativar|Salvar/ }).count(),
+      0,
+    );
+    await dialogFits(page, width, height, "unit access");
+    await targets(page, "dialog button, dialog select, dialog input", width, "unit access");
+    if (shots)
+      await page.screenshot({ path: join(shots, `unit-access-${width}.png`) });
+    await page.keyboard.press("Escape");
+    await review.waitFor({ state: "detached" });
+    assert.ok(
+      await access.evaluate((e) => e === document.activeElement),
+      "Focus returns to the unit access action",
+    );
     await visit("/admin/sectors", "sectors");
     const sectorRow = page
       .getByRole("listitem")
       .filter({ hasText: `Estoque ${tag}` });
     await reach(page, sectorRow);
     await sectorRow.getByRole("button", { name: /^Unidades de/ }).click();
-    await page.getByText(/unidade\(s\) vinculada\(s\)/).waitFor();
+    await page.getByText(/unidades? vinculadas?/).waitFor();
     await dialogFits(page, width, height, "sector units");
     await targets(page, "dialog button", width, "sector units");
     await page.keyboard.press("Escape");
 
-    // Logs: filter bar, rows and JSON details that never widen the page.
+    // Logs: filter bar, readable rows, and a plain summary with the raw JSON in a
+    // collapsed technical section that never widens the page. The unit's own
+    // insert event: written by the database (no actor), after = the new row, no before.
     await visit("/admin/logs", "logs");
-    await page.getByLabel("Módulo").fill("core");
+    await page.getByLabel("Módulo").selectOption("core");
+    await page.getByLabel("Tipo de registro").selectOption("units");
+    await page.getByLabel("Identificador do registro").fill(unit);
     await page.getByRole("button", { name: "Filtrar" }).click();
-    await page.getByText("1 filtro(s) aplicado(s).").waitFor();
+    await page.getByText("3 filtros aplicados").waitFor();
     await settle(page);
-    await page
-      .getByRole("button", { name: /^Detalhes:/ })
-      .first()
-      .click();
+    const event = page
+      .getByRole("listitem")
+      .filter({ hasText: "Inclusão" })
+      .filter({ hasText: LONG_UNIT });
+    await event.getByText("Operação administrativa do banco").waitFor();
+    await event.getByRole("button", { name: /^Detalhes:/ }).click();
     const details = page.getByRole("dialog");
+    await details.getByText(LONG_UNIT).first().waitFor();
     const json = details.getByRole("region", { name: "Depois" });
+    // Identifiers and JSON are secondary: hidden until the operator asks for them.
+    assert.equal(await json.isVisible(), false, "JSON starts collapsed");
+    await details.getByText("Detalhes técnicos").click();
     await json.waitFor();
+    assert.ok(
+      (await json.textContent()).includes(LONG_UNIT),
+      "after_data shows the inserted row",
+    );
     assert.ok(
       await json.evaluate((e) => e.scrollWidth <= e.clientWidth + 1),
       "JSON wraps inside its region",
     );
+    // An insert has no before: stated, not an empty or "null" region.
+    assert.equal(
+      await details.getByRole("region", { name: "Antes" }).count(),
+      0,
+    );
+    await details.getByText("Sem conteúdo registrado.").first().waitFor();
+    await targets(page, "dialog summary, dialog button", width, "log details");
     await dialogFits(page, width, height, "log details");
     if (shots)
       await page.screenshot({ path: join(shots, `log-details-${width}.png`) });
@@ -370,6 +427,20 @@ try {
     await db.query("select id,active from core.units where code=$1", [code])
   ).rows[0];
   assert.equal(created.active, true);
+  // The search matches the business code or the name, case-insensitively, and
+  // treats LIKE wildcards and filter delimiters literally.
+  await page.goto(`${origin}/admin/units`);
+  await settle(page);
+  for (const term of [code.toLowerCase(), `unidade nova ${tag}`]) {
+    await page.getByRole("searchbox").fill(term);
+    await page
+      .getByRole("list", { name: "Unidades" })
+      .getByText(`Unidade Nova ${tag}`)
+      .waitFor();
+    await page.getByText("1 unidade ativa").waitFor();
+  }
+  await page.getByRole("searchbox").fill(`${tag},%_\\"()`);
+  await page.getByText("Nenhuma unidade encontrada").waitFor();
   // Deactivation needs the application dialog; cancelling does not mutate.
   await page.goto(`${origin}/admin/units`);
   await settle(page);
@@ -398,20 +469,29 @@ try {
       .rows[0].active,
     false,
   );
-  // The change is logged and readable in Logs with the actor.
+  // The change is logged and readable in Logs: by actor id and by visible name,
+  // with the actor's name in the summary and the UUID in the technical details.
+  const deactivation = page
+    .getByRole("listitem")
+    .filter({ hasText: "Desativação" })
+    .filter({ hasText: `Unidade Nova ${tag}` });
   await page.goto(`${origin}/admin/logs`);
-  await page.getByLabel("Ator (UUID)").fill(admin.id);
-  await page.getByRole("button", { name: "Filtrar" }).tap();
-  await settle(page);
-  await page
-    .getByRole("button", { name: /^Detalhes:/ })
-    .first()
-    .tap();
-  const actor = page
-    .getByRole("dialog")
-    .locator("dt", { hasText: /^Ator$/ })
-    .locator("xpath=following-sibling::dd");
-  assert.equal((await actor.textContent()).trim(), admin.id);
+  for (const who of [`Admin UI ${tag}`, admin.id]) {
+    await page.getByLabel("Quem").fill(who);
+    await page.getByRole("button", { name: "Filtrar" }).tap();
+    await settle(page);
+    await deactivation.getByText(`Admin UI ${tag}`).waitFor();
+    await deactivation.getByText("Inativa").waitFor();
+  }
+  await deactivation.getByRole("button", { name: /^Detalhes:/ }).tap();
+  const dialog = page.getByRole("dialog");
+  const fact = (term) =>
+    dialog
+      .locator("dt", { hasText: new RegExp(`^${term}$`) })
+      .locator("xpath=following-sibling::dd");
+  assert.equal((await fact("Quem").textContent()).trim(), `Admin UI ${tag}`);
+  await dialog.getByText("Detalhes técnicos").tap();
+  assert.equal((await fact("Pessoa").textContent()).trim(), admin.id);
   await noOverflow(page, "actor log details");
   console.log(
     "PASS admin UI at 375/768/1024/1440: no page overflow, touch targets, UUID wrap, self toggle hidden, keyboard dialog, system role read-only, read-only permissions, sector links, log filters and wrapped JSON; create/deactivate with confirm/cancel and actor log",

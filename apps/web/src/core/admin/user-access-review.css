@@ -1,0 +1,94 @@
+/* User access review (read-only). Builds on the admin list/scope classes. */
+.uar-intro {
+  margin: 0 0 var(--space-4);
+  font: var(--text-body-sm);
+}
+.uar-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+}
+@media (min-width: 640px) {
+  .uar-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.uar-metrics .metric {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.uar-metrics .metric-value {
+  overflow-wrap: anywhere;
+}
+.uar-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-5) 0 var(--space-2);
+}
+.uar-toolbar .adm-subhead {
+  margin: 0;
+}
+.uar-item {
+  align-items: flex-start;
+}
+.uar-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+.uar-restricted {
+  font-style: normal;
+  color: var(--warning);
+}
+.uar-perms {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+.uar-keys summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  cursor: pointer;
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
+}
+.uar-keys ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+.uar-keys code {
+  font: var(--text-caption);
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+  overflow-wrap: anywhere;
+}
+.uar-evaluated {
+  margin-top: var(--space-4);
+}
+@media (max-width: 767px) {
+  /* Assignment details first; its state badges on their own line. */
+  .uar-item .adm-main {
+    flex-basis: 100%;
+  }
+  .uar-state {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+}
