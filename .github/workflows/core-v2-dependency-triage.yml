@@ -1,0 +1,49 @@
+# Temporary, isolated evidence for issue #34; no deploy, migrations or secrets.
+name: Core v2 dependency triage
+on:
+  push:
+    branches:
+      - audit/core-v2-dependency-triage-v1
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Capture full and production-only audit
+        shell: bash
+        run: |
+          npm audit --json > full-audit.json || true
+          npm audit --omit=dev --json > production-audit.json || true
+          node --input-type=commonjs - <<'NODE'
+          const fs = require('fs');
+          for (const [label, file] of [['ALL', 'full-audit.json'], ['PRODUCTION', 'production-audit.json']]) {
+            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+            console.log('AUDIT_SUMMARY', label, JSON.stringify(data.metadata?.vulnerabilities ?? {}));
+            for (const [name, v] of Object.entries(data.vulnerabilities || {})) {
+              console.log('AUDIT_FINDING', JSON.stringify({
+                audit: label, name, severity: v.severity, isDirect: v.isDirect,
+                range: v.range, fixAvailable: v.fixAvailable, effects: v.effects,
+                via: v.via.map(x => typeof x === 'string'
+                  ? x
+                  : { name: x.name, title: x.title, url: x.url, range: x.range, severity: x.severity })
+              }));
+            }
+            if (data.error) console.log('AUDIT_ERROR', JSON.stringify(data.error));
+          }
+          NODE
+      - name: Upload reports for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-v2-npm-audit
+          path: |
+            full-audit.json
+            production-audit.json
+          retention-days: 7
