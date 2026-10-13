@@ -229,7 +229,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await db?.close();
 });
-describe.sequential("Action Plans database", () => {
+describe("Action Plans database", { concurrent: false }, () => {
   it("backfills plans only for current AP/NAT answers and logs them", async () => {
     await db.exec("reset role");
     const plans = await rows(
@@ -729,7 +729,7 @@ async function completedPlan(sector: string | null = null) {
 }
 const affected = (r: { affectedRows?: number; rowCount?: number | null }) =>
   r.affectedRows ?? r.rowCount ?? 0;
-describe.sequential("Action Plan evidence", () => {
+describe("Action Plan evidence", { concurrent: false }, () => {
   it("installs a private bucket, RLS and only INSERT/SELECT Storage policies", async () => {
     await db.exec("reset role");
     expect(

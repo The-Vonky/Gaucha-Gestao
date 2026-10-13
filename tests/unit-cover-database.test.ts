@@ -115,7 +115,7 @@ async function age(id: string, interval = "2 hours") {
   await db.exec("alter table core.unit_cover_assets enable trigger guard_unit_cover_asset");
 }
 
-describe.sequential("Core unit cover contract", () => {
+describe("Core unit cover contract", { concurrent: false }, () => {
   // Each case starts without live pending uploads, so the per-unit cap is tested explicitly.
   beforeEach(() => asOperator(() => db.query("update core.unit_cover_assets set status='retired',retired_at=now() where status='pending'")));
   it("adds the schema append-only with FKs, checks, RLS and no table grants", async () => {

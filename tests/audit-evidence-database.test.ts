@@ -121,7 +121,7 @@ async function attach(id:string,item="item-001"){
 async function fill(id:string){
  await db.exec("reset role");await db.query("update audit.inspection_answers set response='AT' where inspection_id=$1",[id]);await login(users.unitA);
 }
-describe.sequential("Audit checklist evidence contract",()=>{
+describe("Audit checklist evidence contract", { concurrent: false }, () =>{
  it("owns criterion evidence, private bucket, minimal grants and no finalize bypass",async()=>{
   await db.exec("reset role");
   expect((await one<{e:string}>("select to_regclass('audit.checklist_evidence')::text e")).e).toBe("audit.checklist_evidence");

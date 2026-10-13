@@ -130,7 +130,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await db?.close();
 });
-describe.sequential("Audit domain database", () => {
+describe("Audit domain database", { concurrent: false }, () => {
   it("seeds exactly the canonical catalog from the reference JSON", async () => {
     await db.exec("reset role");
     const template = await one<{

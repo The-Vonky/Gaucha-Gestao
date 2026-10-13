@@ -51,7 +51,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await db?.close();
 });
-describe.sequential("PostgreSQL Core migration and RLS", () => {
+describe("PostgreSQL Core migration and RLS", { concurrent: false }, () => {
   it("creates exactly the Core tables with RLS enabled", async () => {
     await db.exec("reset role");
     const r = await db.query<{ relrowsecurity: boolean }>(
