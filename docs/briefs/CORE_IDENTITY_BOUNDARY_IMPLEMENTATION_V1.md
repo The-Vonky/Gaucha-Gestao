@@ -15,7 +15,7 @@ Esta proposta foi redirecionada à `main` após o merge Core v2 de 2026-10-13. A
 
 - **Gate G0 — ADR aceito:** decisão técnica aprovada em PR #24 por responsável; confirmar Node/Fastify/GoTrue pinados e rota Kong da instância real, sem inferir produção da stack descartável.
 - **Gate G1 — Runtime inacessível externamente:** tipagem, config validada, probes e AuthPort/IdentityStore fechados, testes negativos com fixtures, sem routes privilegiadas habilitadas em serviço de produção.
-- **Gate G2 — Compatibilidade de contas existentes:** migration aditiva cria lifecycle separado, mas **não** muda ainda o predicado `private.is_active_user()`; inventário/reconciliação explícita com operador, inclusive último administrador, usa ambiente descartável e evidencia ausência de órfãos antes da virada. Nunca fazer `active=true => ready`.
+- **Gate G2 — Compatibilidade de contas existentes:** migration aditiva cria lifecycle separado e helpers privados **novos**, fail-closed para chamadas de identidade, mas **não altera** `private.is_active_user()`, wrappers atuais Core/REST/GraphQL nem policies Storage. Inventário/reconciliação explícita com operador, inclusive último administrador, usa ambiente descartável e evidencia ausência de órfãos antes da virada. Nunca fazer `active=true => ready`. Durante essa preparação, não habilitar endpoints de criação/reset em ambiente compartilhado nem conceder grants operacionais a contas `credential_pending` antes de fechar o boundary.
 - **Gate G3 — Cutover coordenado:** somente depois de G2 e testes ponta a ponta, ativar verificações de sessão/lifecycle em helpers de PostgREST/Storage e negar PUT/Admin Auth no Kong no **mesmo plano de rollout controlado**; verificar que login/refresh/logout permitidos continuam funcionando e que nenhuma rota direta contorna o serviço. Para volume legado sem adoção validada, **bloquear o cutover** ao invés de assumir defaults permissivos ou causar indisponibilidade global.
 - **Gate G4 — PO e operação:** decisões PO-02–PO-14 aplicáveis, recuperação do último admin, evidência de entrega/identidade, SMTP quando habilitado, rotação, restore, retenção e MFA/compensação antes de qualquer habilitação para pessoas reais.
 
@@ -33,7 +33,7 @@ Implemente e valide as etapas abaixo em commits pequenos. Não implemente UI adm
 - Auth Admin somente pelo adaptador interno; nenhum DML SQL em `auth.users`, `auth.sessions`, refresh tokens ou hashes de senha.
 - Core profile/lifecycle inicial nascem no trigger da criação Auth; não segundo insert de profile no serviço.
 - Não converter `profiles.active=false` em hold de senha; preservar regras de revogação/delegação.
-- Default deny externo para Admin Auth e PUT user; default deny em dados para estado/sessão ausentes.
+- Default deny externo para Admin Auth e PUT user **no cutover G3**, nunca como alteração antecipada do Kong. Desde a Etapa 1, funções privadas **novas** de identidade negam lifecycle/sessão ausentes; predicados e policies de acesso de negócio atuais ficam inalterados até adoção G2 e cutover G3.
 - Nova migration incremental; nenhuma migration aplicada é editada. Nenhuma alteração em Audit/Action Plans ou contratos de read model A/B/C.
 - Serviço sem `JWT_SECRET`/credencial `postgres`; DB role só EXECUTE privado; segredo Auth no adaptador Admin isolado.
 - Sem retry cego de mutação Auth em timeout, sem persistir senhas/links/hashes de request, sem exposição de introspecção SQL/headers.
@@ -66,10 +66,10 @@ Lista permitida para esta implementação; novos arquivos dentro dos diretórios
 | `apps/core-identity/src/auth.ts`, `database.ts` | Adaptadores estreitos Auth/SQL; interfaces abaixo; sem clients globais mutáveis entre contexto titular/Admin |
 | `apps/core-identity/src/rateLimit.ts`, `audit.ts`, `reconcile.ts`, `health.ts` | Limites persistentes, eventos/logs sanitizados, reconciliação, probes/métricas |
 | `package.json`, `package-lock.json`, `eslint.config.js`, `vitest.config.ts` | Novo workspace e comandos do serviço; preservar validações web existentes |
-| **Nova migration** `supabase/migrations/<timestamp>_core_identity_boundary_v1.sql` | Ledger/lifecycle/rate-limit, função trigger complementar, helpers canônicos incrementalmente, grants runtime e eventos |
+| **Nova migration** `supabase/migrations/<timestamp>_core_identity_boundary_v1.sql` | Ledger/lifecycle/rate-limit, trigger complementar, **novas funções privadas sem substituir os helpers/policies de negócio atuais**, grants runtime e eventos; conexão ao boundary comum somente em G3 após G2 |
 | `tests/core-identity-auth.test.ts`, `core-identity-api.test.ts`, `core-identity-database.test.ts`, `core-identity-failures.test.ts`, `core-identity-observability.test.ts` | Contratos, autorização, concorrência e fault injection sem credenciais reais |
 | `tests/integration/core-identity.mjs`, `tests/identity-fixture.ts`, `tests/integration/identity-fixture.mjs` | Auth/Kong/PostgreSQL reais e fixtures com sessões/lifecycle admitidos |
-| `tests/*database.test.ts`, `tests/storage-stub.ts`, `tests/integration/*.mjs` existentes | Apenas adaptação **test-only** do bootstrap de identidade/sessão que o predicado compartilhado exigir; não mudar assertions de negócio para fazê-las passar |
+| `tests/*database.test.ts`, `tests/storage-stub.ts`, `tests/integration/*.mjs` existentes | Na Etapa 1, usar fixtures isoladas para as funções privadas novas; **não** adaptar testes existentes à barreira compartilhada antes de G2/G3. No cutover posterior, permitir apenas adaptações **test-only** de sessão/identidade reais, sem afrouxar assertions de negócio |
 | `infra/supabase/docker-compose.yml`, `volumes/api/kong.yml`, `UPSTREAM.md`, `infra/README.md` | Sexto serviço, redes/allowlist/limits, proveniência e comandos em duas fases |
 | `infra/env/staging.env.example`, `production.env.example` | Nomes/placeholders server-only; production permanece não executável |
 | `scripts/ops/gen-secrets.sh`, `common.sh`, `healthcheck.sh`, `smoke.mjs`, **novo** `identity-admin.mjs` | Secrets CI/runtime, guards/probes, fixtures internas e adoção/reconciliação operador em alvo descartável explícito |
@@ -107,12 +107,12 @@ Formato externo e semântica de endpoints são ADR §6; não implementar aliases
 
 ### Etapa 1 — Persistência privada e autorização canônica
 
-**Consome:** ADR §§5/7/8 e helpers atuais; **produz:** `IdentityStore` e barreira de sessão/lifecycle compartilhada.
+**Consome:** ADR §§5/7/8 e helpers atuais; **produz na Etapa 1:** schema/ledger/`IdentityStore` e **novos predicados privados de sessão/lifecycle para futuras operações de identidade**, exercitados de forma independente. **Não ativa ainda a barreira compartilhada das APIs de negócio.** A conexão dos predicados ao `private.is_active_user()` e às policies Core/REST/Storage ocorre **somente no gate G3, após a reconciliação G2**.
 
 - [ ] Criar testes DB que falhem para sessão inexistente/alheia/pré-cutoff, lifecycle ausente/pending/hold, inativo, escopo insuficiente, auto-reset, autoridade parcial sobre alvo e tentativa EXECUTE por `anon`/`authenticated`/role runtime fora da allowlist.
 - [ ] Executar `npx vitest run tests/core-identity-database.test.ts`; registrar falhas por ausência do contrato, não por erro de fixture.
 - [ ] Gerar migration pelo CLI disponível após `supabase migration new --help`; implementar estruturas, trigger complementar e funções privadas. Owners/search_path/grants explícitos. Função de decisão retorna apenas fatos necessários; sem acesso geral a Auth. Preservar semântica `can_manage_profile`/`can_revoke`.
-- [ ] Integrar predicado em helpers Core; adaptar fixtures de testes à identidade/sessão realista sem condicional que ignore sessão no ambiente test. Adoção operator-only, lista explícita, auditada; bootstrap do primeiro admin em fixture CI separado do servidor.
+- [ ] Implementar e testar **funções privadas novas de autorização de identidade** que validam ator e sessão reais e preservam o modelo existente de `can_manage_profile`/`can_revoke`. Na Etapa 1, **não modificar a definição nem o comportamento de `private.is_active_user()`**, seus callers, RLS de negócio, wrappers REST/GraphQL, policies Storage ou ingress Kong. O vínculo entre os helpers novos e a autorização operacional compartilhada fica explicitamente para G3, **após** reconciliação G2. Adaptar somente fixtures/testes novos de identidade a sessão/lifecycle reais, sem condicional que ignore sessão; contas legadas mantêm semântica e acessos anteriores enquanto G3 não ocorre. Adoção de contas em volume compartilhado é proibida nesta etapa; testar apenas lista explícita e auditada em ambiente descartável, com bootstrap do primeiro admin também isolado.
 - [ ] Exercitar duas sessões PostgreSQL em concorrência: grants/role edit/inativação contra begin/finalização. Confirmar locks, geração e deny; rodar suite DB existente e `npm test` sem alterar assertions de negócio.
 - [ ] Commit atômico de migration/fixtures/contratos DB com evidência de privilégio negativo.
 
