@@ -1,8 +1,8 @@
 # Design Brief — Trusted Core Identity Boundary v1
 
-Status: READY FOR ARCHITECTURE DECISION
-Base: `integration/core-foundation-v2-wave2`
-Target integration branch: `integration/core-foundation-v2-wave2`
+Status: REVIEW IN PROGRESS — proposta documental, não aprovada para runtime
+Base: `main` (Core v2 consolidado em `ac2f5482979135ef51acb6b901d0f4effef35395`)
+Target review branch: `main`
 
 ## Objective
 
@@ -72,4 +72,4 @@ Also create the follow-up implementation brief for the selected option, but do n
 
 ## Completion
 
-Commit ADR + implementation brief. Do not merge. PR target: `integration/core-foundation-v2-wave2`.
+Revisar ADR + implementation brief na PR documental direcionada a `main`; merge apenas após aceite arquitetural. Nenhum runtime, operação Auth privilegiada ou deploy decorre deste brief.

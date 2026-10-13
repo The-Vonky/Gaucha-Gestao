@@ -1,10 +1,11 @@
 # ADR-007 — Boundary confiável de identidade Core
 
-- Status: **Proposed — opção técnica escolhida; aceite pelo PR de integração**
+- Status: **Proposed — opção técnica escolhida; aceite exige revisão/merge do PR #24 à main**
 - Data: 2026-10-08
 - Branch: `docs/adr-core-identity-boundary-v1`
-- Destino: `integration/core-foundation-v2-wave2`
-- Snapshot inspecionado: `113e87ee9838d627228a84a2d45ff069d1da05d4`
+- Destino: `main` (Core v2 já consolidado)
+- Snapshot original inspecionado em 2026-10-08: `113e87ee9838d627228a84a2d45ff069d1da05d4` (histórico)
+- Baseline atual de revisão: `main` após Core v2 PR #38, commit `ac2f5482979135ef51acb6b901d0f4effef35395` (2026-10-13). As evidências de Topologia/Ingress devem ser revalidadas no início do PR runtime.
 
 ## 1. Contexto e autoridade
 
@@ -27,6 +28,12 @@ Fontes normativas: [ADR-004](ADR-004-platform-stack.md), [ADR-005](ADR-005-core-
 | `private.can_manage_profile`/`can_revoke` limitam autoalteração e autoridade sobre acessos do alvo | Reusar a mesma semântica em operações privilegiadas. |
 | `package-lock.json` resolve Supabase JS/Auth JS **2.117.1** apesar do range `^2.89.0` | Não é necessário atualizar o SDK web apenas para obter `current_password`. |
 | CI de infraestrutura fixa exatamente cinco serviços e usa Auth Admin público para fixtures | A implementação terá de atualizar explicitamente essas duas premissas. |
+
+### Marco de adoção no Core v2
+
+A branch de integração foi promovida à `main` em 2026-10-13 ([PR #38](https://github.com/The-Vonky/Gaucha-Gestao/pull/38)); este ADR é uma decisão **subsequente**, não parte da consolidação anterior. O serviço privilegiado ainda não existe. O PR de runtime só pode ser aberto sobre a `main` depois do aceite deste ADR; o brief anexo determina uma implementação em gates e sem habilitar o produto automaticamente.
+
+**Cutover crítico:** instalar estruturas privadas de lifecycle é diferente de substituir a autoridade atual de `private.is_active_user()`. Nunca aplicar deny de sessão/estado a perfis legados sem antes reconciliar e adotar, em lista explícita, todos os usuários que precisam manter acesso — inclusive o último administrador — e provar o caminho de recuperação. Não alterar a exposição do gateway Auth antes de provar em ambiente descartável os fluxos necessários ao app; não abrir Admin Auth para facilitar testes. A sequência G0–G4 e o impedimento de produção constam no [brief de implementação](../briefs/CORE_IDENTITY_BOUNDARY_IMPLEMENTATION_V1.md).
 
 ## 2. Decisão
 

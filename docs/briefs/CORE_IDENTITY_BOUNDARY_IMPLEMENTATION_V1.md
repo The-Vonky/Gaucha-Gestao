@@ -7,11 +7,23 @@
 - **Architecture:** um serviço Core no mesmo Compose; Auth por API interna, Core por funções privadas/role restrita, estado/auditoria no PostgreSQL existente. Sem backend de negócios ou Edge Functions.
 - **Tech Stack:** Node 24 LTS, TypeScript strict/ESM, Fastify 5, `pg` 8, `fetch` nativo, npm/lockfile existente.
 - **Spec:** [ADR-007-core-identity-boundary](../decisions/ADR-007-core-identity-boundary.md).
-- **Branch futura:** `feat/core-identity-boundary-v1`, criada da `integration/core-foundation-v2-wave2` depois de D aceito e da revisão das integrações A/B/C. PR para essa integração; sem merge/deploy implícito.
+- **Branch futura:** `feat/core-identity-boundary-v1`, criada da `main` consolidada após aceite do ADR-007 e revisão dos contratos Core v2 já incorporados. PR de implementação também para `main`, iniciando em Draft; nenhum merge/deploy implícito.
+
+## 0. Gates de adoção e rollout após a consolidação Core v2
+
+Esta proposta foi redirecionada à `main` após o merge Core v2 de 2026-10-13. A aprovação desta arquitetura **não libera automaticamente** criação/reset reais, alterações da API Auth pública, modificações nos helpers RLS existentes nem deployment.
+
+- **Gate G0 — ADR aceito:** decisão técnica aprovada em PR #24 por responsável; confirmar Node/Fastify/GoTrue pinados e rota Kong da instância real, sem inferir produção da stack descartável.
+- **Gate G1 — Runtime inacessível externamente:** tipagem, config validada, probes e AuthPort/IdentityStore fechados, testes negativos com fixtures, sem routes privilegiadas habilitadas em serviço de produção.
+- **Gate G2 — Compatibilidade de contas existentes:** migration aditiva cria lifecycle separado, mas **não** muda ainda o predicado `private.is_active_user()`; inventário/reconciliação explícita com operador, inclusive último administrador, usa ambiente descartável e evidencia ausência de órfãos antes da virada. Nunca fazer `active=true => ready`.
+- **Gate G3 — Cutover coordenado:** somente depois de G2 e testes ponta a ponta, ativar verificações de sessão/lifecycle em helpers de PostgREST/Storage e negar PUT/Admin Auth no Kong no **mesmo plano de rollout controlado**; verificar que login/refresh/logout permitidos continuam funcionando e que nenhuma rota direta contorna o serviço. Para volume legado sem adoção validada, **bloquear o cutover** ao invés de assumir defaults permissivos ou causar indisponibilidade global.
+- **Gate G4 — PO e operação:** decisões PO-02–PO-14 aplicáveis, recuperação do último admin, evidência de entrega/identidade, SMTP quando habilitado, rotação, restore, retenção e MFA/compensação antes de qualquer habilitação para pessoas reais.
+
+A falha histórica de Chromium em Anexos segue documentada na [Issue #41](https://github.com/The-Vonky/Gaucha-Gestao/issues/41); não alterar a suíte de Auditoria para acomodar o serviço de identidade. O banco Supabase hospedado não foi identificado como recurso deste repositório; desenvolvimento usa **somente stacks descartáveis**, nunca confundir com o projeto Co-Living conectado.
 
 ## 1. Instrução para Claude Code e fontes
 
-Execute este brief como implementação técnica; leia `AGENTS.md`, ADR-007 completo, ACCOUNT_LIFECYCLE_V1, SECURITY, AUTHORIZATION, ADR-004/005, Compose/Kong/UPSTREAM e workflows relevantes. Confirme o HEAD inicial e os contratos A/B/C integrados antes de criar migration: não copiar interfaces antigas de outra branch nem reabrir o desenho do runtime.
+Execute este brief como implementação técnica; leia `AGENTS.md`, ADR-007 completo, ACCOUNT_LIFECYCLE_V1, SECURITY, AUTHORIZATION, ADR-004/005, Compose/Kong/UPSTREAM e workflows relevantes. Confirme o HEAD inicial da `main`, o merge Core v2 (`ac2f5482`) e os contratos A/B/C agora nela antes de criar migration: não copiar interfaces antigas de outra branch nem reabrir o desenho do runtime.
 
 Implemente e valide as etapas abaixo em commits pequenos. Não implemente UI administrativa/Minha Conta, SMTP, MFA, inativação/reativação Auth, outros módulos ou produção. Faça commit/push e PR de integração somente quando autorizado pela tarefa que invocar este brief. Na ausência de aceite do ADR, revisar/documentar é permitido; execução de runtime não começa por inferência.
 
