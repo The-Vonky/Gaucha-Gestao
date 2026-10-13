@@ -38,14 +38,19 @@ export async function runBrowser() {
     browser = await chromium.launch();
     for (const width of [1280, 375]) {
       const context = await browser.newContext({ viewport: { width, height: 812 }, hasTouch: width === 375, acceptDownloads: true });
+      // Static checkpoints identify flaky UI phases without printing auth or fixture values.
+      const checkpoint = (label) => { state.phase = `Chromium ${width}px: ${label}`; };
+      checkpoint("browser context ready");
       const page = await context.newPage();
       page.on("dialog", () => assert.fail("Removal must use the application dialog"));
       page.on("popup", () => assert.fail("Download must use a same-tab attachment"));
+      checkpoint("login page");
       await page.goto(origin);
       await page.getByLabel(/E-mail/i).fill(users.uiEmail);
       await page.getByLabel(/^Senha$/i).fill(password);
       await page.getByRole("button", { name: "Entrar", exact: true }).click();
       await page.getByLabel(/^Senha$/i).waitFor({ state: "detached" });
+      checkpoint("inspection setup");
       const uiInspection = await inspection();
       await page.goto(origin + "/audit/inspections/" + uiInspection + "/checklist");
       const section = page.getByRole("region", { name: "Evidências do critério 1", exact: true });
@@ -59,6 +64,7 @@ export async function runBrowser() {
           try { await section.waitFor({ timeout: 5000 }); return; } catch (error) { if (attempt >= 3) throw error; }
         }
       };
+      checkpoint("open criterion evidence");
       await openEvidence();
       const add = section.getByRole("button", { name: "Anexar arquivo ao critério 1", exact: true });
       await add.focus();
@@ -66,6 +72,7 @@ export async function runBrowser() {
       const input = section.locator('input[type="file"]');
       assert.ok((await input.getAttribute("aria-label")) || (await input.getAttribute("id") &&
         await section.locator('label[for="' + await input.getAttribute("id") + '"]').count()), "File input has an accessible label");
+      checkpoint("first file upload");
       const name = "Relatório_" + "critério_longo_".repeat(9) + ".pdf";
       await input.setInputFiles({ name, mimeType: PDF, buffer: bytes });
       const file = section.locator(".audit-evidence-list .file-item").filter({ hasText: name });
@@ -79,12 +86,14 @@ export async function runBrowser() {
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Evidence fits viewport");
       await downloadButton.focus();
       assert.equal(await downloadButton.evaluate((element) => element === document.activeElement), true);
+      checkpoint("original file download");
       const [downloaded] = await Promise.all([page.waitForEvent("download"), page.keyboard.press("Enter")]);
       assert.equal(downloaded.suggestedFilename(), name);
       assert.ok(readFileSync(await downloaded.path()).equals(bytes), "Browser download original bytes");
       assert.equal(page.url(), origin + "/audit/inspections/" + uiInspection + "/checklist", "Download retains current route");
       // Overview evidence list: the long name and "Baixar" each keep their own
       // space (no overlap), stacking when the panel is narrow.
+      checkpoint("overview layout");
       await page.getByRole("link", { name: "Visão geral", exact: true }).click();
       const overviewFile = page.locator(".audit-overview-file").filter({ hasText: name });
       for (const size of [375, 768, 1024, 1440]) {
@@ -101,6 +110,7 @@ export async function runBrowser() {
         assert.deepEqual(layout, { overlap: false, inside: true, overflow: false }, "Overview evidence layout at " + size + "px");
       }
       await page.setViewportSize({ width, height: 812 });
+      checkpoint("return from overview");
       await page.getByRole("link", { name: /^Checklist/ }).click();
       await downloadButton.waitFor();
       const available = await list("ui", uiInspection);
@@ -110,6 +120,7 @@ export async function runBrowser() {
       must(await api("ui").from("inspection_answers").update({ response: "NAT" }).eq("inspection_id", uiInspection).eq("item_key", "item-001"));
       assert.equal((await list("ui", uiInspection)).length, 1);
 
+      checkpoint("file removal confirmation");
       await removeButton.click();
       const dialog = page.getByRole("dialog");
       await dialog.waitFor();
@@ -125,6 +136,7 @@ export async function runBrowser() {
       assert.deepEqual(await list("ui", uiInspection), []);
 
       // Lost upload response: actual bytes were stored; retry reuses the pending ID/key (409 -> confirm).
+      checkpoint("interrupted storage response");
       let loseUpload = true;
       await page.route("**/storage/v1/object/audit-checklist-evidence/**", async (route) => {
         if (loseUpload && route.request().method() === "POST") {
@@ -146,6 +158,7 @@ export async function runBrowser() {
       assert.equal(await countEvents(uploadRetry[0].id, "evidence_add"), 1);
 
       // Lost confirm response: actual business confirmation succeeds, retry emits no duplicate event.
+      checkpoint("interrupted confirmation response");
       let loseConfirm = true;
       await page.route("**/rest/v1/rpc/confirm_checklist_evidence_upload", async (route) => {
         if (loseConfirm) {
@@ -166,6 +179,7 @@ export async function runBrowser() {
       assert.equal(await countEvents(confirmRetry[0].id, "evidence_add"), 1);
 
       // Missing actual Storage object remains a visible file with an explicit download error.
+      checkpoint("missing storage object");
       must(await service.storage.from(BUCKET).remove([uploadRetry[0].object_key]));
       await section.getByRole("button", { name: "Baixar upload retry.pdf", exact: true }).click();
       await section.getByText("Arquivo indisponível.", { exact: true }).waitFor();
@@ -178,6 +192,7 @@ export async function runBrowser() {
       }
 
       // Real client magic-byte and HEIC rejections do not create pending rows.
+      checkpoint("invalid files rejected");
       const beforeInvalid = (await db.query("select count(*)::int n from audit.checklist_evidence where inspection_id=$1", [uiInspection])).rows[0].n;
       for (const invalid of [
         { name: "camera.heic", mimeType: "image/heic", buffer: Buffer.from("heic") },
@@ -188,10 +203,12 @@ export async function runBrowser() {
         await section.getByRole("alert").waitFor();
       }
       assert.equal((await db.query("select count(*)::int n from audit.checklist_evidence where inspection_id=$1", [uiInspection])).rows[0].n, beforeInvalid);
+      checkpoint("valid file after rejected files");
       await input.setInputFiles({ name: "valid.pdf", mimeType: "", buffer: bytes });
       await section.getByRole("button", { name: "Baixar valid.pdf", exact: true }).waitFor();
 
       // Client normalizes the basename; v1's ZIP signature intentionally cannot prove OOXML content.
+      checkpoint("unicode and document names");
       await input.setInputFiles({ name: "e\u0301.pdf", mimeType: PDF, buffer: bytes });
       await section.getByRole("button", { name: "Baixar é.pdf", exact: true }).waitFor();
       await input.setInputFiles({
@@ -207,10 +224,12 @@ export async function runBrowser() {
       }
 
       // Lifecycle UI: finalized is readable, then reopen permits a new upload.
+      checkpoint("reload before finalization");
       await fill(uiInspection);
       await page.reload();
       await openEvidence();
       // Pending uploads from another section warn at review; concurrent available evidence causes a visible conflict.
+      checkpoint("pending file from another section");
       const hiddenPending = await begin("owner", uiInspection, "item-128", "pendente fora da seção.pdf");
       must(await upload("owner", hiddenPending.object_key));
       await page.getByRole("button", { name: "Finalizar", exact: true }).click();
@@ -219,10 +238,12 @@ export async function runBrowser() {
       await page.getByRole("dialog").getByRole("button", { name: "Confirmar", exact: true }).click();
       await page.getByText("O conjunto de evidências foi alterado.", { exact: false }).first().waitFor();
       assert.equal((await row(uiInspection)).status, "draft", "Visible conflict never silently finalizes");
+      checkpoint("review after conflict");
       await page.getByRole("button", { name: "Recarregar evidências e revisar", exact: true }).click();
       await openEvidence();
       await section.getByRole("button", { name: "Baixar valid.pdf", exact: true }).waitFor();
       await page.getByRole("button", { name: "Finalizar", exact: true }).click();
+      checkpoint("finalization with reviewed file");
       await page.getByRole("dialog").getByText("fora da seção.pdf", { exact: true }).waitFor();
       await page.getByRole("dialog").getByRole("button", { name: "Confirmar", exact: true }).click();
       // The finalize dialog itself says "somente leitura"; wait for the finalized page notice instead.
@@ -238,16 +259,19 @@ export async function runBrowser() {
       assert.ok(await add.count() === 0 || await add.isDisabled(), "Finalized has no enabled upload control");
       const readOnlyRemove = section.getByRole("button", { name: "Remover valid.pdf", exact: true });
       assert.ok(await readOnlyRemove.count() === 0 || await readOnlyRemove.isDisabled(), "Finalized has no enabled removal");
+      checkpoint("read-only download");
       const [finalDownload] = await Promise.all([
         page.waitForEvent("download"), section.getByRole("button", { name: "Baixar valid.pdf", exact: true }).click(),
       ]);
       assert.ok(readFileSync(await finalDownload.path()).equals(bytes));
+      checkpoint("reopen inspection");
       await page.getByRole("button", { name: "Reabrir", exact: true }).click();
       await page.getByRole("dialog").getByRole("button", { name: "Confirmar", exact: true }).click();
       await page.getByRole("button", { name: "Finalizar", exact: true }).waitFor();
       await openEvidence();
       await add.waitFor();
       assert.equal(await add.isEnabled(), true);
+      checkpoint("post-reopen file upload");
       await input.setInputFiles({ name: "reopened.pdf", mimeType: PDF, buffer: bytes });
       await section.getByRole("button", { name: "Baixar reopened.pdf", exact: true }).waitFor();
       assert.equal((await list("ui", uiInspection)).length, 3);
