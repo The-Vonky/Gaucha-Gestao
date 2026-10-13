@@ -47,3 +47,29 @@ jobs:
             full-audit.json
             production-audit.json
           retention-days: 7
+  migration-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Try safe dependency upgrade without committing it
+        run: |
+          npm install --save-dev --save-exact vitest@5.0.4
+          npm audit fix --no-fund
+          npm audit --audit-level=moderate
+          npm ls vitest @vitest/mocker tinypool source-map-js
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci-build-placeholder
+      - run: npm run verify:build
