@@ -125,7 +125,7 @@ afterAll(async () => {
   await db?.close();
 });
 
-describe.sequential("Core audit log read model", () => {
+describe("Core audit log read model", { concurrent: false }, () => {
   it("is a read-only invoker RPC without e-mail, executable only by authenticated", async () => {
     await db.exec("reset role");
     const fn = await db.query<{ prosecdef: boolean; provolatile: string; proconfig: string[]; result: string }>(

@@ -62,7 +62,7 @@ beforeAll(async () => {
 }, 60000);
 afterAll(async () => { await db?.close(); });
 
-describe.sequential("Audit reporting RPCs", () => {
+describe("Audit reporting RPCs", { concurrent: false }, () => {
   it("returns the complete ordered draft with undefined score", async () => {
     await as(2);
     const data = await report("inspection_export", [inspectionA]);

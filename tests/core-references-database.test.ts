@@ -106,7 +106,7 @@ afterAll(async () => {
   await db?.close();
 });
 
-describe.sequential("Core reference resolvers", () => {
+describe("Core reference resolvers", { concurrent: false }, () => {
   it("denies anonymous callers every resolver", async () => {
     await login("", "anon");
     for (const fn of [

@@ -163,7 +163,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await db?.close();
 });
-describe.sequential("Core access governance read v1", () => {
+describe("Core access governance read v1", { concurrent: false }, () => {
   it("denies anonymous callers and returns nothing to unassigned or inactive users", async () => {
     await login("", "anon");
     for (const sql of [
