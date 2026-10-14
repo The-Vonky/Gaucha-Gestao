@@ -101,6 +101,10 @@ Never claim a check passed without running it.
 - Do not create releases, tags or deploys unless explicitly requested.
 - Do not modify production configuration unless explicitly requested.
 
+## Parallel agents and branch isolation
+
+When multiple people/agents work concurrently, follow `docs/development/PARALLEL_AGENT_WORKFLOW.md`. Use one write-capable agent per branch, worktree, file ownership area and isolated database/Compose project; assign overlapping migrations/Core/CI edits to one owner at a time. Do not push directly to `main`, merge without human review, or treat CI as production approval. All deployment, credential and persistent-environment operations require explicit authorization.
+
 ## Communication
 
 - Execute rather than narrate.
@@ -109,7 +113,7 @@ Never claim a check passed without running it.
 - Otherwise choose the narrowest implementation consistent with the brief and architecture.
 - Completion reports should contain only relevant files, migrations, validations, real pending issues and commits.
 
-> **Snapshot de consolidação — 2026-10-13:** Fundação Core v2 em `integration/core-foundation-v2-wave2`, HEAD `14900b63` pós-merges #35 e #36, ainda fora da `main`. PRs #25–#33, #35 e #36 integrados somente na branch de integração. PR #35 corrige as vulnerabilidades de desenvolvimento; PR #36 reforça testes reais JWT/RLS. Testes manuais comunicados como concluídos pelo responsável, sem evidências técnicas anexadas; proteção da `main` adiada temporariamente por decisão dele, não considerada aprovada. A CI final do HEAD combinado e o PR à `main` dependem de fechamento específico. PR #24/ADR-007 continua proposta e não autoriza identidade privilegiada. Os números da baseline histórica de Qualidade abaixo referem-se exclusivamente à `main` de época, não à fundação Core v2. Consulte `docs/briefs/CORE_V2_CONSOLIDATION_READINESS.md`.
+> **Estado da integração — 2026-10-14:** a Fundação Core v2 foi consolidada na `main` pelo PR #38, commit `ac2f5482979135ef51acb6b901d0f4effef35395`. Os checks `validate`, `action-plans-integration` e `infra-validate` desse commit passaram. A proteção de `main` ainda precisa ser ativada; a aprovação do ADR-007/Identity Boundary (PR #24) permanece **NO-GO**, sem runtime privilegiado autorizado. A intermitência Chromium da Issue #41 não está resolvida. A aplicação permanece **NÃO homologada para produção** até registrar P1–P9, O1–O8, gates operacionais e aprovação humana. Os snapshots em briefs/README anteriores a esse merge devem ser lidos como **históricos**, não estado atual.
 
 ## Current phase
 
@@ -117,7 +121,7 @@ Core/authorization, Audit Domain v1 (including reopen), Action Plans, Action Pla
 
 The institutional UI/Design System is applied to App Shell, Home, Administration and Quality surfaces. Login v3 · Elo is integrated in `main` by PR #17, and Design System Elo v1 (`docs/briefs/DESIGN_SYSTEM_ELO_V1.md`) promotes its language (neutrals, field/button material, green focus, motion) to the whole application. Audit UX v2 (`docs/briefs/AUDIT_UX_V2.md`) reorganizes the Audit experience by monitored unit without changing its domain or contracts. Do not restore or copy the legacy Login rules that were removed from `app/shell.css`; the Login owns its presentation in `core/auth/Login.css`.
 
-Current verified application baseline is PR #18 merge commit `22334995b5b239274c5c1adc98495357ec0d7980`, including the final Quality polish; documentation-only commits may follow it on `main`. Post-merge application CI `37017170877` and reproducible-infrastructure CI `37017171393` passed. The application suite contains 236 tests, including dedicated Login v3 password-reveal regression coverage. The self-hosted stack validation is disposable/reproducible infrastructure evidence only; it is not production deployment evidence.
+Historical Quality UI baseline: PR #18 merge commit `22334995b5b239274c5c1adc98495357ec0d7980` (post-merge CI `37017170877`, infra CI `37017171393`, 236 tests in that historical suite). The newer integrated Core v2 baseline is recorded above. Disposable/self-hosted CI evidence is **not** production deployment evidence.
 
 For Quality closure, read:
 - `docs/modules/audit/QUALITY_COMPLETION_V1.md`;
