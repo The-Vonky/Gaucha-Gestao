@@ -248,7 +248,27 @@ export async function runBrowser() {
       await page.getByRole("button", { name: "Recarregar evidências e revisar", exact: true }).click();
       await openEvidence(true);
       checkpoint("review after conflict: wait for reviewed file");
-      await section.getByRole("button", { name: "Baixar valid.pdf", exact: true }).waitFor();
+      const openedSection = await page.locator('[aria-label="Evidências do critério 1"]').elementHandle();
+      try {
+        await section.getByRole("button", { name: "Baixar valid.pdf", exact: true }).waitFor();
+      } catch (error) {
+        // Only fixed DOM predicates: no text, requests, responses or fixture/user values.
+        const signals = await page.evaluate((opened) => {
+          const current = document.querySelector('[aria-label="Evidências do critério 1"]');
+          const toggle = current?.closest("li.audit-item")?.querySelector(".audit-evidence-toggle");
+          return {
+            openedSectionConnected: !!opened?.isConnected,
+            sectionPresent: !!current,
+            sectionHidden: !!current?.closest("[hidden]"),
+            toggleExpanded: toggle?.getAttribute("aria-expanded") === "true",
+            reviewedFilePresent: !!current?.querySelector('[aria-label="Baixar valid.pdf"]'),
+          };
+        }, openedSection);
+        console.error("DIAG conflict review DOM " + JSON.stringify(signals));
+        throw error;
+      } finally {
+        await openedSection?.dispose();
+      }
       checkpoint("review after conflict: click finalize");
       await page.getByRole("button", { name: "Finalizar", exact: true }).click();
       checkpoint("finalization with reviewed file");
