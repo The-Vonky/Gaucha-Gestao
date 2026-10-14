@@ -56,11 +56,17 @@ export async function runBrowser() {
       const section = page.getByRole("region", { name: "Evidências do critério 1", exact: true });
       // D5: criterion evidence sits behind "Evidências (n)"; open it after each (re)load.
       // A reload/lifecycle change remounts the checklist (closed again), so retry until open.
-      const openEvidence = async () => {
+      const openEvidence = async (diagnoseConflict = false) => {
         const toggle = page.locator('li.audit-item:has([aria-label="Evidências do critério 1"]) .audit-evidence-toggle');
         for (let attempt = 0; ; attempt++) {
+          if (diagnoseConflict) checkpoint("review after conflict: wait for evidence toggle");
           await toggle.waitFor();
-          if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+          if (diagnoseConflict) checkpoint("review after conflict: read evidence toggle");
+          if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+            if (diagnoseConflict) checkpoint("review after conflict: expand evidence");
+            await toggle.click();
+          }
+          if (diagnoseConflict) checkpoint("review after conflict: wait for evidence section");
           try { await section.waitFor({ timeout: 5000 }); return; } catch (error) { if (attempt >= 3) throw error; }
         }
       };
@@ -238,10 +244,43 @@ export async function runBrowser() {
       await page.getByRole("dialog").getByRole("button", { name: "Confirmar", exact: true }).click();
       await page.getByText("O conjunto de evidências foi alterado.", { exact: false }).first().waitFor();
       assert.equal((await row(uiInspection)).status, "draft", "Visible conflict never silently finalizes");
-      checkpoint("review after conflict");
-      await page.getByRole("button", { name: "Recarregar evidências e revisar", exact: true }).click();
-      await openEvidence();
-      await section.getByRole("button", { name: "Baixar valid.pdf", exact: true }).waitFor();
+      // The reload effect unmounts this checklist. A visible old section is not
+      // readiness: openEvidence can return before that effect, then the new
+      // checklist mounts closed and the file is present but hidden (Issue #41).
+      const previousSection = await section.elementHandle();
+      assert.ok(previousSection, "Conflict starts with the criterion evidence open");
+      try {
+        checkpoint("review after conflict: click reload");
+        await page.getByRole("button", { name: "Recarregar evidências e revisar", exact: true }).click();
+        checkpoint("review after conflict: wait for previous checklist unmount");
+        await page.waitForFunction((previous) => !previous.isConnected, previousSection);
+      } finally {
+        await previousSection.dispose();
+      }
+      await openEvidence(true);
+      checkpoint("review after conflict: wait for reviewed file");
+      const openedSection = await page.locator('[aria-label="Evidências do critério 1"]').elementHandle();
+      try {
+        await section.getByRole("button", { name: "Baixar valid.pdf", exact: true }).waitFor();
+      } catch (error) {
+        // Only fixed DOM predicates: no text, requests, responses or fixture/user values.
+        const signals = await page.evaluate((opened) => {
+          const current = document.querySelector('[aria-label="Evidências do critério 1"]');
+          const toggle = current?.closest("li.audit-item")?.querySelector(".audit-evidence-toggle");
+          return {
+            openedSectionConnected: !!opened?.isConnected,
+            sectionPresent: !!current,
+            sectionHidden: !!current?.closest("[hidden]"),
+            toggleExpanded: toggle?.getAttribute("aria-expanded") === "true",
+            reviewedFilePresent: !!current?.querySelector('[aria-label="Baixar valid.pdf"]'),
+          };
+        }, openedSection);
+        console.error("DIAG conflict review DOM " + JSON.stringify(signals));
+        throw error;
+      } finally {
+        await openedSection?.dispose();
+      }
+      checkpoint("review after conflict: click finalize");
       await page.getByRole("button", { name: "Finalizar", exact: true }).click();
       checkpoint("finalization with reviewed file");
       await page.getByRole("dialog").getByText("fora da seção.pdf", { exact: true }).waitFor();
