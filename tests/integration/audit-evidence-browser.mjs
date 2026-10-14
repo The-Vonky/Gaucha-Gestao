@@ -244,8 +244,19 @@ export async function runBrowser() {
       await page.getByRole("dialog").getByRole("button", { name: "Confirmar", exact: true }).click();
       await page.getByText("O conjunto de evidências foi alterado.", { exact: false }).first().waitFor();
       assert.equal((await row(uiInspection)).status, "draft", "Visible conflict never silently finalizes");
-      checkpoint("review after conflict: click reload");
-      await page.getByRole("button", { name: "Recarregar evidências e revisar", exact: true }).click();
+      // The reload effect unmounts this checklist. A visible old section is not
+      // readiness: openEvidence can return before that effect, then the new
+      // checklist mounts closed and the file is present but hidden (Issue #41).
+      const previousSection = await section.elementHandle();
+      assert.ok(previousSection, "Conflict starts with the criterion evidence open");
+      try {
+        checkpoint("review after conflict: click reload");
+        await page.getByRole("button", { name: "Recarregar evidências e revisar", exact: true }).click();
+        checkpoint("review after conflict: wait for previous checklist unmount");
+        await page.waitForFunction((previous) => !previous.isConnected, previousSection);
+      } finally {
+        await previousSection.dispose();
+      }
       await openEvidence(true);
       checkpoint("review after conflict: wait for reviewed file");
       const openedSection = await page.locator('[aria-label="Evidências do critério 1"]').elementHandle();
