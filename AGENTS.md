@@ -62,6 +62,11 @@ For identity/access/sensitive-data/upload/infrastructure work, consult:
 - docs/architecture/SECURITY.md
 - docs/architecture/AUTHORIZATION.md
 
+For host, infrastructure, backup, deploy or release work, also consult:
+- docs/decisions/ADR-008-production-host-thinkstation-c30.md (host: ThinkStation C30, replaces the ML350 in ADR-004)
+- docs/decisions/ADR-006-infra-v1-reused-hardware.md (minimum Compose profile)
+- docs/planning/PLANO_DIRETOR_2026.md (execution order, gates and pending decisions)
+
 ## Database and migrations
 
 - Never edit a migration already applied to a shared environment.

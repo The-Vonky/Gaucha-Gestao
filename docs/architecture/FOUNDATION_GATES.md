@@ -16,9 +16,8 @@ This is not a request to overdesign the platform. Each gate should be resolved o
 Status: **DECIDED (baseline)**
 
 Decision:
-- HP ProLiant ML350 as initial physical host;
-- Linux VM;
-- Ubuntu Server LTS;
+- Lenovo ThinkStation C30 as the single physical host (ADR-008; replaces ADR-004's HP ProLiant ML350);
+- Ubuntu Server LTS on bare metal (no VM layer; ADR-008);
 - Docker Engine + Docker Compose;
 - Cloudflare DNS/WAF/Tunnel;
 - React static assets delivered from Cloudflare Workers;
@@ -26,12 +25,13 @@ Decision:
 - single-host availability accepted for v1.
 
 Still pending:
-- exact VM sizing after ML350 inventory;
+- C30 capacity acceptance on Ubuntu with the ADR-006 profile (ADR-008 acceptance criteria);
 - final DEV/STAGING/PROD topology;
 - UPS/network failover capabilities.
 
 Reference:
-- ADR-004.
+- ADR-004;
+- ADR-008.
 
 ## Gate 2 — Application stack
 

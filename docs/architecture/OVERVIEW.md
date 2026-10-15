@@ -147,13 +147,13 @@ Selected direction:
 - Supabase Self-Hosted;
 - PostgreSQL/Auth/PostgREST/Realtime/Storage;
 - Cloudflare R2 as preferred production object storage;
-- Ubuntu Server LTS VM on the HP ProLiant ML350;
+- Ubuntu Server LTS on bare metal on a dedicated Lenovo ThinkStation C30 (ADR-008, replacing ADR-004's HP ProLiant ML350 VM);
 - Docker Compose;
 - Cloudflare DNS/WAF/Tunnel;
 - GitHub Actions;
 - automated backups, WAL/PITR, restore testing and Ansible-based recovery.
 
-These choices are no longer open design questions unless ADR-004 is explicitly superseded.
+These choices are no longer open design questions unless ADR-004 (or ADR-008 for the host) is explicitly superseded.
 
 ## Decisions still intentionally open
 
@@ -164,7 +164,7 @@ RBAC/scope, the initial permission catalog and Core physical schema are decided 
 - monitoring/observability tooling;
 - evidence retention/purge policy; checklist-specific limits and reopen policy proposed in its new brief;
 - exact DEV/STAGING/PROD layout;
-- VM sizing and RAID choice after physical ML350 inventory.
+- C30 capacity acceptance: re-measurement on Ubuntu with the ADR-006 profile and the RAM/SSD upgrade triggers (ADR-008, Plano Diretor §7).
 
 Do not reopen the accepted platform stack while solving one of these implementation details.
 
