@@ -1,6 +1,6 @@
 # Gaúcha Gestão — Plano Diretor 2026
 
-Plano diretor técnico, financeiro e de implantação · **Versão 1.2** · 15 de outubro de 2026
+Plano diretor técnico, financeiro e de implantação · **Versão 1.3** · 15 de outubro de 2026
 
 > Fonte canônica: este arquivo. As versões .docx 1.0 e 1.1, distribuídas fora do repositório, ficam superadas. Mudanças entram por PR, com registro na seção 12.
 
@@ -10,7 +10,7 @@ Escopo: Qualidade v1 como primeira entrega operacional; expansão progressiva pa
 
 Objetivo: consolidar os sistemas internos da Gaúcha Alimentação em uma plataforma modular segura, auditável, recuperável e financeiramente sustentável. Recomenda-se manter o monólito modular aprovado, utilizar frontend estático Cloudflare e backend Supabase self-hosted no perfil mínimo do ADR-006; a Lenovo ThinkStation C30 é o host do projeto, substituindo o servidor legado e a HP ML350 prevista no ADR-004 ([ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md)); a máquina ainda precisa cumprir os critérios de aceite do ADR-008 antes de produção.
 
-Decisão atual: NO-GO para produção. Existe código funcional, Core v2 consolidado na main e CI anterior aprovada; faltam evidências operacionais P1–P9 e O1–O8, metas numéricas de RPO/RTO e carga, restauração independente, comprovação da infraestrutura real e fechamento do ADR-007 (identidade privilegiada). Piloto isolado é possível com a máquina atual, mas as medições atuais da C30 não valem como base de capacidade.
+Decisão atual: NO-GO para produção. Existe código funcional, Core v2 consolidado na main e CI anterior aprovada; faltam evidências operacionais P1–P9 e O1–O8, metas numéricas de RPO/RTO e carga, restauração independente, comprovação da infraestrutura real e fechamento do ADR-007 (identidade privilegiada). **Governança da `main`:** proteção técnica adiada pelo responsável para a fase final, com risco conscientemente aceito, sem configuração de ruleset agora; até lá, PR/CI/revisão humana permanecem controles operacionais manuais, sem enforcement automático. A ordem do fechamento deverá ser confirmada antes do GO. Piloto isolado é possível com a máquina atual, mas as medições atuais da C30 não valem como base de capacidade.
 
 ## 1. Objetivos, limites e definição de pronto
 
@@ -45,7 +45,7 @@ Fontes verificadas: repositório GitHub The-Vonky/Gaucha-Gestao (README, arquite
 | Aceite físico                | P1–P9 pendentes na matriz consultada                                                                                                                                       | Executar Android+iOS com evidências                                                                                    |
 | Operação                     | O1/O5/O6 parciais; O2 desconhecido; O3/O4/O7/O8 abertos na matriz                                                                                                          | NO-GO até demonstrar ambiente real                                                                                     |
 | Deploy real                  | Nenhum comprovante de produção/restore na documentação consultada                                                                                                          | Não declarar production ready                                                                                          |
-| Governança do repositório    | README: proteção da main adiada por decisão do responsável                                                                                                                 | Risco aberto; ativar ou aceitar formalmente antes do release (seção 9)                                                 |
+| Governança do repositório | Proteção técnica da `main` adiada para a fase final por decisão do responsável em 15/10/2026 | Risco aceito e ainda aberto; PR, CI e revisão humana obrigatórios por disciplina manual; reavaliar antes do GO (seções 8–9) |
 | Decisões operacionais        | BACKUP_RECOVERY (01/10): responsável do projeto acumula operação e backup/restore; alertas para responsável + supervisor; janela provisória seg–sex 07–18h                 | O1 PARTIAL: RPO/RTO numéricos e retenções pendentes                                                                    |
 
 Limite da auditoria: não foi feita revisão linha a linha de todo o HEAD atual nem execução de testes no servidor; o estado preciso de merges e aceites deve ser confirmado novamente antes do release.
@@ -135,7 +135,7 @@ Limiares propostos: alertar em 60%/80% do tier gratuito; migrar automaticamente 
 |-------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
 | 0     | Congelar snapshot: branches/commits/PRs, inventariar dados e serviços, riscos e responsáveis; registrar estado da main (Core v2 já consolidado)                                           | Baseline imutável e checklists abertos                                                     |
 | 1     | Backup consistente do estado atual, cópia externa e restauração isolada                                                                                                                   | Dados recuperáveis; não formatar antes disso                                               |
-| 2     | Fechar ADR-007 (identidade privilegiada); revisão de segurança; CI do HEAD exato; decidir proteção da main                                                                                | Sem bloqueadores P0 de identidade/RLS                                                      |
+| 2     | Fechar ADR-007 (identidade privilegiada); revisão de segurança e CI do HEAD exato; manter PR/CI/revisão humana como disciplina manual enquanto a proteção da `main` é adiada para a fase final | Sem bloqueadores P0 de identidade/RLS; risco e governança registrados |
 | 3     | Definir metas com o responsável: RPO técnico, RTO dentro/fora da janela, retenções, usuários/unidades esperados e meta de p95                                                             | Metas registradas; base para dimensionar host e testes                                     |
 | 4     | Reinstalar a C30 com Ubuntu Server (só após a etapa 1), dedicada e sem aplicações de desktop; subir o perfil mínimo do ADR-006; medir sob carga contra as metas da etapa 3 | Critérios de aceite do ADR-008 cumpridos; capacidade aceita |
 | 5     | Definir onde roda o STAGING (servidor legado, se mantido, ou a C30 com isolamento e limites registrados); construir com Ubuntu/Compose, Cloudflare e Storage privado | Deploy reproduzível, saudável e acessível por HTTPS |
@@ -146,6 +146,8 @@ Limiares propostos: alertar em 60%/80% do tier gratuito; migrar automaticamente 
 | 10    | Operação assistida e migração de módulos um a um                                                                                                                                          | Módulos com gates próprios                                                                 |
 
 Datas e responsáveis por etapa: pendentes de definição pelo responsável do projeto. A ordem acima registra dependências, não prazos.
+
+**Coordenação dos cinco dias (issues #46–#59):** Dev A (`The-Vonky`) — Core/arquitetura/infra, backup/restore e decisões; Dev B — Qualidade v1, P1–P9, regressões e evidências; Matheus — avaliação e montagem física da C30/HD HPE, sem autorização destrutiva presumida. Revisões cruzadas, atualização diária por evidência e limite de uma frente escritora por pessoa são a proposta operacional; horário de revisão até 16h e identidade GitHub de Dev B ainda precisam de confirmação. Proteger a `main` é atividade da fase final, não da etapa 2.
 
 ## 9. Checklist operacional obrigatório
 
@@ -165,7 +167,7 @@ Datas e responsáveis por etapa: pendentes de definição pelo responsável do p
 - [ ] Local do STAGING definido e isolado de PROD
 - [ ] Ferramenta de WAL/PITR, destino off-site e mecanismo R2 → destino decididos por ADR
 - [ ] Segredos de recuperação em cofre separado e exercitados no restore
-- [ ] Proteção da main ativada ou risco formalmente aceito pelo responsável
+- [ ] Decisão de adiar a proteção técnica da `main` registrada, risco aceito e PR/CI/revisão humana praticados; reavaliar proteção na fase final e sequência antes do GO
 - [ ] Segredos fora do Git, privilégios mínimos e acesso privado
 - [ ] Custos mensais, franquias e alertas configurados
 - [ ] Responsável humano autoriza o início de produção
@@ -213,6 +215,8 @@ Fontes locais: Diagnostico_Servidor_2.txt e Texto colado(20261014-181013).txt, f
 | 1.0    | 15/10/2026 | Versão inicial.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | 1.1    | 15/10/2026 | Conferência contra o main (HEAD aee20ec). Core v2 registrado como consolidado (PR \#38); ADR-006 incorporado (perfil mínimo, pendência WAL-G/pgBackRest); medições da C30 reclassificadas como não válidas para capacidade; gatilhos de RAM e disco marcados como já disparados; limiar de disco corrigido (70% alerta / 80% crítico); sequência reordenada (metas antes do host, reinstalação explícita, STAGING antes da homologação P1–P9); segredos de recuperação, mecanismo R2 → destino, proteção da main, metas operacionais e Anexo A adicionados. |
 | 1.2    | 15/10/2026 | Plano movido para o repositório (docs/planning). Host decidido pelo responsável: ThinkStation C30 substitui o servidor legado (ADR-008); comparação com a ML350 removida; etapa 4 passa a ser aceite da C30; destino do servidor legado e local do STAGING registrados como pendências; README corrigido (Core v2 na main). |
+
+| 1.3    | 15/10/2026 | Registra decisão de adiar proteção técnica da `main` para a fase final com risco aceito e práticas manuais de PR/CI/revisão; corrige sequência de ADR-007; fixa responsabilidades Dev A/Dev B/Matheus e propõe cadência dos cinco dias, sujeita a confirmação. Nenhum ruleset, alteração produtiva ou GO autorizado. |
 
 ## Anexo A — Gates de aceite
 
