@@ -60,7 +60,8 @@ Após um PR integrado, limpar worktree **somente depois** de conferir que não h
 - Scripts existentes em `scripts/ops` aceitam somente `ci`/`staging` descartável e rejeitam `production`. Não reinterpretá-los como mecanismo de deploy produtivo.
 - Nunca executar `supabase db reset`, `db push`, `--linked`, seed ou migração destrutiva em instância compartilhada/remota; migrations incrementais em PR único, com revisão de ownership e rollback/forward-fix.
 - Não copiar arquivos de produção, tokens, URLs assinadas, senhas ou dados pessoais para prompts, artefatos ou logs de agentes.
-- O servidor Windows com serviços legados não é sandbox. Qualquer ação nele exige avaliação de impacto e aprovação operacional específica.
+- O servidor legado (Windows, com serviços legados) deixou de ser o host planejado: a plataforma vai para a Lenovo ThinkStation C30 ([ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md)). O destino do servidor legado está pendente; enquanto ele existir, não é sandbox, e qualquer ação nele exige avaliação de impacto e aprovação operacional específica.
+- A C30 também não é sandbox. Reinstalação, provisionamento e qualquer ambiente persistente nela seguem o [Plano Diretor](../planning/PLANO_DIRETOR_2026.md) e exigem aprovação humana antes da ação.
 
 ## 5. Contrato mínimo de cada issue e de cada agente
 

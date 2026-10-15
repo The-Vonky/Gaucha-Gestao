@@ -3,6 +3,8 @@
 Status: Proposed
 Date: 2026-10-01
 
+> **Update 2026-10-15:** the hardware decision deferred here is now taken in [ADR-008](ADR-008-production-host-thinkstation-c30.md): a dedicated Lenovo ThinkStation C30 with Ubuntu Server LTS on bare metal. References to the ML350 below are historical. WAL-G versus pgBackRest, backup/restore and off-site recovery remain open.
+
 ## Context and scope
 
 The current application CI uses a disposable Supabase CLI 2.117.0 stack. This PR

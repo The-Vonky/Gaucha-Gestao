@@ -1,7 +1,9 @@
 # ADR-004 — Platform Technology Stack
 
-Status: Accepted  
+Status: Accepted — physical host superseded by ADR-008  
 Date: 2026-09-24
+
+> **Partially superseded by [ADR-008](ADR-008-production-host-thinkstation-c30.md) (2026-10-15).** The physical host is now a dedicated Lenovo ThinkStation C30 running Ubuntu Server LTS on bare metal, replacing the HP ProLiant ML350 and its Linux VM. Every other decision in this ADR remains in force. ML350-specific text below is kept as history.
 
 ## Decision
 
@@ -122,7 +124,7 @@ Production database protection will use two complementary mechanisms:
 1. Logical backup, such as PostgreSQL dumps, for portability/selective recovery.
 2. Physical/base backup + WAL archiving for Point-in-Time Recovery.
 
-WAL/base backups must have an off-site destination. Keeping the only recoverable copy on the ML350 is not acceptable.
+WAL/base backups must have an off-site destination. Keeping the only recoverable copy on the physical host (now the C30, ADR-008) is not acceptable.
 
 Object storage is not considered a backup merely because it is off-host. File-retention/recovery strategy must be documented independently.
 
@@ -147,6 +149,8 @@ replacement Ubuntu host
 ```
 
 ## Hardware decision boundary
+
+> Superseded by ADR-008. Kept as history; the inventory and RAID items below do not apply to the C30.
 
 The ML350 is accepted as the initial single physical host, knowingly creating a hardware SPOF.
 
