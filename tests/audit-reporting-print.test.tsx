@@ -24,6 +24,17 @@ const inspection: InspectionReport = { ...common, kind: "inspection", record_cou
 afterEach(() => { cleanup(); document.getElementById("root")?.remove(); });
 
 describe("Audit print surface", () => {
+  it.each([0, 300])("keeps the unit, open filters and all %s history records", (count) => {
+    const report: HistoryReport = { ...common, kind: "unit_history", record_count: count,
+      filters: { from: null, to: null }, ordering: "applied_on DESC, created_at DESC, id DESC",
+      records: Array.from({ length: count }, (_, index) => ({ ...inspection.inspection, id: `history-${index}` })) };
+    render(<PrintSurface report={report} onClose={() => {}} />);
+    expect(screen.getByText(/Sem limite inicial/)).toBeTruthy();
+    expect(screen.getByText(/Sem limite final/)).toBeTruthy();
+    expect(screen.getByRole("table").querySelectorAll("tbody tr")).toHaveLength(count);
+    expect(screen.getByRole("table").querySelector("caption")?.textContent).toContain("Unidade Á");
+    if (!count) expect(screen.getByText("Nenhuma auditoria no período selecionado.")).toBeTruthy();
+  });
   it("renders all nine sections, 158 criteria, observations and draft label in a dedicated portal", async () => {
     const root = document.createElement("div"); root.id = "root"; root.textContent = "App navigation chrome"; document.body.append(root);
     const onClose = vi.fn();

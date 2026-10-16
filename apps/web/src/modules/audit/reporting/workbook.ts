@@ -1,5 +1,6 @@
 import { CLASSIFICATION_LABELS, RESPONSE_LABELS } from "../scoring";
 import type { AuditReport, Counts, HistoryReport, InspectionReport, ReportInspection } from "./types";
+import type { Cell as ExcelCell, Sheet as ExcelSheet } from "write-excel-file/browser";
 
 // Every text value, including a leading =, +, - or @, has an explicit string
 // type. Formula, hyperlink, image and feature APIs are intentionally unused.
@@ -17,8 +18,35 @@ const timestamp = (value: string | null | undefined) => value ? new Intl.DateTim
   dateStyle: "short", timeStyle: "medium", timeZone: "America/Sao_Paulo",
 }).format(new Date(value)) : "—";
 
-export function sheets(report: AuditReport): Sheet[] {
-  return report.kind === "inspection" ? inspectionSheets(report) : historySheets(report);
+export function sheets(report: AuditReport): ExcelSheet<Blob>[] {
+  return (report.kind === "inspection" ? inspectionSheets(report) : historySheets(report)).map(present);
+}
+/** Presentation only: preserve values, cell types, ordering and contract sheet names. */
+function present(sheet: Sheet): ExcelSheet<Blob> {
+  const metadata = sheet.sheet === "Resumo" || sheet.sheet === "Metadados";
+  const widths = metadata ? [34, 64] : sheet.sheet === "Checklist"
+    ? [14, 30, 24, 10, 64, 28, 72, 16, 28]
+    : sheet.sheet === "Secoes" ? [10, 36, 12, 14, 14, 10, 10, 10, 10, 14, 18, 18, 48]
+    : [38, 38, 18, 16, 16, 30, 38, 16, 16, 12, 14, 14, 10, 10, 10, 10, 14, 20, 20, 48, 18, 28, 12, 28];
+  return {
+    sheet: sheet.sheet, showGridLines: false,
+    columns: widths.map(width => ({ width })),
+    stickyRowsCount: metadata ? 0 : 1,
+    data: sheet.data.map((cells, rowIndex) => cells.map((cell, column): ExcelCell => {
+      if (!cell) return null;
+      const heading = metadata ? column === 0 : rowIndex === 0;
+      const label = String((metadata ? cells[0] : sheet.data[0][column])?.value ?? "");
+      const dateText = typeof cell.value === "string" && /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(cell.value);
+      return { ...cell, fontFamily: "Calibri", fontSize: 11, wrap: true,
+        alignVertical: "top", align: cell.type === Number ? "right" : dateText ? "center" : "left",
+        ...(!metadata && rowIndex === 0 ? { height: 42 } : {}),
+        fontWeight: heading ? "bold" : undefined,
+        textColor: heading ? "#243D35" : "#243039",
+        backgroundColor: heading ? "#DFEAE5" : rowIndex % 2 ? "#F4F7F6" : "#FFFFFF",
+        ...(cell.type === Number ? { format: /\(%\)|p\.p\./.test(label) ? "0.0" : "0" } : {}),
+      };
+    })),
+  };
 }
 function inspectionSheets(r: InspectionReport): Sheet[] {
   const i = r.inspection;

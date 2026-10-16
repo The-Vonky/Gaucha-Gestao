@@ -42,6 +42,18 @@ async function inspect(report: InspectionReport | HistoryReport) {
   return { parsed, entries };
 }
 describe("Audit XLSX", () => {
+  it("sets readable columns, wrapped text, numeric formats and frozen table headers", async () => {
+    const { entries } = await inspect(inspection);
+    const styles = new TextDecoder().decode(entries["xl/styles.xml"]);
+    const checklist = new TextDecoder().decode(entries["xl/worksheets/sheet2.xml"]);
+    expect(styles).toContain('wrapText="1"');
+    expect(styles).toContain('vertical="top"');
+    expect(styles).toContain('formatCode="0.0"');
+    expect(checklist).toContain('width="64"');
+    expect(checklist).toContain('state="frozen"');
+    expect(checklist).toContain('ySplit="1"');
+    expect((await inspect(history)).parsed[0].data[1][3]).toBe("2026-09-29");
+  });
   it("writes all 158 criteria and nine sections as strings and numbers without executable content", async () => {
     const { parsed, entries } = await inspect(inspection);
     expect(parsed.map((sheet) => sheet.sheet)).toEqual(["Resumo", "Checklist", "Secoes"]);
