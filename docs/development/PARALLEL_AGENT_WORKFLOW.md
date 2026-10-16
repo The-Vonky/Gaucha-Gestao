@@ -3,24 +3,28 @@
 **Estado:** protocolo de colaboração proposto. Aplicável depois de aprovado e integrado à `main`.
 **Objetivo:** dois desenvolvedores, agentes simultâneos, um único fluxo de integração e nenhuma concorrência sobre ambientes persistentes ou produção.
 
+> **Decisão do responsável técnico — 15/10/2026:** a proteção técnica (`ruleset`/branch protection) da `main` será implementada **somente na fase final do projeto**. O risco de push/merge sem bloqueio automático foi conscientemente aceito; **não equivale a mitigação técnica**. Até lá, PR, CI e revisão humana independente são exigências **operacionais manuais**, não gates impostos pelo GitHub. Sem habilitar ou alterar ruleset neste ciclo. Reavaliar a ordem exata e as condições antes de qualquer GO de produção.
+
 ## 1. Responsabilidade e limites
 
 | Frente | Responsável primário | Escopo padrão |
 | --- | --- | --- |
 | Plataforma e release | Responsável técnico do projeto | `infra/**`, `scripts/ops/**`, workflows CI/CD, backups, observabilidade, redes e deploy |
 | Aplicação e qualidade | Segundo desenvolvedor | `apps/web/src/modules/**`, `tests/**` de domínio/E2E, homologação P1–P9, regressões de UI |
-| Core/Auth e migrations | Uma pessoa designada por issue | `apps/web/src/core/**`, `supabase/migrations/**`, regras de autorização e Identity Boundary |
+| Core/Auth e migrations | Dev A (ou outro responsável expressamente nomeado na issue) | `apps/web/src/core/**`, `supabase/migrations/**`, regras de autorização e Identity Boundary; depende dos gates do ADR-007 |
 | Integração | Responsável técnico, com revisão de outro humano | `main`, resolução de conflitos, release, mudanças operacionais |
+
+**Divisão dos cinco dias (issues #46–#59):** Dev A (`The-Vonky`) cuida de Core, arquitetura, infraestrutura, recovery, decisões e handover; Dev B assume Qualidade v1, setup/testes, matriz P1–P9, bugs e regressões; Matheus apoia o diagnóstico e a montagem física da C30/HD HPE. O login GitHub de Dev B e os autorizadores de arquitetura, backup, servidor e produção ainda precisam ser informados; não inferir aprovação ou conceder acesso por esse registro.
 
 Propriedade é **por tarefa/arquivo**, não propriedade permanente do diretório. Qualquer mudança que atravessar a fronteira deve ser dividida ou coordenada na issue antes da edição. Evite dois agentes escritores no mesmo arquivo, migration, branch, banco ou projeto Docker. Revisores trabalham preferencialmente sem escrever código.
 
-`docs/decisions/ADR-007-core-identity-boundary.md` ainda é **proposta** no PR #24. Não implementar runtime privilegiado, migrações ou cutover com base nela antes de GO independente e aprovação humana explícita.
+A proposta do ADR-007 no [PR #24](https://github.com/The-Vonky/Gaucha-Gestao/pull/24) foi **encerrada sem merge e sem aceite**, e a [Issue #42](https://github.com/The-Vonky/Gaucha-Gestao/issues/42) foi encerrada como não planejada nesta etapa. A revisão arquitetural prossegue na [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49). **ADR-007 permanece NO-GO:** não implementar runtime privilegiado, migrations ou cutover sem nova proposta, revisão independente e GO humano explícito.
 
 ## 2. Preparação dos dois desenvolvedores
 
 1. Convide o segundo desenvolvedor pelo **username GitHub exato** em **Settings → Collaborators**, com o menor nível de acesso capaz de enviar branches e PRs; não conceda credenciais de deploy nem segredos de produção.
-2. Habilite proteção/ruleset de `main` na interface do GitHub, depois que existir ao menos um revisor humano elegível. Exija PR para merge, pelo menos **1 aprovação humana de outra pessoa**, fechamento de conversas, rejeição de force-push/deleção e checks obrigatórios: `validate`, `action-plans-integration`, `infra-validate`. Confirme os nomes exatos no GitHub antes de ativar.
-3. Não permitir push direto em `main`; não usar auto-merge ou bypass administrativo para contornar checks. Se a interface da conta/plano limitar regras, registre a limitação e imponha a verificação humana até ela ser resolvida.
+2. **Não configurar proteção/ruleset da `main` nesta fase.** A ativação foi adiada por decisão consciente para a **etapa final do projeto**. Registrar o risco residual e, antes do GO, confirmar a sequência de proteção, aprovação e implantação. Quando a fase final for autorizada e houver revisor elegível, propor checks obrigatórios, aprovação humana de outra pessoa e bloqueio de force-push/deleção como mudança separada, sem antecipá-la agora.
+3. **Disciplina manual até a proteção:** não fazer push direto na `main`, não usar auto-merge/bypass, verificar `validate`, `action-plans-integration` e `infra-validate` quando pertinentes e exigir revisão humana independente antes do merge. Essa disciplina depende das pessoas e não substitui enforcement técnico; se não houver revisor elegível, a mudança crítica aguarda.
 4. Não configurar `CODEOWNERS` com um único usuário e revisão obrigatória: isso poderia bloquear PRs de autoria do próprio dono. Adicionar nomes reais e revisão por CODEOWNERS somente após o segundo colaborador aceitar o convite.
 
 ## 3. Branches e worktrees
@@ -81,12 +85,14 @@ Revisão deve usar outro agente/modelo quando útil, mas a aprovação de merge 
 
 Pipeline: **Issue → worktree/branch isolada → commits focalizados → PR → checks → revisão humana independente → merge main → homologação → release autorizado**.
 
-Checks existentes: `validate` (typecheck, lint, Vitest, build, npm audit), `action-plans-integration` (Supabase local/E2E), `infra-validate` (stack reproduzível). Rodar testes de domínio pertinentes mesmo quando a suíte completa for exigida para merge. Se `action-plans-integration` falhar intermitentemente, investigar Issue #41; não mascarar o erro apenas repetindo execução.
+Checks existentes: `validate` (typecheck, lint, Vitest, build, npm audit), `action-plans-integration` (Supabase local/E2E), `infra-validate` (stack reproduzível). Rodar testes de domínio pertinentes mesmo quando a suíte completa for exigida para merge. Se `action-plans-integration` falhar intermitentemente, consultar a [Issue #41](https://github.com/The-Vonky/Gaucha-Gestao/issues/41) (encerrada administrativamente, sem correção comprovada) e registrar nova ocorrência na [Issue #57](https://github.com/The-Vonky/Gaucha-Gestao/issues/57) antes de abrir issue específica; não mascarar o erro apenas repetindo execução.
 
 **Produção não está liberada:** P1–P9 e O1–O8 seguem conforme `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md`, junto dos gates de segurança, recuperação e autorização explícita de deploy. Não confundir branch protegida ou CI verde com homologação física.
 
 ## 7. Capacidade e coordenação
 
-Começar com no máximo **dois agentes escritores por pessoa**; revisores somente leitura podem operar paralelamente. Registrar dono, arquivos e estado da tarefa na issue/PR, não em conversa temporária. Quando houver conflitos em arquivos, CI sobrecarregada ou fila de revisão, diminuir paralelismo.
+Para o plano dos cinco dias, priorizar **uma frente de escrita ativa por desenvolvedor** (Dev A: Core/infra; Dev B: Qualidade/testes); trabalhos paralelos adicionais exigem divisão explícita de arquivos e ambiente na issue. Fora desse ciclo, o limite geral é **dois agentes escritores por pessoa**; revisores somente leitura podem operar paralelamente. Registrar dono, arquivos e estado da tarefa na issue/PR, não em conversa temporária. Quando houver conflitos em arquivos, CI sobrecarregada ou fila de revisão, diminuir paralelismo.
+
+**Cadência proposta (confirmar com Dev B):** alinhamento inicial de 20 minutos, revisão cruzada até 16h nos dias aplicáveis, atualização ao fim de cada dia com responsável, prioridade, gate, SHA, PR, evidência sanitizada, bloqueador e próximo passo. Sem confirmação explícita da equipe, marcar `PENDENTE`, nunca `FEITO`.
 
 Na passagem entre modelos/agentes, usar Git e issue como fonte de continuidade: branch, `git status`, diff, commits, PR, validação e bloqueios. Não reconstruir contexto inteiro por chat.
