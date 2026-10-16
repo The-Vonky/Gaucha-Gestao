@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "../../shared/ui";
 import {
   CLASSIFICATION_LABELS,
+  classify,
   evaluate,
   formatScore,
   trend,
@@ -36,7 +37,7 @@ export function Progress({
     </span>
   );
 }
-/** Final result for finalized inspections; neutral partial result for drafts. */
+/** Shared score bands; drafts always carry a partial-result label. */
 export function Result({ summary }: { summary: InspectionSummary }) {
   if (summary.status === "finalized") {
     if (summary.final_score === null)
@@ -54,7 +55,7 @@ export function Result({ summary }: { summary: InspectionSummary }) {
   }
   const { score } = evaluate(tallyOf(summary));
   return (
-    <span className="audit-result">
+    <span className={`audit-result ${classify(score) ?? ""}`}>
       <strong>{formatScore(score)}</strong>{" "}
       {score === null ? "Sem dados de conformidade" : "Parcial · em andamento"}
     </span>

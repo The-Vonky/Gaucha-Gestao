@@ -23,6 +23,7 @@ import * as evidenceApi from "./evidence";
 import { formatDate, Progress, StatusBadge } from "./Result";
 import {
   CLASSIFICATION_LABELS,
+  classify,
   evaluate,
   formatScore,
   tally,
@@ -39,7 +40,7 @@ const TABS: Record<string, "overview" | "checklist" | "plans"> = {
 /** Responses that source a checklist action plan (Action Plans sync trigger). */
 const isPlanSource = (response: Answer["response"]) =>
   response === "AP" || response === "NAT";
-/** Band colors exist only for a finalized result. */
+/** Shared score bands; labels distinguish partial from final results. */
 const BAND_TONE: Record<Classification, BadgeTone> = {
   adequate: "success",
   partial: "warning",
@@ -246,6 +247,27 @@ export function InspectionPage() {
     setTarget(item);
   };
   const band = summary.final_classification;
+  const finalizeReasons = [
+    remaining > 0 ? `Responda todos os critérios para finalizar (${remaining} restantes).` : "",
+    pending.size > 0 ? "Há alterações não salvas. Aguarde o salvamento ou corrija os erros indicados nos critérios." : "",
+    stale ? "Dados desatualizados. Atualize a auditoria antes de finalizar." : "",
+    evidenceConflict ? "As evidências foram alteradas. Recarregue e revise o conjunto." : "",
+    preparing ? "Revisando evidências…" : "",
+    r.loading || summary.id !== inspectionId ? "Atualizando os dados da auditoria…" : "",
+  ].filter(Boolean).join(" ");
+  const requestFinalize = async () => {
+    const generation=reviewGeneration.current;
+    const id=summary.id,version=summary.version;
+    setPreparing(true);setEvidenceError("");setReview(undefined);
+    try {
+      // Review all criteria and bind this snapshot to its parent and lifecycle.
+      const [rows,count]=await Promise.all([evidenceApi.listEvidence(id),evidenceApi.pendingCount(id)]);
+      if(reviewGeneration.current!==generation)return;
+      setReview({inspectionId:id,version,rows});setFinalPending(count);setAction("finalize");
+    } catch {
+      if(reviewGeneration.current===generation)setEvidenceError("Não foi possível revisar as evidências. Tente novamente antes de finalizar.");
+    } finally { if(reviewGeneration.current===generation)setPreparing(false); }
+  };
   const view: InspectionView = {
     summary,
     sections,
@@ -255,6 +277,7 @@ export function InspectionPage() {
     editable,
     stale,
     confirming: !!action,
+    finalization: { allowed: draft && auth.can("audit.inspection.finalize", scope), reason: finalizeReasons, request: requestFinalize },
     evidence,
     current,
     index,
@@ -342,7 +365,7 @@ export function InspectionPage() {
           {draft ? (
             <Metric
               label="Conformidade parcial"
-              tone="info"
+              tone={classify(overall.score) ? BAND_TONE[classify(overall.score)!] : "neutral"}
               value={formatScore(overall.score)}
               hint={
                 overall.score === null
@@ -367,25 +390,17 @@ export function InspectionPage() {
         </section>
         <div className="audit-hero-actions">
           {draft && auth.can("audit.inspection.finalize", scope) && (
+            <div className="audit-finalize-action">
             <button
               className="primary"
-              disabled={remaining > 0 || stale || evidenceConflict || preparing || r.loading || summary.id!==inspectionId || pending.size>0}
-              onClick={async () => {
-                const generation=reviewGeneration.current;
-                const id=summary.id,version=summary.version;
-                setPreparing(true);setEvidenceError("");setReview(undefined);
-                try {
-                  // Review all criteria and bind this snapshot to its parent and lifecycle.
-                  const [rows,count]=await Promise.all([evidenceApi.listEvidence(id),evidenceApi.pendingCount(id)]);
-                  if(reviewGeneration.current!==generation)return;
-                  setReview({inspectionId:id,version,rows});setFinalPending(count);setAction("finalize");
-                } catch {
-                  if(reviewGeneration.current===generation)setEvidenceError("Não foi possível revisar as evidências. Tente novamente antes de finalizar.");
-                } finally { if(reviewGeneration.current===generation)setPreparing(false); }
-              }}
+              disabled={!!finalizeReasons}
+              aria-describedby={finalizeReasons ? "audit-finalize-reason" : undefined}
+              onClick={requestFinalize}
             >
               Finalizar
             </button>
+            {finalizeReasons && <p id="audit-finalize-reason" role="status">{finalizeReasons}</p>}
+            </div>
           )}
           {!draft && auth.can("audit.inspection.reopen", scope) && (
             <button onClick={() => setAction("reopen")}>Reabrir</button>
@@ -427,13 +442,6 @@ export function InspectionPage() {
           <button onClick={reload}>Atualizar</button>
         </Notice>
       )}
-      {draft &&
-        remaining > 0 &&
-        auth.can("audit.inspection.finalize", scope) && (
-          <p className="muted audit-hint">
-            Responda todos os critérios para finalizar ({remaining} restantes).
-          </p>
-        )}
       {!draft && (
         <Notice>
           Auditoria finalizada em{" "}

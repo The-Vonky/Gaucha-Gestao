@@ -14,6 +14,7 @@ import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router-dom
 import { ChecklistEvidence } from "../apps/web/src/modules/audit/ChecklistEvidence";
 import type { EvidenceController } from "../apps/web/src/modules/audit/useChecklistEvidence";
 import { InspectionPage } from "../apps/web/src/modules/audit/InspectionPage";
+import { Result } from "../apps/web/src/modules/audit/Result";
 import { UnitPage } from "../apps/web/src/modules/audit/UnitPage";
 import { AuditOverview } from "../apps/web/src/modules/audit/AuditOverview";
 import { NewInspection } from "../apps/web/src/modules/audit/NewInspection";
@@ -145,6 +146,37 @@ describe("audit navigation", () => {
   });
 });
 describe("inspection page", () => {
+  it.each([[50, "inadequate"], [51, "partial"], [76, "adequate"]] as const)("uses the same band at %s%% while retaining the partial label", (score, band) => {
+    const draft = summary({ total_items: 100, answered: 100, at_count: score, nat_count: 100 - score });
+    const { container, rerender } = render(<Result summary={draft} />);
+    expect(container.querySelector(`.audit-result.${band}`)).toBeTruthy();
+    expect(screen.getByText(/Parcial · em andamento/)).toBeTruthy();
+    rerender(<Result summary={{ ...draft, status: "finalized", final_score: score, final_classification: band }} />);
+    expect(container.querySelector(`.audit-result.${band}`)).toBeTruthy();
+    expect(screen.queryByText(/Parcial · em andamento/)).toBeNull();
+  });
+  it("explains the same pending criteria at both finalization buttons", async () => {
+    const user = userEvent.setup();
+    setup(summary(), items.map(i => answer(i.key, null)));
+    const top = await screen.findByRole("button", { name: "Finalizar" });
+    expect((top as HTMLButtonElement).disabled).toBe(true);
+    expect(document.getElementById(top.getAttribute("aria-describedby")!)?.textContent).toContain("3 restantes");
+    await user.click(screen.getByRole("button", { name: "Próxima seção" }));
+    const last = screen.getByRole("button", { name: "Finalizar auditoria" });
+    expect((last as HTMLButtonElement).disabled).toBe(true);
+    expect(document.getElementById(last.getAttribute("aria-describedby")!)?.textContent).toContain("3 restantes");
+    expect(screen.queryByRole("button", { name: "Próxima seção" })).toBeNull();
+  });
+  it("opens the shared evidence confirmation from the last section", async () => {
+    const user = userEvent.setup();
+    setup(summary({ answered: 3, at_count: 3 }), items.map(i => answer(i.key, "AT")));
+    await user.click(await screen.findByRole("button", { name: "Próxima seção" }));
+    await user.click(screen.getByRole("button", { name: "Finalizar auditoria" }));
+    await screen.findByRole("dialog");
+    expect(api.finalize).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+    await waitFor(() => expect(api.finalize).toHaveBeenCalledWith("i1", 1, []));
+  });
   it("binds hidden-section evidence and warns pending before finalizing",async()=>{
     const user=userEvent.setup();
     evidenceApi.listEvidence.mockResolvedValue([{id:"e9",item_key:"item-003",original_name:"seção9.pdf",content_type:"application/pdf",size_bytes:10,uploaded_by_name:"Ana",uploaded_at:""}] as never);

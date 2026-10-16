@@ -18,6 +18,7 @@ export type InspectionView = {
   stale: boolean;
   /** A lifecycle confirmation is open (evidence edits pause meanwhile). */
   confirming: boolean;
+  finalization: { allowed: boolean; reason: string; request: () => Promise<void> };
   evidence: EvidenceController;
   current: Section;
   index: number;
