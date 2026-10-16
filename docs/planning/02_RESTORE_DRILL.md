@@ -127,3 +127,48 @@ Preencher somente após execução efetiva:
 Limpeza dos dois projetos sintéticos somente com revisão dos **nomes exatos** e autorização do responsável. Nunca usar comandos de exclusão de volume na C30, em ambientes persistentes nem sobre o ERP de Contratos.
 
 **Próximo passo prático:** identificar a máquina de desenvolvimento/runner isolado que executará este ensaio. Após confirmar Docker/Compose nessa máquina e nomes de projetos inéditos, implementar um executor reproduzível com as salvaguardas acima, rodá-lo e preencher o relatório. A ausência de uma máquina executora na sessão atual impede afirmar sucesso.
+
+
+## 10. Computador temporário Windows/Docker Desktop — descarte controlado
+
+**Contexto relatado em 16/10/2026:** computador de desenvolvimento **temporário**, PowerShell em Windows, Docker Client/Engine 29.8.2, Docker Desktop 4.95.0 com engine Linux e Compose 5.6.0. O comando `docker ps -a` apresentou **um** contêiner **preexistente**, `erp-contratos-postgres` (`postgres:18.4`, porta loopback 5432, saudável); `docker volume ls` apresentou **um** volume preexistente, `infrastructure_erp_contratos_pgdata`. **Ambos são expressamente excluídos do escopo; nunca parar, montar, inspecionar conteúdo, alterar, sobrescrever, exportar ou excluir.** Esse inventário é apenas um snapshot; antes de executar, consultar novamente.
+
+### 10.1 Nomes e limites de exclusividade (reserva lógica; ainda não criados)
+
+| Item | Identificador proposto | Condição |
+| --- | --- | --- |
+| Origem sintética | `gaucha-infra-drill-src-20261016` | Novo projeto Compose; rejeitar se o nome já existir |
+| Destino da cópia | `gaucha-infra-drill-dst-20261016` | Novo projeto Compose distinto; rejeitar se o nome já existir |
+| Artefatos de backup e manifesto | Pasta exclusiva de laboratório fora do checkout, por exemplo `C:\GG-RESTORE-DRILL-20261016` ou pasta Linux equivalente no WSL | Criar apenas após pré-voo e aprovação do caminho; nada em `C:\Windows\system32`, nada no ERP e nada no Git |
+| Portas gateway | Duas portas **loopback** livres, ainda não escolhidas | Não usar 5432 do ERP; conferir ocupação antes de fixar |
+| Volumes | Nomes gerados automaticamente com prefixo de cada projeto Compose | Somente `db-data`, `db-config`, `storage-data` por projeto; verificar labels `com.docker.compose.project` |
+
+A escolha dos nomes acima **não cria** projetos e **não demonstra** que as portas ou volumes estão disponíveis.
+
+### 10.2 Comandos de pré-voo (somente leitura no PowerShell)
+
+~~~powershell
+wsl --list --verbose
+docker compose ls --all
+docker ps -a
+docker volume ls
+docker system df
+Get-PSDrive -PSProvider FileSystem | Select-Object Name, Used, Free
+~~~
+
+- A saída de `docker compose ls --all` informa projetos existentes, e `wsl --list --verbose` informa se há uma distribuição Linux apta a executar os scripts Bash do repositório. A existência do backend `desktop-linux` **não prova** que Ubuntu/WSL já esteja disponível para os scripts.
+- Antes de trabalhar, definir/confirmar uma **distribuição WSL Linux** ou outro executor Linux independente, compatível com os scripts atuais. Não executar `scripts/ops/*.sh` diretamente no PowerShell; não instalar software, reinicializar, criar arquivos, containers ou volumes sem validação prévia.
+- Consultar o espaço disponível e confirmar que cabem **dois stacks**, o backup e uma margem de recuperação. Não adotar um número de GB não medido.
+- Conferir também que os projetos e volumes reservados **não** aparecem entre os recursos preexistentes. Identificadores inesperados = **BLOCKED** para criação, não licença para apagá-los.
+
+### 10.3 Contrato de limpeza futura
+
+A limpeza será **por allowlist**, nunca por varredura global:
+1. Manter manifesto dos **dois** nomes de projeto e da **única** pasta de artefatos, junto dos IDs/labels dos seis volumes **recém-criados**, sem segredos nem caminhos de terceiros.
+2. Ao fim do teste, validar evidências e obter autorização específica para remover os recursos descartáveis.
+3. Para cada projeto reservado e efetivamente criado, conferir `docker compose ls --all`, `docker ps -a --filter label=com.docker.compose.project=...` e `docker volume ls --filter label=com.docker.compose.project=...`, antes e depois da limpeza.
+4. Utilizar exclusivamente `docker compose` apontando ao **mesmo nome de projeto e Compose/env do laboratório**, com parada e exclusão `down --volumes` apenas depois da autorização. A operação é destrutiva **somente para os recursos do projeto identificado**; validar os alvos antes de executar.
+5. Remover a **pasta exclusiva do laboratório**, incluindo backups e segredos sintéticos temporários, apenas após a decisão sobre retenção das evidências saneadas e após conferir seu caminho absoluto.
+6. Confirmar `erp-contratos-postgres` em funcionamento e `infrastructure_erp_contratos_pgdata` presente e intocado; registrar resultado final. Nunca usar `docker system prune`, `docker volume prune`, `docker compose down -v` sem `-p`/projeto exato, nem `docker rm`/`docker volume rm` por correspondência ampla.
+
+**Estado deste adendo:** pré-voo Windows parcialmente verificado pelo usuário. Falta inventário Compose/WSL/espaço e execução da prova DR-01 a DR-09; **nenhuma limpeza foi executada**.
