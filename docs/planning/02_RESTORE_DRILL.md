@@ -172,3 +172,7 @@ A limpeza será **por allowlist**, nunca por varredura global:
 6. Confirmar `erp-contratos-postgres` em funcionamento e `infrastructure_erp_contratos_pgdata` presente e intocado; registrar resultado final. Nunca usar `docker system prune`, `docker volume prune`, `docker compose down -v` sem `-p`/projeto exato, nem `docker rm`/`docker volume rm` por correspondência ampla.
 
 **Estado deste adendo:** pré-voo Windows parcialmente verificado pelo usuário. Falta inventário Compose/WSL/espaço e execução da prova DR-01 a DR-09; **nenhuma limpeza foi executada**.
+
+### 10.4 Confirmação do host — 16/10/2026
+
+O responsável **confirmou** que o PC temporário onde foram executados os comandos PowerShell/Docker **não é a Lenovo C30**. A C30 será o host oficial futuro, após preparação e formatação autorizada. Assim, a suspeita provisória de identidade do host registrada na Issue #51 está encerrada. O projeto preexistente `infrastructure`, o contêiner `erp-contratos-postgres` e o volume `infrastructure_erp_contratos_pgdata` continuam **fora do escopo de qualquer intervenção**, apesar de estarem no computador temporário. Próximo teste: Docker CLI no Ubuntu WSL2; nenhum ambiente de restauração foi criado.
