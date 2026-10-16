@@ -9,6 +9,7 @@ import {
   EmptyState,
   LoadingState,
   Metric,
+  Modal,
   Notice,
   type BadgeTone,
 } from "../../shared/ui";
@@ -23,6 +24,7 @@ import * as evidenceApi from "./evidence";
 import { formatDate, Progress, StatusBadge } from "./Result";
 import {
   CLASSIFICATION_LABELS,
+  classify,
   evaluate,
   formatScore,
   tally,
@@ -39,7 +41,7 @@ const TABS: Record<string, "overview" | "checklist" | "plans"> = {
 /** Responses that source a checklist action plan (Action Plans sync trigger). */
 const isPlanSource = (response: Answer["response"]) =>
   response === "AP" || response === "NAT";
-/** Band colors exist only for a finalized result. */
+/** Shared score bands; labels distinguish partial from final results. */
 const BAND_TONE: Record<Classification, BadgeTone> = {
   adequate: "success",
   partial: "warning",
@@ -116,6 +118,7 @@ export function InspectionPage() {
   }>();
   const [section, setSection] = useState("");
   const [action, setAction] = useState<"finalize" | "reopen">();
+  const [incomplete, setIncomplete] = useState(false);
   const [stale, setStale] = useState(false);
   const [pending, setPending] = useState<Set<string>>(() => new Set());
   const onPending = useCallback((key: string, value: boolean) => {
@@ -128,7 +131,7 @@ export function InspectionPage() {
   useEffect(() => {
     reviewGeneration.current++;
     setLifecycleTransition(undefined);
-    setPending(new Set());setAction(undefined);setReview(undefined);
+    setPending(new Set());setAction(undefined);setReview(undefined);setIncomplete(false);
     setFinalPending(0);setPreparing(false);setEvidenceError("");setEvidenceConflict(false);setStale(false);setPlansStale(false);setTarget(undefined);
     return () => { reviewGeneration.current++; };
   }, [inspectionId]);
@@ -179,7 +182,7 @@ export function InspectionPage() {
   );
   const reload = () => {
     reviewGeneration.current++;
-    setReview(undefined);setAction(undefined);setPreparing(false);
+    setReview(undefined);setAction(undefined);setPreparing(false);setIncomplete(false);
     setStale(false);
     setEvidenceConflict(false);
     setEvidenceError("");
@@ -246,6 +249,31 @@ export function InspectionPage() {
     setTarget(item);
   };
   const band = summary.final_classification;
+  const finalizeReasons = [
+    pending.size > 0 ? "Há alterações não salvas. Aguarde o salvamento ou corrija os erros indicados nos critérios." : "",
+    stale ? "Dados desatualizados. Atualize a auditoria antes de finalizar." : "",
+    evidenceConflict ? "As evidências foram alteradas. Recarregue e revise o conjunto." : "",
+    preparing ? "Revisando evidências…" : "",
+    r.loading || summary.id !== inspectionId ? "Atualizando os dados da auditoria…" : "",
+  ].filter(Boolean).join(" ");
+  const requestFinalize = async () => {
+    if (!draft || !auth.can("audit.inspection.finalize", scope) || finalizeReasons) return;
+    if (remaining > 0) {
+      setIncomplete(true);
+      return;
+    }
+    const generation=reviewGeneration.current;
+    const id=summary.id,version=summary.version;
+    setPreparing(true);setEvidenceError("");setReview(undefined);
+    try {
+      // Review all criteria and bind this snapshot to its parent and lifecycle.
+      const [rows,count]=await Promise.all([evidenceApi.listEvidence(id),evidenceApi.pendingCount(id)]);
+      if(reviewGeneration.current!==generation)return;
+      setReview({inspectionId:id,version,rows});setFinalPending(count);setAction("finalize");
+    } catch {
+      if(reviewGeneration.current===generation)setEvidenceError("Não foi possível revisar as evidências. Tente novamente antes de finalizar.");
+    } finally { if(reviewGeneration.current===generation)setPreparing(false); }
+  };
   const view: InspectionView = {
     summary,
     sections,
@@ -255,6 +283,7 @@ export function InspectionPage() {
     editable,
     stale,
     confirming: !!action,
+    finalization: { allowed: draft && auth.can("audit.inspection.finalize", scope), reason: finalizeReasons, request: requestFinalize },
     evidence,
     current,
     index,
@@ -342,7 +371,7 @@ export function InspectionPage() {
           {draft ? (
             <Metric
               label="Conformidade parcial"
-              tone="info"
+              tone={classify(overall.score) ? BAND_TONE[classify(overall.score)!] : "neutral"}
               value={formatScore(overall.score)}
               hint={
                 overall.score === null
@@ -369,20 +398,8 @@ export function InspectionPage() {
           {draft && auth.can("audit.inspection.finalize", scope) && (
             <button
               className="primary"
-              disabled={remaining > 0 || stale || evidenceConflict || preparing || r.loading || summary.id!==inspectionId || pending.size>0}
-              onClick={async () => {
-                const generation=reviewGeneration.current;
-                const id=summary.id,version=summary.version;
-                setPreparing(true);setEvidenceError("");setReview(undefined);
-                try {
-                  // Review all criteria and bind this snapshot to its parent and lifecycle.
-                  const [rows,count]=await Promise.all([evidenceApi.listEvidence(id),evidenceApi.pendingCount(id)]);
-                  if(reviewGeneration.current!==generation)return;
-                  setReview({inspectionId:id,version,rows});setFinalPending(count);setAction("finalize");
-                } catch {
-                  if(reviewGeneration.current===generation)setEvidenceError("Não foi possível revisar as evidências. Tente novamente antes de finalizar.");
-                } finally { if(reviewGeneration.current===generation)setPreparing(false); }
-              }}
+              disabled={!!finalizeReasons}
+              onClick={requestFinalize}
             >
               Finalizar
             </button>
@@ -427,13 +444,6 @@ export function InspectionPage() {
           <button onClick={reload}>Atualizar</button>
         </Notice>
       )}
-      {draft &&
-        remaining > 0 &&
-        auth.can("audit.inspection.finalize", scope) && (
-          <p className="muted audit-hint">
-            Responda todos os critérios para finalizar ({remaining} restantes).
-          </p>
-        )}
       {!draft && (
         <Notice>
           Auditoria finalizada em{" "}
@@ -453,6 +463,14 @@ export function InspectionPage() {
           <InspectionChecklist />
         </div>
       </InspectionProvider>
+      {incomplete && (
+        <Modal title="Auditoria incompleta" onClose={() => setIncomplete(false)}>
+          <p>Ainda restam <strong>{remaining} critérios</strong> sem resposta. Responda todos os critérios antes de finalizar a auditoria.</p>
+          <div className="actions">
+            <button type="button" className="primary" onClick={() => setIncomplete(false)}>Entendi</button>
+          </div>
+        </Modal>
+      )}
       {action && (
         <Confirm
           title={

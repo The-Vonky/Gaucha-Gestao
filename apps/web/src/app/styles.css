@@ -1137,6 +1137,8 @@
   justify-content: flex-end;
   gap: var(--space-2);
 }
+.audit-finalize-action { max-width: 32rem; min-width: 0; }
+.audit-finalize-action p { margin: .5rem 0 0; font-size: .875rem; overflow-wrap: anywhere; }
 .audit-hero-actions:empty {
   display: none;
 }
@@ -2632,6 +2634,7 @@ button.file-remove:hover:not(:disabled) {
   .audit-hero-actions > button {
     flex: 1 1 auto;
   }
+  .audit-finalize-action > button { width: 100%; }
   .audit-pager button {
     flex: 1 1 0;
   }
