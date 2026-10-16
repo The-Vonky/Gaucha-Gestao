@@ -14,6 +14,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { can, type AccessGrant } from "../apps/web/src/core/auth/permissions";
 import { visibleNavigation } from "../apps/web/src/app/navigation";
 import { ActionPlansModule } from "../apps/web/src/modules/action-plans/ActionPlansModule";
+import { PlanFields, readPlanValues } from "../apps/web/src/modules/action-plans/PlanFields";
+import { monitoringDuration, planningDateBounds, planningDateError } from "../apps/web/src/modules/action-plans/planningDates";
 import {
   daysUntilDue,
   isDueSoon,
@@ -197,6 +199,53 @@ describe("action plan lifecycle rules", () => {
   });
 });
 describe("action plans UI", () => {
+  it("loads the complete listing independently and requests creation scopes only on opening", async () => {
+    auth.grants = grants("read", "create_manual");
+    api.summaries.mockResolvedValue([summary(plan())]);
+    api.creationScopes.mockRejectedValueOnce(new Error("unavailable"));
+    open("/action-plans");
+    await screen.findByRole("link", { name: "Telas danificadas" });
+    expect(api.creationScopes).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Novo plano" }));
+    await screen.findByRole("button", { name: "Tentar novamente" });
+    expect(screen.getByRole("link", { name: "Telas danificadas" })).toBeTruthy();
+    api.creationScopes.mockResolvedValue([{ unit_id: "A", unit_name: "Unidade A", sector_id: null, sector_name: null }]);
+    await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    await screen.findByRole("dialog");
+    expect(api.summaries).toHaveBeenCalledTimes(1);
+    expect(api.creationScopes).toHaveBeenCalledTimes(2);
+  });
+  it("rejects absurd dates but preserves unchanged legacy dates", () => {
+    expect(planningDateError("0900-01-01")).toContain("entre");
+    expect(planningDateError("9999-01-01")).toContain("entre");
+    expect(planningDateError("2026-02-29")).toContain("válida");
+    expect(planningDateError("2999-01-01", "2999-01-01")).toBe("");
+    expect(planningDateError("2028-02-29", "", "2026-10-16")).toBe("");
+    const form = new FormData();
+    form.set("due_date", "0900-01-01");
+    expect(() => readPlanValues(form)).toThrow("entre");
+    form.set("due_date", "2999-01-01");
+    expect(readPlanValues(form, plan()).due_date).toBe("2999-01-01");
+    form.set("monitoring_start", "2026-11-02");
+    form.set("monitoring_end", "2026-11-01");
+    expect(() => readPlanValues(form, plan())).toThrow("posterior");
+  });
+  it("updates calendar duration and picker bounds while dates change", () => {
+    render(<PlanFields />);
+    const start = screen.getByLabelText("Início") as HTMLInputElement;
+    const end = screen.getByLabelText("Fim") as HTMLInputElement;
+    const due = screen.getByLabelText("Prazo") as HTMLInputElement;
+    expect(due.min).toBe(planningDateBounds().min);
+    expect(due.max).toBe(planningDateBounds().max);
+    fireEvent.change(start, { target: { value: "2026-01-01" } });
+    fireEvent.change(end, { target: { value: "2027-03-01" } });
+    expect(screen.getByText(/424 dias \(1 ano e 2 meses completos\)/)).toBeTruthy();
+    expect(start.max).toBe("2027-03-01");
+    expect(end.min).toBe("2026-01-01");
+    expect(monitoringDuration("2024-02-28", "2024-03-01")).toBe("2 dias");
+    expect(monitoringDuration("2018-11-03", "2018-11-05")).toBe("2 dias");
+    expect(monitoringDuration("2026-01-01", "2026-01-01")).toBe("0 dias");
+  });
   it("shows Planos de Ação only with read permission", () => {
     expect(visibleNavigation(true, grants("create_manual", "write"))).toEqual(
       [],

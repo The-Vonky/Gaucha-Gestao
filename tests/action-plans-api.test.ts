@@ -13,6 +13,32 @@ import {
 } from "../apps/web/src/modules/action-plans/api";
 afterEach(() => http.mockReset());
 describe("Action Plan API pagination", () => {
+  it("measures listing orchestration with 1001 synthetic plans and creation scopes", async () => {
+    const plans = Array.from({ length: 1001 }, (_, i) => ({ plan: { id: String(i) } }));
+    const scopes = Array.from({ length: 1001 }, (_, i) => ({ unit_id: String(i), sector_id: null }));
+    http.mockImplementation(async (url: string) => {
+      const u = new URL(url);
+      const creation = u.pathname.endsWith("creation_scopes");
+      await new Promise(resolve => setTimeout(resolve, creation ? 80 : 10));
+      const offset = Number(u.searchParams.get("offset") ?? 0);
+      return new Response(JSON.stringify((creation ? scopes : plans).slice(offset, offset + 500)), {
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    const start = performance.now();
+    const [before] = await Promise.all([summaries(), creationScopes()]);
+    const beforeMs = performance.now() - start;
+    const beforeCalls = http.mock.calls.length;
+    http.mockClear();
+    const afterStart = performance.now();
+    const after = await summaries();
+    const afterMs = performance.now() - afterStart;
+    expect(after).toEqual(before);
+    expect(after).toHaveLength(1001);
+    expect(beforeCalls).toBe(6);
+    expect(http).toHaveBeenCalledTimes(3);
+    console.info(`Synthetic listing (10ms summaries / 80ms scopes per page): before ${Math.round(beforeMs)}ms / ${beforeCalls} requests; lazy scopes ${Math.round(afterMs)}ms / ${http.mock.calls.length} requests`);
+  });
   it("does not lose older plans beyond the Data API limit or discard the inspection filter", async () => {
     const rows = Array.from({ length: 1001 }, (_, i) => ({
       plan: { id: String(i) },

@@ -1,9 +1,17 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Plan, PlanValues } from "./types";
+import { monitoringDuration, planningDateBounds, planningDateError } from "./planningDates";
 const text = (data: FormData, name: string) =>
   String(data.get(name) ?? "").trim();
 const date = (data: FormData, name: string) => text(data, name) || null;
 export function readPlanValues(data: FormData, plan?: Plan): PlanValues {
+  for (const key of ["due_date", "monitoring_start", "monitoring_end"] as const) {
+    const error = planningDateError(text(data, key), plan?.[key] ?? "");
+    if (error) throw new Error(error);
+  }
+  const start = text(data, "monitoring_start"), end = text(data, "monitoring_end");
+  if (!!start !== !!end) throw new Error("Informe o início e o fim do acompanhamento, ou deixe os dois em branco.");
+  if (start > end) throw new Error("O início do acompanhamento não pode ser posterior ao fim.");
   return {
     // Checklist plans keep the canonical criterion as improvement point.
     improvement_point:
@@ -58,11 +66,7 @@ export function PlanFields({ plan }: { plan?: Plan }) {
       </label>
       <label>
         Prazo
-        <input
-          type="date"
-          name="due_date"
-          defaultValue={plan?.due_date ?? ""}
-        />
+        <PlanningDate name="due_date" original={plan?.due_date} />
       </label>
       <label>
         Critério de eficácia
@@ -85,6 +89,27 @@ export function PlanFields({ plan }: { plan?: Plan }) {
     </>
   );
 }
+function PlanningDate({ name, original, value, onChange, min, max, required }: {
+  name: string; original?: string | null; value?: string; onChange?: (value: string) => void;
+  min?: string; max?: string; required?: boolean;
+}) {
+  const [local, setLocal] = useState(original ?? "");
+  const current = value ?? local;
+  const id = useId();
+  const bounds = planningDateBounds();
+  const unchanged = !!original && current === original;
+  const lower = unchanged ? min : min && min > bounds.min ? min : bounds.min;
+  const upper = unchanged ? max : max && max < bounds.max ? max : bounds.max;
+  const error = planningDateError(current, original ?? "") || (min && current && current < min || max && current && current > max
+    ? "O início do acompanhamento não pode ser posterior ao fim." : "");
+  return <>
+    <input type="date" name={name} value={current} required={required}
+      min={lower} max={upper}
+      aria-invalid={!!error} aria-describedby={error ? id : undefined}
+      onChange={e => { setLocal(e.target.value); onChange?.(e.target.value); }} />
+    {error && <span id={id} role="status">{error}</span>}
+  </>;
+}
 /**
  * Optional, but complete when used: the database accepts both dates or none, with
  * start ≤ end. The form enforces the same rule before submitting.
@@ -98,26 +123,27 @@ function MonitoringPeriod({ plan }: { plan?: Plan }) {
       <legend>Período de acompanhamento (opcional)</legend>
       <label>
         Início
-        <input
-          type="date"
+        <PlanningDate
           name="monitoring_start"
+          original={plan?.monitoring_start}
           value={start}
           max={end || undefined}
           required={!!end}
-          onChange={(e) => setStart(e.target.value)}
+          onChange={setStart}
         />
       </label>
       <label>
         Fim
-        <input
-          type="date"
+        <PlanningDate
           name="monitoring_end"
+          original={plan?.monitoring_end}
           value={end}
           min={start || undefined}
           required={!!start}
-          onChange={(e) => setEnd(e.target.value)}
+          onChange={setEnd}
         />
       </label>
+      {monitoringDuration(start, end) && <p className="muted ap-period-hint" role="status">Duração do acompanhamento: {monitoringDuration(start, end)}.</p>}
       {partial && (
         <p className="muted ap-period-hint">
           Informe o início e o fim, ou deixe os dois em branco.

@@ -56,13 +56,10 @@ export function ActionPlansOverview() {
     "action_plan.create_manual",
   );
   const r = useResource(
-    useCallback(async () => {
-      const [rows, scopes] = await Promise.all([
-        api.summaries(inspection ? { p_inspection: inspection } : {}),
-        canCreate ? api.creationScopes() : Promise.resolve([]),
-      ]);
-      return { rows, scopes };
-    }, [inspection, canCreate]),
+    useCallback(() => api.summaries(inspection ? { p_inspection: inspection } : {}), [inspection]),
+  );
+  const scopes = useResource(
+    useCallback(() => creating && canCreate ? api.creationScopes() : Promise.resolve(null), [creating, canCreate]),
   );
   const set = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((f) => ({
@@ -70,7 +67,7 @@ export function ActionPlansOverview() {
       [key]: value,
       ...(key === "unit" ? { sector: "" } : {}),
     }));
-  const all = r.data?.rows ?? [];
+  const all = r.data ?? [];
   // Default operational scope hides inactive checklist-source history.
   const operational = all.filter(
     (x) => filters.history || !isInactiveSource(x.plan),
@@ -318,9 +315,11 @@ export function ActionPlansOverview() {
           )}
         </>
       )}
-      {creating && r.data && (
+      {creating && canCreate && scopes.loading && <Notice>Carregando unidades para criar o plano… <button onClick={() => setCreating(false)}>Cancelar</button></Notice>}
+      {creating && canCreate && scopes.error && <Notice error>{scopes.error} <button onClick={scopes.reload}>Tentar novamente</button> <button onClick={() => setCreating(false)}>Cancelar</button></Notice>}
+      {creating && canCreate && scopes.data && (
         <NewActionPlan
-          scopes={r.data.scopes}
+          scopes={scopes.data}
           onClose={() => setCreating(false)}
         />
       )}
