@@ -2634,7 +2634,6 @@ button.file-remove:hover:not(:disabled) {
   .audit-hero-actions > button {
     flex: 1 1 auto;
   }
-  .audit-hero-actions .audit-finalize-action { flex: 1 1 100%; max-width: none; }
   .audit-finalize-action > button { width: 100%; }
   .audit-pager button {
     flex: 1 1 0;

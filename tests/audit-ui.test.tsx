@@ -155,16 +155,26 @@ describe("inspection page", () => {
     expect(container.querySelector(`.audit-result.${band}`)).toBeTruthy();
     expect(screen.queryByText(/Parcial · em andamento/)).toBeNull();
   });
-  it("explains the same pending criteria at both finalization buttons", async () => {
+  it("opens and closes the incomplete warning from either finalization button without finalizing", async () => {
     const user = userEvent.setup();
     setup(summary(), items.map(i => answer(i.key, null)));
     const top = await screen.findByRole("button", { name: "Finalizar" });
-    expect((top as HTMLButtonElement).disabled).toBe(true);
-    expect(document.getElementById(top.getAttribute("aria-describedby")!)?.textContent).toContain("3 restantes");
+    expect((top as HTMLButtonElement).disabled).toBe(false);
+    expect(top.parentElement?.className).toBe("audit-hero-actions");
+    expect(screen.queryByText(/Responda todos os critérios/)).toBeNull();
+    await user.click(top);
+    const dialog = screen.getByRole("dialog", { name: "Auditoria incompleta" });
+    expect(dialog.textContent).toContain("Ainda restam 3 critérios sem resposta. Responda todos os critérios antes de finalizar a auditoria.");
+    expect(api.finalize).not.toHaveBeenCalled();
+    expect(evidenceApi.pendingCount).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Entendi" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Próxima seção" }));
     const last = screen.getByRole("button", { name: "Finalizar auditoria" });
-    expect((last as HTMLButtonElement).disabled).toBe(true);
-    expect(document.getElementById(last.getAttribute("aria-describedby")!)?.textContent).toContain("3 restantes");
+    expect((last as HTMLButtonElement).disabled).toBe(false);
+    await user.click(last);
+    expect(screen.getByRole("dialog", { name: "Auditoria incompleta" })).toBeTruthy();
+    expect(api.finalize).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Próxima seção" })).toBeNull();
   });
   it("opens the shared evidence confirmation from the last section", async () => {
@@ -312,9 +322,9 @@ describe("inspection page", () => {
     expect(screen.getByText("1/3 respondidos")).toBeTruthy();
     expect(screen.queryByText(/^Adequada/)).toBeNull();
     expect((screen.getByText("Finalizar") as HTMLButtonElement).disabled).toBe(
-      true,
+      false,
     );
-    expect(screen.getByText(/2 restantes/)).toBeTruthy();
+    expect(screen.queryByText(/2 restantes/)).toBeNull();
   });
   it("shows no conformity for a new inspection", async () => {
     setup(
@@ -630,6 +640,11 @@ describe("inspection page", () => {
       expect.objectContaining({ observation: "Ralo aberto" }),
     );
     expect((screen.getByText("Exportar Excel") as HTMLButtonElement).disabled).toBe(true);
+    const finalize = screen.getByRole("button", { name: "Finalizar" });
+    expect((finalize as HTMLButtonElement).disabled).toBe(true);
+    await user.click(finalize);
+    expect(screen.queryByRole("dialog", { name: "Auditoria incompleta" })).toBeNull();
+    expect(api.finalize).not.toHaveBeenCalled();
     await user.click(screen.getByRole("link", { name: /Checklist/ }));
     expect((screen.getAllByLabelText("Observação")[0] as HTMLTextAreaElement).value).toBe("Ralo aberto");
   });

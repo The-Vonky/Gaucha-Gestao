@@ -9,6 +9,7 @@ import {
   EmptyState,
   LoadingState,
   Metric,
+  Modal,
   Notice,
   type BadgeTone,
 } from "../../shared/ui";
@@ -117,6 +118,7 @@ export function InspectionPage() {
   }>();
   const [section, setSection] = useState("");
   const [action, setAction] = useState<"finalize" | "reopen">();
+  const [incomplete, setIncomplete] = useState(false);
   const [stale, setStale] = useState(false);
   const [pending, setPending] = useState<Set<string>>(() => new Set());
   const onPending = useCallback((key: string, value: boolean) => {
@@ -129,7 +131,7 @@ export function InspectionPage() {
   useEffect(() => {
     reviewGeneration.current++;
     setLifecycleTransition(undefined);
-    setPending(new Set());setAction(undefined);setReview(undefined);
+    setPending(new Set());setAction(undefined);setReview(undefined);setIncomplete(false);
     setFinalPending(0);setPreparing(false);setEvidenceError("");setEvidenceConflict(false);setStale(false);setPlansStale(false);setTarget(undefined);
     return () => { reviewGeneration.current++; };
   }, [inspectionId]);
@@ -180,7 +182,7 @@ export function InspectionPage() {
   );
   const reload = () => {
     reviewGeneration.current++;
-    setReview(undefined);setAction(undefined);setPreparing(false);
+    setReview(undefined);setAction(undefined);setPreparing(false);setIncomplete(false);
     setStale(false);
     setEvidenceConflict(false);
     setEvidenceError("");
@@ -248,7 +250,6 @@ export function InspectionPage() {
   };
   const band = summary.final_classification;
   const finalizeReasons = [
-    remaining > 0 ? `Responda todos os critérios para finalizar (${remaining} restantes).` : "",
     pending.size > 0 ? "Há alterações não salvas. Aguarde o salvamento ou corrija os erros indicados nos critérios." : "",
     stale ? "Dados desatualizados. Atualize a auditoria antes de finalizar." : "",
     evidenceConflict ? "As evidências foram alteradas. Recarregue e revise o conjunto." : "",
@@ -256,6 +257,11 @@ export function InspectionPage() {
     r.loading || summary.id !== inspectionId ? "Atualizando os dados da auditoria…" : "",
   ].filter(Boolean).join(" ");
   const requestFinalize = async () => {
+    if (!draft || !auth.can("audit.inspection.finalize", scope) || finalizeReasons) return;
+    if (remaining > 0) {
+      setIncomplete(true);
+      return;
+    }
     const generation=reviewGeneration.current;
     const id=summary.id,version=summary.version;
     setPreparing(true);setEvidenceError("");setReview(undefined);
@@ -390,17 +396,13 @@ export function InspectionPage() {
         </section>
         <div className="audit-hero-actions">
           {draft && auth.can("audit.inspection.finalize", scope) && (
-            <div className="audit-finalize-action">
             <button
               className="primary"
               disabled={!!finalizeReasons}
-              aria-describedby={finalizeReasons ? "audit-finalize-reason" : undefined}
               onClick={requestFinalize}
             >
               Finalizar
             </button>
-            {finalizeReasons && <p id="audit-finalize-reason" role="status">{finalizeReasons}</p>}
-            </div>
           )}
           {!draft && auth.can("audit.inspection.reopen", scope) && (
             <button onClick={() => setAction("reopen")}>Reabrir</button>
@@ -461,6 +463,14 @@ export function InspectionPage() {
           <InspectionChecklist />
         </div>
       </InspectionProvider>
+      {incomplete && (
+        <Modal title="Auditoria incompleta" onClose={() => setIncomplete(false)}>
+          <p>Ainda restam <strong>{remaining} critérios</strong> sem resposta. Responda todos os critérios antes de finalizar a auditoria.</p>
+          <div className="actions">
+            <button type="button" className="primary" onClick={() => setIncomplete(false)}>Entendi</button>
+          </div>
+        </Modal>
+      )}
       {action && (
         <Confirm
           title={
