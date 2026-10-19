@@ -91,8 +91,8 @@ Antes de congelar a origem, verificar que o app/Storage estão saudáveis, regis
 | ID | Prova | Critério | Estado inicial |
 | --- | --- | --- | --- |
 | DR-01 | Origem e destino com projetos, portas, env e volumes distintos | Sem identificadores/volumes compartilhados | PASS — projetos, portas e volumes distintos |
-| DR-02 | PostgreSQL 17 e migrations | Schemas/ledger e contagens coerentes com origem | PARCIAL — 17 migrations e marcador confirmados; hashes do ledger não cotejados individualmente |
-| DR-03 | Duas unidades sintéticas | Inspeções/planos/atribuições correspondem ao manifesto | PARCIAL — 2 unidades, 2 inspeções, 4 planos e RLS confirmados; atribuições completas ainda não cotejadas |
+| DR-02 | PostgreSQL 17 e migrations | Schemas/ledger e contagens coerentes com origem | PASS — 17/17 hashes SHA-256 do ledger idênticos aos arquivos locais do SHA validado; marcador e contagens confirmados |
+| DR-03 | Duas unidades sintéticas | Inspeções/planos/atribuições correspondem ao manifesto | PASS — 2/2 atribuições `quality` ativas com escopo `unit` nas unidades A/B, nenhuma atribuição adicional; cenário e RLS já validados |
 | DR-04 | Storage DB + bytes de arquivo | Metadados e objetos recuperados, SHA-256 idêntico | PASS — metadados e 4 arquivos com SHA-256 idêntico |
 | DR-05 | Auth e vinculação a Core | Login sintético e permissões funcionais | PASS — logins A/B com JWT e acesso próprio ao banco/objetos |
 | DR-06 | Isolamento entre A/B e anônimo | Negativas reais via tokens de usuário | PASS — negação cruzada A/B e de downloads anônimos |
@@ -100,7 +100,7 @@ Antes de congelar a origem, verificar que o app/Storage estão saudáveis, regis
 | DR-08 | Tempo e operação | Cronometria registrada, fonte íntegra, nenhuma alteração fora dos projetos de teste | PARCIAL — operação limitada aos projetos de laboratório; tempos rigorosos não medidos |
 | DR-09 | Backup desligado da origem | Arquivos verificados, independentes dos volumes de origem | PASS — cópia a frio de 3 volumes; SHA-256 dos 3 tar OK; restore com origem desligada |
 
-**Resultado do ensaio em 19/10/2026: 6 PASS, 3 PARCIAL (DR-02, DR-03, DR-08).** Restore funcional comprovado no escopo sintético; não equivale a backup operacional de PROD ou aprovação de GO.
+**Resultado do ensaio em 19/10/2026: 8 PASS, 1 PARCIAL (DR-08).** Restore funcional comprovado no escopo sintético; não equivale a backup operacional de PROD ou aprovação de GO.
 
 ## 8. WAL-G versus pgBackRest e armazenamento off-site (decisão futura)
 
@@ -150,13 +150,13 @@ Os quatro arquivos do cenário e seus hashes SHA-256 originais (arquivos puramen
 
 ### 9.3 Resultado, limites e pendências
 
-**Resultado funcional do ensaio:** **PASS no restore sintético de PostgreSQL, Auth, Storage e negação cross-unit.** Matriz DR-01–DR-09: **6 PASS, 3 PARCIAL (DR-02, DR-03, DR-08)**. DR-02 exige cotejo individual dos hashes/ledger das migrations; DR-03 exige confronto documentado das atribuições de acesso com o manifesto; DR-08 exige cronometração da interrupção/cópia/restore/validação e verificação de procedimento por operador independente. A evidência entregue valida o funcionamento, não a íntegra de todos os requisitos de aceitação documental.
+**Resultado funcional do ensaio:** **PASS no restore sintético de PostgreSQL, Auth, Storage e negação cross-unit.** Matriz DR-01–DR-09: **8 PASS, 1 PARCIAL (DR-08)**. Em verificação adicional de leitura informada pelo operador no Ubuntu, o cotejo entre `infra_control.migrations.sha256` e os 17 arquivos SQL da mesma versão resultou em **17/17 SHA-256 idênticos**, e as atribuições `core.user_role_assignments` totalizaram **2/2**, ambas ativas, com papel `quality` e escopo `unit` nas unidades sintéticas correspondentes; os totais não indicaram atribuições adicionais. DR-08 exige cronometração da interrupção/cópia/restore/validação e, para o aceite operacional final, reprodução ou revisão independente do procedimento. A evidência entregue valida o funcionamento, não a íntegra de todos os requisitos de aceitação documental.
 
 **NÃO MEDIDO:** tempo total de interrupção, cópia, start, validação e RTO do laboratório. Não inferir duração de prints ou da data de consulta. Não definir RPO = 0 ou RTO operacional a partir deste ensaio.
 
 **Não coberto:** alteração de usuário inativo, acesso ao terceiro bucket privado `unit-covers` por fluxo legítimo, cópia off-site, falha total do host, PITR/arquivamento WAL, retenção e monitoramento/alertas produtivos. Ferramenta WAL-G versus pgBackRest, RPO/RTO e políticas de backup ainda exigem decisão própria. O ensaio não comprova O1/O3/O4/O8 de PRODUÇÃO.
 
-**Próximas ações:** documentar cotejo faltante de DR-02/DR-03, repetir o ensaio com cronômetro para DR-08 se o gate exigir; revisar o runbook e obter revisão humana na PR #62; demonstrar o procedimento ao Dev B, atualizar a Issue #51 e manter a decisão **PROD = NO-GO** até fechar os outros gates.
+**Próximas ações:** completar ou registrar exceção formal justificada para a cronometração de DR-08; revisar o runbook e obter revisão humana na PR #62; demonstrar o procedimento ao Dev B e manter a decisão **PROD = NO-GO** até fechar os gates produtivos.
 
 **Política de retenção/limpeza:** manter origem, destino, arquivos tar e segredos sintéticos protegidos até conclusão e autorização humana. Nunca executar `down -v` ou `docker volume prune` sobre projetos existentes; preservar ERP de Contratos e DEV compartilhado.
 
