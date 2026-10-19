@@ -10,6 +10,7 @@
 | --- | --- | --- |
 | Entender o produto e seus limites | [README principal](../README.md) | [Estrutura do produto](architecture/PRODUCT_STRUCTURE.md) |
 | Enxergar a plataforma e os componentes | [Diagramas AS-IS/TO-BE](architecture/DIAGRAMS.md) | [Visão arquitetural](architecture/OVERVIEW.md) |
+| Consultar APIs e RPCs existentes | [Catálogo de interfaces](architecture/API_CONTRACTS.md) | [Mapa de implementação](architecture/IMPLEMENTATION_MAP.md) |
 | Compreender como cada stack se conecta | [Integração das stacks](architecture/STACK_INTEGRATION.md) | [ADR-004](decisions/ADR-004-platform-stack.md), [ADR-006](decisions/ADR-006-infra-v1-reused-hardware.md), [ADR-008](decisions/ADR-008-production-host-thinkstation-c30.md) |
 | Entender os fluxos reais de negócio | [Fluxos ponta a ponta](architecture/WORKFLOWS.md) | [Fonte da verdade de Auditorias](modules/audit/AUDIT_SOURCE_OF_TRUTH.md), [Action Plans brief](briefs/ACTION_PLAN_DOMAIN_V1.md) |
 | Relacionar funcionalidades com código | [Mapa de implementação](architecture/IMPLEMENTATION_MAP.md) | [Modelo de dados](architecture/DATA_MODEL.md), [Autorização](architecture/AUTHORIZATION.md) |
@@ -17,7 +18,9 @@
 | Ver decisões, incógnitas e impedimentos | [Registro de decisões e lacunas](planning/DECISION_REGISTER.md) | [ADRs](decisions/), [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) |
 | Operar e recuperar com segurança | [Matriz operacional](operations/OPERATIONS_MATRIX.md) | [Backup e recuperação](architecture/BACKUP_RECOVERY.md), [Infraestrutura de laboratório](../infra/README.md) |
 | Avaliar ameaças e controle de acesso | [Modelo de ameaças](architecture/THREAT_MODEL.md) | [Segurança](architecture/SECURITY.md), [ADR-005](decisions/ADR-005-core-authorization.md) |
+| Usar o módulo de Qualidade | [Guia do operador (pré-homologação)](modules/audit/OPERATOR_GUIDE_V1.md) | [Aceite da Qualidade](modules/audit/QUALITY_ACCEPTANCE_V1.md) |
 | Aceitar a primeira entrega | [Qualidade P1–P9 / O1–O8](modules/audit/QUALITY_ACCEPTANCE_V1.md) | [Matriz de conclusão](modules/audit/QUALITY_COMPLETION_V1.md) |
+| Planejar os módulos futuros | [Blueprint por domínio](planning/MODULE_BLUEPRINTS.md) | [Roadmap canônico](migration/MODULE_ROADMAP.md) |
 | Evoluir módulos legados | [Roadmap de migração](migration/MODULE_ROADMAP.md) | [Mapa de consumidores Core](architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md) |
 | Contribuir com vários agentes | [Protocolo paralelo](development/PARALLEL_AGENT_WORKFLOW.md) | [AGENTS](../AGENTS.md), [Template PR](../.github/pull_request_template.md) |
 
