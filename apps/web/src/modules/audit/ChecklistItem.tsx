@@ -207,7 +207,7 @@ export function ChecklistItem({
             {evidence.loading || evidence.error ? "Evidências" : `Evidências (${evidenceCount})`}
           </button>
           <div id={`${id}-evidence`} hidden={!showEvidence}>
-            <ChecklistEvidence item={item} editable={evidenceEditable} controller={evidence}/>
+            <ChecklistEvidence item={item} editable={evidenceEditable} controller={evidence} visible={showEvidence}/>
           </div>
         </div>
       )}
