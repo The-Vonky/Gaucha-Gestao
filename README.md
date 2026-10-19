@@ -184,6 +184,8 @@ Agentes de código seguem o [AGENTS.md](AGENTS.md) (o [CLAUDE.md](CLAUDE.md) só
 
 ## Mapa da documentação
 
+> **Documentação integrada:** comece pelo [Índice Central](docs/README.md) e pelos diagramas [AS-IS / TO-BE](docs/architecture/DIAGRAMS.md). O índice reúne stacks, fluxos, implementação, operação, riscos, decisões e plano de execução, sem substituir os documentos canônicos abaixo.
+
 | Preciso de… | Leia |
 | --- | --- |
 | Entender o plano, a ordem e o que falta | [Plano Diretor 2026](docs/planning/PLANO_DIRETOR_2026.md) |
