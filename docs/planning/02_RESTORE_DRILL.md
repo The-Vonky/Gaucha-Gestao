@@ -1,7 +1,7 @@
 # 02_RESTORE_DRILL — ensaio isolado de recuperação de banco e arquivos
 
 **Gaúcha Gestão · Issue #51 · 16/10/2026 · versão 0.1**  
-**Estado: PLANEJADO, NÃO EXECUTADO.** Este documento especifica o ensaio; nenhuma etapa prática, backup válido ou restauração passou por comprovação nesta versão.  
+**Estado atualizado em 19/10/2026: ENSAIO SINTÉTICO EXECUTADO, ACEITE DOCUMENTAL PARCIAL.** O relatório da seção 9 registra as evidências fornecidas pelo operador; tarefas e nomes na seção 10 são históricos de preparação (16/10), não o inventário atual. A Issue #51 e a PR #62 permanecem abertas.  
 **Base inspecionada:** `main` `f016b3c2711a54775a470a7f01bb5c8c27dc2dd1` (PR #61 integrado).
 
 ## 1. Objetivo e limite da prova
@@ -41,7 +41,7 @@ A documentação [infra/README.md](../../infra/README.md) suporta apenas `ci`/`s
 5. Identificar os projetos e volumes antes de qualquer `stop`, cópia ou remoção. **Não usar** `docker volume prune`, `docker system prune`, `docker compose down -v` genérico nem operações em projetos existentes. O encerramento só pode afetar os dois projetos novos **com verificação e autorização específica**.
 6. Não executar os comandos de laboratório na C30 nem no ambiente usado para o ERP real. Se não for possível provar isolamento, marcar **BLOCKED**.
 
-**Limitação desta sessão documental:** nenhuma máquina de execução Docker nem credenciais de um ambiente descartável foram fornecidas a esta atividade. Portanto, não há status de healthcheck ou de restore a relatar.
+**Nota histórica da preparação em 16/10:** naquela sessão documental ainda não havia execução Docker comprovada. Em 19/10 o operador executou o ensaio no Ubuntu/WSL; resultados e limitações estão na seção 9.
 
 ## 4. Roteiro de execução — origem sintética
 
@@ -90,17 +90,17 @@ Antes de congelar a origem, verificar que o app/Storage estão saudáveis, regis
 
 | ID | Prova | Critério | Estado inicial |
 | --- | --- | --- | --- |
-| DR-01 | Origem e destino com projetos, portas, env e volumes distintos | Sem identificadores/volumes compartilhados | NOT TESTED |
-| DR-02 | PostgreSQL 17 e migrations | Schemas/ledger e contagens coerentes com origem | NOT TESTED |
-| DR-03 | Duas unidades sintéticas | Inspeções/planos/atribuições correspondem ao manifesto | NOT TESTED |
-| DR-04 | Storage DB + bytes de arquivo | Metadados e objetos recuperados, SHA-256 idêntico | NOT TESTED |
-| DR-05 | Auth e vinculação a Core | Login sintético e permissões funcionais | NOT TESTED |
-| DR-06 | Isolamento entre A/B e anônimo | Negativas reais via tokens de usuário | NOT TESTED |
-| DR-07 | Saúde pós-restore | Cinco serviços healthy e APIs respondendo | NOT TESTED |
-| DR-08 | Tempo e operação | Cronometria registrada, fonte íntegra, nenhuma alteração fora dos projetos de teste | NOT TESTED |
-| DR-09 | Backup desligado da origem | Arquivos verificados, independentes dos volumes de origem | NOT TESTED |
+| DR-01 | Origem e destino com projetos, portas, env e volumes distintos | Sem identificadores/volumes compartilhados | PASS — projetos, portas e volumes distintos |
+| DR-02 | PostgreSQL 17 e migrations | Schemas/ledger e contagens coerentes com origem | PARCIAL — 17 migrations e marcador confirmados; hashes do ledger não cotejados individualmente |
+| DR-03 | Duas unidades sintéticas | Inspeções/planos/atribuições correspondem ao manifesto | PARCIAL — 2 unidades, 2 inspeções, 4 planos e RLS confirmados; atribuições completas ainda não cotejadas |
+| DR-04 | Storage DB + bytes de arquivo | Metadados e objetos recuperados, SHA-256 idêntico | PASS — metadados e 4 arquivos com SHA-256 idêntico |
+| DR-05 | Auth e vinculação a Core | Login sintético e permissões funcionais | PASS — logins A/B com JWT e acesso próprio ao banco/objetos |
+| DR-06 | Isolamento entre A/B e anônimo | Negativas reais via tokens de usuário | PASS — negação cruzada A/B e de downloads anônimos |
+| DR-07 | Saúde pós-restore | Cinco serviços healthy e APIs respondendo | PASS — 5/5 healthy e APIs funcionais no destino |
+| DR-08 | Tempo e operação | Cronometria registrada, fonte íntegra, nenhuma alteração fora dos projetos de teste | PARCIAL — operação limitada aos projetos de laboratório; tempos rigorosos não medidos |
+| DR-09 | Backup desligado da origem | Arquivos verificados, independentes dos volumes de origem | PASS — cópia a frio de 3 volumes; SHA-256 dos 3 tar OK; restore com origem desligada |
 
-**Resultado consolidado inicial: BLOCKED / NOT TESTED.** Este documento não representa evidência de restauração.
+**Resultado do ensaio em 19/10/2026: 6 PASS, 3 PARCIAL (DR-02, DR-03, DR-08).** Restore funcional comprovado no escopo sintético; não equivale a backup operacional de PROD ou aprovação de GO.
 
 ## 8. WAL-G versus pgBackRest e armazenamento off-site (decisão futura)
 
@@ -112,24 +112,57 @@ Antes de congelar a origem, verificar que o app/Storage estão saudáveis, regis
 
 **Nenhuma ferramenta escolhida.** O destino futuro para cópia independente do Storage (por exemplo R2 → outro destino) e o modelo de backup online **não** estão implementados nesta issue. A solução de laboratório baseada em volumes **não é recomendação automática para produção**.
 
-## 9. Encerramento do ensaio e relatório
+## 9. Encerramento do ensaio e relatório de execução — 19/10/2026
 
-Preencher somente após execução efetiva:
-- **Data/hora, executor, máquina (descrição sem endereço), SHA Git, versões de Docker/Compose/serviços:** PENDENTE
-- **Projetos sintéticos origem/destino, confirmação do isolamento:** PENDENTE
-- **Volumes completos e manifestos SHA-256 verificados:** PENDENTE
-- **Contagens antes/depois e hashes de arquivos conferidos:** PENDENTE
-- **DR-01 a DR-09:** NOT TESTED
-- **Tempo de interrupção, backup, restore, verificações:** NÃO MEDIDO
-- **Erros, limitações, evidências saneadas e ação corretiva:** PENDENTE
-- **Decisão:** BLOCKED; não concluir a [Issue #51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51) até haver restauração e testes reais.
+**Fonte:** logs e saídas obtidos pelo operador no Ubuntu/WSL e compartilhados durante a execução. Este documento não afirma observação direta da máquina via GitHub. Informações de senha, JWT, token, dados de pessoas e URLs assinadas não são publicadas.
 
-Limpeza dos dois projetos sintéticos somente com revisão dos **nomes exatos** e autorização do responsável. Nunca usar comandos de exclusão de volume na C30, em ambientes persistentes nem sobre o ERP de Contratos.
+### 9.1 Identificação e isolamento
 
-**Próximo passo prático:** identificar a máquina de desenvolvimento/runner isolado que executará este ensaio. Após confirmar Docker/Compose nessa máquina e nomes de projetos inéditos, implementar um executor reproduzível com as salvaguardas acima, rodá-lo e preencher o relatório. A ausência de uma máquina executora na sessão atual impede afirmar sucesso.
+- Data/hora de conferência final: `2026-10-19T13:04:07-03:00` (America/Sao_Paulo).
+- Executor: responsável Dev A na máquina temporária de desenvolvimento Ubuntu/WSL; **não** a ThinkStation C30. Docker Engine `29.8.2`; Docker Compose `5.6.0`; versão de aplicação/SHA base do cenário: `1e818a45449c0720f7b5af5398e04e0a89c9b3ff`.
+- Origem: projeto `gaucha-infra-drill-src-v2-20261016`, porta loopback `54331`, 5 serviços e volumes `db-data`, `db-config`, `storage-data`.
+- Backup local: `~/gg-drill-backup-v2-20261019` (~45 MB), três arquivos `db-data.tar`, `db-config.tar`, `storage-data.tar`, com manifesto `SHA256SUMS.txt` e `sha256sum -c`: **OK nos três**. Segredos sintéticos preservados em arquivos restritos fora do checkout, sem publicação.
+- Destino restaurado: projeto `gaucha-infra-drill-restore-v2-20261019`, porta loopback `54332`, configuração própria com credenciais sintéticas compatíveis com o snapshot e três **novos** volumes rotulados. A origem foi desligada antes da inicialização do destino para limitar uso de memória. Não se executaram migrations nem reseed no destino.
+- Projetos DEV compartilhado e ERP Contratos preservados; sem ações nesses projetos. Nenhum volume original ou restaurado foi excluído.
 
+### 9.2 Execução e validação
 
-## 10. Computador temporário Windows/Docker Desktop — descarte controlado
+| Teste | Resultado observado |
+| --- | --- |
+| Fonte e backup | Parada controlada dos 5 serviços de origem; cópia a frio dos três volumes; arquivos tar legíveis e três checksums SHA-256 OK; origem religada saudável após o backup |
+| Volumes do destino | Volume `db-data` restaurado ~43,8 MB, `db-config` ~124 KB e `storage-data` ~68 KB; labels de projeto do destino confirmados |
+| Saúde pós-restore | Cinco serviços **healthy** no destino: db, auth, rest, storage, kong |
+| DB restaurado | Marcador `infra_control.target` conferido; `17|2|2|2|4|4|2|2|4|0` (migrations, unidades, Auth users, inspeções, respostas preenchidas, planos, evidências auditoria disponíveis, evidências planos disponíveis, objetos Storage, pendências) |
+| Auth | Dois usuários sintéticos (A e B) fizeram login por `/auth/v1/token` na porta 54332 |
+| Storage | Quatro PDFs de auditoria/planos, A e B, baixados por seus titulares; tamanho e SHA-256 iguais aos originais; leituras por outra unidade e anônimo rejeitadas |
+| RLS de dados | Oito consultas via PostgREST em `audit.inspections` e `action_plans.plans`: próprios visíveis, outra unidade não visível (**8/8 PASS**) |
+| Integridade posterior | Em 13:04 BRT, os três arquivos tar passaram novamente no `sha256sum -c`; destino 5/5 healthy, DEV compartilhado 5/5 healthy; origem desligada |
+| Exceção observada | Serviço REST da **origem** exibiu `Exited (255)` na consulta final, após parada do laboratório; demais serviços de origem `Exited (0)`. Não há diagnóstico causal desse código. Banco da origem havia parado normalmente e o destino REST permaneceu saudável |
+
+Os quatro arquivos do cenário e seus hashes SHA-256 originais (arquivos puramente sintéticos):
+
+| Arquivo | SHA-256 |
+| --- | --- |
+| `drill-a-audit.pdf` | `c5f6fa1e42666f7db277ff7e2cc5987506559950067c1f1a26ac62559d3f3c59` |
+| `drill-a-plan.pdf` | `c4b92b3ca7f2c747349f0f857a36431ed35bf02e7d5d4d257a9dc7561efc2789` |
+| `drill-b-audit.pdf` | `5597f943dc09f5c3438c02fb9e3e920a1276ae94d734b51b071549a49871b122` |
+| `drill-b-plan.pdf` | `3825d81ae7beab028485a4d4be101f64722c677e31e47a7bab0c6954962c362d` |
+
+### 9.3 Resultado, limites e pendências
+
+**Resultado funcional do ensaio:** **PASS no restore sintético de PostgreSQL, Auth, Storage e negação cross-unit.** Matriz DR-01–DR-09: **6 PASS, 3 PARCIAL (DR-02, DR-03, DR-08)**. DR-02 exige cotejo individual dos hashes/ledger das migrations; DR-03 exige confronto documentado das atribuições de acesso com o manifesto; DR-08 exige cronometração da interrupção/cópia/restore/validação e verificação de procedimento por operador independente. A evidência entregue valida o funcionamento, não a íntegra de todos os requisitos de aceitação documental.
+
+**NÃO MEDIDO:** tempo total de interrupção, cópia, start, validação e RTO do laboratório. Não inferir duração de prints ou da data de consulta. Não definir RPO = 0 ou RTO operacional a partir deste ensaio.
+
+**Não coberto:** alteração de usuário inativo, acesso ao terceiro bucket privado `unit-covers` por fluxo legítimo, cópia off-site, falha total do host, PITR/arquivamento WAL, retenção e monitoramento/alertas produtivos. Ferramenta WAL-G versus pgBackRest, RPO/RTO e políticas de backup ainda exigem decisão própria. O ensaio não comprova O1/O3/O4/O8 de PRODUÇÃO.
+
+**Próximas ações:** documentar cotejo faltante de DR-02/DR-03, repetir o ensaio com cronômetro para DR-08 se o gate exigir; revisar o runbook e obter revisão humana na PR #62; demonstrar o procedimento ao Dev B, atualizar a Issue #51 e manter a decisão **PROD = NO-GO** até fechar os outros gates.
+
+**Política de retenção/limpeza:** manter origem, destino, arquivos tar e segredos sintéticos protegidos até conclusão e autorização humana. Nunca executar `down -v` ou `docker volume prune` sobre projetos existentes; preservar ERP de Contratos e DEV compartilhado.
+
+## 10. Histórico da preparação de 16/10 — computador temporário Windows/Docker Desktop e descarte controlado
+
+**Nota de cronologia:** esta seção preserva decisões e nomes propostos *antes* da execução. Os nomes de projeto efetivamente usados e os resultados de 19/10 estão registrados na seção 9. Não usar identificadores desta seção histórica para operações de limpeza.
 
 **Contexto relatado em 16/10/2026:** computador de desenvolvimento **temporário**, PowerShell em Windows, Docker Client/Engine 29.8.2, Docker Desktop 4.95.0 com engine Linux e Compose 5.6.0. O comando `docker ps -a` apresentou **um** contêiner **preexistente**, `erp-contratos-postgres` (`postgres:18.4`, porta loopback 5432, saudável); `docker volume ls` apresentou **um** volume preexistente, `infrastructure_erp_contratos_pgdata`. **Ambos são expressamente excluídos do escopo; nunca parar, montar, inspecionar conteúdo, alterar, sobrescrever, exportar ou excluir.** Esse inventário é apenas um snapshot; antes de executar, consultar novamente.
 
