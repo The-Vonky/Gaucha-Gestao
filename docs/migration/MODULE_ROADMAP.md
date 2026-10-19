@@ -21,7 +21,7 @@ Migration order prioritizes:
 | Meeting Room Scheduling | finished, weak | low | likely cheaper to reimplement on platform foundation |
 | Fleet | not finished | medium | continue future development directly in platform after foundation |
 | Planned vs Actual | finished | medium | preserve validated import/calculation rules |
-| ABC Curve | not finished | high | continue future development in platform; data/history sensitive |
+| ABC Curve | not finished | high | **current priority (2026-10-19)**; brief `docs/briefs/ABC_DOMAIN_V1.md`; no standalone history is migrated; data sensitive |
 | Contracts ERP | finished | high | important workflows/data; backup/recovery must be reviewed first |
 
 ## Phase 0 — Architecture and foundation design
@@ -71,6 +71,10 @@ Candidate sequence:
 2. Contracts ERP.
 
 Exact order can change with business priority and source-system readiness.
+
+## Priority change — 2026-10-19
+
+By decision of the product owner, ABC Curve moves ahead of Phases 2–4 and is the module under implementation now. Quality closure (P1–P9, O1–O8) remains a release gate for production; this change does not waive it. The standalone ABC repository (`The-Vonky/CurvaABC-Gaucha`) contributes rules and test cases only; its desktop history is not migrated.
 
 ## Per-module migration gate
 
