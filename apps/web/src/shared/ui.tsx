@@ -147,12 +147,14 @@ export function Modal({
   onClose,
   busy = false,
   wide = false,
+  closeOnBackdrop = false,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   busy?: boolean;
   wide?: boolean;
+  closeOnBackdrop?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -168,6 +170,9 @@ export function Modal({
       ref={ref}
       className={wide ? "wide" : undefined}
       aria-labelledby={id}
+      onClick={(e) => {
+        if (closeOnBackdrop && !locked && e.target === e.currentTarget) onClose();
+      }}
       onCancel={(e) => {
         e.preventDefault();
         if (!locked) onClose();

@@ -4,6 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   act,
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -36,7 +37,7 @@ const api = vi.hoisted(() => ({
   createInspection: vi.fn(),
 }));
 vi.mock("../apps/web/src/modules/audit/api", () => api);
-const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async()=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
+const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async()=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),downloadUrl:vi.fn(async()=>"https://storage.test/image?token=test"),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
 vi.mock("../apps/web/src/modules/audit/evidence",()=>evidenceApi);
 const plansApi = vi.hoisted(() => ({ summaries: vi.fn(async () => [] as unknown[]) }));
 vi.mock("../apps/web/src/modules/action-plans/api", () => plansApi);
@@ -625,7 +626,7 @@ describe("inspection page", () => {
     await user.click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByRole("button", { name: "Anexar arquivo ao critério 1" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Baixar laudo.pdf" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Baixar Evidência 1.pdf" })).toBeTruthy();
   });
   it("keeps unsaved observation text and the pending gate across a tab switch", async () => {
     const user = userEvent.setup();
@@ -803,6 +804,51 @@ describe("new inspection", () => {
   });
 });
 describe("Checklist evidence removal errors", () => {
+  it("numbers each criterion deterministically and renumbers after removal/new upload", async () => {
+    const row = { id: "b", inspection_id: "i1", item_key: "item-001", object_key: "key",
+      original_name: "original.pdf", content_type: "application/pdf", size_bytes: 10,
+      created_by: "u", uploaded_by_name: "Ana", uploaded_at: "2026-09-30T12:00:00Z" };
+    const controller: EvidenceController = { data: undefined, error: "", loading: false, uploads: {},
+      reload: vi.fn(), send: vi.fn(), retry: vi.fn(), discard: vi.fn(),
+      rows: [row, {...row,id:"a",original_name:"first.docx"}, {...row,id:"other",item_key:"item-002"}] };
+    const {rerender}=render(<ChecklistEvidence item={items[0]} editable controller={controller}/>);
+    expect(screen.getAllByRole("listitem").map(li=>li.querySelector("strong")?.textContent)).toEqual(["Evidência 1.docx","Evidência 2.pdf"]);
+    await userEvent.click(screen.getByRole("button",{name:"Baixar Evidência 2.pdf"}));
+    expect(evidenceApi.downloadEvidence).toHaveBeenCalledWith(row,"Evidência 2.pdf");
+    rerender(<ChecklistEvidence item={items[0]} editable controller={{...controller,rows:[row]}}/>);
+    expect(screen.getByRole("button",{name:"Baixar Evidência 1.pdf"})).toBeTruthy();
+    rerender(<ChecklistEvidence item={items[0]} editable controller={{...controller,rows:[row,{...row,id:"c",original_name:"new.xlsx",uploaded_at:"2026-10-01T12:00:00Z"}]}}/>);
+    expect(screen.getByText("Evidência 2.xlsx")).toBeTruthy();
+    expect(screen.queryByRole("img")).toBeNull();
+  });
+  it("loads images only when visible, refreshes modal URLs and handles errors and all close controls", async () => {
+    const row = { id: "image", inspection_id: "i1", item_key: "item-001", object_key: "image-key",
+      original_name: "photo.jpg", content_type: "image/jpeg", size_bytes: 10,
+      created_by: "u", uploaded_by_name: "Ana", uploaded_at: "2026-09-30T12:00:00Z" };
+    const controller: EvidenceController = { data: undefined, error: "", loading: false, uploads: {},
+      reload: vi.fn(), send: vi.fn(), retry: vi.fn(), discard: vi.fn(), rows:[row] };
+    const {rerender}=render(<ChecklistEvidence item={items[0]} editable={false} controller={controller} visible={false}/>);
+    expect(evidenceApi.downloadUrl).not.toHaveBeenCalled();
+    rerender(<ChecklistEvidence item={items[0]} editable={false} controller={controller}/>);
+    expect(await screen.findByRole("img",{name:"Evidência 1.jpg"})).toBeTruthy();
+    for(const close of ["button","escape","backdrop"]){
+      await userEvent.click(screen.getByRole("button",{name:"Ampliar Evidência 1.jpg"}));
+      const modal=screen.getByRole("dialog");
+      const image=await within(modal).findByRole("img");
+      fireEvent.click(image);
+      expect(screen.getByRole("dialog")).toBeTruthy();
+      if(close==="button")await userEvent.click(within(modal).getByRole("button",{name:"Fechar"}));
+      else if(close==="escape")fireEvent(modal,new Event("cancel",{bubbles:true,cancelable:true}));
+      else fireEvent.click(modal);
+      expect(screen.queryByRole("dialog")).toBeNull();
+    }
+    expect(evidenceApi.downloadUrl).toHaveBeenCalledTimes(4);
+    fireEvent.error(screen.getByRole("img"));
+    expect(screen.getByText("Imagem indisponível.")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button",{name:"Tentar novamente"}));
+    expect(await screen.findByRole("img")).toBeTruthy();
+    expect(screen.queryByRole("button",{name:/Remover/})).toBeNull();
+  });
   it.each([
     ["55000", "Esta operação não é permitida no estado atual do registro."],
     ["42501", "Você não tem permissão para esta operação. Atualize seu acesso."],
@@ -817,7 +863,7 @@ describe("Checklist evidence removal errors", () => {
     };
     evidenceApi.removeEvidence.mockRejectedValueOnce({ code, message: "private SQL detail" });
     render(<ChecklistEvidence item={items[0]} editable controller={controller} />);
-    await user.click(screen.getByRole("button", { name: "Remover laudo.pdf" }));
+    await user.click(screen.getByRole("button", { name: "Remover Evidência 1.pdf" }));
     await user.click(screen.getByRole("button", { name: "Confirmar" }));
     expect(await screen.findByText(expected)).toBeTruthy();
     expect(screen.queryByText(/Verifique sua conexão/i)).toBeNull();
