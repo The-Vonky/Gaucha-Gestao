@@ -194,6 +194,106 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
   background: var(--brand-orange-400);
 }
 
+/* Collapsible groups and nested branches. */
+.menu-group-toggle,
+.menu-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-group-toggle {
+  justify-content: space-between;
+  padding: var(--space-1) 0;
+  border-radius: var(--radius-md);
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+.menu-group-toggle:hover {
+  color: var(--on-brand-secondary);
+}
+.menu-toggle {
+  gap: var(--space-3);
+  min-height: 38px;
+  padding: 0 var(--space-3);
+  margin: 2px 0;
+  border-radius: var(--radius-md);
+  color: var(--on-brand-secondary);
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+.menu-toggle:hover {
+  background: var(--brand-surface-hover);
+  color: var(--on-brand);
+}
+.menu-toggle.within {
+  color: var(--on-brand);
+}
+.menu-toggle > .icon:not(.menu-caret) {
+  width: 18px;
+  height: 18px;
+  color: var(--on-brand-muted);
+}
+.menu-caret {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  flex: none;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+[aria-expanded="false"] > .menu-caret {
+  transform: rotate(-90deg);
+}
+.menu-children {
+  margin-left: var(--space-4);
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--brand-surface-line);
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-caret {
+    transition: none;
+  }
+}
+
+.menu-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: var(--space-1) 0 var(--space-2);
+}
+.menu-search .icon {
+  position: absolute;
+  left: var(--space-3);
+  width: 16px;
+  height: 16px;
+  color: var(--on-brand-muted);
+  pointer-events: none;
+}
+.menu-search input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--space-3) 0 calc(var(--space-3) + 24px);
+  border: 1px solid var(--brand-surface-line);
+  border-radius: var(--radius-md);
+  background: var(--brand-surface-hover);
+  color: var(--on-brand);
+  font: inherit;
+  font-size: 0.875rem;
+}
+.menu-search input::placeholder {
+  color: var(--on-brand-muted);
+}
+.menu-empty {
+  margin: var(--space-3);
+  color: var(--on-brand-muted);
+  font-size: 0.875rem;
+}
+
 /* Identity block at the base of the navigation. */
 .user-card {
   position: relative;
@@ -353,7 +453,10 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
   width: min(320px, calc(100% - 40px));
 }
 .nav-drawer[open] {
-  padding: env(safe-area-inset-top, 0px) max(var(--space-3), env(safe-area-inset-right, 0px)) max(var(--space-3), env(safe-area-inset-bottom, 0px)) max(var(--space-3), env(safe-area-inset-left, 0px));
+  padding: env(safe-area-inset-top, 0px)
+    max(var(--space-3), env(safe-area-inset-right, 0px))
+    max(var(--space-3), env(safe-area-inset-bottom, 0px))
+    max(var(--space-3), env(safe-area-inset-left, 0px));
 }
 .nav-drawer .drawer-head {
   display: flex;
@@ -664,7 +767,9 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
   /* The header becomes the brand navigation bar. */
   .topbar {
     min-height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
-    padding: env(safe-area-inset-top, 0px) max(var(--space-4), env(safe-area-inset-right, 0px)) 0 max(var(--space-2), env(safe-area-inset-left, 0px));
+    padding: env(safe-area-inset-top, 0px)
+      max(var(--space-4), env(safe-area-inset-right, 0px)) 0
+      max(var(--space-2), env(safe-area-inset-left, 0px));
     background: var(--brand-surface);
     backdrop-filter: none;
     border-bottom: 0;
@@ -715,7 +820,12 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
     margin-left: auto;
   }
   main#main {
-    padding: var(--space-6) max(var(--space-6), env(safe-area-inset-right, 0px)) max(var(--space-12), calc(var(--space-8) + env(safe-area-inset-bottom, 0px))) max(var(--space-6), env(safe-area-inset-left, 0px));
+    padding: var(--space-6) max(var(--space-6), env(safe-area-inset-right, 0px))
+      max(
+        var(--space-12),
+        calc(var(--space-8) + env(safe-area-inset-bottom, 0px))
+      )
+      max(var(--space-6), env(safe-area-inset-left, 0px));
   }
   .domain {
     grid-template-columns: minmax(0, 1fr);
@@ -734,7 +844,12 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
     display: none;
   }
   main#main {
-    padding: var(--space-5) max(var(--space-4), env(safe-area-inset-right, 0px)) max(var(--space-12), calc(var(--space-8) + env(safe-area-inset-bottom, 0px))) max(var(--space-4), env(safe-area-inset-left, 0px));
+    padding: var(--space-5) max(var(--space-4), env(safe-area-inset-right, 0px))
+      max(
+        var(--space-12),
+        calc(var(--space-8) + env(safe-area-inset-bottom, 0px))
+      )
+      max(var(--space-4), env(safe-area-inset-left, 0px));
   }
   .launch-head h1 {
     font-size: 1.625rem;
