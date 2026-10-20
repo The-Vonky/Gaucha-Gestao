@@ -122,23 +122,42 @@ function containsPath(node: NavChild, pathname: string): boolean {
     !!node.children?.some((c) => containsPath(c, pathname))
   );
 }
+/** Case- and accent-insensitive form used by the menu search. */
+function normalize(text: string) {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+/** Keeps nodes whose label matches, or that lead to a match. */
+function filterNode<T extends NavChild>(node: T, query: string): T | null {
+  if (normalize(node.label).includes(query)) return node;
+  const children = (node.children ?? [])
+    .map((c) => filterNode(c, query))
+    .filter((c): c is NavChild => !!c);
+  return children.length ? { ...node, children } : null;
+}
 function MenuBranch({
   node,
   icon,
   depth,
+  searching,
   onNavigate,
 }: {
   node: NavChild;
   icon?: Destination["icon"];
   depth: number;
+  searching: boolean;
   onNavigate?: () => void;
 }) {
   const { pathname } = useLocation();
   const within = containsPath(node, pathname);
-  const [open, setOpen] = useState(within);
+  const [toggled, setOpen] = useState(within);
   useEffect(() => {
     if (within) setOpen(true);
   }, [within]);
+  const open = searching || toggled;
   const content = (
     <>
       {icon && <Icon name={icon} />}
@@ -160,7 +179,7 @@ function MenuBranch({
         aria-expanded={open}
         aria-controls={id}
         data-depth={depth}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
       >
         {content}
         <Icon name="chevronDown" className="icon menu-caret" />
@@ -172,6 +191,7 @@ function MenuBranch({
               key={c.path}
               node={c}
               depth={depth + 1}
+              searching={searching}
               onNavigate={onNavigate}
             />
           ))}
@@ -183,18 +203,21 @@ function MenuBranch({
 function MenuGroup({
   group,
   items,
+  searching,
   onNavigate,
 }: {
   group: string;
   items: Destination[];
+  searching: boolean;
   onNavigate?: () => void;
 }) {
   const { pathname } = useLocation();
   const within = items.some((d) => containsPath(d, pathname));
-  const [open, setOpen] = useState(within);
+  const [toggled, setOpen] = useState(within);
   useEffect(() => {
     if (within) setOpen(true);
   }, [within]);
+  const open = searching || toggled;
   const id = `menu-group-${group}`;
   return (
     <section>
@@ -204,7 +227,7 @@ function MenuGroup({
           className="menu-group-toggle"
           aria-expanded={open}
           aria-controls={id}
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setOpen(!open)}
         >
           <span>{group}</span>
           <Icon name="chevronDown" className="icon menu-caret" />
@@ -218,6 +241,7 @@ function MenuGroup({
               node={d}
               icon={d.icon}
               depth={0}
+              searching={searching}
               onNavigate={onNavigate}
             />
           ))}
@@ -228,21 +252,53 @@ function MenuGroup({
 }
 function Menu({ onNavigate }: { onNavigate?: () => void }) {
   const auth = useAuth();
-  const nav = visibleNavigation(!!auth.profile?.active, auth.grants);
+  const [search, setSearch] = useState("");
+  const query = normalize(search);
+  const nav = visibleNavigation(!!auth.profile?.active, auth.grants)
+    .map((g) => ({
+      group: g.group,
+      destinations: normalize(g.group).includes(query)
+        ? g.destinations
+        : g.destinations
+            .map((d) => filterNode(d, query))
+            .filter((d): d is Destination => !!d),
+    }))
+    .filter((g) => g.destinations.length);
   return (
     <nav className="menu" aria-label="Navegação principal">
-      <NavLink to="/" end onClick={onNavigate}>
-        <Icon name="home" />
-        <span>Início</span>
-      </NavLink>
+      <label className="menu-search">
+        <Icon name="search" />
+        <input
+          type="search"
+          value={search}
+          placeholder="Buscar no menu"
+          aria-label="Buscar no menu"
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setSearch("");
+          }}
+        />
+      </label>
+      {!query && (
+        <NavLink to="/" end onClick={onNavigate}>
+          <Icon name="home" />
+          <span>Início</span>
+        </NavLink>
+      )}
       {nav.map((group) => (
         <MenuGroup
           key={group.group}
           group={group.group}
           items={group.destinations}
+          searching={!!query}
           onNavigate={onNavigate}
         />
       ))}
+      {query && !nav.length && (
+        <p className="menu-empty" role="status">
+          Nenhuma tela encontrada.
+        </p>
+      )}
     </nav>
   );
 }

@@ -260,6 +260,40 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
   }
 }
 
+.menu-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: var(--space-1) 0 var(--space-2);
+}
+.menu-search .icon {
+  position: absolute;
+  left: var(--space-3);
+  width: 16px;
+  height: 16px;
+  color: var(--on-brand-muted);
+  pointer-events: none;
+}
+.menu-search input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--space-3) 0 calc(var(--space-3) + 24px);
+  border: 1px solid var(--brand-surface-line);
+  border-radius: var(--radius-md);
+  background: var(--brand-surface-hover);
+  color: var(--on-brand);
+  font: inherit;
+  font-size: 0.875rem;
+}
+.menu-search input::placeholder {
+  color: var(--on-brand-muted);
+}
+.menu-empty {
+  margin: var(--space-3);
+  color: var(--on-brand-muted);
+  font-size: 0.875rem;
+}
+
 /* Identity block at the base of the navigation. */
 .user-card {
   position: relative;
