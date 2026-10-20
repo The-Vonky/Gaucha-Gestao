@@ -4,7 +4,7 @@ import { message } from "../../shared/errors";
 import type { ReportPayload, RevisionDetail, SeriesSummary, UnitSummary } from "./types";
 
 export const BUCKET = "abc-source-files";
-export const MAX_FILE_BYTES = 20 * 1024 * 1024;
+export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 function storage() {

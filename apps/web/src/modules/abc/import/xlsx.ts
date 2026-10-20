@@ -41,7 +41,7 @@ export type XlsxLimits = {
   maxTextChars: number;
 };
 export const DEFAULT_LIMITS: XlsxLimits = {
-  maxFileBytes: 20 * 1024 ** 2,
+  maxFileBytes: 10 * 1024 ** 2,
   maxUncompressedBytes: 200 * 1024 ** 2,
   maxPartBytes: 16 * 1024 ** 2,
   maxMembers: 256,

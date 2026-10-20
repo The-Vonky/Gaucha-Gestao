@@ -90,7 +90,7 @@ Metadados do original.
 - `id uuid`, `unit_id uuid → core.units`;
 - `object_key text` gerado (`units/<unit_id>/abc/<id>.xlsx`), único;
 - `status`: `pending | ready`;
-- `sha256 text` (64 hex), `byte_size integer` (1 a 20 MiB), `original_name text` (até 255, sem barras);
+- `sha256 text` (64 hex), `byte_size integer` (1 a 10 MiB), `original_name text` (até 255, sem barras);
 - `created_by`, `created_at`, `ready_at`.
 
 ### abc.report_series
@@ -150,7 +150,7 @@ Mesmo arquivo publicado de novo na mesma série devolve a revisão existente, se
 
 ### Storage
 
-Bucket privado `abc-source-files`, limite 20 MiB, MIME `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`. Políticas: inserir somente o `object_key` de um `source_files` pendente do próprio usuário; ler somente com `abc.report.read` na unidade. Sem update/delete pelo cliente. Seguir `action_plans_private.can_upload_evidence_object` como modelo.
+Bucket privado `abc-source-files`, limite 10 MiB (limite global do Storage da plataforma), MIME `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`. Políticas: inserir somente o `object_key` de um `source_files` pendente do próprio usuário; ler somente com `abc.report.read` na unidade. Sem update/delete pelo cliente. Seguir `action_plans_private.can_upload_evidence_object` como modelo.
 
 ## Validações
 
@@ -171,7 +171,7 @@ Avisam (exigem aceite explícito na publicação, gravado em `warnings`):
 - linha com quantidade positiva e total zero;
 - substituição de revisão vigente.
 
-Limites do leitor: 20 MiB de arquivo, 200 MiB descompactados, 16 MiB por parte, 256 partes, razão 200, 20 abas, 100.000 linhas, 2.000.000 de células, 32.767 caracteres por texto.
+Limites do leitor: 10 MiB de arquivo, 200 MiB descompactados, 16 MiB por parte, 256 partes, razão 200, 20 abas, 100.000 linhas, 2.000.000 de células, 32.767 caracteres por texto.
 
 ## Regra ABC (`abc-70-90-inicio-v1`)
 

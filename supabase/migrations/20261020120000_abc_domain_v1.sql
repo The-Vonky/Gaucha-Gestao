@@ -28,7 +28,7 @@ create table abc.source_files(
  object_key text generated always as ('units/'||unit_id::text||'/abc/'||id::text||'.xlsx') stored unique,
  status text not null default 'pending' check(status in ('pending','ready')),
  sha256 text not null check(sha256 ~ '^[0-9a-f]{64}$'),
- byte_size integer not null check(byte_size between 1 and 20971520),
+ byte_size integer not null check(byte_size between 1 and 10485760),
  original_name text not null check(char_length(original_name) between 1 and 255
   and original_name !~ '[\u0000-\u001f\u007f/\\]' and lower(original_name) like '%.xlsx'),
  created_by uuid not null references core.profiles(id) default auth.uid(),
@@ -414,7 +414,7 @@ language sql stable security definer set search_path='' as $$
 $$;
 
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values
-('abc-source-files','abc-source-files',false,20971520,array['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+('abc-source-files','abc-source-files',false,10485760,array['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
 -- No UPDATE/DELETE policies: originals are write-once and never removed by clients.
 create policy abc_source_insert on storage.objects for insert to authenticated
  with check(bucket_id='abc-source-files' and abc_private.can_upload_source_object(name));

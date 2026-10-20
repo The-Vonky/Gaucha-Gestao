@@ -47,7 +47,7 @@ export function AbcImport() {
       return;
     }
     if (selected.size > api.MAX_FILE_BYTES) {
-      setReadError("O arquivo excede o limite de 20 MB.");
+      setReadError("O arquivo excede o limite de 10 MB.");
       return;
     }
     setReading(true);
@@ -129,7 +129,7 @@ export function AbcImport() {
               disabled={reading || publishing}
               onChange={(e) => void choose(e.target.files?.[0] ?? null)}
             />
-            <p className="muted">Somente o arquivo .xlsx exportado do ERP, até 20 MB, sem fórmulas ou macros.</p>
+            <p className="muted">Somente o arquivo .xlsx exportado do ERP, até 10 MB, sem fórmulas ou macros.</p>
           </section>
           {reading && <LoadingState label="Lendo o arquivo…" />}
           {readError && <Notice error>{readError}</Notice>}
