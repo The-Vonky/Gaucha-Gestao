@@ -75,7 +75,7 @@ describe("Curva ABC import", () => {
     renderAt("/abc/units/U1/import");
     await choose(xlsxFile("relatorio.xlsx", reportRows({ G7: ["n", "26"] })));
     expect(await screen.findByText(/tem bloqueios e não pode ser publicado/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Publicar relatório" })).toBeNull();
+    expect((screen.getByRole("button", { name: "Publicar relatório" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getAllByText("Bloqueio").length).toBeGreaterThan(0);
   });
 
