@@ -1,6 +1,6 @@
 # Mapa de execução — engenharia, dependências, owners e gates
 
-**Documento de coordenação; não substitui o [Plano Diretor 2026 v1.3](PLANO_DIRETOR_2026.md).** Fotografia: main 1e818a45449c0720f7b5af5398e04e0a89c9b3ff, issues/PRs consultados em **19/10/2026**. **PROD: NO-GO**. Não contém promessa de prazo/custo.
+**Documento de coordenação; não substitui o [Plano Diretor 2026 v1.3](PLANO_DIRETOR_2026.md).** Fotografia reconciliada: main após PR #69 (`fed0e0f`, **20/10/2026**); pendências operacionais exigem evidência. **PROD: NO-GO**. Não contém promessa de prazo/custo.
 
 ## 1. Resultado desejado e definição de pronto
 
@@ -40,6 +40,8 @@ A figura representa **dependências lógicas e gates**, não um cronograma com d
 | Restore sintético | Dev A; [#51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51), [PR #62](https://github.com/The-Vonky/Gaucha-Gestao/pull/62) Draft | DB/Auth/objetos restaurados em stack independente, integridade, RLS negativas, tempos e limites do ensaio | **Em curso**: issue relata ensaio sintético a frio PASS parcial; evidências no PR em Draft, ainda não substitui backup PROD/PITR |
 | Identity Boundary | Dev A + parecer independente; [#49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) | ADR substituto ou decisão NO-GO, testes de GoTrue/locks/último admin, GO humano antes de migrations/runtime | **P0 BLOQUEADO**; PR #24 encerrado sem merge |
 | Gate C30 e provisioning | Dev A + Matheus; [#52](https://github.com/The-Vonky/Gaucha-Gestao/issues/52) | Laudo, preservação, aprovação, Ubuntu/Compose com medições reais/rollback | **ABERTO**; trilha B isolada permitida |
+| Curva ABC v1 | [PR #69](https://github.com/The-Vonky/Gaucha-Gestao/pull/69) e [Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) | Código integrado; testar amostras ERP, concorrência, arquivos originais, RLS e usuários distintos | **INTEGRADO AO REPOSITÓRIO**; homologação pendente |
+| DEV compartilhado | [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) | Acesso de dois operadores, autoria/RLS/firewall e reinício seguro | Funcional conforme Issue; pendências abertas |
 | Setup, fluxos e testes Qualidade | Dev B; [#54](https://github.com/The-Vonky/Gaucha-Gestao/issues/54), [#55](https://github.com/The-Vonky/Gaucha-Gestao/issues/55), [#56](https://github.com/The-Vonky/Gaucha-Gestao/issues/56) | Reproduzir stack, mapa de fluxo e evidência de testes/RLS reais | **ABERTO** |
 | Regressões de testes | Dev B; [#57](https://github.com/The-Vonky/Gaucha-Gestao/issues/57) | CI, reprodução/triagem do CHECK_FAILED e correções rastreáveis | **ABERTO**; não interpretar fechamento de issue antiga como correção |
 | Homologação física | Dev B; [#58](https://github.com/The-Vonky/Gaucha-Gestao/issues/58) | P1–P9 executados em Android Chrome e iOS Safari com dispositivo/versão/evidência | **PENDENTE** |

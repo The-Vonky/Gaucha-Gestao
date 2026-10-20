@@ -1,6 +1,6 @@
 # Guia do operador — Qualidade v1
 
-**Status: pré-homologação.** Descreve a navegação funcional do código em main 1e818a4, 19/10/2026; **não é manual de produção nem comprova aceite em Android/iOS**. Validação final: [P1–P9 / O1–O8](QUALITY_ACCEPTANCE_V1.md).
+**Status: pré-homologação.** Descreve a navegação da Qualidade na main após PR #69, 20/10/2026; **não é manual de produção nem comprova aceite em Android/iOS**. Validação final: [P1–P9 / O1–O8](QUALITY_ACCEPTANCE_V1.md).
 
 ## Ambiente e acesso
 

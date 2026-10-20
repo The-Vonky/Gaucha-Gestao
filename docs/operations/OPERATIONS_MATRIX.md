@@ -1,6 +1,6 @@
 # Operação, implantação, incidentes e recuperação — matriz v1
 
-**Status: RUNBOOK DE PREPARAÇÃO / PROD NO-GO**, base main 1e818a4 (19/10/2026).
+**Status: RUNBOOK DE PREPARAÇÃO / PROD NO-GO**, base main após PR #69 (`fed0e0f`, 20/10/2026).
 Autoridades: [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md), [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md), [Plano Diretor](../planning/PLANO_DIRETOR_2026.md), [Aceite O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md). **Não é uma receita de produção executável.**
 
 ## 1. Superfícies operacionais
@@ -12,13 +12,14 @@ Autoridades: [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md), [ADR-008](..
 | C30 | Inventário/planejamento documentados | Preservação e recuperação, Ubuntu LTS bare metal, SMART, temperatura, RAM, SSD, carga e aprovações | Instalação destrutiva **bloqueada** até gate |
 | Publicação web | Vite build verificado em CI | Workers Static Assets + DNS/WAF/Tunnel, ambientes e rollback | CDN/tunnel não autorizam acesso de negócio |
 | Banco | Migrations append-only em ambientes isolados; RLS em testes | Plano de migration versionada, backup/rollback, RPO/RTO e recuperação | Não rodar SQL em PROD sem autorização |
+| Curva ABC | Módulo + schema/bucket privados versionados | Homologar XLSX ERP, integridade, download, históricos, RLS e backup de bytes e metadata | Merge de código não é deploy nem aplicação de migrations |
 | Evidências | Buckets privados testados; uploads e signed URLs | Objetos R2, política/headers, reconciliação e restore consistente | Metadados e bytes podem divergir |
 | Observabilidade | Logs de aplicação e testes de CI | Alertas host, contêineres, DB, Storage, Tunnel, backup e segurança | Ferramentas/limiares não aprovados |
 | Continuidade | Restore sintético em andamento/documentação Draft (#51/#62) | Backup independente e PITR/teste real de recuperação | Laboratório não comprova RPO/RTO de PROD |
 
 ## 2. Ambientes e isolamento
 
-**DEV:** máquina de cada desenvolvedor, dados sintéticos, credenciais locais, projeto exclusivo; não reutilizar volume de outro agente. **CI:** efêmera e destrutível somente dentro de seus recursos isolados. **STAGING persistente:** ainda requer localização/isolamento e aprovação; não usar dados reais de produção. **PROD:** não existe autorização de provisionamento neste estado.
+**DEV local:** máquina de cada desenvolvedor, dados sintéticos, credenciais locais, projeto exclusivo; não reutilizar volume de outro agente. **DEV compartilhado (Issue #68):** frontend 5173 e API 54341, dois logins independentes, ambiente persistente distinto do teste CLI; RLS, autoria, rede e reinício ainda precisam de evidência. **Não rodar db reset/down -v/migrações exploratórias** na instância compartilhada. A PR #69 na main não significa que a migration ABC já foi aplicada nesse banco. **CI:** efêmera e destrutível somente dentro de seus recursos isolados. **STAGING persistente:** ainda requer localização/isolamento e aprovação; não usar dados reais de produção. **PROD:** não existe autorização de provisionamento neste estado.
 
 Recursos existentes na C30, inclusive Windows/WSL2, discos e dados não pertencentes ao projeto, são **intocáveis** até inventário completo, restauração verificável e consentimento. A issue #52 registra ERP deslocado para outro computador e validação operacional relatada, mas **não aprova destruir o volume antigo** nem os demais dados. Não executar prune, down -v, reset, wipe ou inicialização de HD fora de um projeto sintético inequivocamente identificado e autorizado. Para o ensaio sintético, obedecer à [issue #51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51) e ao [PR #62](https://github.com/The-Vonky/Gaucha-Gestao/pull/62).
 

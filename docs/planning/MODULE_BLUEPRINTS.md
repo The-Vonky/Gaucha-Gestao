@@ -14,10 +14,10 @@
 | Reserva de Salas | Standalone concluído, requer revisão | Levantar reservas, conflito de agenda, recurso, recorrência e regras de cancelamento |
 | Frota | Origem em desenvolvimento | Identificar sistema-fonte, entidades, responsáveis, escopos e fluxos reais |
 | Planejado × Realizado | Standalone concluído, requer revisão | Levantar fórmulas, periodização, versões, centavos/precisão e conciliação |
-| Curva ABC | Origem em desenvolvimento; risco maior | Levantar regras de classificação, fontes, históricos, importações e limites de escopo |
+| Curva ABC | **Módulo v1 integrado à main pela PR #69; sem histórico migrado** | Homologar amostras ERP, versões, regras, RLS; comparações/exportação/categorias são etapas posteriores |
 | ERP de Contratos | Standalone concluído; risco alto | Verificar backup/restore do legado, contratos, anexos, permissões e integridade |
 
-As descrições de funcionalidades em futuro são **perguntas de discovery**, não requisitos validados. Nenhum dos oito módulos futuros é identificado como implementação integrada em apps/web/src/modules na fotografia de 19/10/2026.
+As descrições de funcionalidades em futuro são **perguntas de discovery**, não requisitos validados. A Curva ABC saiu da lista de módulos futuros ao integrar a PR #69 em 20/10/2026. Os outros domínios permanecem sem migração concluída; o merge não equivale a liberação produtiva.
 
 ## Template obrigatório antes de cada módulo
 
@@ -39,4 +39,4 @@ flowchart LR
 
 Core não depende de negócio; business modules só consomem Core/Shared e contratos públicos aprovados de outros módulos. Novos schemas e permissões surgem **quando implementados**, não por antecedência. A migração não é big bang e não deve eliminar standalone antes de backup íntegro, testes, validação de dados e janela de reversão. Não prometer que R2, backup físico, integração com ERP e relatórios cross-module existem antes de comprovação.
 
-**Ordem de expansão candidata:** após Qualidade aceita, resolver gate ISO/Propostas → Vendas → Satisfação → Salas → Frota → Planejado×Realizado → ABC → Contratos; prioridade pode mudar por decisão formal e risco do inventário.
+**Ordem de expansão candidata:** após Qualidade aceita, resolver gate ISO/Propostas → Vendas → Satisfação → Salas → Frota → Planejado×Realizado → Contratos; prioridade pode mudar por decisão formal e risco do inventário.

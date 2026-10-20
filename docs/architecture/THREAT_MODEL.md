@@ -1,6 +1,6 @@
 # Modelo de ameaças e requisitos verificáveis — Gaúcha Gestão
 
-**Escopo de revisão:** código da main 1e818a4, stacks decididas e TO-BE de produção (19/10/2026). **Não é pentest, auditoria de infraestrutura, nem atestado de segurança ou liberação PROD.** Guias canônicos: [SECURITY](SECURITY.md), [AUTHORIZATION](AUTHORIZATION.md), [ADR-005](../decisions/ADR-005-core-authorization.md).
+**Escopo de revisão:** main após PR #69 (`fed0e0f`, 20/10/2026), stacks decididas e TO-BE de produção. **Não é pentest, auditoria de infraestrutura, nem atestado de segurança ou liberação PROD.** Guias canônicos: [SECURITY](SECURITY.md), [AUTHORIZATION](AUTHORIZATION.md), [ADR-005](../decisions/ADR-005-core-authorization.md).
 
 ## 1. Ativos e limites de confiança
 
@@ -30,6 +30,8 @@ A parte browser/URL assinada/JWT é controlada pelo cliente e **não confiável*
 | Provisionamento/reset privilegiado | Contas indevidas, último admin removido, corrida de sessões/Auth | **Bloqueado**: ADR-007 não aprovado; nenhum serviço privilegiado de contas autorizado | [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49): GoTrue real, locks, AMR, orphan sessions, parecer independente |
 | Acesso indevido a arquivos | URL assinada compartilhada, ID adivinhado ou bucket aberto | Buckets privados, emissão autorizada e chaves geradas no servidor | Headers, TTL/cache, expiração, R2 real e teste cross-unit em staging |
 | Upload malicioso | Conteúdo inesperado / spoof de MIME, XLSX/PDF hostil | Limites por domínio, extensões/MIME e contratos de Storage; tratamento de XLSX | Evidência de validação confiável de bytes; limitar expectativa sobre checagem client-side |
+| ABC: payload falso ou XLSX trocado | Publicador autorizado pode enviar linhas coerentes não extraídas do original; servidor revalida payload, mas não reprocessa nem re-hasheia bytes do XLSX | Conferir com o arquivo posteriormente; homologação das amostras e avaliar necessidade de validação confiável server-side |
+| ABC: validações não simétricas | Parser do navegador impõe competência fechada e limites numéricos não espelhados integralmente pela RPC | UI restringe fluxo normal, mas chamada API direta por publicador autorizado contorna parte das checagens de prévia | Harmonizar invariantes no SQL mediante migration incremental e teste negativo |
 | Corrida entre metadata/Storage | Byte órfão ou metadata confirmada sem objeto | Reserva → upload → confirmação; reconciliação planejada | O5 agenda/alertas, processo de purge auditado e prova operacional |
 | Dado malicioso em exportação | Formula injection no XLSX ou HTML/print injection | Escrita segura de células e testes de exportação | Revalidar casos maliciosos no SHA de liberação |
 | Ingresso indevido / superfícies administrativas | Banco, Studio ou painel expostos externamente | Banco sem porta publicada em Compose; Tunnel/WAF/controle de portas previstos | Configuração real, firewall, TLS e exposições verificadas |
@@ -48,8 +50,9 @@ A parte browser/URL assinada/JWT é controlada pelo cliente e **não confiável*
 4. Revogação/desativação: próximo acesso e mutações devem refletir política de revogação do contrato Core, mesmo com UI obsoleta.
 5. Administrador com capacidade limitada: não conceder papel com poder que não controla, nem se autoelevar.
 6. Tentativa de upload inválido, nome arbitrário, bucket alheio, atualização de versão obsoleta ou URL expirada: falha sem dar privilégio.
-7. Auditoria e metadados históricos permanecem acessíveis apenas nos escopos autorizados; sem exclusão em cascata por desativação ordinária.
-8. API e logs nunca retornam senha, service_role, segredos, JWTs completos ou URLs assinadas persistentes.
+7. Para ABC, a conferência posterior não equivale à prova criptográfica de origem antes de publicar; usuários e clientes autorizados também são entradas não confiáveis.
+8. Auditoria e metadados históricos permanecem acessíveis apenas nos escopos autorizados; sem exclusão em cascata por desativação ordinária.
+9. API e logs nunca retornam senha, service_role, segredos, JWTs completos ou URLs assinadas persistentes.
 
 Mapear cada cenário a testes unitários, RLS e integrações com **JWT real**; acompanhar [core-security-matrix](../../tests/integration/core-security-matrix.mjs), [Quality Acceptance](../modules/audit/QUALITY_ACCEPTANCE_V1.md) e novos cenários para cada módulo.
 

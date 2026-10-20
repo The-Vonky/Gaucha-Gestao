@@ -2,7 +2,7 @@
 
 Plataforma corporativa modular que centraliza os sistemas internos da Gaúcha Alimentação: autenticação, autorização por unidade, auditorias de qualidade, planos de ação, evidências e, aos poucos, os demais sistemas da empresa.
 
-> **Estado em 15/10/2026:** o software da Qualidade v1 e a Fundação Core v2 estão na `main` e passam nos checks. **A plataforma não está em produção e não está liberada para produção (NO-GO).** O host foi decidido (Lenovo ThinkStation C30, [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md)), mas ainda não foi preparado. A ordem do que falta está no [Plano Diretor 2026](docs/planning/PLANO_DIRETOR_2026.md).
+> **Fotografia atualizada em 20/10/2026:** o software da Qualidade v1 e a Fundação Core v2 estão na `main` e passam nos checks. **A plataforma não está em produção e não está liberada para produção (NO-GO).** O host foi decidido (Lenovo ThinkStation C30, [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md)); a Curva ABC v1 integra o código da main pela PR #69, mas ainda não tem homologação de produção. A ordem do que falta está no [Plano Diretor 2026](docs/planning/PLANO_DIRETOR_2026.md).
 
 ## Sumário
 
@@ -29,8 +29,9 @@ Plataforma corporativa modular que centraliza os sistemas internos da Gaúcha Al
 | Prontidão operacional O1–O8 | O1, O5 e O6 parciais; O2 desconhecido; O3, O4, O7 e O8 abertos | [aceite final](docs/modules/audit/QUALITY_ACCEPTANCE_V1.md) |
 | Infraestrutura reproduzível | Perfil mínimo de 5 serviços (Postgres 17, Kong, GoTrue, PostgREST, Storage) validado em CI descartável | [ADR-006](docs/decisions/ADR-006-infra-v1-reused-hardware.md), [infra/](infra/README.md) |
 | Host | **Decidido em 15/10:** ThinkStation C30 dedicada, Ubuntu Server LTS direto no hardware, substituindo o servidor legado e a HP ML350 do ADR-004. A máquina ainda roda Windows e não cumpre os critérios de aceite | [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md) |
-| Backup e restore | Sem backup independente nem restore demonstrado. Ferramenta de WAL/PITR e destino off-site em aberto | [BACKUP_RECOVERY](docs/architecture/BACKUP_RECOVERY.md) |
+| Backup e restore | Ensaio sintético a frio registrado na Issue #51, com DR-08 parcial; backup independente e WAL/PITR de produção ainda sem prova | [BACKUP_RECOVERY](docs/architecture/BACKUP_RECOVERY.md) |
 | Proteção da `main` | **Adiada** por decisão do responsável. Risco de governança aberto, principalmente com agentes em paralelo | [protocolo paralelo, §2](docs/development/PARALLEL_AGENT_WORKFLOW.md) |
+| DEV compartilhado | Dois logins e dados comuns funcionais na Issue #68; autoria, RLS e rede continuam em verificação | [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) |
 | Produção | **NO-GO.** Nenhum deploy, dado real ou ambiente de produção existe | [Plano Diretor, §1](docs/planning/PLANO_DIRETOR_2026.md) |
 
 Checks executados localmente em 15/10/2026 sobre o HEAD `aee20ec` da `main`: typecheck, lint, 483 testes (34 arquivos), build, verify:build e `npm audit` (0 vulnerabilidades) passaram. As integrações com Supabase real (`tests/integration`) rodam só na CI e não foram executadas nessa verificação.
@@ -100,7 +101,7 @@ Antes de qualquer mudança estrutural, leia o [OVERVIEW](docs/architecture/OVERV
 | Agendamento de Sala de Reunião | Sistema standalone finalizado; requer revisão |
 | Frota | Sistema de origem em desenvolvimento |
 | Planejado × Realizado | Sistema standalone finalizado; requer revisão |
-| Curva ABC | Sistema de origem em desenvolvimento |
+| Curva ABC | **v1 integrada à main** (PR #69); importação, revisões e consulta implementadas; homologação manual pendente |
 | ERP de Contratos | Sistema standalone finalizado; requer revisão de backup |
 
 Os sistemas standalone continuam preservados como referência e contingência. A migração é incremental, um módulo por vez, cada um com gates próprios ([MODULE_ROADMAP](docs/migration/MODULE_ROADMAP.md)).
@@ -108,7 +109,7 @@ Os sistemas standalone continuam preservados como referência e contingência. A
 ## Estrutura do repositório
 
 ```text
-apps/web/            frontend React (app/, core/, modules/audit, modules/action-plans, shared/)
+apps/web/            frontend React (app/, core/, modules/audit, modules/action-plans, modules/abc, shared/)
 supabase/            config.toml e migrations versionadas (nunca editar migration já aplicada)
 infra/               compose do perfil mínimo e env de exemplo (sem segredos)
 scripts/             verify-build.mjs e scripts/ops (só ci/staging descartável; recusam production)
@@ -183,6 +184,8 @@ Vale para pessoas e agentes de IA.
 Agentes de código seguem o [AGENTS.md](AGENTS.md) (o [CLAUDE.md](CLAUDE.md) só aponta para ele). O fluxo de trabalho com IA está em [AI_WORKFLOW](docs/development/AI_WORKFLOW.md) e o trabalho paralelo em [PARALLEL_AGENT_WORKFLOW](docs/development/PARALLEL_AGENT_WORKFLOW.md), integrado à `main` pelo PR #43.
 
 ## Mapa da documentação
+
+**[Racional das escolhas tecnológicas](docs/architecture/TECHNOLOGY_DECISIONS.md)** e **[guia Curva ABC](docs/modules/abc/OPERATOR_GUIDE_V1.md)** complementam a visão visual de arquitetura e a matriz operacional. A documentação diferencia código integrado de infraestrutura efetivamente instalada.
 
 **[Índice integrado de documentação](docs/README.md):** arquitetura, tecnologias, fluxos, planejamento, operação e decisões técnicas.
 

@@ -1,6 +1,6 @@
 # Registro de decisões, bloqueios e dívida documental
 
-**Snapshot:** 19/10/2026, main 1e818a45449c0720f7b5af5398e04e0a89c9b3ff. **Não é ata de decisão humana.** Atualizações posteriores de issues/PRs devem ser reconsultadas. Para autoridade, prevalecem ADRs aceitos, [Plano Diretor](PLANO_DIRETOR_2026.md) e evidências de aceite.
+**Snapshot reconciliado:** 20/10/2026, main após PR #69 (`fed0e0f`). **Não é ata de decisão humana.** Atualizações posteriores de issues/PRs devem ser reconsultadas. Para autoridade, prevalecem ADRs aceitos, [Plano Diretor](PLANO_DIRETOR_2026.md) e evidências de aceite.
 
 ## Decisões arquiteturais confirmadas
 
@@ -39,7 +39,9 @@
 
 - [Issue #51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51) relata **ensaio sintético a frio v2 com restore funcional PASS parcial em 19/10**, enquanto [PR #62](https://github.com/The-Vonky/Gaucha-Gestao/pull/62) permanece **Draft** e a issue **aberta**. Trata-se de laboratório, não demonstra backups on-line, WAL/PITR, destino off-site ou restauração de PROD.
 - [Issue #52](https://github.com/The-Vonky/Gaucha-Gestao/issues/52) informa que ERP de Contratos foi levado para outro computador e que funcionamento foi relatado, **sem** garantia de restauração independente da instância antiga; preservar tudo até autorização de descarte. A inspeção do HD HPE e da C30 ainda está sujeita ao gate.
-- [PR #66](https://github.com/The-Vonky/Gaucha-Gestao/pull/66) é alteração de apresentação de evidências **aberta** nesta fotografia; não antecipar seu merge.
+- [PR #66](https://github.com/The-Vonky/Gaucha-Gestao/pull/66) **foi integrada à main** em `eaffb4f`.
+- [PR #69](https://github.com/The-Vonky/Gaucha-Gestao/pull/69) **foi integrada à main** em `fed0e0f`; Curva ABC v1 está em código, mas importação das amostras ERP, validações de confiança e homologação com dois operadores ([Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70)) continuam abertas.
+- [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) registra DEV compartilhado com duas contas independentes; os critérios de rede, autoria e RLS ainda exigem confirmação. Não é STAGING nem PROD.
 - Há documentos de Core v2 que mantêm banner de outubro anterior a [PR #38](https://github.com/The-Vonky/Gaucha-Gestao/pull/38) e dizem que a integração não está em main; esse trecho **histórico** não revoga o fato de o Core v2 ter sido consolidado. Mantenha o conteúdo como snapshot ou corrija o banner em PR focada, sem reescrever contratos antigos sem aprovação.
 - [ADR-006](../decisions/ADR-006-infra-v1-reused-hardware.md) mantém Proposed apesar de existir Compose em CI. Documentação de teste e status arquitetural são dimensões diferentes.
 - [01_DADOS_LIMPOS](01_DADOS_LIMPOS.md) é proposta documental, não script de limpeza nem autorização para tocar em produção.
