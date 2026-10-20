@@ -273,6 +273,33 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
 .menu .menu-toggle:focus-visible {
   outline-offset: -2px;
 }
+/* Hierarchy: the group header is the taller row; every child row shares
+   one shorter height and a deeper indent, active or not. The active child
+   only changes background and keeps the orange marker. */
+.menu .menu-group-toggle {
+  min-height: 40px;
+}
+.menu .menu-group-toggle[aria-expanded="true"] {
+  color: var(--on-brand-secondary);
+}
+.menu section a,
+.menu section .menu-toggle {
+  min-height: 34px;
+  margin: 1px 0;
+  padding-left: var(--space-5);
+}
+.menu section .menu-children a,
+.menu section .menu-children .menu-toggle {
+  padding-left: var(--space-3);
+}
+.menu section a.active {
+  background: var(--brand-surface-hover);
+  box-shadow: none;
+}
+.nav-drawer .menu .menu-group-toggle,
+.nav-drawer .menu section .menu-toggle {
+  min-height: var(--touch-target);
+}
 .menu .menu-toggle.within {
   color: var(--on-brand);
 }
