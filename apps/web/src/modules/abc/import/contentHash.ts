@@ -24,8 +24,9 @@ export function canonicalContent(p: HashInput): string {
   return ["abc-content-v1", header, ...subtotals, ...lines].join(RS);
 }
 
-export async function sha256Hex(data: BufferSource | string): Promise<string> {
-  const bytes = typeof data === "string" ? new TextEncoder().encode(data) : data;
+export async function sha256Hex(data: Uint8Array | string): Promise<string> {
+  // Copy into a plain ArrayBuffer-backed view, as Web Crypto requires.
+  const bytes = typeof data === "string" ? new TextEncoder().encode(data) : new Uint8Array(data);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }

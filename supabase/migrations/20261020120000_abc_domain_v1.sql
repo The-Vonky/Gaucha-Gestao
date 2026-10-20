@@ -122,7 +122,7 @@ declare t text;
 begin
  if p_value is null or jsonb_typeof(p_value)<>'string' then return null; end if;
  t=p_value#>>'{}';
- if t !~ '^(0|[1-9][0-9]{0,29})(\.[0-9]{0,19}[1-9])?$' then return null; end if;
+ if t !~ '^(0|[1-9][0-9]{0,29})(\.[0-9]{0,23}[1-9])?$' then return null; end if;
  return t::numeric;
 end $$;
 
