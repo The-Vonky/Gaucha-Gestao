@@ -25,6 +25,7 @@ import {
   groupDescriptions,
   visibleNavigation,
   type Destination,
+  type NavChild,
 } from "./navigation";
 import "./shell.css";
 function Logout({ compact = false }: { compact?: boolean }) {
@@ -112,6 +113,119 @@ function Brand() {
     </Link>
   );
 }
+function isWithin(pathname: string, path: string) {
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
+function containsPath(node: NavChild, pathname: string): boolean {
+  return (
+    isWithin(pathname, node.path) ||
+    !!node.children?.some((c) => containsPath(c, pathname))
+  );
+}
+function MenuBranch({
+  node,
+  icon,
+  depth,
+  onNavigate,
+}: {
+  node: NavChild;
+  icon?: Destination["icon"];
+  depth: number;
+  onNavigate?: () => void;
+}) {
+  const { pathname } = useLocation();
+  const within = containsPath(node, pathname);
+  const [open, setOpen] = useState(within);
+  useEffect(() => {
+    if (within) setOpen(true);
+  }, [within]);
+  const content = (
+    <>
+      {icon && <Icon name={icon} />}
+      <span>{node.label}</span>
+    </>
+  );
+  if (!node.children?.length)
+    return (
+      <NavLink to={node.path} onClick={onNavigate} data-depth={depth}>
+        {content}
+      </NavLink>
+    );
+  const id = `menu-${node.path.replace(/\W+/g, "-")}`;
+  return (
+    <div className="menu-branch">
+      <button
+        type="button"
+        className={within ? "menu-toggle within" : "menu-toggle"}
+        aria-expanded={open}
+        aria-controls={id}
+        data-depth={depth}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {content}
+        <Icon name="chevronDown" className="icon menu-caret" />
+      </button>
+      {open && (
+        <div id={id} className="menu-children">
+          {node.children.map((c) => (
+            <MenuBranch
+              key={c.path}
+              node={c}
+              depth={depth + 1}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+function MenuGroup({
+  group,
+  items,
+  onNavigate,
+}: {
+  group: string;
+  items: Destination[];
+  onNavigate?: () => void;
+}) {
+  const { pathname } = useLocation();
+  const within = items.some((d) => containsPath(d, pathname));
+  const [open, setOpen] = useState(within);
+  useEffect(() => {
+    if (within) setOpen(true);
+  }, [within]);
+  const id = `menu-group-${group}`;
+  return (
+    <section>
+      <h2>
+        <button
+          type="button"
+          className="menu-group-toggle"
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <span>{group}</span>
+          <Icon name="chevronDown" className="icon menu-caret" />
+        </button>
+      </h2>
+      {open && (
+        <div id={id}>
+          {items.map((d) => (
+            <MenuBranch
+              key={d.path}
+              node={d}
+              icon={d.icon}
+              depth={0}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 function Menu({ onNavigate }: { onNavigate?: () => void }) {
   const auth = useAuth();
   const nav = visibleNavigation(!!auth.profile?.active, auth.grants);
@@ -122,15 +236,12 @@ function Menu({ onNavigate }: { onNavigate?: () => void }) {
         <span>Início</span>
       </NavLink>
       {nav.map((group) => (
-        <section key={group.group}>
-          <h2>{group.group}</h2>
-          {group.destinations.map((d) => (
-            <NavLink key={d.path} to={d.path} onClick={onNavigate}>
-              <Icon name={d.icon} />
-              <span>{d.label}</span>
-            </NavLink>
-          ))}
-        </section>
+        <MenuGroup
+          key={group.group}
+          group={group.group}
+          items={group.destinations}
+          onNavigate={onNavigate}
+        />
       ))}
     </nav>
   );

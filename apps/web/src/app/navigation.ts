@@ -27,6 +27,14 @@ export type Destination = {
   scope: "global" | "any";
   /** The destination owns sub-routes below its path. */
   nested?: boolean;
+  /** Sub-pages shown as a collapsible branch below this item. */
+  children?: NavChild[];
+};
+/** A nested menu entry; may itself hold further entries. */
+export type NavChild = {
+  path: string;
+  label: string;
+  children?: NavChild[];
 };
 export const destinations: Destination[] = [
   {
