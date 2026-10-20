@@ -14,6 +14,7 @@ export const groupDescriptions: Partial<
 > = {
   Qualidade:
     "Auditorias do checklist geral e o ciclo das ações corretivas, da execução à verificação de eficácia.",
+  Custos: "Consumo valorizado por unidade e competência, com a Curva ABC do ERP e a calculada.",
   Administração: "Acessos, estrutura organizacional e registros do sistema.",
 };
 export type Destination = {
@@ -27,6 +28,14 @@ export type Destination = {
   scope: "global" | "any";
   /** The destination owns sub-routes below its path. */
   nested?: boolean;
+  /** Sub-pages shown as a collapsible branch below this item. */
+  children?: NavChild[];
+};
+/** A nested menu entry; may itself hold further entries. */
+export type NavChild = {
+  path: string;
+  label: string;
+  children?: NavChild[];
 };
 export const destinations: Destination[] = [
   {
@@ -46,6 +55,16 @@ export const destinations: Destination[] = [
     icon: "actionPlan",
     group: "Qualidade",
     permissions: ["action_plan.read"],
+    scope: "any",
+    nested: true,
+  },
+  {
+    path: "/abc",
+    label: "Curva ABC",
+    description: "Relatórios de consumo do ERP por unidade e competência.",
+    icon: "costs",
+    group: "Custos",
+    permissions: ["abc.report.read"],
     scope: "any",
     nested: true,
   },
