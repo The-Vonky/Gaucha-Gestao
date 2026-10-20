@@ -1,6 +1,6 @@
 # Implementation Brief — Curva ABC Domain v1
 
-Status: DRAFT — aguardando aprovação humana  
+Status: APPROVED (2026-10-20) — implementado na branch `feat/abc-domain-v1`  
 Date: 2026-10-19  
 Baseline: `main` em `1e818a4`
 
@@ -244,3 +244,16 @@ Conferir as quatro amostras reais disponíveis com o responsável, **fora do rep
 - revisão publicada reproduz exatamente as linhas do arquivo ("Conferir com o arquivo" aprovado);
 - classe calculada segue `abc-70-90-inicio-v1` e é exibida ao lado da classe ERP;
 - nenhum dado real versionado.
+
+## Implementation notes (2026-10-20)
+
+Diferenças em relação ao texto acima, todas dentro do módulo, conforme o princípio de adaptação:
+
+- **Sem Web Worker.** `DOMParser` não existe em Web Workers; o parser roda na página. Os relatórios têm centenas de linhas e são lidos em poucos milissegundos.
+- **Código da unidade.** O payload envia o código da filial lido do arquivo; o banco exige que seja igual a `core.units.code` da unidade do upload. A tela também compara antes, com o aviso `BRANCH_MISMATCH`.
+- **Modalidade.** Vem do arquivo, não de uma escolha do usuário.
+- **Percentual da fonte.** O parser lê fração (0–1) e envia pontos percentuais (`source_share × 100`).
+- **Casas decimais.** O limite no SQL é de 24 casas, igual ao parser.
+- **XML não UTF-8.** É rejeitado como `invalid_xml`, mais restritivo que a origem, que aceitava UTF-16 sem DTD.
+- **Avisos.** O navegador envia apenas os avisos que o banco não consegue derivar (nome do arquivo, percentual de subtotal, linha sem preço analítico). O banco acrescenta os seus e exige um único aceite.
+- **Testes.** `tests/abc-database.test.ts` (PGlite e PostgreSQL real via `ABC_TEST_DATABASE_URL`), `tests/abc-import.test.ts` (leitor e parser traduzidos da origem), `tests/abc-ui.test.tsx` e `tests/integration/abc.mjs` (Supabase local real, no job `action-plans-integration`).
