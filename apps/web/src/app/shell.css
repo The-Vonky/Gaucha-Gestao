@@ -329,8 +329,29 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
   color: var(--on-brand-muted);
   font-size: 0.875rem;
 }
+/* Dropdown enter/exit: height via grid rows, plus a short fade/slide. */
+.menu .menu-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    grid-template-rows var(--duration-base) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+.menu .menu-collapse[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: none;
+}
+.menu .menu-collapse > * {
+  min-height: 0;
+  overflow: hidden;
+}
 @media (prefers-reduced-motion: reduce) {
-  .menu .menu-caret {
+  .menu .menu-caret,
+  .menu .menu-collapse {
     transition: none;
   }
 }

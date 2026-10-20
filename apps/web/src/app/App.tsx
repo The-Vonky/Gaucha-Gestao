@@ -138,6 +138,26 @@ function filterNode<T extends NavChild>(node: T, query: string): T | null {
     .filter((c): c is NavChild => !!c);
   return children.length ? { ...node, children } : null;
 }
+/** Animated open/close; closed content stays mounted but inert. */
+function MenuCollapse({
+  id,
+  open,
+  className,
+  children,
+}: {
+  id: string;
+  open: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="menu-collapse" data-open={open} inert={!open}>
+      <div id={id} className={className}>
+        {children}
+      </div>
+    </div>
+  );
+}
 function MenuBranch({
   node,
   icon,
@@ -184,19 +204,17 @@ function MenuBranch({
         {content}
         <Icon name="chevronDown" className="icon menu-caret" />
       </button>
-      {open && (
-        <div id={id} className="menu-children">
-          {node.children.map((c) => (
-            <MenuBranch
-              key={c.path}
-              node={c}
-              depth={depth + 1}
-              searching={searching}
-              onNavigate={onNavigate}
-            />
-          ))}
-        </div>
-      )}
+      <MenuCollapse id={id} open={open} className="menu-children">
+        {node.children.map((c) => (
+          <MenuBranch
+            key={c.path}
+            node={c}
+            depth={depth + 1}
+            searching={searching}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </MenuCollapse>
     </div>
   );
 }
@@ -233,20 +251,18 @@ function MenuGroup({
           <Icon name="chevronDown" className="icon menu-caret" />
         </button>
       </h2>
-      {open && (
-        <div id={id}>
-          {items.map((d) => (
-            <MenuBranch
-              key={d.path}
-              node={d}
-              icon={d.icon}
-              depth={0}
-              searching={searching}
-              onNavigate={onNavigate}
-            />
-          ))}
-        </div>
-      )}
+      <MenuCollapse id={id} open={open}>
+        {items.map((d) => (
+          <MenuBranch
+            key={d.path}
+            node={d}
+            icon={d.icon}
+            depth={0}
+            searching={searching}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </MenuCollapse>
     </section>
   );
 }
