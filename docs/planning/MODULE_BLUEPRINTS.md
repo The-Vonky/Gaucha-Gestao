@@ -11,13 +11,13 @@
 | ISO / Propostas ISO | Legado funcional concluído; nome histórico ambíguo | Resolver se trata propostas comerciais/clientes, ownership, navegação, política de dados |
 | Vendas / Maquininhas | Standalone concluído | Levantar importação, conciliação, totais, unidades, autorização e paridade |
 | Pesquisa de Satisfação | Standalone concluído | Levantar questionários, anonimato, indicadores, períodos e tratamento de dados |
-| Reserva de Salas | Standalone concluído, requer revisão | Levantar reservas, conflito de agenda, recurso, recorrência e regras de cancelamento |
+| Reserva de Salas | Brief AG-00 integrado como documentação na PR #72, **PROPOSTO**, não implementado | [ROOM_BOOKING_V1](../briefs/ROOM_BOOKING_V1.md) e [ACCEPTANCE_V1](../modules/room-booking/ACCEPTANCE_V1.md): validar legado, secretária, permissões, privacidade, horário, conflitos e sequência do roadmap antes do AG-01 |
 | Frota | Origem em desenvolvimento | Identificar sistema-fonte, entidades, responsáveis, escopos e fluxos reais |
 | Planejado × Realizado | Standalone concluído, requer revisão | Levantar fórmulas, periodização, versões, centavos/precisão e conciliação |
 | Curva ABC | **Módulo v1 integrado à main pela PR #69; sem histórico migrado** | Homologar amostras ERP, versões, regras, RLS; comparações/exportação/categorias são etapas posteriores |
 | ERP de Contratos | Standalone concluído; risco alto | Verificar backup/restore do legado, contratos, anexos, permissões e integridade |
 
-As descrições de funcionalidades em futuro são **perguntas de discovery**, não requisitos validados. A Curva ABC saiu da lista de módulos futuros ao integrar a PR #69 em 20/10/2026. Os outros domínios permanecem sem migração concluída; o merge não equivale a liberação produtiva.
+As descrições de funcionalidades em futuro são **perguntas de discovery**, não requisitos validados. A PR #72 acrescentou somente o brief e a matriz de aceite de Agendamento de Salas, ainda sem aprovação da secretária/dono funcional; não antecipar AG-01 nem alterar a ordem canônica do roadmap por inferência. A Curva ABC saiu da lista de módulos futuros ao integrar a PR #69 em 20/10/2026. Os outros domínios permanecem sem migração concluída; o merge não equivale a liberação produtiva.
 
 ## Template obrigatório antes de cada módulo
 

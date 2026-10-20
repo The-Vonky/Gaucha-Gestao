@@ -1,6 +1,6 @@
 # Documentação integrada — Gaúcha Gestão
 
-**Catálogo técnico e de planejamento** · reconciliado em 20/10/2026 com a `main` após a PR #69 (`fed0e0f`). Produção: **NO-GO**.
+**Catálogo técnico e de planejamento** · reconciliado em 20/10/2026 com a `main` após as PRs #69 e #72 (`6373992`). Produção: **NO-GO**.
 
 > **Estado:** código da Fundação Core v2 e Qualidade v1 na main, mas **produção NO-GO**. Este índice organiza e relaciona documentos existentes; não transforma proposta em decisão, não comprova aceite operacional e não autoriza instalação, migração ou deploy.
 
@@ -22,6 +22,7 @@
 | Operar e conferir a Curva ABC | [Guia ABC v1](modules/abc/OPERATOR_GUIDE_V1.md) | [Brief ABC](briefs/ABC_DOMAIN_V1.md), [Testes #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) |
 | Usar o módulo de Qualidade | [Guia do operador (pré-homologação)](modules/audit/OPERATOR_GUIDE_V1.md) | [Aceite da Qualidade](modules/audit/QUALITY_ACCEPTANCE_V1.md) |
 | Aceitar a primeira entrega | [Qualidade P1–P9 / O1–O8](modules/audit/QUALITY_ACCEPTANCE_V1.md) | [Matriz de conclusão](modules/audit/QUALITY_COMPLETION_V1.md) |
+| Entender a proposta de Agendamento de Salas (ainda não aprovada) | [Brief AG-00](briefs/ROOM_BOOKING_V1.md) | [Critérios de aceite](modules/room-booking/ACCEPTANCE_V1.md), [PR #72](https://github.com/The-Vonky/Gaucha-Gestao/pull/72) |
 | Planejar os módulos futuros | [Blueprint por domínio](planning/MODULE_BLUEPRINTS.md) | [Roadmap canônico](migration/MODULE_ROADMAP.md) |
 | Evoluir módulos legados | [Roadmap de migração](migration/MODULE_ROADMAP.md) | [Mapa de consumidores Core](architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md) |
 | Contribuir com vários agentes | [Protocolo paralelo](development/PARALLEL_AGENT_WORKFLOW.md) | [AGENTS](../AGENTS.md), [Template PR](../.github/pull_request_template.md) |
@@ -67,4 +68,4 @@ Toda PR que mude uma jornada, schema/RPC, permissão, dependência, integração
 
 ### Escopo e limites deste catálogo
 
-O catálogo original foi preparado em 19/10 e reconciliado em 20/10 com a `main` após a PR #69. Curva ABC v1 está integrada ao código, mas sem homologação de produção; a Issue #68 registra DEV compartilhado, não PROD. Não foram executados testes, testes físicos, restore, benchmark, instalação ou consulta a ambientes operacionais. PRs abertos podem evoluir depois desta fotografia; confirme seu estado antes de agir.
+O catálogo original foi preparado em 19/10 e reconciliado em 20/10 com a `main` após as PRs #69 e #72. O brief de Agendamento de Salas foi integrado como documento **proposto, sem aprovação funcional ou implementação**. Curva ABC v1 está integrada ao código, mas sem homologação de produção; a Issue #68 registra DEV compartilhado, não PROD. Não foram executados testes, testes físicos, restore, benchmark, instalação ou consulta a ambientes operacionais. PRs abertos podem evoluir depois desta fotografia; confirme seu estado antes de agir.
