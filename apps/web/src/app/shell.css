@@ -300,6 +300,16 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
 .nav-drawer .menu section .menu-toggle {
   min-height: var(--touch-target);
 }
+/* Touch devices keep the 44px target even in the compact sidebar hierarchy. */
+@media (pointer: coarse), (max-width: 1023px) {
+  .menu .menu-group-toggle,
+  .menu section a,
+  .menu section .menu-toggle,
+  .menu section .menu-children a,
+  .menu section .menu-children .menu-toggle {
+    min-height: var(--touch-target);
+  }
+}
 .menu .menu-toggle.within {
   color: var(--on-brand);
 }
