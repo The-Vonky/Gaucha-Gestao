@@ -1,0 +1,56 @@
+/* Curva ABC module. Uses the shared Design System Elo tokens only. */
+.abc-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin: var(--space-4) 0;
+}
+.abc-section h2 {
+  margin-top: 0;
+}
+.abc-section > label:not(.check) {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+.abc-section textarea {
+  width: 100%;
+  min-height: 5rem;
+  margin-bottom: var(--space-3);
+}
+.abc-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+.abc-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-3);
+}
+.abc-facts dt {
+  color: var(--color-text-secondary);
+}
+.abc-facts dd {
+  margin: 0;
+}
+.abc-search {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 24rem;
+  margin-bottom: var(--space-3);
+}
+.abc-section code {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .abc-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .abc-facts {
+    grid-template-columns: 1fr;
+  }
+}
