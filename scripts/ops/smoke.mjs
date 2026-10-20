@@ -77,7 +77,7 @@ try {
   }
   assert.ok(passwordRejected);
   console.log('smoke: postgres authenticates with POSTGRES_PASSWORD and rejects an incorrect password');
-  const appSchemas = ['core','private','audit','action_plans','action_plans_private','audit_private'];
+  const appSchemas = ['core','private','audit','action_plans','action_plans_private','audit_private','abc','abc_private'];
   const schemaNames = appSchemas.map(name=>`'${name}'`).join(',');
   const ownership = JSON.parse(sql(`select json_build_object(
     'schemas', (select json_agg(json_build_object('name',nspname,'owner',pg_get_userbyid(nspowner)))
@@ -95,7 +95,7 @@ try {
   }
 
   step = 'REST exposed schemas';
-  const schemas = ['public','graphql_public','core','audit','action_plans'];
+  const schemas = ['public','graphql_public','core','audit','action_plans','abc'];
   // Reload is asynchronous; bound readiness polling rather than sleeping blindly.
   for (const schema of schemas) {
     let response;
