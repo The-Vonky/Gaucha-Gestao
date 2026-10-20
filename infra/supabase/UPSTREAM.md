@@ -83,7 +83,7 @@ role-password initialization from being recorded in container logs.
 
 Bootstrap readiness has two phases: DB/Auth/Storage/Kong become healthy before
 application migrations; REST's final readiness follows the unchanged migrations
-that create `core`, `audit`, `action_plans`. Storage/Kong therefore depend on
+that create `core`, `audit`, `action_plans`, `abc`. Storage/Kong therefore depend on
 REST being started rather than already having an application schema cache.
 The initial readiness gate and final full-stack `up --wait` both have bounded
 timeouts. PGRST_DB_SCHEMAS is never temporarily reduced.

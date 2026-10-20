@@ -17,6 +17,7 @@ import { PermissionsPage } from "../core/admin/PermissionsPage";
 import { LogsPage } from "../core/admin/LogsPage";
 import { AuditModule } from "../modules/audit/AuditModule";
 import { ActionPlansModule } from "../modules/action-plans/ActionPlansModule";
+import { AbcModule } from "../modules/abc/AbcModule";
 import { BrandMark, Loader } from "../shared/brand";
 import { Icon } from "../shared/icons";
 import { Drawer, EmptyState, IconButton, Notice } from "../shared/ui";
@@ -25,6 +26,7 @@ import {
   groupDescriptions,
   visibleNavigation,
   type Destination,
+  type NavChild,
 } from "./navigation";
 import "./shell.css";
 function Logout({ compact = false }: { compact?: boolean }) {
@@ -112,26 +114,208 @@ function Brand() {
     </Link>
   );
 }
+function isWithin(pathname: string, path: string) {
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
+function containsPath(node: NavChild, pathname: string): boolean {
+  return (
+    isWithin(pathname, node.path) ||
+    !!node.children?.some((c) => containsPath(c, pathname))
+  );
+}
+/** Case- and accent-insensitive form used by the menu search. */
+function normalize(text: string) {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+/** Keeps nodes whose label matches, or that lead to a match. */
+function filterNode<T extends NavChild>(node: T, query: string): T | null {
+  if (normalize(node.label).includes(query)) return node;
+  const children = (node.children ?? [])
+    .map((c) => filterNode(c, query))
+    .filter((c): c is NavChild => !!c);
+  return children.length ? { ...node, children } : null;
+}
+/** Animated open/close; closed content stays mounted but inert. */
+function MenuCollapse({
+  id,
+  open,
+  className,
+  children,
+}: {
+  id: string;
+  open: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="menu-collapse" data-open={open} inert={!open}>
+      <div id={id} className={className}>
+        {children}
+      </div>
+    </div>
+  );
+}
+function MenuBranch({
+  node,
+  icon,
+  depth,
+  searching,
+  onNavigate,
+}: {
+  node: NavChild;
+  icon?: Destination["icon"];
+  depth: number;
+  searching: boolean;
+  onNavigate?: () => void;
+}) {
+  const { pathname } = useLocation();
+  const within = containsPath(node, pathname);
+  const [toggled, setOpen] = useState(within);
+  useEffect(() => {
+    if (within) setOpen(true);
+  }, [within]);
+  const open = searching || toggled;
+  const content = (
+    <>
+      {icon && <Icon name={icon} />}
+      <span>{node.label}</span>
+    </>
+  );
+  if (!node.children?.length)
+    return (
+      <NavLink to={node.path} onClick={onNavigate} data-depth={depth}>
+        {content}
+      </NavLink>
+    );
+  const id = `menu-${node.path.replace(/\W+/g, "-")}`;
+  return (
+    <div className="menu-branch">
+      <button
+        type="button"
+        className={within ? "menu-toggle within" : "menu-toggle"}
+        aria-expanded={open}
+        aria-controls={id}
+        data-depth={depth}
+        onClick={() => setOpen(!open)}
+      >
+        {content}
+        <Icon name="chevronDown" className="icon menu-caret" />
+      </button>
+      <MenuCollapse id={id} open={open} className="menu-children">
+        {node.children.map((c) => (
+          <MenuBranch
+            key={c.path}
+            node={c}
+            depth={depth + 1}
+            searching={searching}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </MenuCollapse>
+    </div>
+  );
+}
+function MenuGroup({
+  group,
+  items,
+  searching,
+  onNavigate,
+}: {
+  group: string;
+  items: Destination[];
+  searching: boolean;
+  onNavigate?: () => void;
+}) {
+  const { pathname } = useLocation();
+  const within = items.some((d) => containsPath(d, pathname));
+  const [toggled, setOpen] = useState(within);
+  useEffect(() => {
+    if (within) setOpen(true);
+  }, [within]);
+  const open = searching || toggled;
+  const id = `menu-group-${group}`;
+  return (
+    <section>
+      <h2>
+        <button
+          type="button"
+          className="menu-group-toggle"
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => setOpen(!open)}
+        >
+          <span>{group}</span>
+          <Icon name="chevronDown" className="icon menu-caret" />
+        </button>
+      </h2>
+      <MenuCollapse id={id} open={open}>
+        {items.map((d) => (
+          <MenuBranch
+            key={d.path}
+            node={d}
+            icon={d.icon}
+            depth={0}
+            searching={searching}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </MenuCollapse>
+    </section>
+  );
+}
 function Menu({ onNavigate }: { onNavigate?: () => void }) {
   const auth = useAuth();
-  const nav = visibleNavigation(!!auth.profile?.active, auth.grants);
+  const [search, setSearch] = useState("");
+  const query = normalize(search);
+  const nav = visibleNavigation(!!auth.profile?.active, auth.grants)
+    .map((g) => ({
+      group: g.group,
+      destinations: normalize(g.group).includes(query)
+        ? g.destinations
+        : g.destinations
+            .map((d) => filterNode(d, query))
+            .filter((d): d is Destination => !!d),
+    }))
+    .filter((g) => g.destinations.length);
   return (
     <nav className="menu" aria-label="Navegação principal">
-      <NavLink to="/" end onClick={onNavigate}>
-        <Icon name="home" />
-        <span>Início</span>
-      </NavLink>
+      <label className="menu-search">
+        <Icon name="search" />
+        <input
+          type="search"
+          value={search}
+          placeholder="Buscar no menu"
+          aria-label="Buscar no menu"
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setSearch("");
+          }}
+        />
+      </label>
+      {!query && (
+        <NavLink to="/" end onClick={onNavigate}>
+          <Icon name="home" />
+          <span>Início</span>
+        </NavLink>
+      )}
       {nav.map((group) => (
-        <section key={group.group}>
-          <h2>{group.group}</h2>
-          {group.destinations.map((d) => (
-            <NavLink key={d.path} to={d.path} onClick={onNavigate}>
-              <Icon name={d.icon} />
-              <span>{d.label}</span>
-            </NavLink>
-          ))}
-        </section>
+        <MenuGroup
+          key={group.group}
+          group={group.group}
+          items={group.destinations}
+          searching={!!query}
+          onNavigate={onNavigate}
+        />
       ))}
+      {query && !nav.length && (
+        <p className="menu-empty" role="status">
+          Nenhuma tela encontrada.
+        </p>
+      )}
     </nav>
   );
 }
@@ -316,6 +500,7 @@ function Shell() {
   const pages: Record<string, ReactNode> = {
     "/audit": <AuditModule />,
     "/action-plans": <ActionPlansModule />,
+    "/abc": <AbcModule />,
     "/admin/users": <UsersPage />,
     "/admin/roles": <RolesPage />,
     "/admin/permissions": <PermissionsPage />,

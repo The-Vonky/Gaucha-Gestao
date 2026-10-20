@@ -16,6 +16,7 @@ const paths = {
     "M4 21V6.5L10 3v18M10 21h10V9l-6-2.5M4 21h16M13.5 11h3M13.5 15h3M6.5 9h1m-1 4h1m-1 4h1",
   sectors:
     "m12 3 9 5-9 5-9-5zm-9 9 9 5 9-5M3 16l9 5 9-5",
+  costs: "M4 20h16M7 16v-5m5 5V6m5 10v-8",
   logs: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01",
   menu: "M4 7h16M4 12h16M4 17h16",
   close: "M6 6l12 12M18 6 6 18",

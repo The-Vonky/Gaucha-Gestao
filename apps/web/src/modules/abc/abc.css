@@ -1,0 +1,183 @@
+/* Curva ABC module. Uses the shared Design System Elo tokens only. */
+.abc-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin: var(--space-4) 0;
+}
+.abc-section h2 {
+  margin-top: 0;
+}
+.abc-section > label:not(.check) {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+.abc-section textarea {
+  width: 100%;
+  min-height: 5rem;
+  margin-bottom: var(--space-3);
+}
+.abc-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+.abc-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-3);
+}
+.abc-facts dt {
+  color: var(--color-text-secondary);
+}
+.abc-facts dd {
+  margin: 0;
+}
+.abc-search {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 24rem;
+  margin-bottom: var(--space-3);
+}
+.abc-section code {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .abc-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .abc-facts {
+    grid-template-columns: 1fr;
+  }
+}
+/* Import: steps, two cards and published list (mirrors the original Dashboard ABC flow). */
+.abc-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  list-style: none;
+  margin: var(--space-4) 0;
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+}
+.abc-steps li {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.abc-steps li[data-state="current"],
+.abc-steps li[data-state="done"] {
+  color: var(--color-text);
+}
+.abc-step-n {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  font-size: 0.75rem;
+}
+.abc-step-n .icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+.abc-steps li[data-state="current"] .abc-step-n {
+  background: var(--brand-green-600);
+  color: var(--on-brand);
+}
+.abc-steps li[data-state="done"] .abc-step-n {
+  background: var(--brand-green-100);
+  color: var(--brand-green-800);
+}
+.abc-import-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) minmax(0, 2fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.abc-import-grid > .abc-section {
+  margin: 0;
+}
+.abc-import-select {
+  display: grid;
+  gap: var(--space-3);
+}
+.abc-import-select h2,
+.abc-import-preview h2 {
+  margin-bottom: 0;
+}
+.abc-file-box {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-subtle);
+  overflow-wrap: anywhere;
+}
+.abc-publish {
+  display: grid;
+  gap: var(--space-2);
+}
+.abc-publish label:not(.check) {
+  font-weight: 600;
+}
+.abc-wide {
+  width: 100%;
+  justify-content: center;
+}
+.abc-placeholder {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  min-height: 16rem;
+  align-content: center;
+  text-align: center;
+  padding: var(--space-6);
+  margin-top: var(--space-3);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+}
+.abc-placeholder .icon {
+  width: 2rem;
+  height: 2rem;
+}
+.abc-placeholder strong {
+  color: var(--color-text);
+}
+.abc-placeholder span {
+  max-width: 28rem;
+}
+.abc-import-preview .abc-metrics {
+  margin-top: var(--space-3);
+}
+@media (max-width: 960px) {
+  .abc-import-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.abc-import-preview .metric-value {
+  font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 560px) {
+  .abc-steps {
+    padding: var(--space-3);
+    font-size: 0.8125rem;
+  }
+  .abc-steps li {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+}

@@ -49,6 +49,8 @@ jobs:
       - run: node tests/integration/audit-evidence.mjs
       # Unit Cover v1: real Auth/Storage upload, batch signing, bucket limits and denials.
       - run: node tests/integration/unit-cover.mjs
+      # Curva ABC v1: real Auth/Storage upload, RLS by unit, concurrent publishers and log.
+      - run: node tests/integration/abc.mjs
       # Core Reference Resolvers v1: real JWTs/PostgREST, denials, guessed IDs and batch limit.
       - run: node tests/integration/core-references.mjs
       # Core governance and logs: real JWT/PostgREST negative authorization matrix.

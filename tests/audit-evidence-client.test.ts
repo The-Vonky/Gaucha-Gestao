@@ -22,6 +22,14 @@ describe("Audit evidence finalization client",()=>{
 
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{"Content-Type":"application/json"}});
 describe("Audit evidence file and transport",()=>{
+ it("uses a presentation download name without changing stored metadata or key",async()=>{
+  const row={object_key:"i1/e1",original_name:"original.jpg"} as ChecklistEvidence;
+  http.mockResolvedValueOnce(json({signedURL:"/object/sign/audit-checklist-evidence/i1/e1?token=test"}));
+  const url=new URL(await downloadUrl(row,"Evidência 1.jpg"));
+  expect(url.searchParams.get("download")).toBe("Evidência 1.jpg");
+  expect(url.searchParams.get("token")).toBe("test");
+  expect(row).toEqual({object_key:"i1/e1",original_name:"original.jpg"});
+ });
  it.each([
   ["foto.jpg",new Uint8Array([255,216,255]),"image/jpeg"],
   ["foto.png",new Uint8Array([137,80,78,71,13,10,26,10]),"image/png"],
