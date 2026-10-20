@@ -1,6 +1,6 @@
 # Arquitetura desenhada — AS-IS e TO-BE
 
-**Fotografia:** main 1e818a45449c0720f7b5af5398e04e0a89c9b3ff (19/10/2026). **Produção: NO-GO.**
+**Fotografia reconciliada:** main após PR #69 (`fed0e0f`, 20/10/2026). **Produção: NO-GO.**
 **Autoridades:** [ADR-001](../decisions/ADR-001-modular-monolith.md), [ADR-002](../decisions/ADR-002-core-and-module-ownership.md), [ADR-004](../decisions/ADR-004-platform-stack.md), [ADR-005](../decisions/ADR-005-core-authorization.md), [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md).
 Diagramas lógicos, **não diagramas as-built de servidor em produção**. Linhas pontilhadas indicam direção ainda não entregue/validada.
 
@@ -32,15 +32,18 @@ flowchart TB
     COREUI["Admin — usuários, permissões, papéis, unidades, setores, logs"]
     AUDITUI["Auditorias e relatórios"]
     PLANSUI["Planos de Ação"]
+    ABCUI["Curva ABC — importação e revisões"]
     SHARED["shared — UI / utilidades"]
   end
   SHELL --> AUTHUI
   SHELL --> COREUI
   SHELL --> AUDITUI
   SHELL --> PLANSUI
+  SHELL --> ABCUI
   COREUI --> API["supabase-js"]
   AUDITUI --> API
   PLANSUI --> API
+  ABCUI --> API
   AUTHUI --> API
   SHARED -. "consumido internamente" .-> AUDITUI
   API --> AUTH["GoTrue"]
@@ -85,16 +88,38 @@ flowchart LR
   SHELL["App Shell"] --> C["Core"]
   SHELL --> A["Audit"]
   SHELL --> P["Action Plans"]
+  SHELL --> ABC["Curva ABC"]
   A --> C
   P --> C
+  ABC --> C
+  ABC --> S
   A --> S["Shared"]
   P --> S
   C --> S
-  FUT["Futuros módulos: ISO, Vendas, Satisfação, Salas, Frota, P×R, ABC, Contratos"] -. "após gate de migração" .-> C
+  FUT["Futuros módulos: ISO, Vendas, Satisfação, Salas, Frota, P×R, Contratos"] -. "após gate de migração" .-> C
   A -. "contrato público explícito, sem ler internals" .-> P
 ~~~
 
 A seta Audit → Planos representa **somente a integração pública autorizada** dos planos originados em auditorias, não dependência de arquivos internos ou leitura indiscriminada de tabelas. Core não referencia módulos de negócio. Agrupamento de menu não muda propriedade técnica.
+
+## Curva ABC v1 — AS-IS, fronteira de confiança
+
+~~~mermaid
+flowchart LR
+  XLSX["XLSX ERP"] --> PARSE["Parser browser: prévia e bloqueios"]
+  PARSE --> UP["begin_source_upload"]
+  UP --> OBJ["Storage privado abc-source-files"]
+  OBJ --> CONF["confirm_source_upload: tamanho e MIME"]
+  CONF --> PUB["publish_revision: valida payload + RLS + versão"]
+  PUB --> DB[("abc: série / revisões / linhas")]
+  PUB --> LOG[("core.system_audit_log")]
+  DB --> REV["Consulta de revisão"]
+  OBJ --> CHECK["Conferir com o arquivo no browser"]
+  REV --> CHECK
+  CHECK --> LOG
+~~~
+
+**Não confundir:** o SQL não reprocessa o XLSX original nem recalcula SHA-256 dos bytes físicos antes de publicar; a conferência de conteúdo é posterior pelo navegador. [Risco detalhado](THREAT_MODEL.md) e [guia ABC](../modules/abc/OPERATOR_GUIDE_V1.md).
 
 ## 5. Modelo lógico de identidade e escopo (resumo)
 

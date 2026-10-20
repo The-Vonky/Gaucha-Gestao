@@ -1,6 +1,6 @@
 # Documentação integrada — Gaúcha Gestão
 
-**Catálogo técnico e de planejamento** · referência da base: main em 1e818a45449c0720f7b5af5398e04e0a89c9b3ff · 19/10/2026.
+**Catálogo técnico e de planejamento** · reconciliado em 20/10/2026 com a `main` após a PR #69 (`fed0e0f`). Produção: **NO-GO**.
 
 > **Estado:** código da Fundação Core v2 e Qualidade v1 na main, mas **produção NO-GO**. Este índice organiza e relaciona documentos existentes; não transforma proposta em decisão, não comprova aceite operacional e não autoriza instalação, migração ou deploy.
 
@@ -11,6 +11,7 @@
 | Entender o produto e seus limites | [README principal](../README.md) | [Estrutura do produto](architecture/PRODUCT_STRUCTURE.md) |
 | Enxergar a plataforma e os componentes | [Diagramas AS-IS/TO-BE](architecture/DIAGRAMS.md) | [Visão arquitetural](architecture/OVERVIEW.md) |
 | Consultar APIs e RPCs existentes | [Catálogo de interfaces](architecture/API_CONTRACTS.md) | [Mapa de implementação](architecture/IMPLEMENTATION_MAP.md) |
+| Entender escolhas tecnológicas, alternativas e trade-offs | [Racional da stack](architecture/TECHNOLOGY_DECISIONS.md) | [ADRs](decisions/), [Integração](architecture/STACK_INTEGRATION.md) |
 | Compreender como cada stack se conecta | [Integração das stacks](architecture/STACK_INTEGRATION.md) | [ADR-004](decisions/ADR-004-platform-stack.md), [ADR-006](decisions/ADR-006-infra-v1-reused-hardware.md), [ADR-008](decisions/ADR-008-production-host-thinkstation-c30.md) |
 | Entender os fluxos reais de negócio | [Fluxos ponta a ponta](architecture/WORKFLOWS.md) | [Fonte da verdade de Auditorias](modules/audit/AUDIT_SOURCE_OF_TRUTH.md), [Action Plans brief](briefs/ACTION_PLAN_DOMAIN_V1.md) |
 | Relacionar funcionalidades com código | [Mapa de implementação](architecture/IMPLEMENTATION_MAP.md) | [Modelo de dados](architecture/DATA_MODEL.md), [Autorização](architecture/AUTHORIZATION.md) |
@@ -18,6 +19,7 @@
 | Ver decisões, incógnitas e impedimentos | [Registro de decisões e lacunas](planning/DECISION_REGISTER.md) | [ADRs](decisions/), [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) |
 | Operar e recuperar com segurança | [Matriz operacional](operations/OPERATIONS_MATRIX.md) | [Backup e recuperação](architecture/BACKUP_RECOVERY.md), [Infraestrutura de laboratório](../infra/README.md) |
 | Avaliar ameaças e controle de acesso | [Modelo de ameaças](architecture/THREAT_MODEL.md) | [Segurança](architecture/SECURITY.md), [ADR-005](decisions/ADR-005-core-authorization.md) |
+| Operar e conferir a Curva ABC | [Guia ABC v1](modules/abc/OPERATOR_GUIDE_V1.md) | [Brief ABC](briefs/ABC_DOMAIN_V1.md), [Testes #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) |
 | Usar o módulo de Qualidade | [Guia do operador (pré-homologação)](modules/audit/OPERATOR_GUIDE_V1.md) | [Aceite da Qualidade](modules/audit/QUALITY_ACCEPTANCE_V1.md) |
 | Aceitar a primeira entrega | [Qualidade P1–P9 / O1–O8](modules/audit/QUALITY_ACCEPTANCE_V1.md) | [Matriz de conclusão](modules/audit/QUALITY_COMPLETION_V1.md) |
 | Planejar os módulos futuros | [Blueprint por domínio](planning/MODULE_BLUEPRINTS.md) | [Roadmap canônico](migration/MODULE_ROADMAP.md) |
@@ -31,6 +33,8 @@ flowchart TD
   HOME["README principal"] --> INDEX["docs/README — índice"]
   INDEX --> V["DIAGRAMS — visão AS-IS / TO-BE"]
   INDEX --> S["STACK_INTEGRATION — interfaces e ambientes"]
+  INDEX --> WHY["TECHNOLOGY_DECISIONS — racional da stack"]
+  INDEX --> ABC["ABC — operação e conferência"]
   INDEX --> F["WORKFLOWS — jornadas e exceções"]
   INDEX --> I["IMPLEMENTATION_MAP — rastreabilidade"]
   INDEX --> P["EXECUTION_MAP — fases e gates"]
@@ -63,4 +67,4 @@ Toda PR que mude uma jornada, schema/RPC, permissão, dependência, integração
 
 ### Escopo e limites deste catálogo
 
-O conteúdo foi derivado da árvore, arquivos de código e documentação do repositório na base acima, mais os estados de PRs/issues consultados em 19/10/2026. Não foram executados testes, testes físicos, restore, benchmark, instalação ou consulta a ambientes operacionais. PRs abertos podem evoluir depois desta fotografia; confirme seu estado antes de agir.
+O catálogo original foi preparado em 19/10 e reconciliado em 20/10 com a `main` após a PR #69. Curva ABC v1 está integrada ao código, mas sem homologação de produção; a Issue #68 registra DEV compartilhado, não PROD. Não foram executados testes, testes físicos, restore, benchmark, instalação ou consulta a ambientes operacionais. PRs abertos podem evoluir depois desta fotografia; confirme seu estado antes de agir.

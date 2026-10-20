@@ -1,6 +1,6 @@
 # Como as stacks funcionam juntas
 
-**Escopo:** integração lógica atual e implantação futura. **Baseline de código:** main 1e818a4 (19/10/2026). **Não existe produção aprovada neste snapshot.**
+**Escopo:** integração lógica atual e implantação futura. **Baseline de código:** main após PR #69 (`fed0e0f`, 20/10/2026). **Não existe produção aprovada neste snapshot.**
 
 ## Matriz tecnológica e responsabilidades
 
@@ -10,9 +10,10 @@
 | Acesso do frontend | @supabase/supabase-js 2 (apps/web/src/core/client.ts) | Cliente de Auth, Data API (PostgREST) e Storage; deve receber só chave publishable/anon | **Implementado** |
 | Sessão | Supabase GoTrue/Auth + AuthProvider | Login, sessão, perfil ativo e permissões efetivas via my_access | **Implementado**, gestão privilegiada de credenciais pendente |
 | Regras e acesso a dados | PostgreSQL + RLS + funções SQL/RPC + PostgREST | Mutação transacional, escopo, isolamento por unidade/setor, versões/conflitos | **Implementado** conforme migrations e testes |
-| Dados | PostgreSQL 17, schemas auth/core/audit/action_plans; schemas internos privados | Identidade, Core corporativo, auditorias, planos, metadados de evidências | **Implementado**, produção não instalada |
+| Dados | PostgreSQL 17, schemas auth/core/audit/action_plans/abc; schemas internos privados | Identidade, Core corporativo, auditorias, planos, metadados de evidências | **Implementado**, produção não instalada |
 | Arquivos | Supabase Storage API; buckets privados | Upload de bytes e download assinado; metadata e autorização ficam em contratos de domínio | **Implementado em laboratório/CI** |
 | Armazenamento físico | Filesystem em Compose descartável; R2 preferido para PROD | Persistência dos objetos, distinta do banco | **Local em CI**; **R2 TO-BE** |
+| Curva ABC v1 | Parser XLSX no navegador, schema abc e bucket abc-source-files | Revisões por unidade/competência, classificação em SQL; conferência posterior do arquivo | **Código na main; homologação pendente** |
 | Gateway self-hosted | Kong + GoTrue + PostgREST + Storage + PostgreSQL | Perfil mínimo de 5 serviços no Compose versionado | **Validado em CI efêmera**, não em host real |
 | Distribuição pública | Cloudflare Workers Static Assets, DNS/WAF/Tunnel | Frontend estático e proxy privado controlado | **Decidido TO-BE**, não comprovado |
 | Host | ThinkStation C30 / Ubuntu Server LTS bare metal / Docker Compose | Hospedagem on-premise de instância única | **Host escolhido, não aceito nem provisionado** |
@@ -21,12 +22,14 @@
 
 **Precedência técnica:** [ADR-004](../decisions/ADR-004-platform-stack.md) é a baseline de stacks; [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md) substitui somente seu hardware/VM; [ADR-006](../decisions/ADR-006-infra-v1-reused-hardware.md) documenta o Compose mínimo **ainda com status Proposed**. Não declarar que o perfil mínimo engloba todo serviço opcional mencionado no ADR-004.
 
+Para critérios, alternativas e trade-offs das decisões tecnológicas, veja o [racional da stack](TECHNOLOGY_DECISIONS.md). A escolha de host único reduz complexidade e custo recorrente, mas impõe SPOF e obrigações de backup/restore; ela não foi escolhida a partir de um benchmark comparativo documentado.
+
 ## O caminho de uma requisição
 
 1. O navegador obtém o build Vite. **No ambiente atual de desenvolvimento:** Vite local. **Em produção futura:** Workers Static Assets.
 2. apps/web/src/core/client.ts cria supabase-js com VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY. Sem configuração válida, o cliente fica indisponível; service_role nunca entra no bundle.
 3. Auth autentica e entrega sessão/JWT. AuthProvider carrega o perfil em core.profiles e consulta core.my_access. Login **não equivale** a permissão de negócio.
-4. A UI de um domínio invoca RPC específica ou consulta permitida em schema core/audit/action_plans via PostgREST. Cada operação depende de grants, RLS e regras transacionais no PostgreSQL.
+4. A UI de um domínio invoca RPC específica ou consulta permitida em schema core/audit/action_plans/abc via PostgREST. Cada operação depende de grants, RLS e regras transacionais no PostgreSQL.
 5. Para anexos, uma RPC reserva/confirma metadata autorizada; o browser envia os bytes à Storage API no bucket privado. Downloads usam URL assinada de curta duração, sem torná-la pública ou persistente.
 6. Erros de versão, autorização, conteúdo e rede precisam ser tratados como operações falhas ou pendentes, não como sucesso otimista.
 
@@ -61,7 +64,8 @@ sequenceDiagram
 
 | Ambiente | Realidade no repositório | Característica / proibição |
 | --- | --- | --- |
-| DEV local | Vite + Supabase CLI opcional (docs/development/LOCAL_FOUNDATION.md) | Só instância local descartável; reset somente se for comprovadamente exclusiva |
+| DEV local | Vite + Supabase CLI opcional | Só instância local descartável; reset apenas se exclusiva; sem exposição de chaves padrão | 
+| DEV compartilhado (#68) | Frontend 5173 e API 54341, registrados em 20/10 | Duas contas distintas; autoria/RLS/rede ainda sob validação. Merge ABC não garante que migration foi aplicada |
 | CI aplicação | .github/workflows/validate.yml | Supabase CLI 2.117.0 descartável, Playwright Chromium e banco sem dados reais; não é self-hosted PROD |
 | CI infraestrutura | .github/workflows/infra-validate.yml | Compose de cinco serviços com segredos efêmeros externos ao checkout, migrations, healthcheck, smoke e destruição isolada |
 | STAGING persistente | Intenção no Plano Diretor; sem evidência de provisionamento nesta base | Definir host, TLS/origens, credenciais, dados sintéticos e restore antes de usar; não herdar volumes locais |
@@ -73,7 +77,7 @@ O script scripts/ops/apply-migrations.sh e os scripts associados **recusam produ
 
 - **Identidade:** auth.users.id ↔ core.profiles.id. Sessão de Auth não é autorização; ausência/inatividade do profile implica default deny.
 - **Escopo:** atribuição de papel + permissão + escopo global/unidade/setor + regra de linha; grants e RLS são obrigatórios; UI e Cloudflare não substituem controles.
-- **RPC / ownership:** Core é dono de usuários, papéis, permissões, unidades, setores e log do sistema; audit é dono das inspeções; action_plans é dono do ciclo corretivo. Não consumir objetos privados entre módulos.
+- **RPC / ownership:** Core é dono de usuários, papéis, permissões, unidades, setores e log do sistema; audit é dono das inspeções; action_plans é dono do ciclo corretivo; abc é dono de séries, revisões e linhas de Curva ABC. Não consumir objetos privados entre módulos.
 - **Upload:** o registro de evidência e a confirmação de bytes são passos distintos. Uma falha intermediária pode exigir limpeza/reconciliação; não presumir atomicidade entre PostgreSQL e Storage.
 - **Histórico:** usar UUID para referência, timestamptz para instantes e numeric para valores monetários futuros; snapshots e referências históricas devem sobreviver à desativação ordinária de usuários/unidades.
 - **Escalabilidade:** host único introduz SPOF; não prometer HA, RPO=0, latência p95 nem recuperação sem medições e aceite.

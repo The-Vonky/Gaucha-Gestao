@@ -1,6 +1,6 @@
 # Fluxos funcionais, técnicos e de exceção
 
-**AS-IS no código da main 1e818a4 (19/10/2026)**, exceto quando indicado **TO-BE / PENDENTE**. Diagramas descrevem contratos; não provam testes manuais ou deploy real.
+**AS-IS no código da main após PR #69 (`fed0e0f`, 20/10/2026)**, exceto quando indicado **TO-BE / PENDENTE**. Diagramas descrevem contratos; não provam testes manuais ou deploy real.
 
 ## 1. Login, obtenção de perfil e navegação (AS-IS)
 
@@ -123,7 +123,46 @@ sequenceDiagram
 
 **Não afirmar** que existe serviço backend confiável para *criar ou recuperar contas Auth com privilégio*: design de Identity Boundary v1 permanece pendente de GO humano. Alterações de perfis, papéis e atribuições são distintas de criar uma identidade Auth. Consulte [ACCESS_GOVERNANCE_V1](ACCESS_GOVERNANCE_V1.md), [ACCESS_GOVERNANCE_READ_V1](../modules/core/ACCESS_GOVERNANCE_READ_V1.md) e [ACCOUNT_LIFECYCLE_V1](ACCOUNT_LIFECYCLE_V1.md).
 
-## 6. Migração de um standalone (TO-BE, ainda não autorizada por módulo)
+## 6. Publicação e conferência da Curva ABC v1 (AS-IS)
+
+~~~mermaid
+sequenceDiagram
+  actor U as Publicador autorizado
+  participant UI as React / parser XLSX
+  participant S as Storage privado
+  participant DB as RPC abc/PostgreSQL
+  participant L as Core log
+  U->>UI: Seleciona XLSX da unidade
+  UI->>UI: Prévia com bloqueios e avisos
+  alt bloqueio
+    UI-->>U: Não permite publicar pela UI
+  else prévia válida
+    UI->>DB: begin_source_upload
+    DB-->>UI: Caminho reservado
+    UI->>S: Upload privado do XLSX
+    UI->>DB: confirm_source_upload
+    Note over DB,S: Confirma metadados; não interpreta bytes XLSX
+    UI->>DB: publish_revision(payload, versão, motivo)
+    alt negação ou conflito 40001
+      DB-->>UI: Erro; revisar série
+    else sucesso
+      DB->>DB: Calcula ABC e grava revisão imutável
+      DB->>L: Registra publicação
+      DB-->>UI: Revisão publicada
+    end
+  end
+  opt conferência posterior
+    U->>UI: Conferir com o arquivo
+    UI->>S: Download original
+    UI->>UI: Reprocessa e compara hash
+    UI->>DB: record_file_check
+    DB->>L: Log do resultado
+  end
+~~~
+
+A série é unidade + competência + modalidade. `abc.report.read` consulta; `abc.report.publish` publica; substituir revisão exige motivo; versões concorrentes são controladas. **O SQL valida conteúdo normalizado, não os bytes da planilha.** Algumas validações da prévia, como competência encerrada, não são reproduzidas integralmente pela RPC. Consulte [brief ABC](../briefs/ABC_DOMAIN_V1.md), [guia operacional](../modules/abc/OPERATOR_GUIDE_V1.md) e [ameaças](THREAT_MODEL.md).
+
+## 7. Migração de um standalone (TO-BE, ainda não autorizada por módulo)
 
 ~~~mermaid
 sequenceDiagram
@@ -147,7 +186,7 @@ sequenceDiagram
 
 Fontes: [MODULE_ROADMAP](../migration/MODULE_ROADMAP.md), [CORE_CONSUMER_CONTRACT_MAP](CORE_CONSUMER_CONTRACT_MAP_V1.md) e [BACKUP_RECOVERY](BACKUP_RECOVERY.md). O nome do legado Registros ISO pode não refletir seu domínio funcional; resolver ownership antes de implementar.
 
-## 7. Falhas que precisam estar nos cenários de teste
+## 8. Falhas que precisam estar nos cenários de teste
 
 | Caminho | Falha/negação obrigatória | Fonte de evidência |
 | --- | --- | --- |
@@ -157,6 +196,7 @@ Fontes: [MODULE_ROADMAP](../migration/MODULE_ROADMAP.md), [CORE_CONSUMER_CONTRAC
 | Evidências | arquivo não aceito, upload parcial, objeto não confirmado, cross-unit, download negado | tests/integration/audit-evidence.mjs; tests/integration/evidence.mjs |
 | Planos | status/transição indevida, escopo errado, conflito e evidência inválida | tests/action-plans-*.test.ts; tests/integration/action-plans.mjs |
 | Relatórios | escopo indevido, strings maliciosas em XLSX, impressão mobile | tests/audit-reporting-*.test.*; tests/integration/reporting.mjs |
+| Curva ABC | XLSX bloqueado, acesso indevido, conflito, original divergente, checagem registrada | tests/abc-*.test.*; tests/integration/abc.mjs; Issue #70 |
 | Infra | dependência Storage derrubada, migração em alvo indevido | .github/workflows/infra-validate.yml |
 
 **Não registrar PASS baseado apenas nesta lista.** Execute CI no SHA de entrega, P1–P9 nos dispositivos e O1–O8 no ambiente real, conforme [aceite](../modules/audit/QUALITY_ACCEPTANCE_V1.md).
