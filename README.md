@@ -28,11 +28,11 @@ Plataforma corporativa modular que centraliza os sistemas internos da Gaúcha Al
 | Homologação física P1–P9 | **Pendente** (Android Chrome e iOS Safari). Testes manuais informados em 13/10 não substituem esses gates | [aceite final](docs/modules/audit/QUALITY_ACCEPTANCE_V1.md) |
 | Prontidão operacional O1–O8 | O1, O5 e O6 parciais; O2 desconhecido; O3, O4, O7 e O8 abertos | [aceite final](docs/modules/audit/QUALITY_ACCEPTANCE_V1.md) |
 | Infraestrutura reproduzível | Perfil mínimo de 5 serviços (Postgres 17, Kong, GoTrue, PostgREST, Storage) validado em CI descartável | [ADR-006](docs/decisions/ADR-006-infra-v1-reused-hardware.md), [infra/](infra/README.md) |
-| Host | **Decidido em 15/10:** ThinkStation C30 dedicada, Ubuntu Server LTS direto no hardware, substituindo o servidor legado e a HP ML350 do ADR-004. A máquina ainda roda Windows e não cumpre os critérios de aceite | [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md) |
+| Host | **Decidido em 15/10:** ThinkStation C30 dedicada, Ubuntu Server LTS direto no hardware, substituindo o servidor legado e a HP ML350 do ADR-004. A seleção do host está decidida; o aceite e o estado físico atual exigem evidências operacionais recentes | [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md) |
 | Backup e restore | Ensaio sintético a frio registrado na Issue #51, com DR-08 parcial; backup independente e WAL/PITR de produção ainda sem prova | [BACKUP_RECOVERY](docs/architecture/BACKUP_RECOVERY.md) |
 | Proteção da `main` | **Adiada** por decisão do responsável. Risco de governança aberto, principalmente com agentes em paralelo | [protocolo paralelo, §2](docs/development/PARALLEL_AGENT_WORKFLOW.md) |
 | DEV compartilhado | Dois logins e dados comuns funcionais na Issue #68; autoria, RLS e rede continuam em verificação | [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) |
-| Produção | **NO-GO.** Nenhum deploy, dado real ou ambiente de produção existe | [Plano Diretor, §1](docs/planning/PLANO_DIRETOR_2026.md) |
+| Produção | **NO-GO.** Nenhum ambiente produtivo homologado ou deploy de produção está comprovado no repositório | [Plano Diretor, §1](docs/planning/PLANO_DIRETOR_2026.md) |
 
 Checks executados localmente em 15/10/2026 sobre o HEAD `aee20ec` da `main`: typecheck, lint, 483 testes (34 arquivos), build, verify:build e `npm audit` (0 vulnerabilidades) passaram. As integrações com Supabase real (`tests/integration`) rodam só na CI e não foram executadas nessa verificação.
 

@@ -16,7 +16,7 @@
 | Curva ABC v1 | Parser XLSX no navegador, schema abc e bucket abc-source-files | Revisões por unidade/competência, classificação em SQL; conferência posterior do arquivo | **Código na main; homologação pendente** |
 | Gateway self-hosted | Kong + GoTrue + PostgREST + Storage + PostgreSQL | Perfil mínimo de 5 serviços no Compose versionado | **Validado em CI efêmera**, não em host real |
 | Distribuição pública | Cloudflare Workers Static Assets, DNS/WAF/Tunnel | Frontend estático e proxy privado controlado | **Decidido TO-BE**, não comprovado |
-| Host | ThinkStation C30 / Ubuntu Server LTS bare metal / Docker Compose | Hospedagem on-premise de instância única | **Host escolhido, não aceito nem provisionado** |
+| Host | ThinkStation C30 / Ubuntu Server LTS bare metal / Docker Compose | Hospedagem on-premise de instância única | **Host escolhido; aceite operacional e implantação ainda sem evidência suficiente neste repositório** |
 | Pipeline | GitHub Actions validate e infra-validate | Typecheck, lint, Vitest, build, audit npm, integrações Supabase/Chromium e smoke Compose | **Implementado**, CI não é GO de release |
 | Recuperação | Backups PostgreSQL + WAL/PITR + objetos + cópia off-site + Ansible | Retorno consistente após corrupção/perda do host | **Arquitetura prevista**; ferramenta, retenção e restore operacional pendentes |
 
