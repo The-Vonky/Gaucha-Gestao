@@ -55,12 +55,20 @@ Menu **Custos → Curva ABC**, com as mesmas abas no topo de cada tela. Unidade 
 | Mensagem | Significado | Ação |
 | --- | --- | --- |
 | "O formato .xls (Excel 97-2003) não é aceito" | Arquivo no formato antigo | Exportar o relatório do ERP em `.xlsx` |
-| "…partes que o relatório do ERP não tem… (código: unsupported_part)" | A planilha foi aberta e **salva** no Excel (ou editada), que acrescenta tema/imagens | Exportar de novo do ERP e enviar **sem salvar** no Excel |
+| "…componentes não permitidos… (código: unsupported_part)" | XLSX contém partes adicionais não aceitas. Na proposta D13, apenas `xl/theme/theme1.xml` passa a ser admitido, com tipo e vínculo internos canônicos | Reexportar do ERP caso existam imagens, macros, `calcChain`, vínculos externos ou outras partes extras; não remover validações |
 | "…contém fórmulas" / "…vínculos externos" / "…protegido por senha" | Conteúdo fora do perfil estático do ERP | Reexportar do ERP |
 | Bloqueio `INVALID_TEXT` numa célula | Texto com quebra de linha/caractere de controle ou acima do limite do banco | Corrigir o cadastro no ERP e reexportar |
 | "Falha técnica ao ler o arquivo neste navegador (…)" | Problema do navegador ou do sistema, não do arquivo | Atualizar a página; persistindo, enviar a mensagem ao suporte |
 
 Até 21/10/2026, abrir o sistema por **HTTP num IP de rede** (ex.: DEV compartilhado em `http://10.1.10.94:5173`) fazia qualquer importação falhar com "Não foi possível ler o arquivo". Corrigido na branch `fix/abc-import-p0-20261021`; detalhes em [MATRIZ_EQUIVALENCIA_LEGADO](MATRIZ_EQUIVALENCIA_LEGADO.md).
+
+## Perfil XLSX com tema canônico — proposta D13, aprovação pendente
+
+Os nove relatórios de teste listados pelo operador em 21/10/2026 apresentam como **única parte fora da allowlist** o caminho `xl/theme/theme1.xml`. Esse diagnóstico de nomes de partes não prova, por si só, que todo o conteúdo seja válido.
+
+A proposta técnica limita a aceitação **exclusivamente** a `xl/theme/theme1.xml`, com Content-Type e relacionamento interno do workbook canônicos. O tema é tratado como **inerte**: não altera produto, período, quantidade, valor nem classe. O XLSX original e seu SHA-256 são preservados, e a versão do parser passa a `erp-curva-realizado-v2`.
+
+Continuam bloqueados macros, fórmulas, imagens, vínculos externos, `calcChain`, outras partes, caminhos inseguros, conteúdo excessivo e relações inválidas. A decisão D13 permanece pendente: **não integrar ou implantar sem aprovação e regressão de segurança**. A importação real ainda requer amostras aprovadas e confronto de somatórios, competência e unidade.
 
 ## Integridade — não confundir prévia com garantia do servidor
 
