@@ -29,7 +29,7 @@ A URL pública da API depende do gateway Kong e do ambiente aprovado. O frontend
 | Evidência de checklist | checklist_evidence, checklist_evidence_pending_count, begin_checklist_evidence_upload, confirm_checklist_evidence_upload, remove_checklist_evidence | apps/web/src/modules/audit/evidence.ts |
 | Planos de ação | plan_summaries, creation_scopes, create_manual_plan, update_plan, set_plan_status, verify_plan | apps/web/src/modules/action-plans/api.ts |
 | Evidências de planos | plan_evidence, begin_evidence_upload, confirm_evidence_upload, remove_evidence | apps/web/src/modules/action-plans/evidence.ts |
-| Curva ABC | units, unit_series, revision_detail, begin_source_upload, confirm_source_upload, publish_revision, record_file_check; Storage abc-source-files | apps/web/src/modules/abc/api.ts; schema abc exposto, abc_private não exposto |
+| Curva ABC | units, unit_series, revision_detail, begin_source_upload, confirm_source_upload, publish_revision, record_file_check; leitura analítica v2: overview, competency_products, product_history, compare, unit_revisions ([brief v2](../briefs/ABC_ANALYTICS_V2.md)); Storage abc-source-files | apps/web/src/modules/abc/api.ts; schema abc exposto, abc_private não exposto |
 | Exportação / histórico | inspection_export, unit_history_export | apps/web/src/modules/audit/reporting/api.ts |
 
 Este quadro não lista **todas** as RPCs existentes no PostgreSQL e não deve ser usado como autorização para acesso direto. Para alterar contrato: identificar migration original, registrar assinatura/escopos/erros e consumidores, adicionar migration incremental, testes com JWT real, regressões de concorrência, escopo e compatibilidade.
