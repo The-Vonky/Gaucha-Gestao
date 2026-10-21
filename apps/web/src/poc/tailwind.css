@@ -1,0 +1,85 @@
+/*
+ * UI-00: isolado em tailwind-poc.html; não importar no main.tsx nem em
+ * estilos globais. Preflight propositalmente ausente.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(tw);
+@import "tailwindcss/utilities.css" layer(utilities) source(none) prefix(tw);
+@source "./main.tsx";
+
+/* O Elo permanece a fonte de verdade: Tailwind só faz o mapeamento. */
+@theme inline {
+  --font-elo: var(--font-sans);
+  --font-elo-display: var(--font-display);
+  --text-elo-title: 1.75rem;
+  --text-elo-title--line-height: 1.15;
+  --text-elo-body: 0.9375rem;
+  --text-elo-body--line-height: 1.55;
+  --text-elo-caption: 0.75rem;
+  --text-elo-caption--line-height: 1.4;
+
+  --color-elo-bg: var(--color-bg);
+  --color-elo-surface: var(--color-surface);
+  --color-elo-subtle: var(--color-surface-subtle);
+  --color-elo-text: var(--color-text);
+  --color-elo-muted: var(--color-text-secondary);
+  --color-elo-border: var(--color-border);
+  --color-elo-action: var(--color-action);
+  --color-elo-action-hover: var(--color-action-hover);
+  --color-elo-on-action: var(--color-action-text);
+  --color-elo-success: var(--success);
+  --color-elo-success-bg: var(--success-bg);
+  --color-elo-warning: var(--warning);
+  --color-elo-warning-bg: var(--warning-bg);
+
+  --spacing-elo-1: var(--space-1);
+  --spacing-elo-2: var(--space-2);
+  --spacing-elo-3: var(--space-3);
+  --spacing-elo-4: var(--space-4);
+  --spacing-elo-5: var(--space-5);
+  --spacing-elo-6: var(--space-6);
+  --spacing-elo-8: var(--space-8);
+  --radius-elo-control: var(--radius-control);
+  --radius-elo-card: var(--radius-lg);
+  --shadow-elo-card: var(--shadow-md);
+
+  /* Breakpoints Elo: 600/1024/1440. Não usar os defaults do Tailwind. */
+  --breakpoint-sm: 600px;
+  --breakpoint-md: 1024px;
+  --breakpoint-lg: 1440px;
+}
+
+/*
+ * Ajustes MÍNIMOS apenas desta página independente. Não são Preflight nem
+ * regras carregadas pelo produto. Utilities em @layer só competem aqui.
+ */
+:root {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input {
+  font: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
