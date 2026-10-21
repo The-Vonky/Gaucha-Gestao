@@ -1,57 +1,27 @@
-# Design Brief — Core Consumer Contract Map v1
+> **Documento histórico — brief da Fundação Core v2.** Os nomes de branches, bases e estados abaixo pertencem ao plano original. **Não recriar branches antigas nem iniciar implementação por este texto**: confirmar o código da `main`, a issue atual e as regras do [AGENTS.md](../../AGENTS.md). Tradução editorial para pt-BR; decisões e restrições originais foram preservadas.
 
-Status: DESIGN ONLY
-Base: `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`
-Target integration branch: `integration/core-foundation-v2`
+# Brief de desenho — Mapa de consumidores do Core v1
 
-## Objective
+**Estado histórico: SOMENTE DESENHO**  
+**Base:** `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`  
+**Branch planejada:** `integration/core-foundation-v2`
 
-Identify which stable Core primitives the remaining business modules require before Core Foundation v2 is frozen.
+## Objetivo
 
-Do not implement any business module.
+Identificar os conceitos estáveis do Core que os módulos restantes demandarão **antes de congelar os contratos da Fundação v2**. Não implementar módulos de negócio nesta frente.
 
-## Modules in scope
+## Módulos considerados no desenho original
 
-Use the accepted product structure/roadmap:
-- ISO Records / legacy Propostas ISO;
-- Sales / Card Machines;
-- Satisfaction Survey;
-- Meeting Room Scheduling;
-- Fleet;
-- Planned vs Actual;
-- ABC Curve;
-- Contracts ERP.
+Registros ISO / Propostas ISO, Vendas/Maquininhas, Satisfação, Agendamento de Salas, Frota, Planejado × Realizado, Curva ABC e ERP de Contratos. Auditoria e Planos de Ação já eram consumidores e deveriam servir de evidência, **não ser reimplementados**.
 
-Audit and Action Plans are existing consumers and should be used as evidence, not reimplemented.
+**Atualização de leitura:** Curva ABC v1 já foi integrada depois pela PR #69; o rol acima é o inventário histórico do brief.
 
-## Method
+## Método
 
-For each module, derive only requirements supported by repository docs or available source-system evidence.
+Derivar apenas necessidades sustentadas por documentação do repo ou evidência do legado: usuário autenticado, responsável/participante, unidade, setor, papel/escopo, autor histórico, anexos, dados de data/valor e referências entre módulos. Requisito desconhecido: marcar **DESCONHECIDO**; não adivinhar vínculos.
 
-Map needs such as:
-- authenticated user;
-- responsible/owner/participant;
-- unit;
-- sector;
-- role/permission scope;
-- historical actor;
-- attachments;
-- date/money primitives;
-- cross-module references.
+## Entregável original
 
-If a requirement is unknown, mark UNKNOWN. Do not guess a relationship merely because it seems likely.
+`docs/architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md`, com matriz módulo × primitiva Core, evidência de dependência não óbvia, contratos realmente compartilhados, propriedade por módulo, contradições e gates mínimos para concluir Core.
 
-## Deliverable
-
-Create:
-`docs/architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md`
-
-Include:
-- matrix: module x Core primitive;
-- evidence/reference for each non-obvious dependency;
-- candidate Core contracts that are genuinely shared;
-- items that must remain module-owned;
-- contradictions/gaps requiring product clarification;
-- minimum Core closure criteria before the next module starts.
-
-No code, migration or future-module permission seeding.
+**Sem código, migration ou seed de permissões futuras.**

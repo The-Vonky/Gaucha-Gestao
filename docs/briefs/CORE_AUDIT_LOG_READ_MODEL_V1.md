@@ -1,82 +1,38 @@
-# Implementation Brief — Core Audit Log Read Model v1
+> **Documento histórico — brief da Fundação Core v2.** Os nomes de branches, bases e estados abaixo pertencem ao plano original. **Não recriar branches antigas nem iniciar implementação por este texto**: confirmar o código da `main`, a issue atual e as regras do [AGENTS.md](../../AGENTS.md). Tradução editorial para pt-BR; decisões e restrições originais foram preservadas.
 
-Status: READY FOR IMPLEMENTATION
-Base: `integration/core-foundation-v2-wave2`
-Target integration branch: `integration/core-foundation-v2-wave2`
+# Brief de implementação — Modelo de leitura dos logs do Core v1
 
-## Objective
+**Estado histórico: PRONTO PARA IMPLEMENTAÇÃO**  
+**Base / alvo de integração original:** `integration/core-foundation-v2-wave2`
 
-Implement an authorization-safe read model for `core.system_audit_log` so the future Administration UI can filter and display system events in human terms without weakening the immutable audit trail.
+## Objetivo
 
-No frontend redesign in this branch.
+Implementar projeção de leitura **segura por autorização** de `core.system_audit_log`, permitindo que Administração filtre/exiba eventos com nomes legíveis sem enfraquecer trilha imutável. Sem redesenho de frontend nesta etapa original.
 
-## Required reading
+## Leituras
 
-- `AGENTS.md`
-- `docs/architecture/ACCESS_GOVERNANCE_V1.md`
-- `docs/architecture/CORE_FOUNDATION_V2.md`
-- `docs/architecture/AUTHORIZATION.md`
-- `docs/architecture/SECURITY.md`
-- current log schema, RLS and LogsPage/API.
+`AGENTS.md`, `ACCESS_GOVERNANCE_V1.md`, `CORE_FOUNDATION_V2.md`, `AUTHORIZATION.md`, `SECURITY.md`, schema/logs/RLS e tela API vigentes.
 
-## In scope
+## Incluído
 
-Provide a typed, paginated server/database projection for authorized log readers with:
-- immutable log id / occurred_at;
-- actor_user_id plus authorized actor display name when resolvable;
-- module/action/entity_type/entity_id;
-- authorized unit/sector display labels when resolvable;
-- before/after/metadata kept available for technical detail under the same log authorization;
-- filters suitable for actor, module, action, entity type, entity id, date/time interval;
-- actor search by human name only if it can be done without turning the endpoint into a user-directory bypass;
-- stable pagination and count.
+Projeção server/SQL tipada e paginada contendo: `id`/ `occurred_at` imutáveis; `actor_user_id` e nome autorizado quando resolvível; módulo/ação/tipo/ID de entidade; rótulos de unidade/setor quando permitidos; `before_data`, `after_data`, `metadata` para detalhe técnico sob **a mesma autorização**; filtros por autor, módulo, ação, tipo/ID e período; busca por nome **apenas se não virar bypass do diretório**; total e paginação estável.
 
-If historical display name snapshots are not already present, do not rewrite old events or invent them. Current authorized name may be used only according to the architecture document.
+Sem snapshots históricos de nomes previamente gravados, **não inventar/regravar nomes antigos**; nome atual só conforme contrato de arquitetura.
 
-## Security/privacy
+## Segurança e privacidade
 
-- `admin.audit_log.read` remains the base gate, including scope;
-- resolving names must not grant broader directory visibility;
-- e-mail and last sign-in are out of scope;
-- absent/invisible related entity must not leak existence through error shape;
-- raw JSON/IDs are technical detail, not a separate privilege escalation;
-- no direct write privileges to the audit table.
+`admin.audit_log.read` + escopo continua sendo gate. Resolução de nomes não amplia leitura do diretório. E-mail e último login ficam fora. Entidade ausente/invisível não pode vazar existência pelo formato de erro. JSON/IDs brutos não criam novo privilégio. Sem escrita direta no log.
 
-## Database rules
+## Banco e testes
 
-- additive migration only;
-- preserve immutable source log;
-- do not create duplicate audit events just for presentation;
-- SECURITY DEFINER only if necessary, with fixed search_path and explicit grants;
-- avoid expensive unbounded text search over the whole log.
+Migration aditiva; fonte de log imutável; não duplicar eventos para apresentar nomes; `SECURITY DEFINER` somente se necessário, com `search_path` fixo/grants; não fazer busca textual sem limites.
 
-## Tests
+Cobrir: leitor global/setorizado, anônimo/inativo negado, evento fora de escopo, resolução de autor permitida, autor inativo/não encontrado, unidades/setores, filtro de nome sem enumeração, ID/tipo, limites temporais, paginação/contagem, preservação de before/after. Executar validação completa.
 
-Cover:
-- global and scoped log reader;
-- anonymous/inactive denied;
-- event outside scope hidden;
-- actor name resolution when authorized;
-- unresolved/inactive actor;
-- unit/sector labels;
-- actor/name filter without directory enumeration;
-- entity id/type filter;
-- timestamp boundaries;
-- pagination/count;
-- before/after content not altered.
+## Fora do escopo
 
-Run full repository validation.
+Mudanças de `LogsPage`, exportação, retenção/limpeza, eventos login/Auth, ciclo de contas, módulo de Auditoria, erros/mutações.
 
-## Explicitly out of scope
+## Encerramento histórico
 
-- LogsPage UI changes;
-- export;
-- retention/purge;
-- login/auth events;
-- account lifecycle;
-- business Audit module;
-- mutation/error redesign.
-
-## Completion
-
-Focused commits only. Do not merge. PR target: `integration/core-foundation-v2-wave2`.
+Commits focados, sem merge autônomo; PR para a branch antiga. **No desenvolvimento atual, usar issue e branch de `main`.**

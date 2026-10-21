@@ -1,68 +1,35 @@
-# Design Brief — Core Access Governance v1
+> **Documento histórico — brief da Fundação Core v2.** Os nomes de branches, bases e estados abaixo pertencem ao plano original. **Não recriar branches antigas nem iniciar implementação por este texto**: confirmar o código da `main`, a issue atual e as regras do [AGENTS.md](../../AGENTS.md). Tradução editorial para pt-BR; decisões e restrições originais foram preservadas.
 
-Status: DESIGN ONLY
-Base: `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`
-Target integration branch: `integration/core-foundation-v2`
+# Brief de desenho — Governança de acesso do Core v1
 
-## Objective
+**Estado histórico: SOMENTE DESENHO**  
+**Base:** `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`  
+**Branch planejada à época:** `integration/core-foundation-v2`
 
-Design Administration so a non-technical administrator can answer:
-- who has access?
-- to what?
-- through which profile/scope?
-- who granted or revoked it and when?
-- what users will be affected if a profile changes?
-- what access exists for a given unit?
+## Objetivo
 
-No implementation in this track.
+Projetar Administração para responder, com linguagem acessível: quem tem acesso; a quê; por qual papel e escopo; quem concedeu/revogou e quando; quem é afetado pela alteração de um perfil; quais acessos existem por unidade. **Sem implementação nesta frente original.**
 
-## Problems to cover
+## Problemas identificados
 
-- Logs require actor UUID and expose technical UUID/JSON details.
-- Access review is currently user-by-user rather than unit/profile centric.
-- Assignment history does not present grant/revoke actor and timestamps clearly.
-- Role permission edits do not present impact before save.
-- Unit Administration does not provide a dossier of sectors + users/access + cover.
-- Unlink failures need domain-level diagnosis rather than generic FK text.
-- Export/review needs should be defined for user/access governance.
+- Logs exigiam UUID do autor e mostravam UUID/JSON técnicos.
+- Revisão de acessos era pessoa a pessoa, sem visão consolidada por unidade/papel.
+- Histórico não mostrava claramente concedente/revogador e datas.
+- Edição de permissões de papel não exibia impacto antes de salvar.
+- Administração de unidades não possuía dossiê de setores, usuários/acessos e capa.
+- Erros de desvinculação exibiam FK genérica, não diagnóstico de domínio.
+- Necessidades de exportação/revisão exigiam definição.
 
-## Design scope
+## Desenho solicitado
 
-Specify read models/RPCs/views needed for:
-- human-readable actor/entity resolution in logs while preserving immutable IDs;
-- user access summary;
-- unit access summary;
-- profile impact / users holding a profile;
-- assignment history with grant/revoke metadata;
-- unit dossier;
-- access-review/export dataset;
-- direct navigation such as “Ver logs deste usuário”.
+Modelos de leitura/RPC/views para: resolução legível de autor/entidade preservando IDs imutáveis; resumo de acessos de usuário e unidade; impacto e membros de papel; histórico de concessão/revogação; dossiê de unidade; exportação/revisão; navegação «Ver logs deste usuário».
 
-Define which data may be exposed to:
-- admin.user.read;
-- admin.user.manage;
-- admin.role.read/manage;
-- admin.unit.read/manage;
-- admin.audit_log.read.
+Definir exposição por `admin.user.read`, `admin.user.manage`, `admin.role.read/manage`, `admin.unit.read/manage`, `admin.audit_log.read`.
 
-## Error semantics
+## Erros
 
-Propose domain-specific server errors/RPC responses where the client currently cannot distinguish authorization, stale version and referential blockers safely.
+Prever erros de domínio no servidor/RPC quando não for possível diferenciar autorização, versão obsoleta e bloqueio referencial. **Não enfraquecer RLS em nome da UX.**
 
-Do not weaken RLS to improve UX.
+## Entregável original
 
-## Deliverable
-
-Create:
-`docs/architecture/ACCESS_GOVERNANCE_V1.md`
-
-Include:
-- operator questions -> read contract mapping;
-- proposed RPC/view contracts;
-- authorization matrix;
-- audit/privacy considerations;
-- export scope;
-- explicit v1 vs post-v1 split;
-- unresolved PO decisions.
-
-No implementation in this branch.
+`docs/architecture/ACCESS_GOVERNANCE_V1.md`, contendo perguntas do operador → contrato, RPC/views propostas, matriz de autorização, auditoria/privacidade, exportação, divisão v1/futuro e decisões PO pendentes. Sem código nessa branch histórica.
