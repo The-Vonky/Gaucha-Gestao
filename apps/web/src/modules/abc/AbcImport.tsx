@@ -134,7 +134,7 @@ export function AbcImport() {
       <nav className="breadcrumb" aria-label="Você está em">
         <Link to="/abc">Curva ABC</Link>
         <Icon name="chevronRight" />
-        <Link to={`/abc/units/${unitId}`}>{unit?.name ?? "Unidade"}</Link>
+        <Link to={`/abc/imports?unidade=${unitId}`}>{unit?.name ?? "Unidade"}</Link>
         <Icon name="chevronRight" />
         <span aria-current="page">Importar relatório</span>
       </nav>

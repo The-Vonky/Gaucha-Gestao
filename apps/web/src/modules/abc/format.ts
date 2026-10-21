@@ -33,3 +33,18 @@ export const BASIS_LABEL: Record<string, string> = {
   NET_PERIOD: "Custo médio líquido da época",
   GROSS_PERIOD: "Custo médio bruto da época",
 };
+
+/** "+R$ 1.234,50" / "−R$ 10,00" / "R$ 0,00": the sign leads, as in variation columns. */
+export function signedMoney(value: string | null): string {
+  if (value === null) return "—";
+  const r = formatDecimal(value, 2);
+  if (r.startsWith("−")) return `−R$ ${r.slice(1)}`;
+  return /^[0.,]+$/.test(r) ? `R$ ${r}` : `+R$ ${r}`;
+}
+export function signedPercent(value: string | null): string {
+  if (value === null) return "—";
+  const r = formatDecimal(value, 2);
+  return r.startsWith("−") || /^[0.,]+$/.test(r) ? `${r}%` : `+${r}%`;
+}
+export const quantity = (value: string | null) => formatDecimal(value, 3);
+export const unitCost = (value: string | null) => (value === null ? "—" : `R$ ${formatDecimal(value, 4)}`);

@@ -161,6 +161,19 @@ async function browserImport() {
       await page.getByText("O arquivo original reproduz exatamente esta publicação.").waitFor();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       assert.ok(overflow <= 1, `No page-level horizontal overflow at ${run.width}px`);
+
+      phase = `browser import ${label}: analytics areas`;
+      const areas = [["overview", "Indicadores da última competência"], ...(run.webCrypto ? [] : [["compare", "Resumo da comparação"]]),
+        ["products", null], ["categories", null], ["reports", null], ["imports", null]];
+      for (const [area, region] of areas) {
+        await page.goto(`${origin}/abc/${area}?unidade=${B}`);
+        await page.locator("h1").waitFor();
+        if (region) assert.match(await page.getByRole("region", { name: region }).innerText(), /\d/, `${area} shows published numbers`);
+        else await page.locator(".abc-section, .table-scroll, .empty-state").first().waitFor();
+        assert.equal(await page.locator(".notice.error").count(), 0, `${area} has no error`);
+        const areaOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        assert.ok(areaOverflow <= 1, `No horizontal overflow in ${area} at ${run.width}px`);
+      }
       await context.close();
     }
     const checks = (await db.query("select count(*)::int n from core.system_audit_log where module='abc' and unit_id=$1 and action='revision.file_check_ok'", [B])).rows[0].n;

@@ -1,7 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { client } from "../../core/client";
 import { message } from "../../shared/errors";
-import type { ReportPayload, RevisionDetail, SeriesSummary, UnitSummary } from "./types";
+import type {
+  Comparison, CompetencyProducts, CostBasis, HistoryPoint, Overview, ReportPayload, RevisionDetail, RevisionRecord,
+  SeriesSummary, UnitSummary,
+} from "./types";
 
 export const BUCKET = "abc-source-files";
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -33,6 +36,22 @@ export async function revisionDetail(revisionId: string): Promise<RevisionDetail
   if (error) throw error;
   return data as RevisionDetail;
 }
+
+// ---- Analytics read model v2: every call is scoped by abc.report.read on the unit, in the database.
+async function call<T>(fn: string, args: Record<string, unknown>): Promise<T> {
+  const { data, error } = await db().rpc(fn, args);
+  if (error) throw error;
+  return data as T;
+}
+export const overview = (unitId: string, basis: CostBasis) =>
+  call<Overview>("overview", { p_unit: unitId, p_cost_basis: basis });
+export const competencyProducts = (unitId: string, basis: CostBasis, competency: string) =>
+  call<CompetencyProducts>("competency_products", { p_unit: unitId, p_cost_basis: basis, p_competency: competency });
+export const productHistory = (unitId: string, basis: CostBasis, code: string) =>
+  call<HistoryPoint[]>("product_history", { p_unit: unitId, p_cost_basis: basis, p_code: code });
+export const compare = (unitId: string, basis: CostBasis, base: string, current: string) =>
+  call<Comparison>("compare", { p_unit: unitId, p_cost_basis: basis, p_base: base, p_current: current });
+export const unitRevisions = (unitId: string) => call<RevisionRecord[]>("unit_revisions", { p_unit: unitId });
 
 const alreadyStored = (e: unknown) => (e as { statusCode?: string } | null)?.statusCode === "409";
 
@@ -107,5 +126,6 @@ export function abcMessage(e: unknown): string {
   if (/Upload expired/.test(text)) return "O envio expirou. Selecione o arquivo novamente.";
   if (/object does not match/.test(text)) return "O arquivo enviado não confere com o registro. Selecione o arquivo novamente.";
   if (code === "23514" && text && !/violates|new row/.test(text)) return text;
+  if (code === "P0002") return "Não há relatório publicado para a competência e modalidade escolhidas.";
   return message(e);
 }

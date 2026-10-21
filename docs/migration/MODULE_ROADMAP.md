@@ -50,7 +50,7 @@ Esses domínios testam cargas diferentes mantendo migração gradual. A posiçã
 
 1. ERP de Contratos (**após** validação da recuperação e segurança da origem).
 
-A Curva ABC não integra mais a lista de futuras migrações da v1: foi antecipada e implementada em outubro. Funcionalidades adicionais da ABC exigem brief/aceite novos.
+A Curva ABC não integra mais a lista de futuras migrações da v1: foi antecipada e implementada em outubro. Funcionalidades adicionais da ABC exigem brief/aceite novos. Em 21/10/2026 o responsável pediu a recuperação das funções do sistema antigo: correção P0 da importação ([PR #78](https://github.com/The-Vonky/Gaucha-Gestao/pull/78)), modelo de leitura ([PR #79](https://github.com/The-Vonky/Gaucha-Gestao/pull/79)) e seis áreas analíticas ([brief v2](../briefs/ABC_ANALYTICS_V2.md)), todos **em revisão**; decisões D1–D7 pendentes ([matriz](../modules/abc/MATRIZ_EQUIVALENCIA_LEGADO.md)).
 
 ## Histórico da mudança de prioridade da ABC (19/10)
 
