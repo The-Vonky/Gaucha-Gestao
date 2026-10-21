@@ -4,12 +4,13 @@ begin;
 -- numeric values as text. No new permission, table or write path; Core is not referenced for writes.
 
 -- Ratios (average cost, variations, shares): 20 decimal places, half away from zero (half-up for
--- the non-negative values stored here). The divisor's scale is forced so PostgreSQL does not stop
--- at 16 significant digits. Division by zero is null, never an error or infinity.
+-- the non-negative values stored here). Adding a zero with 30 decimal places raises the divisor's
+-- display scale WITHOUT rounding it (a cast to numeric(p,30) would round a tiny divisor to zero),
+-- so PostgreSQL does not stop at 16 significant digits. Division by zero is null, never an error.
 create function abc_private.ratio(p_a numeric,p_b numeric) returns numeric
 language sql immutable set search_path='' as $$
  select case when p_a is null or p_b is null or p_b=0 then null
-  else trim_scale(round(p_a/(p_b::numeric(1000,30)),20)) end
+  else trim_scale(round(p_a/(p_b+0.000000000000000000000000000000),20)) end
 $$;
 
 -- Same normalization as the browser parser (LT→L, UND→UN); other labels compare as written.
@@ -161,21 +162,24 @@ begin
     b.un bun,b.q bq,b.pu bpu,b.t bt,b.ec bec,b.cc bcc,abc_private.ratio(b.t,b.q) bp,
     c.un cun,c.q cq,c.pu cpu,c.t ct,c.ec cec,c.cc ccc,abc_private.ratio(c.t,c.q) cp
    from b full join c on c.code=b.code),
+  -- Direction from the exact sign of T1·Q0 − T0·Q1 (never from the rounded averages).
   k as (select j.*,case when not hb then 'new' when not hc then 'absent'
      when abc_private.unit_key(bun)<>abc_private.unit_key(cun) or bq=0 or cq=0 then 'not_comparable'
-     when cp>bp then 'up' when cp<bp then 'down' else 'unchanged' end status from j),
+     when ct*bq>bt*cq then 'up' when ct*bq<bt*cq then 'down' else 'unchanged' end status from j),
   r as (select k.*,status in ('up','down','unchanged') comparable,
     case when status in ('up','down','unchanged') then abc_private.ratio(bt*cq,bq) end rq from k),
-  m as (select r.*,
+  v as (select r.*,
     case when comparable then ct-rq end price_effect,
     case when comparable then rq-bt end quantity_effect,
     case when comparable then abc_private.ratio((ct*bq-bt*cq)*100,bt*cq) end unit_variation,
     case when hb and hc then ct-bt end total_delta,
-    case when hb and hc then abc_private.ratio((ct-bt)*100,bt) end total_variation from r)
+    case when hb and hc then abc_private.ratio((ct-bt)*100,bt) end total_variation from r),
+  m as (select v.*,coalesce(unit_variation>=300 or unit_variation<=-75 or (comparable and bt=0 and ct>0),false) alert from v)
  select
   coalesce(jsonb_agg(jsonb_build_object('code',code,'name',nm,'status',status,
-   -- Review heuristics from metricas-v1 (not proof of error): ≥ +300% or ≤ −75% average cost.
-   'alert',coalesce(unit_variation>=300 or unit_variation<=-75,false),
+   -- Review heuristics from metricas-v1 (not proof of error): ≥ +300% or ≤ −75% average cost,
+   -- or an unexpected zero base cost with a positive current cost (no percentage exists).
+   'alert',alert,
    'base',case when hb then jsonb_build_object('unit',bun,'quantity',bq::text,'unit_cost',bpu::text,'total',bt::text,
      'avg_cost',bp::text,'erp_class',bec,'calculated_class',bcc) end,
    'current',case when hc then jsonb_build_object('unit',cun,'quantity',cq::text,'unit_cost',cpu::text,'total',ct::text,
@@ -188,14 +192,14 @@ begin
      'up',count(*) filter (where status='up'),'down',count(*) filter (where status='down'),
      'unchanged',count(*) filter (where status='unchanged'),'new',count(*) filter (where status='new'),
      'absent',count(*) filter (where status='absent'),'not_comparable',count(*) filter (where status='not_comparable'),
-     'alerts',count(*) filter (where unit_variation>=300 or unit_variation<=-75)),
+     'alerts',count(*) filter (where alert)),
    'bridge',jsonb_build_object(
      'price_effect',coalesce(sum(price_effect),0)::text,
      'quantity_effect',coalesce(sum(quantity_effect),0)::text,
      'new',coalesce(sum(ct) filter (where status='new'),0)::text,
      'absent',(-coalesce(sum(bt) filter (where status='absent'),0))::text,
      'not_comparable',coalesce(sum(ct-bt) filter (where status='not_comparable'),0)::text,
-     'residual',(rc.calculated_total-rb.calculated_total-coalesce(sum(price_effect),0)-coalesce(sum(quantity_effect),0)
+     'residual',trim_scale(rc.calculated_total-rb.calculated_total-coalesce(sum(price_effect),0)-coalesce(sum(quantity_effect),0)
        -coalesce(sum(ct) filter (where status='new'),0)+coalesce(sum(bt) filter (where status='absent'),0)
        -coalesce(sum(ct-bt) filter (where status='not_comparable'),0))::text),
    -- Common-basket index: 100·(ΣP1·Q1 / ΣP0·Q1 − 1) over comparable items only.

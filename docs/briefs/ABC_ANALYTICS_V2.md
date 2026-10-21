@@ -19,7 +19,7 @@ Recuperar as capacidades analíticas do sistema antigo dentro de **Custos → Cu
 ## Política de precisão
 
 - Valores fonte e somas: `numeric` sem escala fixa, exatos.
-- Razões (custo médio `T/Q`, participações, variações): `abc_private.ratio`, **20 casas decimais**, arredondamento half-up, `trim_scale`. O divisor recebe escala 30 para evitar o limite de 16 dígitos significativos da divisão padrão.
+- Razões (custo médio `T/Q`, participações, variações): `abc_private.ratio`, **20 casas decimais**, arredondamento half-up, `trim_scale`. Somar ao divisor um zero com 30 casas eleva a escala da divisão sem arredondar o divisor; assim a divisão não para nos 16 dígitos significativos padrão e um divisor muito pequeno, mas não nulo, nunca vira zero.
 - Divisão por zero devolve `null`, nunca erro nem infinito.
 - Exibição: R$ com 2 casas, custos unitários com 4, percentuais com 2 (`ROUND_HALF_UP` sobre texto, `format.ts`).
 
@@ -32,12 +32,12 @@ Referência: `intranet/docs/04-METRICAS.md` da origem, seções 3 e 4. Divergên
 | Código só na competência atual | `new` | nula | entra na ponte como `+T1` | legado: "Novo item" |
 | Código só na base | `absent` | nula | entra na ponte como `−T0` | legado: "Removido" |
 | Unidade de medida diferente (após LT→L, UND→UN) ou quantidade zero em uma das pontas | `not_comparable` | nula | `T1 − T0` na linha "não comparáveis" | legado comparava preços mesmo assim |
-| Custo médio maior / menor / igual | `up` / `down` / `unchanged` | `100·(T1·Q0 − T0·Q1)/(T0·Q1)` | preço `T1 − r`, quantidade `r − T0`, com `r = T0·Q1/Q0` | legado usava tolerância de R$ 0,01 para "Estável" e o custo unitário do ERP |
+| Custo médio maior / menor / igual (sinal exato de `T1·Q0 − T0·Q1`) | `up` / `down` / `unchanged` | `100·(T1·Q0 − T0·Q1)/(T0·Q1)` | preço `T1 − r`, quantidade `r − T0`, com `r = T0·Q1/Q0` | legado usava tolerância de R$ 0,01 para "Estável" e o custo unitário do ERP |
 
 - **Associação de produtos:** somente pelo **código ERP exato**, inclusive zeros à esquerda (`001` ≠ `1`). Nomes parecidos nunca associam produtos.
 - **Custo médio analítico:** `P = T/Q` (total ÷ quantidade). O custo unitário informado pelo ERP é exibido no detalhe, mas não é a base da variação.
 - **Ponte do total:** `ΔT = Σ efeito preço + Σ efeito quantidade + Σ novos − Σ ausentes + Σ não comparáveis + resíduo`. Com uma única divisão por item, o resíduo é **zero por construção** e continua exposto para detectar regressões.
-- **Alertas de conferência:** variação do custo médio `≥ +300%` ou `≤ −75%`. São heurísticas, não prova de erro; os itens não são excluídos de totais ou rankings.
+- **Alertas de conferência:** variação do custo médio `≥ +300%` ou `≤ −75%`, ou custo base zero com custo atual positivo (não há percentual possível). São heurísticas, não prova de erro; os itens não são excluídos de totais.
 - **Índice da carteira comum:** `100·(Σ T1 / Σ r − 1)` sobre itens comparáveis, com a quantidade de itens informada.
 - **Impacto por classe:** agrupado pela **classe calculada da base**; novos ficam em `NEW` e linhas sem classe em `NONE`.
 - **Competência sem publicação** na modalidade: erro `P0002`. Competências iguais: `23514`.

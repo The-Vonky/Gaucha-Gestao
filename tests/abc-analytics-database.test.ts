@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { STORAGE_STUB } from "./storage-stub";
 import { contentHash } from "../apps/web/src/modules/abc/import/contentHash";
+import { sum as decimalSum } from "../apps/web/src/modules/abc/import/decimal";
 import type { ReportLine, ReportPayload } from "../apps/web/src/modules/abc/types";
 
 // Analytics read model (20261021120000_abc_analytics_read_v1.sql): exact math, comparison rules
@@ -42,13 +43,11 @@ async function publish(unit: string, code: string, month: string, lines: Partial
     line_no: i + 1, code: l.code!, name: l.name ?? `Produto ${l.code}`, unit: l.unit ?? "KG", quantity: l.quantity!, unit_cost: l.unit_cost ?? "0",
     total: l.total!, source_share: null, erp_class: null, sheet: "Curva ABC Geral (Realizado)", row: i + 7,
   }));
-  const total = full.reduce((s, l) => s + Number(l.total), 0);
   const last = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate();
   const draft: Omit<ReportPayload, "content_hash"> = {
     unit_code: code, period_start: `${month}-01`, period_end: `${month}-${last}`, cost_basis: basis,
     cost_basis_text: basis === "NET_PERIOD" ? "Custo Médio Líquido da Época" : "Custo Médio Bruto da Época",
-    // Fixture totals are small integers or simple decimals, safe in a float sum.
-    declared_total: String(total), subtotals: [], parser_version: "erp-curva-realizado-v1", file_sha256: hash, warnings: [], lines: full,
+    declared_total: decimalSum(full.map((l) => l.total)), subtotals: [], parser_version: "erp-curva-realizado-v1", file_sha256: hash, warnings: [], lines: full,
   };
   const payload = { ...draft, content_hash: await contentHash(draft) };
   return (await one<{ id: string }>("select abc.publish_revision($1,$2,$3,$4,true) id", [f.file_id, payload, version, reason])).id;
@@ -107,6 +106,21 @@ beforeAll(async () => {
   // A superseded July revision keeps history; the current one is the replacement.
   await publish(A, "A", "2026-08", [{ code: "X1", quantity: "1", unit_cost: "1", total: "1" }]);
   await publish(A, "A", "2026-08", [{ code: "X1", quantity: "2", unit_cost: "1", total: "2" }], "NET_PERIOD", 1, "Reexportado do ERP");
+  // Edge cases (GROSS, Jan → Feb): exact down/unchanged, UND≡UN, zero base cost, tiny divisor.
+  await publish(A, "A", "2026-01", [
+    { code: "D1", quantity: "10", unit_cost: "10", total: "100" },
+    { code: "U1", quantity: "2", unit_cost: "2", total: "4" },
+    { code: "N1", unit: "UND", quantity: "1", unit_cost: "3", total: "3" },
+    { code: "Z1", quantity: "5", unit_cost: "0", total: "0" },
+    { code: "M1", quantity: "1", unit_cost: "0.00000000000000001", total: "0.00000000000000001" },
+  ], "GROSS_PERIOD");
+  await publish(A, "A", "2026-02", [
+    { code: "D1", quantity: "10", unit_cost: "5", total: "50" },
+    { code: "U1", quantity: "2", unit_cost: "2", total: "4" },
+    { code: "N1", unit: "UN", quantity: "1", unit_cost: "3", total: "3" },
+    { code: "Z1", quantity: "5", unit_cost: "1.4", total: "7" },
+    { code: "M1", quantity: "0.00000000000001", unit_cost: "1", total: "0.00000000000001" },
+  ], "GROSS_PERIOD");
   await login(users.publisherB);
   await publish(B, "B", "2026-06", [{ code: "X1", quantity: "1", unit_cost: "999", total: "999" }]);
 }, 60000);
@@ -150,6 +164,23 @@ describe("Curva ABC analytics read model", { concurrent: false }, () => {
     // Displayed averages are rounded to 20 places, but effects use one division and close exactly.
     expect(by.T1).toMatchObject({ price_effect: "1", quantity_effect: "0" });
     expect(c.summary.bridge.residual).toBe("0");
+  });
+
+  it("handles exact direction, UND≡UN, zero base cost and a divisor below 1e-30 without errors", async () => {
+    await login(users.viewerA);
+    const c = await json<Compare>("abc.compare($1,'GROSS_PERIOD','2026-01-01','2026-02-01')", [A]);
+    const by = Object.fromEntries(c.items.map((i) => [i.code, i]));
+    expect(by.D1).toMatchObject({ status: "down", unit_variation: "-50", alert: false });
+    expect(by.U1).toMatchObject({ status: "unchanged", unit_variation: "0", price_effect: "0", quantity_effect: "0" });
+    expect(by.N1.status).toBe("unchanged");
+    // Base cost zero, current positive: no percentage exists, so it is flagged for review.
+    expect(by.Z1).toMatchObject({ status: "up", unit_variation: null, alert: true });
+    // (1e-14 − 1e-31)·100 / 1e-31 = 1e19 − 100. T0·Q1 = 1e-31: the old cast rounded it to zero and raised division_by_zero.
+    expect(by.M1).toMatchObject({ status: "up", unit_variation: "9999999999999999900", alert: true });
+    expect(c.summary.counts).toMatchObject({ down: 1, unchanged: 2, up: 2, alerts: 2 });
+    expect(c.summary.bridge.residual).toBe("0");
+    await db.exec("reset role");
+    expect(await json<string>("abc_private.ratio(2,0.0000000000000000000000000000014)::text", [])).toBe("1428571428571428571428571428571.42857142857142857143");
   });
 
   it("rejects equal or unpublished competencies with stable codes", async () => {
@@ -199,7 +230,7 @@ describe("Curva ABC analytics read model", { concurrent: false }, () => {
     const r = await json<{ competency: string; number: number; current: boolean; reason: string | null; line_count: number }[]>("abc.unit_revisions($1)", [A]);
     const august = r.filter((x) => x.competency === "2026-08-01").map((x) => [x.number, x.current, x.reason]);
     expect(august).toEqual([[2, true, "Reexportado do ERP"], [1, false, null]]);
-    expect(r).toHaveLength(6);
+    expect(r).toHaveLength(8);
   });
 
   it("denies every analytics function outside the reader's unit scope", async () => {
@@ -219,6 +250,10 @@ describe("Curva ABC analytics read model", { concurrent: false }, () => {
     await login(users.publisherB);
     expect((await json<{ competencies: unknown[] }>("abc.overview($1,'NET_PERIOD')", [B])).competencies).toHaveLength(1);
     await db.exec("reset role; set role anon;");
-    expect(await failure(db.query("select abc.overview($1,'NET_PERIOD')", [A]))).toBe("42501");
+    for (const [sql, params] of calls) expect(await failure(db.query(`select ${sql}`, params)), `anon ${sql}`).toBe("42501");
+    // Private helpers are not callable directly by API roles.
+    await login(users.viewerA);
+    for (const helper of ["abc_private.ratio(1,2)", "abc_private.unit_key('LT')", `abc_private.class_summary('${A}',1)`])
+      expect(await failure(db.query(`select ${helper}`)), helper).toBe("42501");
   });
 });
