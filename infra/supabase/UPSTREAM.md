@@ -1,27 +1,18 @@
-# Supabase upstream provenance
+# Proveniência do Supabase upstream
 
-Baseline application: `e7ed7d5167d4b7e592532df0830d6b2744d96eff`.
-Existing CI: [36889526091](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/36889526091), both jobs successful.
+**Documento de rastreabilidade técnica em pt-BR; não é autorização de implantação.** Baseline histórica da aplicação: `e7ed7d5167d4b7e592532df0830d6b2744d96eff`. Execução CI histórica: [36889526091](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/36889526091), dois jobs aprovados. Revisar os checks do HEAD atual antes de usar essa evidência.
 
-## Official, pinned origin
+## Origem oficial fixada
 
-Use [supabase/supabase self-hosted/v0.8.1](https://github.com/supabase/supabase/releases/tag/self-hosted/v0.8.1) (2026-09-09), peeled commit **`8c7a4d9dbbaf8b552893822e89d7bf06f33f9220`**.
-The annotated tag object is `690080884040e238926ba22606e8c05a3536829b`.
-Sources: `docker/docker-compose.yml`, `docker/docker-compose.kong.yml`,
-`docker/volumes/api/kong.yml`, `docker/volumes/api/kong-entrypoint.sh`,
-`docker/volumes/db/roles.sql`, `docker/volumes/db/jwt.sql`, `docker/CHANGELOG.md`.
-All source links below use this commit; no tracking branch or `latest` is used at runtime.
+Usar release [`supabase/supabase self-hosted/v0.8.1`](https://github.com/supabase/supabase/releases/tag/self-hosted/v0.8.1), de 09/09/2026, commit resolvido **`8c7a4d9dbbaf8b552893822e89d7bf06f33f9220`**. Objeto de tag anotada: `690080884040e238926ba22606e8c05a3536829b`.
 
-This released Compose baseline supplies PostgreSQL 17 and an official Kong override.
-Since v0.8.0 the upstream default gateway is Envoy; this PR deliberately selects
-its supported Kong override to satisfy the application brief. The CLI is a separate
-release stream: **CLI 2.117.0 is not a Compose release number**.
+Arquivos de referência: `docker/docker-compose.yml`, `docker/docker-compose.kong.yml`, `docker/volumes/api/kong.yml`, `kong-entrypoint.sh`, `docker/volumes/db/roles.sql`, `jwt.sql` e `docker/CHANGELOG.md`. A seleção usa **commit fixo**, não `latest` ou branch móvel.
 
-## Exact comparison with disposable CLI CI
+O release v0.8.1 fornece PostgreSQL 17 e override oficial para Kong. Desde v0.8.0, gateway padrão do upstream é Envoy; este projeto escolhe o override de **Kong suportado pelo próprio upstream**, para obedecer ao brief. A versão da **CLI 2.117.0 não é a versão do Compose**.
 
-CLI [v2.117.0](https://github.com/supabase/cli/tree/21db855916f2c2b12f61cde923a27094b8528b23), peeled commit `21db855916f2c2b12f61cde923a27094b8528b23`, annotated tag `cdcb8e4a8bc8d10658f194186d39739f43c04d1b`.
-Versions are from `apps/cli-go/pkg/config/templates/Dockerfile` at that commit,
-corroborated by image pulls in existing CI job `110461309280`.
+## Comparação de imagens com Supabase CLI descartável
+
+A [CLI v2.117.0](https://github.com/supabase/cli/tree/21db855916f2c2b12f61cde923a27094b8528b23), commit `21db855916f2c2b12f61cde923a27094b8528b23`, objeto de tag `cdcb8e4a8bc8d10658f194186d39739f43c04d1b`, mantém versões na `apps/cli-go/pkg/config/templates/Dockerfile`; foram cotejadas com pull de imagens na CI `110461309280`.
 
 | Component | CLI 2.117.0 / existing CI | Official self-hosted v0.8.1 / this PR |
 | --- | --- | --- |
@@ -31,81 +22,40 @@ corroborated by image pulls in existing CI job `110461309280`.
 | PostgREST | `postgrest/postgrest:v16.2` | `postgrest/postgrest:v14.17` |
 | Storage | `supabase/storage-api:v1.72.1` | `supabase/storage-api:v1.74.0` |
 
-The CLI mirrors images through `public.ecr.aws/supabase`; names in the table
-identify the source images, not an assertion that registry digests are identical.
-Keep the released self-hosted combination rather than inventing a hybrid from CLI
-versions. Auth matches; PostgreSQL remains major 17. REST and Storage version
-differences must pass this PR's actual migration, contract and API smoke validation.
-Existing integration CI continues to validate the unchanged CLI stack independently.
-Version tags are pinned; registry tag immutability is not guaranteed by this PR.
+A CLI espelha imagens via `public.ecr.aws/supabase`. Os nomes da tabela representam **imagens-fonte**, sem provar equivalência de digests entre registros. Preservar a combinação compatível do self-hosted publicado; **não inventar híbrido** com versões da CLI. Auth coincide, PostgreSQL permanece major 17, mas REST e Storage diferem e precisam de testes reais de migrations/contratos/API. Tags não garantem imutabilidade de registry.
 
-## Minimal adaptation and traceability
+## Redução controlada para o perfil mínimo
 
-- Exactly `db`, `kong`, `auth`, `rest`, `storage`; remove optional services and their
-  dependencies/routes, including Studio/Meta, Realtime, Functions and analytics.
-- Fold the official Kong override into the base file; omit HTTPS listener and bind
-  its HTTP listener to loopback for disposable validation. No DB port mapping.
-- Preserve Auth, REST and file Storage topology. Disable image transformation;
-  omit imgproxy dependency. Set the application's schemas, 1000-row maximum,
-  disabled public signup and 10 MiB global file limit. Bucket limits come unchanged
-  from the application's migrations.
-- Retain required upstream role-password and JWT DB initialization; restrict role
-  passwords to Auth/REST/Storage because the omitted webhook SQL creates the
-  unused Functions role. Disable SQL statement/error-query logging before secrets. Omit optional
-  Realtime/webhooks/analytics/pooler SQL. Persist DB, DB config and files in isolated
-  Compose named volumes instead of host paths. Add a fresh-stack target marker.
-- Keep the upstream Kong entrypoint; retain only required API routes and consumers.
-  Opaque API-key support is left unset; ephemeral legacy JWT keys work with the
-  application's existing Supabase client contract.
-- Add `scripts/ops/common.sh` for shared explicit target validation, and
-  `volumes/db/99-target.sql` for marking newly initialized disposable/staging DBs.
-  These are the only structural additions needed beyond the suggested files.
+- Apenas `db`, `kong`, `auth`, `rest`, `storage`; remover serviços/rotas opcionais (Studio/Meta, Realtime, Functions, analytics, pooler etc.).
+- Incorporar override oficial do Kong ao Compose base; remover listener HTTPS do laboratório e expor HTTP **somente em loopback**; PostgreSQL sem porta publicada.
+- Manter topologia Auth/REST/Storage; remover transformação de imagem/imgproxy. Configurar schemas atuais, limite PostgREST de **1.000 linhas**, cadastro público desativado e limite global de **10 MiB**; buckets individuais são criados pelas migrations da aplicação.
+- Preservar inicialização de papéis JWT/senha da origem, restringindo senhas de papéis aos serviços usados. Desativar logs SQL que possam expor material de assinatura. SQL de roles opcionais Realtime/webhooks/analytics/pooler é omitido conforme adaptação.
+- Persistir dados DB, configuração DB e arquivos em **volumes nomeados isolados**; adicionar marcador exclusivo de instância nova.
+- Manter entrypoint upstream do Kong com somente rotas/consumidores necessários. Suporte a API keys opacas permanece não configurado; chaves JWT legadas efêmeras atendem ao contrato atual do cliente.
+- Acrescentar `scripts/ops/common.sh` para validação explícita de alvo e `volumes/db/99-target.sql` para marcar bancos **novos** de laboratório.
 
-Pinned source root:
-<https://github.com/supabase/supabase/tree/8c7a4d9dbbaf8b552893822e89d7bf06f33f9220/docker>.
-No claim of production readiness, hardware capacity or equivalence between the
-CLI's database bootstrap and the self-hosted image bootstrap is made.
+Fonte upstream pinada: <https://github.com/supabase/supabase/tree/8c7a4d9dbbaf8b552893822e89d7bf06f33f9220/docker>.
 
-Unmodified vendored file (SHA-256):
+**Não** afirmar prontidão produtiva, capacidade física nem bootstrap idêntico entre CLI e self-hosted.
 
-| Local file | SHA-256 |
-| --- | --- |
-| `volumes/api/kong-entrypoint.sh` | `399394576635f7477dfee32e870f509567fc496f0dc86a5a6611f58d1099031f` |
+## Rastreabilidade de arquivos e hashes
 
-The upstream DB files before adaptation have SHA-256
-`3ad717b225daa38aa982da26750f35641eb404e1eb5e69a763c22236ab96c1b2`
-(`roles.sql`) and `1cc94a4f16f6e2932b383cd68e211a96bcae298437ca4120d8a5106396c58465`
-(`jwt.sql`). They are **adapted**, not byte-identical vendoring: remove passwords
-for Pooler/Functions roles and disable session statement/error-query logging.
-Postgres also retains upstream `log_min_messages=fatal` and explicitly disables
-statement/error-query logging at startup. This prevents signing material and
-role-password initialization from being recorded in container logs.
+**Arquivo de origem não modificado**: `volumes/api/kong-entrypoint.sh`, SHA-256 `399394576635f7477dfee32e870f509567fc496f0dc86a5a6611f58d1099031f`.
 
-Bootstrap readiness has two phases: DB/Auth/Storage/Kong become healthy before
-application migrations; REST's final readiness follows the unchanged migrations
-that create `core`, `audit`, `action_plans`, `abc`. Storage/Kong therefore depend on
-REST being started rather than already having an application schema cache.
-The initial readiness gate and final full-stack `up --wait` both have bounded
-timeouts. PGRST_DB_SCHEMAS is never temporarily reduced.
+Arquivos upstream **adaptados, não cópias idênticas em bytes**: `roles.sql` SHA-256 de origem `3ad717b225daa38aa982da26750f35641eb404e1eb5e69a763c22236ab96c1b2`; `jwt.sql` SHA-256 `1cc94a4f16f6e2932b383cd68e211a96bcae298437ca4120d8a5106396c58465`. Adaptações removem senhas Pooler/Functions e desativam logs SQL de statements/queries com erros. `log_min_messages=fatal` do upstream é preservado e logging de statements/erros é restringido no startup, evitando vazamento de credenciais.
 
-Storage's loopback readiness probe uses explicit `127.0.0.1` rather than
-`localhost`; the Storage process binds IPv4, while wget may resolve localhost
-to IPv6 first. Upstream uses the `storage` Docker hostname (also IPv4). Failure
-diagnostics include only redacted logs and health state, never container env.
+## Inicialização e prontidão
 
-Kong route blocks retain upstream YAML quoting verbatim. Its entrypoint inserts
-Lua expressions containing single quotes; converting those header scalars to
-single-quoted YAML makes the expanded configuration invalid. The reduced routes
-are semantically unchanged and the expanded legacy-key template is parse-checked.
+São **duas fases**: DB/Auth/Storage/Kong saudáveis antes das migrations da aplicação; REST saudável após criar `core`, `audit`, `action_plans` e `abc`. Kong/Storage dependem de REST iniciado, não necessariamente com cache completo de schemas. Os dois waits têm timeout. `PGRST_DB_SCHEMAS` nunca é reduzido temporariamente.
 
-## Application migration role
+A verificação IPv4 do Storage usa `127.0.0.1`, não `localhost`: o processo escuta IPv4, enquanto wget pode resolver `localhost` para IPv6 primeiro. Diagnósticos devem ser **sanitizados**, nunca exibir envs.
 
-The DB image source tag `supabase/postgres:17.6.1.136` resolves to
-[`d156ba65c14694c12cc5e782bc15b9b8ed2d1376`](https://github.com/supabase/postgres/tree/d156ba65c14694c12cc5e782bc15b9b8ed2d1376).
-Its `migrations/db/migrate.sh` sets PGPASSWORD from POSTGRES_PASSWORD and creates
-the `postgres` login with that password during fresh Docker initialization.
-`ansible/files/postgresql_config/pg_hba.conf.j2` uses SCRAM for the Docker network,
-while localhost uses trust. Application migrations therefore authenticate directly
-as `postgres` via the `db` Docker hostname; marker/ledger operations retain the
-infrastructure helper. CI proves correct-password login, incorrect-password
-rejection and actual schema/SECURITY DEFINER ownership. No ALTER OWNER is used.
+Os blocos YAML do Kong mantêm aspas do upstream. O entrypoint insere expressões Lua com aspas simples; trocar escalares para YAML com aspas simples corromperia o arquivo expandido. Rotas reduzidas mantêm semântica e template de chave legado é validado por parse.
+
+## Papel da migration e propriedade
+
+A imagem DB `supabase/postgres:17.6.1.136` corresponde a [commit upstream `d156ba65`](https://github.com/supabase/postgres/tree/d156ba65c14694c12cc5e782bc15b9b8ed2d1376). `migrations/db/migrate.sh` define PGPASSWORD de POSTGRES_PASSWORD e cria login `postgres` com essa senha na primeira inicialização. `pg_hba.conf.j2` usa SCRAM para rede Docker e trust em localhost.
+
+Migrations da aplicação autenticam como `postgres` via hostname `db`; marcador/ledger pertencem ao helper de infraestrutura. CI valida login com senha correta, rejeição da incorreta e owner real dos schemas/funções `SECURITY DEFINER`. **Não alterar owners após as migrations.**
+
+**Produção NO-GO:** esse documento descreve origem e adaptações do laboratório, não configuração de host físico ou R2/Cloudflare já provisionados.
