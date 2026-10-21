@@ -1,85 +1,88 @@
-# ADR-004 — Platform Technology Stack
+# ADR-004 — Stack tecnológica da plataforma
 
-Status: Accepted — physical host superseded by ADR-008  
-Date: 2026-09-24
+**Status: Aceito — escolha do host físico substituída pelo ADR-008**  
+**Data: 24/09/2026**
 
-> **Partially superseded by [ADR-008](ADR-008-production-host-thinkstation-c30.md) (2026-10-15).** The physical host is now a dedicated Lenovo ThinkStation C30 running Ubuntu Server LTS on bare metal, replacing the HP ProLiant ML350 and its Linux VM. Every other decision in this ADR remains in force. ML350-specific text below is kept as history.
+> **Parcialmente substituído pelo [ADR-008](ADR-008-production-host-thinkstation-c30.md), de 15/10/2026.** O host físico escolhido passa a ser uma **Lenovo ThinkStation C30 dedicada, com Ubuntu Server LTS bare metal**, no lugar da HP ProLiant ML350 e da VM Linux. **Todas as outras decisões deste ADR permanecem válidas.** Referências específicas à ML350 abaixo são históricas, não instruções atuais de implantação.
 
-## Decision
+## Decisão
 
-Gaúcha Gestão will use the following platform stack:
+A Gaúcha Gestão utilizará a seguinte stack:
 
 ### Frontend
-- React
-- TypeScript
-- Vite
-- Cloudflare Workers Static Assets for production delivery
+- React;
+- TypeScript;
+- Vite;
+- Cloudflare Workers Static Assets para entrega em produção.
 
-### Backend / data platform
-- Supabase Self-Hosted
-- PostgreSQL
-- Supabase Auth
-- PostgREST
-- Realtime
-- Storage API
-- Supavisor where connection pooling is appropriate
-- official Supabase gateway/topology preserved unless an accepted ADR explicitly changes it
+### Backend e plataforma de dados
+- Supabase Self-Hosted;
+- PostgreSQL;
+- Supabase Auth;
+- PostgREST;
+- Realtime;
+- Storage API;
+- Supavisor quando pool de conexões for adequado;
+- topologia/gateway oficiais do Supabase preservados, salvo alteração em novo ADR aceito.
 
-### File storage
-- Supabase Storage API
-- Cloudflare R2 as the preferred S3-compatible object-storage backend for production
+**Distinção entre decisão e execução:** Realtime e Supavisor aparecem na direção de plataforma aceita, mas **não integram o perfil mínimo de cinco serviços validado na CI** ([ADR-006, ainda proposto](ADR-006-infra-v1-reused-hardware.md)). Não declarar serviços opcionais como executados sem prova.
 
-### Infrastructure
-- HP ProLiant ML350 as the initial physical host
-- Linux VM
-- Ubuntu Server LTS
-- Docker Engine
-- Docker Compose
+### Armazenamento de arquivos
+- Supabase Storage API;
+- Cloudflare R2 como backend de objetos S3 compatível preferencial para produção.
 
-### Edge / ingress
-- Cloudflare DNS
-- Cloudflare WAF
-- Cloudflare Tunnel
-- no requirement for inbound public ports on the on-premise application host
+### Infraestrutura
+- ~~HP ProLiant ML350 como primeiro host físico~~ (**substituído pelo ADR-008**);
+- ~~VM Linux~~ (**substituída por Ubuntu diretamente no hardware**);
+- Ubuntu Server LTS;
+- Docker Engine;
+- Docker Compose.
+
+### Borda e entrada
+- Cloudflare DNS;
+- Cloudflare WAF;
+- Cloudflare Tunnel;
+- sem exigência de portas públicas de entrada no host on-premises.
 
 ### CI/CD
-- GitHub
-- GitHub Actions
-- validation before deploy
-- controlled production deployment
-- no implicit production deploy from ordinary feature work
+- GitHub e GitHub Actions;
+- validação antes de deploy;
+- deploy produtivo controlado;
+- nenhuma implantação implícita em produção a partir de uma tarefa comum.
 
-### Operations
-- automated PostgreSQL backups
-- logical backups
-- physical/base backup + WAL archiving for PITR
-- off-site backup copy
-- periodic restore tests
-- infrastructure recovery automation with Ansible
-- monitoring/observability for host, containers, PostgreSQL, Supabase services, Tunnel and backup jobs
-- frontend error telemetry with a privacy-reviewed tool such as Sentry
+### Operação
+- backups automatizados de PostgreSQL;
+- backups lógicos;
+- backup físico/base + arquivamento WAL para PITR;
+- cópia externa (*off-site*);
+- testes periódicos de restauração;
+- automação de provisionamento/recuperação por Ansible;
+- observabilidade de host, contêineres, PostgreSQL, serviços Supabase, Tunnel e backup;
+- telemetria de erro do frontend com ferramenta aprovada sob análise de privacidade, como Sentry.
 
-## Production topology
+**Esses itens de operação são requisitos TO-BE, não instalações comprovadas.** Evidência atual: [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md) e [restauração sintética](../planning/02_RESTORE_DRILL.md).
 
-```text
-                         INTERNET
-                            |
-                            v
+## Topologia prevista para produção (TO-BE)
+
+~~~text
+                       INTERNET
+                          |
+                          v
                      CLOUDFLARE
-                   DNS / WAF / CDN
-                    /           \
-                   v             v
-        React/Vite Assets   Cloudflare Tunnel
-        Workers Static            |
+                    DNS/WAF/CDN
+                   /           \
+                  v             v
+     React/Vite: assets     Cloudflare Tunnel
+       Workers Static             |
                                   v
-                           Supabase Gateway
+                           Gateway Supabase
                                   |
-             +--------------------+--------------------+
-             |                    |                    |
-             v                    v                    v
-            Auth              PostgREST             Realtime
-             |                    |                    |
-             +--------------------+--------------------+
+              +-------------------+-------------------+
+              |                   |                   |
+              v                   v                   v
+             Auth             PostgREST           Realtime
+              |                   |                   |
+              +-------------------+-------------------+
                                   |
                                   v
                               PostgreSQL
@@ -88,120 +91,95 @@ Gaúcha Gestão will use the following platform stack:
                               Supavisor
                                   ^
                                   |
-                     pooled DB clients when needed
+                       clientes com pool,
+                          quando necessário
 
                          Storage API
                               |
                               v
-                       Cloudflare R2
-```
+                         Cloudflare R2
+~~~
 
-The exact internal connections between Supabase services must follow the supported self-hosted topology. Supavisor is not assumed to be the mandatory path for every internal Supabase service.
+As conexões internas devem seguir a topologia self-hosted **suportada pelo upstream**. Supavisor não é caminho obrigatório para todo serviço Supabase. **Este desenho não é um diagrama do runtime atual**; consultar [DIAGRAMS](../architecture/DIAGRAMS.md).
 
-## Security decisions
+## Decisões de segurança
 
-- PostgreSQL is not exposed publicly.
-- Production credentials/secrets are not committed to Git.
-- Browser code never receives PostgreSQL credentials or privileged Supabase secrets.
-- Supabase Studio/technical administration must not be publicly exposed without additional access controls.
-- Application authorization remains permission + organizational scope based.
-- Cloudflare Tunnel is transport/ingress protection, not application authorization.
-- Sensitive file access remains authorized through the application/storage security model.
+- PostgreSQL não será exposto publicamente.
+- Segredos/credenciais produtivas não entrarão no Git.
+- Browser nunca receberá credenciais PostgreSQL ou segredos privilegiados Supabase.
+- Supabase Studio/administração técnica não poderão ser expostos publicamente sem controles adicionais.
+- Autorização da aplicação permanece baseada em **permissão + escopo organizacional**.
+- Cloudflare Tunnel protege transporte/entrada, **não substitui autorização de negócio**.
+- Arquivos sensíveis permanecem sujeitos à autorização da aplicação e do Storage.
 
-## Deployment decisions
+## Decisões de implantação
 
-- Docker Compose is the accepted v1 orchestrator.
-- Kubernetes and multi-node orchestration are out of scope without a concrete requirement.
-- Small controlled deployment downtime is acceptable initially.
-- Blue/green deployment is not a v1 requirement.
-- Watchtower-style automatic production updates are not allowed.
-- Supabase versions must be pinned and upgrades must be deliberate, tested and backed up.
+- Docker Compose é o orquestrador aceito para a v1.
+- Kubernetes e orquestração multi-host ficam fora do escopo sem necessidade concreta.
+- Indisponibilidade pequena e controlada durante deploy é inicialmente aceitável.
+- Blue/green não é requisito da v1.
+- Atualização automática produtiva no estilo Watchtower **não é permitida**.
+- Versões do Supabase devem ser **fixadas**, e upgrades exigem teste, backup e execução deliberada.
 
-## Backup decisions
+## Decisões sobre backup
 
-Production database protection will use two complementary mechanisms:
+A proteção produtiva do banco contará com **dois mecanismos complementares**:
 
-1. Logical backup, such as PostgreSQL dumps, for portability/selective recovery.
-2. Physical/base backup + WAL archiving for Point-in-Time Recovery.
+1. Backup lógico (como dumps PostgreSQL) para portabilidade/restauração seletiva.
+2. Backup físico/base com WAL arquivado para restauração a ponto no tempo (PITR).
 
-WAL/base backups must have an off-site destination. Keeping the only recoverable copy on the physical host (now the C30, ADR-008) is not acceptable.
+Backup WAL/base exige destino externo ao host. Manter a única cópia recuperável na C30 **não é aceitável**.
 
-Object storage is not considered a backup merely because it is off-host. File-retention/recovery strategy must be documented independently.
+Storage de objetos **não** é backup apenas por estar fora do host; retenção e recuperação dos arquivos exigem estratégia independente.
 
-## Disaster recovery
+## Recuperação de desastre
 
-The platform must be reproducible on replacement infrastructure.
+A plataforma deve ser reproduzível em infraestrutura substituta. Ansible é a ferramenta preferencial de provisionamento e recuperação do host/aplicação.
 
-Ansible is the preferred tool for host/application provisioning and recovery automation.
+O futuro runbook de recuperação deverá suportar:
 
-A disaster-recovery runbook must eventually support:
-
-```text
-replacement Ubuntu host
--> required packages/runtime
+~~~text
+novo host Ubuntu
+-> pacotes e runtime necessários
 -> Docker
--> pinned Supabase stack
--> configuration/secrets injection
--> PostgreSQL restore/PITR
--> R2 attachment access
--> Tunnel restoration
--> application health checks
-```
+-> stack Supabase com versões fixadas
+-> injeção segura de configurações/segredos
+-> restore PostgreSQL / PITR
+-> ligação ao R2 e validação dos objetos
+-> restauração do Tunnel
+-> healthchecks da aplicação
+~~~
 
-## Hardware decision boundary
+## Limite da decisão histórica de hardware
 
-> Superseded by ADR-008. Kept as history; the inventory and RAID items below do not apply to the C30.
+> **Substituído pelo ADR-008.** Esta seção é histórica; controladora RAID e requisitos da ML350 não se aplicam automaticamente à C30.
 
-The ML350 is accepted as the initial single physical host, knowingly creating a hardware SPOF.
+A decisão original escolhia ML350 como host físico único, aceitando SPOF de hardware.
 
-The following are still pending physical inventory:
-- CPU model/count;
-- total RAM;
-- disk count/type/capacity/health;
-- RAID controller;
-- protected write-back cache / BBWC / FBWC status;
-- current RAID level;
-- NICs;
-- measured power usage.
+Inventário físico ainda faltante **na época**:
+- modelo/quantidade de CPU, RAM e discos, tipo/capacidade/saúde;
+- controladora RAID, cache protegido BBWC/FBWC, nível RAID;
+- placas de rede e consumo medido.
 
-RAID 10 is preferred for a write-heavy PostgreSQL workload when hardware/capacity justify it. RAID 1 remains acceptable for a small two-disk configuration. RAID is never a substitute for backup.
+RAID 10 era preferência para PostgreSQL com muitas escritas quando hardware/capacidade justificassem; RAID 1 aceitável em arranjo simples de dois discos. **RAID nunca substitui backup.**
 
-## Availability
+## Disponibilidade
 
-Initial production accepts single-host availability.
+A decisão inicial aceita **host único**. Medidas físicas recomendadas: UPS dimensionada para host/rede, fontes redundantes quando disponíveis, WAN dupla/failover quando justificável e procedimento documentado para host substituto.
 
-Recommended physical resilience:
-- UPS sized for server + essential networking;
-- redundant power where available;
-- dual-WAN/failover when economically justified;
-- documented replacement-host procedure.
+Alta disponibilidade com um segundo host fica adiada até requisito de negócio.
 
-High availability with a second host is deferred until there is a business requirement.
+## Consequências
 
-## Consequences
+**Benefícios:** menor custo recorrente, controle de dados/runtime, base compartilhada, stack web consolidada, operação simples em host único, caminho planejado de recuperação, objetos separados do disco do servidor e assets protegidos/servidos na borda Cloudflare.
 
-Positive:
-- low recurring infrastructure cost;
-- strong control of company data and runtime;
-- shared platform for all modules;
-- proven web stack;
-- simple single-host operations;
-- strong disaster-recovery path;
-- object storage decoupled from server disk;
-- Cloudflare edge protects and serves static content.
+**Trade-offs:** operação do Supabase self-hosted é responsabilidade do projeto; **host único permanece SPOF (agora C30)**; upgrades exigem disciplina; backup/PITR/monitoramento/restore ficam sob nossa responsabilidade; disponibilidade depende de energia, rede e hardware locais.
 
-Trade-offs:
-- Supabase self-hosting requires operational ownership;
-- the ML350 remains a SPOF;
-- updates require discipline;
-- backup, PITR, monitoring and restore testing are our responsibility;
-- availability is limited by local power/network/hardware.
+## Quando reconsiderar
 
-## Revisit when
-
-Reconsider this stack only when evidence shows one of the following:
-- single-host availability no longer meets business requirements;
-- workload exceeds reasonable vertical scaling;
-- compliance/security needs require another deployment model;
-- self-hosted Supabase operational burden becomes materially higher than managed alternatives;
-- a module has a justified runtime requirement incompatible with this architecture.
+Reabrir a decisão somente com evidência de que:
+- host único não atende à disponibilidade exigida;
+- carga extrapola escalabilidade vertical razoável;
+- segurança/compliance impõe outro desenho;
+- custo operacional self-hosted supera materialmente alternativas gerenciadas;
+- algum módulo precisa, justificadamente, de runtime incompatível com a arquitetura.
