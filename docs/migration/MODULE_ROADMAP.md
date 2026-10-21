@@ -1,5 +1,7 @@
 # Module Migration Roadmap
 
+> **Estado revisado em 21/10/2026:** este documento define uma **sequência candidata**, não é autorização para implementar nem substitui o [Plano Diretor](../planning/PLANO_DIRETOR_2026.md). O código da Curva ABC v1 já foi integrado (PR #69); Agendamento de Salas tem somente um brief AG-00 proposto (PR #72). **PROD NO-GO.**
+
 ## Purpose
 
 This is a sequencing guide, not a delivery-date promise.
@@ -18,10 +20,10 @@ Migration order prioritizes:
 | ISO Records / legacy Propostas ISO | finished legacy | medium | migration gate required before implementation; the source system is functionally commercial clients/proposals despite the historical ISO name, so ownership/navigation must be resolved first |
 | Sales / Card Machines | finished | low | dashboard/import-oriented |
 | Satisfaction Survey | finished | low | strong unit/period integration candidate |
-| Meeting Room Scheduling | finished, weak | low | likely cheaper to reimplement on platform foundation |
+| Meeting Room Scheduling | legacy functional; brief AG-00 PROPOSTO | low | [ROOM_BOOKING_V1](../briefs/ROOM_BOOKING_V1.md) e [critérios AG](../modules/room-booking/ACCEPTANCE_V1.md) ainda sem aceite do responsável e da secretária; implementação AG-01 não autorizada |
 | Fleet | not finished | medium | continue future development directly in platform after foundation |
 | Planned vs Actual | finished | medium | preserve validated import/calculation rules |
-| ABC Curve | not finished | high | **current priority (2026-10-19)**; brief `docs/briefs/ABC_DOMAIN_V1.md`; no standalone history is migrated; data sensitive |
+| ABC Curve | **platform v1 integrated (PR #69)** | high | import/query/revision implemented; [ERP samples and two-person acceptance](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) pending; no desktop history migrated; data sensitive |
 | Contracts ERP | finished | high | important workflows/data; backup/recovery must be reviewed first |
 
 ## Phase 0 — Architecture and foundation design
@@ -67,14 +69,15 @@ Candidate sequence:
 ## Phase 4 — Complex domains
 
 Candidate sequence:
-1. ABC Curve;
-2. Contracts ERP.
+1. Contracts ERP (after backup/recovery and domain acceptance).
+
+ABC v1 was pulled forward and integrated in October 2026; the ABC module is **no longer a future migration task**. Extensions beyond v1 require a separate brief and authorization.
 
 Exact order can change with business priority and source-system readiness.
 
 ## Priority change — 2026-10-19
 
-By decision of the product owner, ABC Curve moves ahead of Phases 2–4 and is the module under implementation now. Quality closure (P1–P9, O1–O8) remains a release gate for production; this change does not waive it. The standalone ABC repository (`The-Vonky/CurvaABC-Gaucha`) contributes rules and test cases only; its desktop history is not migrated.
+**Historical decision, 19/10:** by product-owner priority, ABC Curve moved ahead of Phases 2–4. **Current implementation state, 21/10:** ABC v1 was merged by [PR #69](https://github.com/The-Vonky/Gaucha-Gestao/pull/69) on 20/10. Import, revision and query code exists, but manual acceptance is still open in [Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70); do not call it ready for production. Quality closure (P1–P9, O1–O8) remains the production release gate. The standalone ABC repository (`The-Vonky/CurvaABC-Gaucha`) contributes rules and tests; its desktop history is not migrated.
 
 ## Per-module migration gate
 
