@@ -1,215 +1,230 @@
 # Gaúcha Gestão
 
-Plataforma corporativa modular que centraliza os sistemas internos da Gaúcha Alimentação: autenticação, autorização por unidade, auditorias de qualidade, planos de ação, evidências e, aos poucos, os demais sistemas da empresa.
+**Plataforma interna da Gaúcha Alimentação para reunir sistemas corporativos em uma aplicação modular, com identidade única, controle de acesso por unidade e rastreabilidade de operações.**
 
-> **Fotografia atualizada em 20/10/2026:** o software da Qualidade v1 e a Fundação Core v2 estão na `main` e passam nos checks. **A plataforma não está em produção e não está liberada para produção (NO-GO).** O host foi decidido (Lenovo ThinkStation C30, [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md)); a Curva ABC v1 integra o código da main pela PR #69, mas ainda não tem homologação de produção. A ordem do que falta está no [Plano Diretor 2026](docs/planning/PLANO_DIRETOR_2026.md).
+> **Estado em 21/10/2026 · baseline da documentação: [main `f9f041e`](https://github.com/The-Vonky/Gaucha-Gestao/commit/f9f041edc6bd76f1abb4b59e2bde8ae8acbae923)**  
+> **Código funcional integrado, implantação produtiva NÃO autorizada (PROD NO-GO).** Merge de código, CI verde e teste local **não** significam que o sistema foi implantado, homologado ou está pronto para receber dados reais. Consulte o [Plano Diretor](docs/planning/PLANO_DIRETOR_2026.md) para os gates oficiais.
 
-## Sumário
+**Comece aqui:** [Executar localmente](#primeiros-passos-ambiente-local) · [O que já funciona](#o-que-ja-existe) · [O que falta](#o-que-falta-para-producao) · [Arquitetura](#arquitetura-como-as-pecas-conversam) · [Documentação completa](#onde-encontrar-cada-resposta)
 
-- [Onde estamos](#onde-estamos)
-- [Próximos passos](#próximos-passos)
-- [Decisões pendentes](#decisões-pendentes)
-- [Arquitetura em resumo](#arquitetura-em-resumo)
-- [Módulos](#módulos)
-- [Estrutura do repositório](#estrutura-do-repositório)
-- [Como rodar localmente](#como-rodar-localmente)
-- [Testes e CI](#testes-e-ci)
-- [Como trabalhar no repositório](#como-trabalhar-no-repositório)
-- [Mapa da documentação](#mapa-da-documentação)
-- [Princípios](#princípios)
+## Entenda o projeto em cinco minutos
 
-## Onde estamos
+A empresa mantém vários sistemas separados (auditorias, controles financeiros, agendas, contratos etc.). A Gaúcha Gestão consolida **identidade, unidades, setores, permissões, navegação e auditoria** em um **Core** reutilizável; cada módulo de negócio preserva suas próprias regras e dados. A migração é **incremental**, sem descartar os sistemas antigos antes de validação e plano de retorno.
 
-| Frente | Situação | Referência |
-| --- | --- | --- |
-| Qualidade v1 (software) | Implementada e integrada: Auditoria (158 critérios), reabertura, Planos de Ação, evidências, Checklist Evidence, exportação XLSX e impressão/PDF, Login v3 · Elo | PR #18; [matriz factual](docs/modules/audit/QUALITY_COMPLETION_V1.md) |
-| Fundação Core v2 | Consolidada na `main` pelo PR #38 (13/10): resolvers de referências, governança e revisão de acessos, logs administrativos legíveis, matriz de segurança com JWT reais. Seguida pelos PRs #39 (npm audit completo) e #40; Issue #41 permanece em acompanhamento | [prontidão da consolidação](docs/briefs/CORE_V2_CONSOLIDATION_READINESS.md) |
-| Identidade privilegiada (ADR-007) | **Proposta**, em `docs/adr-core-identity-boundary-v1`, não mergeada. O serviço de criação/recuperação de contas **não existe**. Não implementar runtime, migrations ou cutover sem GO humano | [protocolo paralelo, §1](docs/development/PARALLEL_AGENT_WORKFLOW.md) |
-| Homologação física P1–P9 | **Pendente** (Android Chrome e iOS Safari). Testes manuais informados em 13/10 não substituem esses gates | [aceite final](docs/modules/audit/QUALITY_ACCEPTANCE_V1.md) |
-| Prontidão operacional O1–O8 | O1, O5 e O6 parciais; O2 desconhecido; O3, O4, O7 e O8 abertos | [aceite final](docs/modules/audit/QUALITY_ACCEPTANCE_V1.md) |
-| Infraestrutura reproduzível | Perfil mínimo de 5 serviços (Postgres 17, Kong, GoTrue, PostgREST, Storage) validado em CI descartável | [ADR-006](docs/decisions/ADR-006-infra-v1-reused-hardware.md), [infra/](infra/README.md) |
-| Host | **Decidido em 15/10:** ThinkStation C30 dedicada, Ubuntu Server LTS direto no hardware, substituindo o servidor legado e a HP ML350 do ADR-004. A seleção do host está decidida; o aceite e o estado físico atual exigem evidências operacionais recentes | [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md) |
-| Backup e restore | Ensaio sintético a frio (8 PASS, DR-08 parcial), com 17 migrations históricas; backup independente e WAL/PITR de produção ainda sem prova | [Relatório DR-01–DR-09](docs/planning/02_RESTORE_DRILL.md), [BACKUP_RECOVERY](docs/architecture/BACKUP_RECOVERY.md) |
-| Proteção da `main` | **Adiada** por decisão do responsável. Risco de governança aberto, principalmente com agentes em paralelo | [protocolo paralelo, §2](docs/development/PARALLEL_AGENT_WORKFLOW.md) |
-| DEV compartilhado | Dois logins e dados comuns funcionais na Issue #68; autoria, RLS e rede continuam em verificação | [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) |
-| Produção | **NO-GO.** Nenhum ambiente produtivo homologado ou deploy de produção está comprovado no repositório | [Plano Diretor, §1](docs/planning/PLANO_DIRETOR_2026.md) |
-
-Checks executados localmente em 15/10/2026 sobre o HEAD `aee20ec` da `main`: typecheck, lint, 483 testes (34 arquivos), build, verify:build e `npm audit` (0 vulnerabilidades) passaram. As integrações com Supabase real (`tests/integration`) rodam só na CI e não foram executadas nessa verificação.
-
-## Próximos passos
-
-Resumo da sequência do [Plano Diretor, §8](docs/planning/PLANO_DIRETOR_2026.md). Cada etapa tem um gate; a seguinte só começa quando o gate da anterior estiver comprovado.
-
-| Etapa | O quê | Quem |
-| --- | --- | --- |
-| 0 | Congelar baseline: branches, PRs, dados e serviços existentes | Humano |
-| 1 | Backup do que existe hoje (incluindo a C30) e restore isolado. Nada é formatado antes disso | Humano |
-| 2 | Fechar ADR-007, revisão de segurança, CI do commit exato, decidir proteção da `main` | Humano decide; agentes implementam após GO |
-| 3 | Definir metas: RPO técnico, RTO, retenções, usuários/unidades, p95 | Humano |
-| 4 | Reinstalar a C30 com Ubuntu Server, subir o perfil mínimo e medir contra as metas | Humano opera; agentes preparam scripts/Ansible |
-| 5 | Montar STAGING reproduzível com Cloudflare e Storage privado | Agentes, com aprovação humana para o ambiente persistente |
-| 6 | Homologar P1–P9 no STAGING | Humano executa nos aparelhos; agentes corrigem bugs |
-| 7 | Decidir backup por ADR e provisionar PROD com backup, segredos, alertas | Humano decide; agentes implementam |
-| 8 | Simular incidentes, rollback e carga; comprovar O8 e metas | Humano + agentes |
-| 9 | Aprovação formal e cutover | Humano |
-| 10 | Operação assistida e migração dos demais módulos, um por vez | Ambos |
-
-## Decisões pendentes
-
-Estas decisões são do responsável do projeto. Agentes não devem assumi-las.
-
-- Metas numéricas: RPO técnico, RTO dentro e fora da janela (seg–sex, 07–18h), retenções, usuários e unidades esperados, meta de p95. Não registrar RPO = 0.
-- Destino do servidor legado: desligar, ou manter como host de STAGING / testes de restore.
-- Onde roda o STAGING, se o servidor legado não for mantido.
-- Ferramenta de WAL/PITR (WAL-G ou pgBackRest) e destino off-site do backup.
-- GO do ADR-007 (identidade privilegiada).
-- Ativação da proteção da `main` e aprovação do [protocolo de trabalho paralelo](docs/development/PARALLEL_AGENT_WORKFLOW.md).
-
-## Arquitetura em resumo
-
-Monólito modular ([ADR-001](docs/decisions/ADR-001-modular-monolith.md)). O Core é dono de identidade, autorização, unidades, setores e logs; os módulos de negócio dependem do Core, nunca o contrário ([ADR-002](docs/decisions/ADR-002-core-and-module-ownership.md)). A autorização é aplicada no banco, com RLS e RPCs confiáveis ([ADR-005](docs/decisions/ADR-005-core-authorization.md)).
-
-```text
-navegador
-  → frontend estático (Cloudflare Workers Static Assets)
-  → API via Cloudflare Tunnel/WAF (sem portas públicas no host)
-  → Kong → GoTrue (Auth) · PostgREST · Storage API
-  → PostgreSQL 17 com RLS          Storage API → Cloudflare R2 (arquivos)
-host: Lenovo ThinkStation C30 · Ubuntu Server LTS · Docker Compose
-```
-
-| Camada | Tecnologia | Decisão |
-| --- | --- | --- |
-| Frontend | React 19, TypeScript, Vite; Design System Elo | [ADR-004](docs/decisions/ADR-004-platform-stack.md), [Elo v1](docs/briefs/DESIGN_SYSTEM_ELO_V1.md) |
-| Backend | Supabase self-hosted, perfil mínimo de 5 serviços | [ADR-006](docs/decisions/ADR-006-infra-v1-reused-hardware.md) |
-| Banco | PostgreSQL 17 (`supabase/postgres:17.6.1.136`), migrations versionadas | [DATA_MODEL](docs/architecture/DATA_MODEL.md) |
-| Arquivos | Storage API com buckets privados; R2 em produção | [ADR-004](docs/decisions/ADR-004-platform-stack.md) |
-| Entrada | Cloudflare DNS, WAF e Tunnel | [ADR-004](docs/decisions/ADR-004-platform-stack.md) |
-| Host | ThinkStation C30, Ubuntu Server LTS bare metal, dedicada | [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md) |
-
-Antes de qualquer mudança estrutural, leia o [OVERVIEW](docs/architecture/OVERVIEW.md).
-
-## Módulos
-
-| Módulo | Situação |
+| Pergunta | Resposta rápida |
 | --- | --- |
-| Auditoria de Qualidade | Implementado na plataforma; prioridade atual (homologação e operação pendentes) |
-| Planos de Ação | Implementado na plataforma, transversal ([ADR-003](docs/decisions/ADR-003-action-plans-transversal-module.md)) |
-| Registros ISO | Sistema standalone finalizado; migração futura |
-| Vendas / Maquininhas | Sistema standalone finalizado; migração futura |
-| Pesquisa de Satisfação | Sistema standalone finalizado; migração futura |
-| Agendamento de Sala de Reunião | Sistema standalone finalizado; requer revisão |
-| Frota | Sistema de origem em desenvolvimento |
-| Planejado × Realizado | Sistema standalone finalizado; requer revisão |
-| Curva ABC | **v1 integrada à main** (PR #69); importação, revisões e consulta implementadas; homologação manual pendente |
-| ERP de Contratos | Sistema standalone finalizado; requer revisão de backup |
+| **O que já está no código?** | Core v2 e administração; **Auditoria de Qualidade v1**; **Planos de Ação**; evidências e relatórios; **Curva ABC v1** com importação, revisões e consulta. |
+| **O que funciona em testes?** | Testes automatizados de frontend, SQL/RLS e integração Supabase/Storage/Chromium em CI; Compose mínimo descartável. Não representam operação produtiva. |
+| **Onde desenvolver?** | Instância **local e exclusiva**, seguindo o passo a passo abaixo. Existe também um **DEV compartilhado** documentado na [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68): não confundir nem apagar. |
+| **Produção?** | **NO-GO**. Homologação física, segurança privilegiada, host, backup independente, metas operacionais e aceite humano ainda pendentes. |
+| **Como evolui?** | Primeiro concluir os gates da Qualidade/plataforma; depois migrar módulos individualmente conforme [roadmap](docs/migration/MODULE_ROADMAP.md), decisões e briefs aprovados. |
+| **Quem define o que implementar?** | Brief/issue aprovada + ADRs aceitos + [Plano Diretor](docs/planning/PLANO_DIRETOR_2026.md). Agentes e desenvolvedores não devem converter propostas em decisões. |
 
-Os sistemas standalone continuam preservados como referência e contingência. A migração é incremental, um módulo por vez, cada um com gates próprios ([MODULE_ROADMAP](docs/migration/MODULE_ROADMAP.md)).
+### Vocabulário de estado (importante)
 
-## Estrutura do repositório
+- **IMPLEMENTADO (AS-IS):** está no código versionado, com testes quando indicados; **não** afirma deploy.
+- **VALIDADO EM CI:** executado na versão/commit do workflow citado; **não** substitui teste em dispositivos nem restore produtivo.
+- **DECIDIDO:** escolha registrada em ADR aceito, que pode ainda aguardar instalação (ex.: C30).
+- **PROPOSTO (TO-BE):** design, brief ou futura infraestrutura sem aprovação/execução.
+- **PENDENTE / BLOQUEADO:** requer evidência, decisão, teste ou autorização antes de avançar.
 
-```text
-apps/web/            frontend React (app/, core/, modules/audit, modules/action-plans, modules/abc, shared/)
-supabase/            config.toml e migrations versionadas (nunca editar migration já aplicada)
-infra/               compose do perfil mínimo e env de exemplo (sem segredos)
-scripts/             verify-build.mjs e scripts/ops (só ci/staging descartável; recusam production)
-tests/               testes unitários, de UI e de banco (Vitest/PGlite); integration/ e performance/
-docs/
-  planning/          Plano Diretor 2026: ordem de execução, gates, custos, pendências
-  decisions/         ADRs 001–006 e 008 (ADR-007 em proposta, fora da main)
-  architecture/      visão geral, segurança, autorização, dados, backup, gates
-  briefs/            briefs de implementação (um por entrega)
-  modules/           contratos e aceites por módulo
-  development/       setup local, testes manuais, fluxo com IA e trabalho paralelo
-  migration/         roteiro de migração dos sistemas standalone
-.github/             workflows de CI e template de PR
-AGENTS.md            regras para agentes de código (CLAUDE.md aponta para ele)
-```
+## O que já existe
 
-## Como rodar localmente
+| Domínio | Entrega concreta na plataforma | Limite atual |
+| --- | --- | --- |
+| **Core v2 / Administração** | Autenticação Supabase, perfis, papéis, grants por unidade/setor, diretório e governança de acessos, logs | Serviço privilegiado de criação/recuperação de identidade **não aprovado** ([ADR-007 / Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49)) |
+| **Qualidade — Auditorias** | Checklist de 9 seções / 158 critérios, criação/edição/finalização/reabertura, histórico, anexos por critério, XLSX e impressão/PDF | Homologação Android/iOS **P1–P9** e prontidão **O1–O8** pendentes |
+| **Planos de Ação** | Planos manuais e associados à Auditoria; ciclo corretivo, evidências, atribuições e verificações | Operação/aceite reais dependem do fechamento dos gates |
+| **Curva ABC v1** | Importação XLSX do ERP no navegador, prévia, publicação e histórico de revisões por unidade, consulta e conferência posterior do original | Amostras reais autorizadas, RLS em duas identidades e integridade da origem ainda pedem homologação ([#70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70)); **SQL não reinterpreta o XLSX físico no servidor** |
+| **Infra de testes** | Supabase CLI local e stack Docker Compose mínima (PostgreSQL, Kong, Auth, PostgREST, Storage); CI com testes de RLS/Storage | Laboratório e CI **não** são STAGING/PROD persistentes |
+| **Continuidade (ensaio)** | Restore **sintético a frio** de banco/Auth/arquivos/RLS comprovado no snapshot histórico com 17 migrations | **DR-08 PARCIAL** (tempo não medido); ambiente atual com 18 migrations e arquivo ABC não foi coberto por aquele ensaio ([#51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51)) |
 
-Requisitos: Node 22.12+ e npm. Para Supabase local, também Supabase CLI e Docker.
+**Ainda não integrados como módulos da plataforma:** Propostas/Registros ISO (ownership pendente), Vendas/Maquininhas, Satisfação, Agendamento de Salas, Frota, Planejado × Realizado e ERP de Contratos. Os respectivos legados **não são apagados** ao implementar o novo sistema.
 
-```sh
-npm ci
-cp apps/web/.env.example apps/web/.env.local   # preencha só URL local e chave publishable
-npm run dev
-```
+**Agendamento de Salas:** o [brief AG-00](docs/briefs/ROOM_BOOKING_V1.md) e seus [critérios de aceite](docs/modules/room-booking/ACCEPTANCE_V1.md) estão versionados, mas continuam **PROPOSTOS**; não houve aprovação do negócio nem implementação AG-01. O sistema legado permanece como referência até eventual corte aprovado.
 
-- No frontend, use apenas a chave **publishable** (ou JWT anon legado). Nunca `service_role`, chave secreta ou credencial do PostgreSQL.
-- Sem configuração, a aplicação mostra um estado explícito de "ambiente indisponível".
-- Supabase local, bootstrap do primeiro administrador e regras da fundação: [LOCAL_FOUNDATION](docs/development/LOCAL_FOUNDATION.md).
-- Para testar o Core v2 em PC/Android sem tocar em ambiente compartilhado: [CORE_V2_MANUAL_TEST](docs/development/CORE_V2_MANUAL_TEST.md).
-- `supabase db reset` só em banco local descartável sob seu controle. Nunca `--linked`, `db push` ou URL remota.
+## Arquitetura: como as peças conversam
 
-## Testes e CI
+A arquitetura aprovada é um **monólito modular de frontend com Core compartilhado e backend de negócio centrado em PostgreSQL/RPC/RLS**, não um conjunto de microsserviços nem uma API Node de negócio paralela.
 
-| Comando | O que faz |
-| --- | --- |
-| `npm run typecheck` | TypeScript sem emitir arquivos |
-| `npm run lint` | ESLint em todo o repositório |
-| `npm test` | Vitest: unidade, UI e banco (PGlite com migrations, RLS e grants reais) |
-| `npm run test:rls` | Só os testes de banco/RLS |
-| `npm run build` | Build de produção do frontend |
-| `npm run verify:build` | Confere que o bundle contém os módulos e nenhuma chave privilegiada |
+~~~mermaid
+flowchart LR
+  U["Usuário / navegador"] --> UI["React + TypeScript / App Shell"]
+  UI --> SDK["supabase-js / chave publishable"]
+  SDK --> G["Kong / gateway"]
+  G --> AUTH["GoTrue / Auth / JWT"]
+  G --> REST["PostgREST / schemas e RPC"]
+  G --> STORE["Storage API / buckets privados"]
+  AUTH --> PG[("PostgreSQL 17")]
+  REST --> PG
+  STORE --> PG
+  STORE --> OBJ["Bytes de arquivos"]
+  PG --> CORE["core: identidade, grants, unidades, logs"]
+  PG --> MOD["audit / action_plans / abc"]
+~~~
 
-Para o `verify:build` passar localmente, o build precisa das mesmas variáveis fictícias da CI (sem elas, o bundle é só a tela de ambiente não configurado):
+**O que o desenho representa:** componentes existentes no **código/stack de laboratório**, não um deploy de produção. Uma sessão JWT estabelece identidade; **RLS, grants e RPCs no banco** aplicam autorização. A interface apenas apresenta opções permitidas — ocultar botão nunca é uma barreira de segurança. Arquivos precisam de **metadados no banco e bytes no Storage** coerentes.
 
-```sh
+**Produção planejada, ainda não demonstrada:** frontend estático com **Cloudflare Workers Static Assets**, DNS/WAF/Tunnel como entrada, **R2** para objetos e **ThinkStation C30 com Ubuntu Server LTS bare metal** como host do backend. Cloudflare não substitui RLS; R2 não é cópia de segurança independente; Compose num host único não fornece alta disponibilidade. A C30 foi escolhida pelo [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md), **não aprovada como host já operante**.
+
+Para diagramas maiores e arquitetura detalhada: [DIAGRAMS](docs/architecture/DIAGRAMS.md), [WORKFLOWS](docs/architecture/WORKFLOWS.md), [IMPLEMENTATION_MAP](docs/architecture/IMPLEMENTATION_MAP.md) e [THREAT_MODEL](docs/architecture/THREAT_MODEL.md).
+
+### Stack e por que foi escolhida
+
+| Camada | Tecnologia de referência | Função no projeto e razão da escolha |
+| --- | --- | --- |
+| Web | **React 19 + TypeScript 5 + React Router 7 + Vite 6** | SPA modular com tipagem e build estático; o Vite compila o frontend e **não** executa backend de negócio em PROD |
+| Design | **Elo v1** | Padrões institucionais de interface e componentes reutilizáveis |
+| API e identidade | **supabase-js 2, GoTrue/Auth, Kong, PostgREST** | Sessão comum, roteamento de serviços, consultas e RPCs SQL; menos API própria a manter |
+| Dados e segurança | **PostgreSQL 17, migrations, RLS, RPC** | Transações, invariantes e escopos confiáveis próximos dos dados; uso de `numeric` para cálculos sensíveis |
+| Objetos | **Supabase Storage API** | Evidências, capas e XLSX originais em buckets privados; consistência DB/bytes requer cuidado |
+| Infra de CI/laboratório | **Docker Compose + Supabase CLI** | Ambiente reproduzível e isolado, sem orquestrador distribuído |
+| Qualidade | **Vitest, PGlite, Playwright e GitHub Actions** | Unit/UI, banco/RLS, integração com serviços reais em CI e verificação de build/dependências |
+| Implantação futura | **Ubuntu Server na C30 + Cloudflare/R2** | Controle de runtime/dados e custo recorrente adequado à fase atual; disponibilidade, operação e recuperação precisam ser comprovadas |
+
+**“Melhor escolha” aqui significa adequação aos requisitos e trade-offs documentados**, não comparação científica universal. Para alternativas, riscos aceitos, decisões substituídas e critérios de revisão, leia [TECHNOLOGY_DECISIONS](docs/architecture/TECHNOLOGY_DECISIONS.md) e os [ADRs](docs/decisions/), principalmente [ADR-001](docs/decisions/ADR-001-modular-monolith.md), [ADR-002](docs/decisions/ADR-002-core-and-module-ownership.md), [ADR-004](docs/decisions/ADR-004-platform-stack.md), [ADR-005](docs/decisions/ADR-005-core-authorization.md) e [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md).
+
+## Primeiros passos: ambiente local
+
+**Pré-requisitos:** Git, **Node.js >= 22.12**, npm, Docker Engine/Desktop com Linux containers e Docker Compose. Usamos a **Supabase CLI 2.117.0** via `npx`; não precisa instalar um binário `supabase` global. Use terminal Bash (Linux/macOS/WSL2).
+
+> **Isolamento obrigatório:** execute em checkout e instância locais próprios. Antes de iniciar Docker, confira se não é o projeto DEV compartilhado, staging persistente, outro projeto Supabase, o ERP de Contratos ou um banco com dados importantes. **Não execute** `supabase db reset`, `db push`, `--linked`, `docker compose down -v` ou `prune` em ambientes compartilhados. Não envie envs ou saídas contendo tokens para PRs.
+
+1. **Obtenha o código e instale dependências** (checkout novo):
+
+   ~~~bash
+   git clone https://github.com/The-Vonky/Gaucha-Gestao.git
+   cd Gaucha-Gestao
+   git switch main
+   npm ci
+   ~~~
+
+2. **Confirme Docker/Compose e inicie o Supabase local somente se o projeto for exclusivo.** A configuração em [`supabase/config.toml`](supabase/config.toml) usa API `54321`, Postgres `54322` e Studio `54323`. O comando abaixo deixa Studio habilitado e exclui serviços não essenciais:
+
+   ~~~bash
+   docker version
+   docker compose version
+   docker compose ls --all
+   npx --yes supabase@2.117.0 start -x realtime,imgproxy,mailpit,edge-runtime,logflare,vector,supavisor
+   npx --yes supabase@2.117.0 status
+   ~~~
+
+   Se a instância **já existe**, investigue o status e as portas antes de iniciá-la novamente; **não** use reset para resolver erro de portas ou migrations. O `status` apresenta chaves e informações sensíveis: consulte **localmente**, nunca cole sua saída integral em issues/chats.
+
+3. **Configure o frontend.** Copie o modelo e preencha `apps/web/.env.local` **com o Project URL da API e a Publishable key do mesmo Supabase local**, exibidos pela CLI. Somente valores públicos de cliente; **nunca Secret/service_role, URI do banco nem chaves administrativas**.
+
+   ~~~bash
+   cp apps/web/.env.example apps/web/.env.local
+   # Edite apps/web/.env.local no seu editor, sem commitar o arquivo:
+   # VITE_SUPABASE_URL=http://127.0.0.1:54321
+   # VITE_SUPABASE_PUBLISHABLE_KEY=<sua chave publishable LOCAL>
+   ~~~
+
+4. **Crie um usuário de laboratório para conseguir fazer login.** Cadastro público está desabilitado: no **Studio local** (`http://127.0.0.1:54323`), abra **Authentication → Users**, crie e confirme um usuário de teste. No **SQL Editor local**, como operador do banco, execute **uma única vez**, substituindo pelo UUID do usuário confirmado:
+
+   ~~~sql
+   select private.bootstrap_administrator('UUID_DO_USUARIO_CONFIRMADO'::uuid);
+   ~~~
+
+   Esse bootstrap é uma ação **privilegiada apenas no banco local**; não use conta, senha ou UUID do DEV compartilhado e não copie privilégios para outros ambientes. Consulte [LOCAL_FOUNDATION](docs/development/LOCAL_FOUNDATION.md) para o contrato e as regras de acesso.
+
+5. **Inicie a aplicação:**
+
+   ~~~bash
+   npm run dev
+   ~~~
+
+   Abra o endereço indicado pelo Vite (geralmente `http://localhost:5173`) e faça login com a conta **criada no seu Supabase local**. Se mudar o arquivo `.env.local`, reinicie o Vite.
+
+**Verificação rápida / solução de problemas:** “ambiente indisponível” geralmente indica URL/chave ausente, chave incorreta ou Vite não reiniciado; “login inválido” pode indicar conta inexistente **naquele banco**; “sem acesso” exige verificar grants/escopo Core, **não** desligar RLS. Portas ocupadas exigem inventário de processos/projetos antes de mudar serviços. Para trabalho remoto entre dois devs use a [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68), e **não** exponha Studio, Postgres, chaves locais padrão ou Admin API à LAN.
+
+## Verificar o código e contribuir
+
+~~~bash
+npm run typecheck
+npm run lint
+npm test
+npm run test:rls
+npm run build
+npm run verify:build
+npm audit --audit-level=moderate
+~~~
+
+Para verificar o **bundle real** sem conectar ao backend, o build/`verify:build` precisa das variáveis públicas fictícias usadas na CI:
+
+~~~bash
 VITE_SUPABASE_URL=http://127.0.0.1:54321 \
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci-build-placeholder \
 npm run build && npm run verify:build
-```
+~~~
 
-Jobs da CI (`.github/workflows/`):
+| Pipeline | O que comprova | O que **não** comprova |
+| --- | --- | --- |
+| [Validate foundation](.github/workflows/validate.yml) → `validate` | Tipagem, lint, testes, build, verificação de bundle e `npm audit` | Deploy produtivo, validação física |
+| Mesmo workflow → `action-plans-integration` | Testes reais com **Supabase CLI descartável**, Storage, PostgreSQL/JWT/RLS e browser | Dados reais, persistência produtiva, dispositivos físicos |
+| [Infra validate](.github/workflows/infra-validate.yml) | Compose mínimo, migrations e saúde do stack em CI | Recuperação em host físico ou configuração C30 |
 
-- `validate`: typecheck, lint, testes, build, verify:build e `npm audit --audit-level=moderate`.
-- `action-plans-integration`: Supabase CLI descartável com integrações reais (`tests/integration/*.mjs`) e Playwright.
-- `infra-validate`: sobe o perfil mínimo do ADR-006, aplica migrations, healthcheck e smoke; depois destrói tudo.
+**Evidência recente:** no HEAD de revisão da [PR #62](https://github.com/The-Vonky/Gaucha-Gestao/pull/62) os jobs `validate`, `action-plans-integration` e `infra-validate` terminaram com sucesso em 21/10/2026; o merge subsequente está em `f9f041e`. Para avaliar qualquer alteração nova, consulte os **checks do SHA exato** em [GitHub Actions](https://github.com/The-Vonky/Gaucha-Gestao/actions), não uma contagem histórica de testes.
 
-CI verde comprova o código, não a operação: não substitui P1–P9, O1–O8 nem aprovação de liberação.
+**Fluxo de contribuição:** issue/brief aprovado → branch própria derivada de `origin/main` → alterações pequenas e migrations **append-only** → testes negativos de escopo/RLS → PR com diffs, riscos e checks → revisão humana → merge. Não faça push direto na `main`. Leia [AGENTS.md](AGENTS.md), [PARALLEL_AGENT_WORKFLOW](docs/development/PARALLEL_AGENT_WORKFLOW.md) e o [template de PR](.github/pull_request_template.md). Não commite segredos, dumps ou dados reais.
 
-## Como trabalhar no repositório
+## O que falta para produção
 
-Vale para pessoas e agentes de IA.
+Os módulos implementados **não** dispensam infraestrutura, homologação ou aprovação de operação. A sequência real é regida pelo [Plano Diretor v1.3](docs/planning/PLANO_DIRETOR_2026.md) e pela [matriz de aceite P1–P9/O1–O8](docs/modules/audit/QUALITY_ACCEPTANCE_V1.md).
 
-1. Toda mudança parte de uma issue ou brief aprovado, com objetivo, fora de escopo, dono humano, arquivos permitidos, ambiente exclusivo, critérios de aceite e testes ([protocolo, §5](docs/development/PARALLEL_AGENT_WORKFLOW.md)).
-2. Uma branch por issue, criada de `origin/main` (`feat/`, `fix/`, `docs/`, `test/`, `chore/`, `security/`), em worktree própria quando houver trabalho paralelo.
-3. Nunca push direto na `main`. Tudo entra por PR usando o [template](.github/pull_request_template.md), com validações reais descritas e o que não foi executado declarado.
-4. Testes com Docker usam projeto Compose, volumes, portas e env exclusivos. Nada aponta para produção ou banco compartilhado.
-5. Migrations são incrementais; destrutivas exigem aprovação e plano de recuperação.
-6. Segredos, dumps, dados pessoais e URLs assinadas nunca entram em código, commits, logs ou prompts.
-7. Reinstalar a C30, criar ambiente persistente, deploy ou mexer no servidor legado exige aprovação humana **antes** da ação.
+~~~mermaid
+flowchart TD
+  NOW["Software Core + Qualidade + ABC integrado"] --> SAFE["Preservar dados/legado + validar restauração"]
+  NOW --> IAM["ADR-007 / identidade privilegiada: decisão e revisão"]
+  SAFE --> HARD["Aceite físico da C30 / definição de RPO e RTO"]
+  IAM --> STAGING["STAGING seguro e autorizado"]
+  HARD --> STAGING
+  STAGING --> MOBILE["P1–P9: Android e iOS reais"]
+  STAGING --> OPS["O1–O8: backup, restore, segurança, alertas e carga"]
+  MOBILE --> GO{"GO humano documentado?"}
+  OPS --> GO
+  GO -- "Não" --> HOLD["Manter NO-GO / corrigir gaps"]
+  GO -- "Sim" --> PROD["Cutover controlado e operação assistida"]
+~~~
 
-Agentes de código seguem o [AGENTS.md](AGENTS.md) (o [CLAUDE.md](CLAUDE.md) só aponta para ele). O fluxo de trabalho com IA está em [AI_WORKFLOW](docs/development/AI_WORKFLOW.md) e o trabalho paralelo em [PARALLEL_AGENT_WORKFLOW](docs/development/PARALLEL_AGENT_WORKFLOW.md), integrado à `main` pelo PR #43.
-
-## Mapa da documentação
-
-**[Racional das escolhas tecnológicas](docs/architecture/TECHNOLOGY_DECISIONS.md)** e **[guia Curva ABC](docs/modules/abc/OPERATOR_GUIDE_V1.md)** complementam a visão visual de arquitetura e a matriz operacional. A documentação diferencia código integrado de infraestrutura efetivamente instalada.
-
-**[Índice integrado de documentação](docs/README.md):** arquitetura, tecnologias, fluxos, planejamento, operação e decisões técnicas.
-
-
-| Preciso de… | Leia |
+| Prioridade / dependência | Situação atual e próximo resultado necessário |
 | --- | --- |
-| Entender o plano, a ordem e o que falta | [Plano Diretor 2026](docs/planning/PLANO_DIRETOR_2026.md) |
-| Saber por que a stack é essa | [ADRs](docs/decisions/), começando pelo [ADR-004](docs/decisions/ADR-004-platform-stack.md) e o [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md) |
-| Visão geral e regras de dependência | [OVERVIEW](docs/architecture/OVERVIEW.md) |
-| Segurança e autorização | [SECURITY](docs/architecture/SECURITY.md), [AUTHORIZATION](docs/architecture/AUTHORIZATION.md) |
-| Modelo de dados | [DATA_MODEL](docs/architecture/DATA_MODEL.md) |
-| Backup e recuperação | [BACKUP_RECOVERY](docs/architecture/BACKUP_RECOVERY.md) |
-| Gates de aceite da Qualidade v1 | [QUALITY_ACCEPTANCE_V1](docs/modules/audit/QUALITY_ACCEPTANCE_V1.md) |
-| Infraestrutura reproduzível | [infra/README](infra/README.md) |
+| **Preservar ambientes e dados** | Inventário da C30, ERP de Contratos e volumes; nenhuma reinstalação/descarte sem backup restaurável e autorização |
+| **Identidade privilegiada (P0)** | [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49): nova proposta ADR-007 e revisão independente. PR antiga fechada **não equivale a decisão aceita** |
+| **Backup/restore** | [Issue #51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51) + [relatório](docs/planning/02_RESTORE_DRILL.md): ensaio sintético histórico `8 PASS / DR-08 PARCIAL`; repetir com tempo medido e avaliar ABC/18 migrations; definir off-site, WAL/PITR, RPO/RTO |
+| **Implantação e operações** | Aceitar host C30, configuração STAGING, TLS/entrada e Storage, alertas, capacidade, retenções e planos de reversão |
+| **Aceite Qualidade** | Executar [P1–P9 e O1–O8](docs/modules/audit/QUALITY_ACCEPTANCE_V1.md) com evidências e assinatura |
+| **Curva ABC v1** | [Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70): arquivos ERP, autoria, RLS, concorrência, originais e diferenças entre navegador e SQL |
+| **DEV compartilhado** | [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68): comprovar rede restrita, duas identidades, autoria/RLS e persistência sem reset |
+| **Módulos futuros** | Migrar gradualmente após gate de negócio e técnico; [Agendamento AG-00](docs/briefs/ROOM_BOOKING_V1.md) permanece proposto |
 
-## Princípios
+**Sem prazo, orçamento final ou RPO/RTO garantidos** enquanto requisitos e medições estiverem abertos. Nada neste README autoriza deploy, migrações de dados reais, formatação de disco ou abertura de portas. Decisões futuras devem constar de ADR/issue com aprovador, alternativa, impacto e evidência.
 
-- monólito modular;
-- segurança e autorização desde a fundação, aplicadas no backend e no banco;
-- módulos dependem do Core, nunca o contrário;
-- dados corporativos compartilhados não são duplicados por módulo;
-- migração incremental, sem big bang;
-- backups só contam com restauração testada;
-- produção nunca é ambiente de teste;
-- KISS, DRY e YAGNI;
-- decisões arquiteturais registradas em ADRs;
-- documentação curta, específica e útil para pessoas e agentes de código.
+## Onde encontrar cada resposta
+
+| Preciso entender… | Fonte oficial |
+| --- | --- |
+| **Todas as tecnologias, motivos, alternativas e evolução** | [Racional da stack](docs/architecture/TECHNOLOGY_DECISIONS.md) · [ADRs](docs/decisions/) |
+| **Topologia atual versus proposta; diagramas** | [DIAGRAMS](docs/architecture/DIAGRAMS.md) · [STACK_INTEGRATION](docs/architecture/STACK_INTEGRATION.md) |
+| **Autenticação, arquivos, fluxos e falhas** | [WORKFLOWS](docs/architecture/WORKFLOWS.md) · [AUTHORIZATION](docs/architecture/AUTHORIZATION.md) · [THREAT_MODEL](docs/architecture/THREAT_MODEL.md) |
+| **Onde cada módulo está implementado** | [IMPLEMENTATION_MAP](docs/architecture/IMPLEMENTATION_MAP.md) · [API_CONTRACTS](docs/architecture/API_CONTRACTS.md) · [DATA_MODEL](docs/architecture/DATA_MODEL.md) |
+| **Como operar e recuperar** | [OPERATIONS_MATRIX](docs/operations/OPERATIONS_MATRIX.md) · [02_RESTORE_DRILL](docs/planning/02_RESTORE_DRILL.md) · [BACKUP_RECOVERY](docs/architecture/BACKUP_RECOVERY.md) |
+| **O que foi aprovado, rejeitado ou continua bloqueado** | [DECISION_REGISTER](docs/planning/DECISION_REGISTER.md) · [Plano Diretor](docs/planning/PLANO_DIRETOR_2026.md) |
+| **O que vem depois e como migrar** | [EXECUTION_MAP](docs/planning/EXECUTION_MAP.md) · [MODULE_ROADMAP](docs/migration/MODULE_ROADMAP.md) · [MODULE_BLUEPRINTS](docs/planning/MODULE_BLUEPRINTS.md) |
+| **Como trabalhar no repositório** | [Índice da documentação](docs/README.md) · [AGENTS.md](AGENTS.md) · [Fluxo de colaboração](docs/development/PARALLEL_AGENT_WORKFLOW.md) |
+| **Como usar os módulos já integrados** | [Guia Qualidade](docs/modules/audit/OPERATOR_GUIDE_V1.md) · [Guia Curva ABC](docs/modules/abc/OPERATOR_GUIDE_V1.md) |
+
+### Estrutura do repositório
+
+~~~text
+apps/web/        React / Core / App Shell / módulos audit, action-plans e abc
+supabase/        CLI config + migrations SQL por schema (core, audit, action_plans, abc)
+infra/           Compose mínimo do Supabase self-hosted e scripts de laboratório
+scripts/         checks de bundle e rotinas ops para ambientes descartáveis
+tests/           Vitest/PGlite, integração Auth/Storage/Postgres e testes browser
+docs/            decisões, arquitetura, briefs, módulos, planejamento e runbooks
+.github/         CI e template de PR
+AGENTS.md        regras de engenharia, segurança e trabalho paralelo
+~~~
+
+**Regra de manutenção:** toda mudança que altere stack, contrato, schema, permissão, jornada ou status de módulo deve atualizar **o documento canônico e seus diagramas na mesma PR**. Este README é o mapa de entrada; seu conteúdo deve ser revalidado contra o código, os ADRs e os checks do commit correspondente, não usado como evidência autossuficiente.
