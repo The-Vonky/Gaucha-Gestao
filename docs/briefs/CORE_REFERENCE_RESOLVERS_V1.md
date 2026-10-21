@@ -1,92 +1,44 @@
-# Implementation Brief — Core Reference Resolvers v1
+> **Brief histórico do Core v2.** As branches de integração, proprietários de arquivos e estados de execução aqui citados valem **somente para a rodada original**. Não iniciar tarefa nova nem recriar essas branches sem uma issue atual aprovada; usar `origin/main` conforme [AGENTS.md](../../AGENTS.md).
 
-Status: READY FOR IMPLEMENTATION
-Base: `integration/core-foundation-v2-wave2`
-Target integration branch: `integration/core-foundation-v2-wave2`
+# Brief de implementação — Resolutores de referências Core v1
 
-## Objective
+**Estado histórico: PRONTO PARA IMPLEMENTAÇÃO.**  
+**Base/alvo original:** `integration/core-foundation-v2-wave2`.
 
-Provide safe, stable Core read contracts for resolving canonical users, units and sectors by known identifiers without granting broad administrative directory access to business modules.
+## Objetivo
 
-This is a backend/database contract task. Do not build UI.
+Contratos confiáveis e estáveis de leitura do Core por IDs **conhecidos** para usuários, unidades e setores, sem criar diretório administrativo irrestrito para módulos. **Tarefa de banco/backend; sem UI.**
 
-## Required reading
+## Leituras
 
-- `AGENTS.md`
-- `docs/architecture/CORE_FOUNDATION_V2.md`
-- `docs/architecture/AUTHORIZATION.md`
-- `docs/architecture/DATA_MODEL.md`
-- `docs/architecture/SECURITY.md`
-- current Core migrations/tests.
+`AGENTS.md`, `CORE_FOUNDATION_V2.md`, `AUTHORIZATION.md`, `DATA_MODEL.md`, `SECURITY.md`, migrations/testes Core.
 
-## Product decisions already fixed for this brief
+## Decisões fixadas
 
-- canonical user identity is Auth/Core profile UUID;
-- a new business responsibility may reference a registered Core user;
-- user/unit/sector deactivation preserves historical references;
-- responsibility does not itself grant access;
-- UUID is the stable reference; names/codes are display/business data;
-- this brief does NOT authorize a global business-user directory or broad enumeration of all active users.
+UUID de perfil Auth/Core é identidade canônica; responsabilidade de negócio pode referenciar usuário registrado; inativar preserva referência histórica; ser responsável **não dá permissão**; UUID identifica e nomes/códigos exibem; não autoriza diretório global de funcionários ou enumeração de ativos.
 
-## In scope
+## Escopo
 
-Design and implement narrowly-scoped read RPCs/projections that allow a caller to resolve already-known Core references needed by authorized records.
+RPCs/projeções restritas para resolver:
+- usuário/perfil por UUID conhecido(s): `id`, `display_name`, `active`;
+- unidade: `id`, `code`, `name`, `active`;
+- setor: `id`, `code`, `name`, `active`, validade unidade/setor quando pertinente;
+- lote de IDs limitado, ordem determinística, comportamento explícito para ausente/invisível/inativo.
 
-At minimum cover:
-- user/profile reference by known UUID(s): id, display_name, active;
-- unit reference by known UUID(s): id, code, name, active;
-- sector reference by known UUID(s), including unit/sector validity where relevant: id, code, name, active;
-- bounded batch input with deterministic ordering/limits;
-- explicit behavior for missing, invisible and inactive references;
-- no e-mail, last sign-in, Auth metadata, roles or permission composition in these resolvers.
+**Não expor** email, último login, metadata Auth, papéis/composição de permissões. Preferir projeção pequena por conceito ou família RPC tipada; não liberar tabelas brutas para facilitar seletores.
 
-Prefer one small projection per concept or one clearly typed RPC family. Do not expose raw tables more broadly just to make selectors easy.
+## Autorização e banco
 
-## Authorization
+Chamador deve estar autenticado e ativo. Resolver ID conhecido só pode devolver referência **autorizada pelo contrato atual**, sem enumeração. Se RLS existente for insuficiente, função `SECURITY DEFINER` estreita com `search_path` vazio/fixo, objetos qualificados e `EXECUTE` mínimo; **nunca `service_role` no browser** nem seed de permissões futuras.
 
-- caller must be an active authenticated user;
-- resolution must not become an enumeration bypass;
-- known-ID resolution may return only references the caller is already entitled to see under the approved contract;
-- if the current RLS cannot safely support a required reference, implement a narrow SECURITY DEFINER function with fixed/empty search path, fully qualified objects and least EXECUTE grants;
-- do not use service role;
-- do not add future-module permissions.
+Se não for possível autorizar seletor genérico de pessoas, **não inventá-lo**; registrar fora do escopo. Migration aditiva; nunca editar anteriores; arrays/linhas limitados, resultados estáveis, Core sem dependência de módulo.
 
-If a generic business-user selector cannot be authorized safely from current product decisions, DO NOT invent one. Report that as intentionally out of scope.
+## Testes
 
-## Database rules
+Anônimo/inativo negado; referência conhecida autorizada; UUID adivinhado/ausente não amplia acesso; inativo referenciado aparece apenas em leitura histórica autorizada; limite de lote; sem email/Auth metadata; sem escalada cross-scope; suíte completa.
 
-- additive migration only;
-- never edit existing migrations;
-- preserve current schemas and RLS;
-- bounded arrays / row counts;
-- stable deterministic results;
-- no business-module dependency from Core.
+## Fora do escopo
 
-## Tests
+Criar/resetar contas/senhas, diretório de funcionários, atribuir responsáveis em Auditoria/Planos, seletores UI, relatórios de governança, logs, permissões novas e mudanças de Qualidade.
 
-Add database/RLS/integration coverage for:
-- anonymous denied;
-- inactive caller denied;
-- authorized known reference succeeds;
-- guessed/unknown ID does not reveal more than contract allows;
-- inactive referenced entity remains resolvable where historical reading permits;
-- batch limit enforced;
-- no e-mail/Auth metadata leakage;
-- no cross-scope escalation.
-
-Run full validation required by repository.
-
-## Explicitly out of scope
-
-- account creation/reset/passwords;
-- unrestricted employee directory;
-- assigning responsibility in Audit/Action Plans;
-- UI selectors;
-- access-review reports;
-- logs read model;
-- new module permissions;
-- Quality changes.
-
-## Completion
-
-Focused commits only. Do not merge. Open a PR targeting `integration/core-foundation-v2-wave2` only after validation.
+**Encerramento original:** commits focalizados e PR para branch histórica, sem merge autônomo. Usar branch atual de `main` para novas tarefas.

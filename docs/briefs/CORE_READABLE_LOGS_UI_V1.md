@@ -1,16 +1,17 @@
-# Brief — Readable Logs UI v1
+> **Brief histórico do Core v2.** As branches de integração, proprietários de arquivos e estados de execução aqui citados valem **somente para a rodada original**. Não iniciar tarefa nova nem recriar essas branches sem uma issue atual aprovada; usar `origin/main` conforme [AGENTS.md](../../AGENTS.md).
 
-Read AGENTS.md, docs/briefs/CORE_ADMIN_UI_WAVE3.md, docs/briefs/CORE_AUDIT_LOG_READ_MODEL_V1.md, current LogsPage and existing api/types.
+# Brief — Interface de logs legíveis v1
 
-Implement a human-readable read-only LogsPage backed by core.audit_log_page via its own audit-log-review-api.ts and page-scoped types:
-- filter by date range, actor UUID or authorized actor-name search, module/action, entity type/id;
-- date semantics [from,to); stable paginated sorting and total count; explicit reset filters;
-- show who/when/action/entity/unit/sector in operator language, IDs and before/after/metadata in a secondary technical detail view;
-- read-model's actor name search only finds visible actors; communicate this when filtered;
-- preserve unknown/unreadable name as unavailable rather than inventing name;
-- safe labels of active/inactive entity, privacy and authorized scope;
-- appropriate loading/error/empty/denied states and responsive accessible PT-BR UI;
-- preserve existing log page navigation and permission gate. No new permissions.
-Own only LogsPage.tsx, new audit-log-review* files/tests. DO NOT change shared api.ts/types.ts/admin.css/parts.tsx or tests/admin*.
-No migrations, no log mutations or retention changes. Test filters, time boundaries, inaccessible names, malformed input, details, pagination and RPC error states.
-Push normal and PR to integration/core-foundation-v2-wave2; no merge.
+**Leitura original:** `AGENTS.md`, `CORE_ADMIN_UI_WAVE3.md`, `CORE_AUDIT_LOG_READ_MODEL_V1.md`, `LogsPage` e API/tipos atuais.
+
+Criar tela `LogsPage` **somente de leitura**, alimentada por `core.audit_log_page` via adaptador próprio `audit-log-review-api.ts` e tipos locais:
+- filtrar intervalo `[from,to)`, UUID de autor ou pesquisa de nome **autorizada**, módulo/ação e tipo/ID da entidade;
+- paginação/ordenação estáveis, total e botão explícito de limpar filtros;
+- apresentar **quem, quando, ação, entidade, unidade, setor** com linguagem de operador; IDs e before/after/metadata somente como detalhe técnico secundário;
+- avisar que pesquisa por nome só encontra autores visíveis ao chamador; desconhecido/restrito não vira nome inventado;
+- rótulos seguros de ativo/inativo, respeito ao escopo e privacidade; loading/erro/vazio/negado acessíveis em pt-BR;
+- preservar navegação e gate de permissão, **sem novas permissões**.
+
+Na divisão de arquivos histórica, apenas `LogsPage.tsx` e novos `audit-log-review*`/testes pertenciam a essa trilha; não alterar `api.ts`, `types.ts`, `admin.css`, `parts.tsx` ou testes compartilhados. Sem migration, mutação ou política de retenção.
+
+Testar filtros, limites de tempo, autores invisíveis, entrada inválida, detalhes, paginação e erros RPC. A orientação antiga era PR para `integration/core-foundation-v2-wave2`, **sem merge autônomo**. Não usar essa branch como destino atualmente.

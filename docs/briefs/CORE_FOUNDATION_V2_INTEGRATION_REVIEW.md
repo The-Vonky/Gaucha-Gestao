@@ -1,32 +1,25 @@
-# Core Foundation v2 — integration review gates (2026-10-08)
+> **Brief histórico do Core v2.** As branches de integração, proprietários de arquivos e estados de execução aqui citados valem **somente para a rodada original**. Não iniciar tarefa nova nem recriar essas branches sem uma issue atual aprovada; usar `origin/main` conforme [AGENTS.md](../../AGENTS.md).
 
-Status: REVIEW ACTIONS REQUIRED. No permission to merge to main or deploy.
-Base: integration/core-foundation-v2-wave2.
+# Fundação Core v2 — revisão de integração (08/10/2026)
 
-## Recorded decisions for the scoped read phase
+**Estado histórico: AÇÕES DE REVISÃO NECESSÁRIAS; merge em main/deploy não autorizados naquela etapa.**  
+**Base histórica:** `integration/core-foundation-v2-wave2`.
 
-1. **Known-reference visibility (PR #25).** Resolving a unit/sector by known UUID may reveal only minimal identity fields (UUID, code, name, active) to an active caller with a CURRENT effective grant covering that organization. It must not enumerate arbitrary catalogs. This is **reference metadata visibility**, not admin-directory visibility or authorization to operate the referenced business record. Business-module operations must independently verify their permission, resource scope and domain rules. This limited policy should be explicitly tested with users holding unrelated permissions in the same organizational scope and with users holding only revoked/inactive grants. Absence and invisibility must remain indistinguishable. A profile may only be resolved through its existing RLS-authorized audience; no broad employee directory is approved.
+## Decisões registradas para leitura
 
-2. **Potential vs exact role impact (PR #26).** The existing `role_impact_summary` is a *current-state snapshot of holder/assignment counts* and estimates who may be affected. It DOES NOT simulate the proposed permission delta, overlapping grants, or a future save transaction. Expose it as *potential impact* only, never exact preview or mutation confirmation. Exact preview and atomic expected-version confirmation require a separate approved mutation contract in a later wave.
+1. **Visibilidade de referência conhecida (PR #25).** Resolver unidade/setor por UUID conhecido podia revelar somente UUID, código, nome e ativo a usuário ativo com grant **efetivo atual** para a organização. Não permitia enumerar catálogos arbitrários nem acessar registro de negócio. Operações do módulo continuam exigindo permissão, escopo e regras de domínio próprias. Testes negativos devem cobrir outras permissões no mesmo escopo, grants revogados/inativos e a indistinguibilidade entre ausente e invisível. Perfil de pessoa continua restrito pela RLS atual: nenhum diretório amplo de funcionários foi aprovado.
+2. **Impacto potencial versus exato (PR #26).** `role_impact_summary` fornece snapshot **atual** de contagem de titulares/atribuições, ou seja, impacto **potencial**. **Não** simula nova composição de permissões, grants sobrepostos ou transação futura de salvamento; não apresentar como prévia exata nem confirmação da mutação. Prévia exata com versão esperada exige outro contrato aprovado.
+3. **Fronteiras mantidas.** Não ampliar RLS de perfis, papéis, permissões ou logs; nomes/contagens de usuários exigem audiência administrativa global quando aplicável. Falta de visibilidade é **restrito/desconhecido**, não zero.
 
-3. **Existing authorization boundaries remain authoritative.** No broadening of profiles, roles, permissions or logs RLS; user nominative counts require global user audience; lack of visibility returns restricted/unknown, not zero.
+## Ordem histórica e bloqueios
 
-## Integration order and blocking checks
+- **PR #25:** decisão de metadados mínimos, testes negativos, `SECURITY DEFINER` com nomes qualificados, `search_path` vazio, `EXECUTE` limitado e sem leitura direta ampla de tabelas.
+- **PR #26:** rotular impacto potencial; testar inativos, grants sobrepostos e atribuição ativa sem permissão efetiva; não converter atribuições em direitos de todos os módulos.
+- **PR #27:** dependia de #26; migration/teste de governança repetiam bytes de #26 naquela fase. Integrar #26 primeiro, atualizar #27 e verificar que só sobraram alterações específicas de logs. Busca de texto de ator só considera nomes visíveis; nada de preencher nomes históricos inexistentes.
+- **PR #24:** ADR-007 permaneceu proposta; runtime privilegiado exigia brief, revisão e GO próprios. **Permanece NO-GO na [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49).**
 
-- **PR #25**: require narrow metadata visibility decision and corresponding negative test coverage; confirm SECURITY DEFINER functions have fully qualified names, empty search_path, grants only where needed, and no unnecessary raw table read.
-- **PR #26**: label impact *potential* and document behavior with inactive roles/users and overlapping assignments; add explicit test or contract explanation for active assignments with no effective domain permission. Confirm no interpretation of assignments as rights in all domains.
-- **PR #27**: depends on #26. The governance migration and database test included in #27 are byte-for-byte identical to #26; merge #26 first, then update #27 and inspect its new PR diff to ensure only log-specific changes remain. Audit log actor text filter can only search actors readable to the caller; UI must make that limitation clear. No backfill of historical names.
-- **PR #24**: ADR-007 remains PROPOSED until explicit architecture acceptance. Implementation of privileged identity API follows a separate reviewed brief; no assumption that CI success proves the future service works.
+## Verificações exigidas na integração original
 
-## Required checks before any further integration
+Conferir HEAD exato e `expected_head_sha` antes de merge; testar ordem/colisão de migrations, RLS, exposição PostgREST e grants **na branch combinada**; rodar CI completa de fundação, infra e resolvers; repetir negações (anônimo, inativo, leitor só de papel/unidade/usuário, cross-scope, UUID adivinhado, grants revogados); não editar migrations já aplicadas; sem deploy/force-push/merge direto nesta revisão.
 
-1. Verify repository and PR heads immediately before merges; use expected_head_sha.
-2. Check schema migration ordering, collisions, permissions, RLS, and PostgREST exposure on the **combined branch** (not only individual PR CI).
-3. Run full foundation CI, reproducible infra CI, and Core reference integration test on combined HEAD.
-4. Re-run negative permission tests: anon, inactive, role-only, unit-only, user-only, cross-scope, guessed UUID and revoked grants.
-5. Keep SQL migrations immutable once integrated. New corrections must be additive.
-6. No production migration, deploy, release, force push, or main merge in this review.
-
-## Deliverables
-
-For each PR agent: submit exact new HEAD, changed files, tests, unresolved risks and target branch. Coordinator reviews before merging into integration.
+**Entregável original:** cada agente informa HEAD, arquivos, testes, riscos e branch de destino para o coordenador. **Estado atual deve ser consultado na main; esta é uma ata histórica, não uma fila de tarefas vigente.**
