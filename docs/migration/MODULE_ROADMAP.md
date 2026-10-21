@@ -1,109 +1,69 @@
-# Module Migration Roadmap
+# Roteiro de migração dos módulos
 
-> **Estado revisado em 21/10/2026:** este documento define uma **sequência candidata**, não é autorização para implementar nem substitui o [Plano Diretor](../planning/PLANO_DIRETOR_2026.md). O código da Curva ABC v1 já foi integrado (PR #69); Agendamento de Salas tem somente um brief AG-00 proposto (PR #72). **PROD NO-GO.**
+**Estado revisado em 21/10/2026:** este documento organiza a **sequência candidata** de migrações, sem prometer prazos ou autorizar implementação. A fonte de prioridades e gates é o [Plano Diretor](../planning/PLANO_DIRETOR_2026.md). A Curva ABC **v1 foi integrada à main na PR #69**; Agendamento de Salas tem somente brief AG-00 **proposto**. **PROD NO-GO.**
 
-## Purpose
+## Finalidade e critérios de sequenciamento
 
-This is a sequencing guide, not a delivery-date promise.
+A sequência leva em conta: prioridade atual do negócio; validação da fundação; reaproveitamento de sistemas estáveis; redução de risco antes de domínios complexos.
 
-Migration order prioritizes:
-1. current business priority;
-2. foundation validation;
-3. reuse of stable systems;
-4. reduction of risk before complex domains.
+## Inventário da migração
 
-## Inventory
-
-| Module | Standalone status | Initial migration risk | Notes |
+| Módulo | Situação da origem / plataforma | Risco inicial | Limite e próxima ação |
 | --- | --- | --- | --- |
-| Audit / Quality Audit | platform v1 implemented | medium/high | repository implementation complete; P1–P9 physical and O1–O8 operational acceptance are the current closure priority; do not reimplement completed slices |
-| ISO Records / legacy Propostas ISO | finished legacy | medium | migration gate required before implementation; the source system is functionally commercial clients/proposals despite the historical ISO name, so ownership/navigation must be resolved first |
-| Sales / Card Machines | finished | low | dashboard/import-oriented |
-| Satisfaction Survey | finished | low | strong unit/period integration candidate |
-| Meeting Room Scheduling | legacy functional; brief AG-00 PROPOSTO | low | [ROOM_BOOKING_V1](../briefs/ROOM_BOOKING_V1.md) e [critérios AG](../modules/room-booking/ACCEPTANCE_V1.md) ainda sem aceite do responsável e da secretária; implementação AG-01 não autorizada |
-| Fleet | not finished | medium | continue future development directly in platform after foundation |
-| Planned vs Actual | finished | medium | preserve validated import/calculation rules |
-| ABC Curve | **platform v1 integrated (PR #69)** | high | import/query/revision implemented; [ERP samples and two-person acceptance](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) pending; no desktop history migrated; data sensitive |
-| Contracts ERP | finished | high | important workflows/data; backup/recovery must be reviewed first |
+| Auditoria de Qualidade | **v1 implementada na plataforma** | Médio/alto | P1–P9 físicos e O1–O8 operacionais ainda exigem aceite; não reimplementar funcionalidades concluídas |
+| Registros ISO / Propostas ISO | Legado concluído | Médio | A origem é funcionalmente de propostas/clientes comerciais apesar do nome histórico ISO; resolver ownership/menu por gate de migração |
+| Vendas / Maquininhas | Legado concluído | Baixo | Dashboard e importação |
+| Pesquisa de Satisfação | Legado concluído | Baixo | Boa candidata à integração por unidade/período |
+| Agendamento de Salas | Legado funcional, experiência frágil; **brief AG-00 proposto** | Baixo | Considerar nova implementação apoiada no Core; [brief](../briefs/ROOM_BOOKING_V1.md) e [aceite](../modules/room-booking/ACCEPTANCE_V1.md) requerem aprovação do responsável e secretária |
+| Frota | Legado não concluído | Médio | Prosseguir na plataforma quando a fundação permitir |
+| Planejado × Realizado | Legado concluído | Médio | Preservar regras de importação/cálculo comprovadas |
+| Curva ABC | **Plataforma v1 integrada à main** | Alto | Importação, consulta e revisões presentes; validar ERP, dados sensíveis e duas identidades ([Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70)); nenhum histórico desktop foi migrado |
+| ERP de Contratos | Legado concluído | Alto | Revisar backup/restore, propriedade de dados e gate antes de qualquer migração |
 
-## Phase 0 — Architecture and foundation design
+## Fase 0 — Arquitetura e fundação
 
-Deliverables:
-- architecture decisions;
-- authorization model;
-- security baseline;
-- data ownership;
-- backup/recovery design;
-- first foundation implementation brief.
+Entregáveis: decisões arquiteturais, autorização, segurança, propriedade de dados, backup/recuperação e primeiro brief. **Sem corte produtivo.**
 
-No production cutover.
+## Fase 1 — Fundação + Auditoria
 
-## Phase 1 — Platform foundation + Audit
+**Estado:** software concluído no repositório; homologação física/operacional ainda aberta. A entrega inclui Auditoria, Planos de Ação, duas classes de evidência, relatórios/exportação e Core/Admin necessários ao uso. **Não refazer partes implementadas.**
 
-Status: repository implementation complete; physical/operational acceptance remains open.
+A primeira fase não está pronta para produção até a conclusão de [QUALITY_ACCEPTANCE_V1](../modules/audit/QUALITY_ACCEPTANCE_V1.md).
 
-Goal: prove the platform using the highest-priority active system.
+Não antecipar capacidades genéricas para todos os módulos futuros.
 
-The implemented scope is Audit, Action Plans, both evidence domains, reporting/export and the Core/Admin capabilities they require. Do not restart these slices. Close `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md` before declaring the phase production-ready.
+## Fase 2 — Domínios estáveis iniciais (candidatos, após Qualidade)
 
-Do not build every future module capability in advance.
+1. Resolver a classificação funcional e a propriedade do legado `Registros_ISO-Gaucha`/Propostas ISO.
+2. Vendas / Maquininhas.
+3. Pesquisa de Satisfação.
+4. Agendamento de Salas (**somente após aceite AG-00**).
 
-## Phase 2 — Early stable modules
+Esses domínios testam cargas diferentes mantendo migração gradual. A posição do ISO depende de decisão do responsável.
 
-Candidate sequence after Quality closure:
-1. resolve the migration gate and domain ownership of legacy `Registros_ISO-Gaucha` / Propostas ISO;
-2. Sales / Card Machines;
-3. Satisfaction Survey;
-4. Meeting Room Scheduling.
+## Fase 3 — Expansão operacional/analítica
 
-The first item is not authorized for implementation until its functional ownership and navigation placement are approved.
+1. Frota.
+2. Planejado × Realizado.
 
-This sequence intentionally tests different workloads while keeping migration complexity moderate.
+## Fase 4 — Domínios complexos
 
-## Phase 3 — Operational/analytical expansion
+1. ERP de Contratos (**após** validação da recuperação e segurança da origem).
 
-Candidate sequence:
-1. Fleet;
-2. Planned vs Actual.
+A Curva ABC não integra mais a lista de futuras migrações da v1: foi antecipada e implementada em outubro. Funcionalidades adicionais da ABC exigem brief/aceite novos.
 
-## Phase 4 — Complex domains
+## Histórico da mudança de prioridade da ABC (19/10)
 
-Candidate sequence:
-1. Contracts ERP (after backup/recovery and domain acceptance).
+O responsável priorizou Curva ABC à frente das fases 2–4 em 19/10. A PR #69 foi integrada em 20/10, com classificação, upload e revisões. **Isso não remove** os gates P1–P9/O1–O8, não migra histórico do repositório `The-Vonky/CurvaABC-Gaucha` e não autoriza uso produtivo antes da homologação [#70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70).
 
-ABC v1 was pulled forward and integrated in October 2026; the ABC module is **no longer a future migration task**. Extensions beyond v1 require a separate brief and authorization.
+## Gate para cada módulo novo
 
-Exact order can change with business priority and source-system readiness.
+**Antes da implementação:** identificar repo/versão legado, inventariar comportamento, regras/cálculos críticos, classificação dos dados, mapeamento Core, permissões, estratégia de migração/cutover e critérios de aceite.
 
-## Priority change — 2026-10-19
+**Antes do corte:** validar equivalência funcional ou diferença aprovada, RLS e escopo, reconciliação origem/destino, backup verificado, caminho de restore/rollback e assinatura do responsável.
 
-**Historical decision, 19/10:** by product-owner priority, ABC Curve moved ahead of Phases 2–4. **Current implementation state, 21/10:** ABC v1 was merged by [PR #69](https://github.com/The-Vonky/Gaucha-Gestao/pull/69) on 20/10. Import, revision and query code exists, but manual acceptance is still open in [Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70); do not call it ready for production. Quality closure (P1–P9, O1–O8) remains the production release gate. The standalone ABC repository (`The-Vonky/CurvaABC-Gaucha`) contributes rules and tests; its desktop history is not migrated.
+## Política para sistemas legados
 
-## Per-module migration gate
+Não apagar nem sobrescrever o repositório standalone durante a migração. Após cutover aprovado: identificar a última versão legado, congelar desenvolvimento comum e preservá-la como referência histórica/recuperação pelo período definido.
 
-Before implementation:
-- source repository/current version identified;
-- behavior inventory;
-- critical calculations/rules documented;
-- data classification;
-- Core entity mappings;
-- permission catalog;
-- migration/cutover strategy;
-- acceptance criteria.
-
-Before cutover:
-- functional parity/approved differences validated;
-- access control validated;
-- source-vs-target data reconciliation;
-- backup created;
-- restore/rollback path known;
-- stakeholder validation completed.
-
-## Legacy policy
-
-Do not delete or rewrite the standalone repository during migration.
-
-When a module is successfully cut over:
-- tag or otherwise identify the final standalone release;
-- freeze ordinary feature development there;
-- retain it as historical/recovery reference for the agreed period.
+**Uma PR documental ou CI verde não equivale à autorização de corte.**
