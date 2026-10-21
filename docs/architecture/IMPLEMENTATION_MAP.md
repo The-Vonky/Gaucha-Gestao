@@ -13,7 +13,7 @@
 | Planos de Ação | apps/web/src/modules/action-plans/{api.ts,lifecycle.ts,ActionPlanPage.tsx} | schemas/migrations action_plans; [brief](../briefs/ACTION_PLAN_DOMAIN_V1.md); tests/action-plans*.test.*, tests/integration/action-plans.mjs | AS-IS |
 | Evidências dos planos | apps/web/src/modules/action-plans/evidence.ts, PlanEvidence.tsx; begin/confirm/remove | [evidence brief](../briefs/EVIDENCE_STORAGE_V1.md); tests/integration/evidence.mjs | AS-IS |
 | Relatórios / exportação | apps/web/src/modules/audit/reporting/{api.ts,workbook.ts,PrintSurface.tsx,download.ts} | [reporting brief](../briefs/AUDIT_EXPORT_REPORTING_V1.md); tests/audit-reporting*.test.*, tests/integration/reporting.mjs | AS-IS |
-| Curva ABC v1 | apps/web/src/modules/abc/{AbcModule.tsx,AbcImport.tsx,AbcRevision.tsx,api.ts,import/*} | migration 20261020120000_abc_domain_v1.sql; abc/abc_private, bucket abc-source-files; [brief](../briefs/ABC_DOMAIN_V1.md); tests/abc-*.test.*; tests/integration/abc.mjs | AS-IS integrado, aceite manual pendente |
+| Curva ABC v1 | apps/web/src/modules/abc/{AbcModule.tsx,AbcImport.tsx,AbcRevision.tsx,api.ts,import/*} | migrations 20261020120000_abc_domain_v1.sql e 20261021120000_abc_analytics_read_v1.sql; abc/abc_private, bucket abc-source-files; [brief](../briefs/ABC_DOMAIN_V1.md); tests/abc-*.test.*; tests/integration/abc.mjs | AS-IS integrado, aceite manual pendente |
 | Unidade e imagens de capa | apps/web/src/core/unitCovers.ts, unitCoverImage.ts, apps/web/src/core/admin/UnitCoverEditor.tsx | [UNIT_COVER_V1](../modules/core/UNIT_COVER_V1.md); tests/integration/unit-cover.mjs | AS-IS |
 | Infraestrutura mínima | infra/supabase/docker-compose.yml, scripts/ops/*, .github/workflows/infra-validate.yml | [infra/README](../../infra/README.md), [UPSTREAM](../../infra/supabase/UPSTREAM.md), ADR-006 Proposed | AS-IS **CI/lab**, NÃO PROD |
 | Serviço privilegiado de criação/recuperação Auth | Nenhum runtime aprovado na main | [ACCOUNT_LIFECYCLE_V1](ACCOUNT_LIFECYCLE_V1.md), Issue #49; PR #24 fechado sem merge | **BLOQUEADO / DESIGN ONLY** |
@@ -28,7 +28,7 @@
 | Checklist Evidence | checklist_evidence, checklist_evidence_pending_count, begin_checklist_evidence_upload, confirm_checklist_evidence_upload, remove_checklist_evidence | Reserva → Storage → confirmação |
 | Action Plans | plan_summaries, creation_scopes, create_manual_plan, update_plan, set_plan_status, verify_plan | Dependências/transições regidas pelo domínio |
 | Action Plan Evidence | plan_evidence, begin_evidence_upload, confirm_evidence_upload, remove_evidence | Bucket privado + download assinado |
-| Curva ABC | units, unit_series, revision_detail, begin_source_upload, confirm_source_upload, publish_revision, record_file_check | Histórico imutável, upload privado e conferência posterior |
+| Curva ABC | units, unit_series, revision_detail, begin_source_upload, confirm_source_upload, publish_revision, record_file_check; v2 (leitura): overview, competency_products, product_history, compare, unit_revisions | Histórico imutável, upload privado e conferência posterior |
 
 Este quadro é uma **amostra rastreada do frontend**, não um OpenAPI completo, autorização para chamada direta ou contrato de estabilidade de todas as assinaturas. As migrations SQL e as funções exportadas pelos adaptadores são a evidência executável; qualquer implementação nova exige consultar assinaturas/parâmetros reais e executar testes.
 

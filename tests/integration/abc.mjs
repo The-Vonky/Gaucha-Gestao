@@ -221,6 +221,20 @@ try {
   const series = (await db.query("select version,(select count(*)::int from abc.report_revisions r where r.series_id=s.id) n from abc.report_series s where unit_id=$1", [A])).rows;
   assert.deepEqual(series, [{ version: 2, n: 2 }]);
 
+  phase = "analytics read model";
+  const overview = must(await abc("viewer").rpc("overview", { p_unit: A, p_cost_basis: "NET_PERIOD" }), "viewer reads overview");
+  assert.equal(overview.competencies.length, 1);
+  assert.equal(typeof overview.competencies[0].calculated_total, "string", "Money as text");
+  must(await abc("viewer").rpc("competency_products", { p_unit: A, p_cost_basis: "NET_PERIOD", p_competency: "2026-07-01" }), "viewer reads products");
+  must(await abc("viewer").rpc("unit_revisions", { p_unit: A }), "viewer reads revisions");
+  for (const [fn, args] of [["overview", { p_unit: A, p_cost_basis: "NET_PERIOD" }], ["unit_revisions", { p_unit: A }],
+    ["product_history", { p_unit: A, p_cost_basis: "NET_PERIOD", p_code: "1.01" }],
+    ["compare", { p_unit: A, p_cost_basis: "NET_PERIOD", p_base: "2026-06-01", p_current: "2026-07-01" }]]) {
+    fails(await abc("otherUnit").rpc(fn, args), "42501", `Other unit cannot call ${fn}`);
+    fails(await abc("quality").rpc(fn, args), "42501", `Another module's role cannot call ${fn}`);
+  }
+  fails(await abc("viewer").rpc("compare", { p_unit: A, p_cost_basis: "NET_PERIOD", p_base: "2026-06-01", p_current: "2026-07-01" }), "P0002", "Unpublished base competency");
+
   phase = "audit log";
   const actions = (await db.query("select action,count(*)::int n from core.system_audit_log where module='abc' and unit_id=$1 group by action order by action", [A])).rows;
   assert.deepEqual(actions, [{ action: "revision.file_check_ok", n: 1 }, { action: "revision.publish", n: 2 }]);
