@@ -9,7 +9,8 @@ import type { CostBasis, ErpClass, ReportPayload } from "../types";
  * Port of ingestion/parser.py from The-Vonky/CurvaABC-Gaucha; same codes and thresholds.
  * The preview is advisory: abc.publish_revision re-validates everything it can.
  */
-export const PARSER_VERSION = "erp-curva-realizado-v1";
+// D13: new ingestion profile; original workbook bytes and SHA-256 remain unchanged.
+export const PARSER_VERSION = "erp-curva-realizado-v2";
 export const SHEET_NAME = "Curva ABC Geral (Realizado)";
 const BASIS: Record<string, CostBasis> = {
   "custo medio liquido da epoca": "NET_PERIOD",
@@ -35,7 +36,7 @@ const XLSX_MESSAGES: Record<string, string> = {
   invalid_zip: "O arquivo não é um pacote XLSX válido ou está corrompido.",
   file_too_large: "O arquivo excede o limite de 10 MB.",
   unsupported_part:
-    "O arquivo contém partes que o relatório do ERP não tem (por exemplo, tema, imagens ou macros, comuns quando a planilha é aberta e salva no Excel). Exporte novamente do ERP e envie sem salvar no Excel.",
+    "O XLSX contém componentes não permitidos, como imagens, macros ou partes extras. O tema padrão do Excel (xl/theme/theme1.xml) é aceito, mas os demais componentes continuam bloqueados. Reexportar diretamente do ERP pode resolver.",
   formula: "O arquivo contém fórmulas. Envie a exportação estática do ERP, sem fórmulas.",
   encrypted_part: "O arquivo está protegido por senha ou criptografado.",
   external_relationship: "O arquivo contém vínculos externos, que não são aceitos.",
