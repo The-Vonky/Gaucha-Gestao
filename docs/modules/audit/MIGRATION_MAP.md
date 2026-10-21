@@ -1,218 +1,119 @@
-# Audit Module — Migration Map
+# Auditoria de Qualidade — mapa de migração
 
-Status: planning  
-Last reviewed: 2026-09-24
+**Estado histórico:** planejamento originalmente revisado em 24/09/2026.  
+**Atualização de contexto, 21/10/2026:** o módulo Auditoria e seu hardening v1 já estão integrados à `main`, com Planos de Ação, evidências de checklist e de plano, exportações e reabertura. Este documento preserva a comparação com o legado e o raciocínio de migração: **não usar as fases abaixo como tarefas pendentes sem consultar o estado atual.** Produção ainda **NO-GO**.
 
-## Platform status clarification — 2026-09-30
+## Relação entre a fotografia histórica e o código atual
 
-The legacy comparisons below remain pinned to Controle_Auditoria `b916ba8`; they are not claims about current Gaúcha Gestão. Historical platform snapshot `3f158d3` implemented reopen, generalized Action Plans and Action Plan Evidence; at that snapshot, Checklist Evidence and Audit exports were not yet implemented. That statement is superseded for current state: `main` at `fdae41a51af284358aa9dc7804ba03f75f241ac6` includes Audit Export & Reporting (PR #9), Checklist Evidence (PR #11) and the unit-history pagination fix that removes silent Data API truncation above 1.000 rows (PR #13). See [Quality completion matrix](QUALITY_COMPLETION_V1.md).
+A comparação com o legado usa `Controle_Auditoria` no commit `b916ba8`; não descreve automaticamente o estado atual da Gaúcha Gestão. No snapshot de plataforma `3f158d3`, reabertura, Planos de Ação e suas evidências já existiam, mas Checklist Evidence e exportações ainda não. Esse estado foi superado: o commit `fdae41a51af284358aa9dc7804ba03f75f241ac6` já incluía exportação/relatórios (PR #9), Checklist Evidence (PR #11) e paginação de histórico da unidade que evita truncamento silencioso acima de 1.000 linhas (PR #13). Posteriormente a Qualidade v1 foi consolidada. Veja [matriz de conclusão](QUALITY_COMPLETION_V1.md).
 
-Reopen and the permission/scope model are resolved by Audit Domain v1 and ADR-005. Product approved all three reporting outputs—inspection Excel, unit-history Excel and print/PDF—implemented under [Audit Export & Reporting v1](../../briefs/AUDIT_EXPORT_REPORTING_V1.md). Checklist attachments are implemented under [Audit Checklist Evidence v1](../../briefs/AUDIT_CHECKLIST_EVIDENCE_V1.md), with the current implementation contract in [CHECKLIST_EVIDENCE_V1.md](CHECKLIST_EVIDENCE_V1.md). Portable archives and Realtime are outside this completion v1; retention remains an operational/business decision. Do not reopen these accepted platform decisions based on the historical planning list below.
+Reabertura e modelo de permissão/escopo estão definidos em [Audit Domain v1](../../briefs/AUDIT_DOMAIN_V1.md) e [ADR-005](../../decisions/ADR-005-core-authorization.md). O produto aprovou **Excel da inspeção, Excel do histórico da unidade e impressão/PDF**, implementados conforme [Reporting](../../briefs/AUDIT_EXPORT_REPORTING_V1.md). Anexos por critério estão implementados conforme [brief](../../briefs/AUDIT_CHECKLIST_EVIDENCE_V1.md) e [contrato](CHECKLIST_EVIDENCE_V1.md). Arquivos portáteis e Realtime não fazem parte do escopo de fechamento v1; retenção ainda é decisão operacional.
 
-## Objective
+**Não reabrir decisões aceitas** com base em dúvidas antigas listadas ao fim deste mapa.
 
-Migrate the proven Audit domain into Gaúcha Gestão without carrying forward standalone technical constraints or coupling platform-wide concepts to the Audit module.
+## Objetivo original
 
-## Source systems
+Migrar o domínio de Auditoria comprovado para a Gaúcha Gestão, sem carregar restrições técnicas do standalone nem acoplar conceitos de toda a plataforma ao módulo.
 
-1. Standalone Audit v2.9.1 — functional/UX baseline presented before new requests.
-2. `The-Vonky/Controle_Auditoria` online v3 — current multi-user technical evolution.
-3. `IMPLEMENTATION_BRIEF_ACTION_PLANS_V3.md` — approved post-demonstration Action Plan evolution, pending implementation on reviewed main.
+## Sistemas de origem
 
-## Reuse directly when compatible
+1. Auditoria standalone **v2.9.1**, baseline funcional/UX demonstrada antes de novas solicitações.
+2. `The-Vonky/Controle_Auditoria` online **v3**, evolução técnica multiusuário da época.
+3. `IMPLEMENTATION_BRIEF_ACTION_PLANS_V3.md`, evolução de Planos de Ação aprovada após a demonstração, hoje incorporada ao projeto.
 
-### Domain data/rules
-- official checklist content and stable item IDs;
-- 9-section / 158-item structure;
-- answer status semantics;
-- conformity formula and classification thresholds;
-- finalization completeness rule;
-- AP/NAT corrective-action trigger rule.
+## Reaproveitar diretamente quando compatível
 
-### Tests/fixtures to recreate
-- known scoring examples from v2.9.1 validation;
-- template count/ID validation;
-- finalization behavior;
-- AP/NAT Action Plan uniqueness.
+**Regras/dados de domínio:**
+- checklist canônico, IDs estáveis e 9 seções/158 itens;
+- semântica das respostas;
+- fórmula de conformidade e limites de classificação;
+- regra de completude antes de finalizar;
+- gatilho de criação de Plano de Ação para respostas AP/NAT.
 
-The platform should encode these as automated tests rather than relying on manual comparison with the old HTML.
+**Testes/fixtures a reproduzir:**
+- resultados conhecidos de pontuação da v2.9.1;
+- contagem/IDs do template;
+- comportamento de finalização;
+- unicidade de Plano de Ação originado no checklist.
 
-## Reuse with adaptation
+A plataforma deve automatizar esses testes, não depender apenas da comparação manual com o HTML legado.
 
-### Current online React UI
-Useful references/components:
-- unit cards and hero patterns;
-- inspection tabs;
-- checklist section navigation;
-- responsive question cards;
-- modal behavior;
-- Action Plan cards;
-- evidence list UX;
-- Excel export logic.
+## Reaproveitar com adaptação
 
-Adaptations required:
-- platform App Shell replaces Audit-specific shell;
-- Core provides canonical unit/user information;
-- permission checks replace hard-coded role checks;
-- module routes live under platform routing;
-- shared UI primitives should be reused rather than copied.
+### Interface React do sistema online original
 
-### Current online PostgreSQL model
-Useful concepts:
-- UUID-style identifiers;
-- normalized inspections/answers/action plans/attachments;
-- version-based optimistic concurrency;
-- database-enforced authorization concept;
-- Realtime capability where it provides business value.
+Padrões aproveitáveis: cartões de unidade e hero, abas de inspeção, navegação por seções, perguntas responsivas, modais, cartões de Planos de Ação, listas de evidências e exportação Excel.
 
-Adaptations required:
-- Core-owned entity references;
-- generalized Action Plan model;
-- platform permission/scope enforcement;
-- platform-wide system audit logging;
-- incremental migrations in the platform schema.
+**Adaptações:** App Shell da plataforma substitui shell próprio da Auditoria; Core fornece unidades/usuários canônicos; permissões substituem verificações fixas de papéis; rotas dentro da navegação da plataforma; componentes Shared reaproveitados em vez de copiados.
 
-The current Supabase schema is a reference, not a migration to replay blindly.
+### Modelo PostgreSQL online original
 
-### Current media gateway
-Useful concepts:
-- authenticated media access;
-- binary storage outside PostgreSQL;
-- metadata rows;
-- upload size enforcement.
+Conceitos aproveitáveis: UUIDs, inspeções/respostas/planos/anexos normalizados, concorrência otimista por versão, autorização no banco e Realtime quando gerar valor real.
 
-Adapt to the storage/auth stack selected by the platform.
+**Adaptações:** referências a entidades Core, Planos de Ação generalizados, permissão/escopo da plataforma, auditoria sistêmica global e migrations incrementais. O schema original é **referência**, não script para reaplicar cegamente.
 
-## Do not port
+### Gateway de mídia original
 
-- single-file HTML architecture;
-- LocalStorage as authoritative business data;
-- IndexedDB as platform source of truth;
-- browser-local recovery as infrastructure backup;
-- Audit-specific global app shell;
-- fixed role checks such as `role === 'qualidade'`;
-- direct module ownership of users/units;
-- deleting a Core unit from Audit and cascading all related platform data;
-- provider-specific infrastructure assumptions before the platform ADR selects them.
+Conceitos úteis: acesso autenticado a arquivo, bytes fora do PostgreSQL, linhas de metadados e limites de upload. Adaptar ao contrato Supabase/Storage/Auth escolhido pela plataforma.
 
-## Platform dependencies required by Audit
+## Não transportar do legado
 
-Audit v1 requires a minimum set of shared capabilities:
+- arquitetura HTML em arquivo único;
+- LocalStorage como fonte autoritativa de negócios;
+- IndexedDB como banco-fonte;
+- recuperação no browser como backup de infraestrutura;
+- App Shell global exclusivo da Auditoria;
+- condições fixas como `role === 'qualidade'`;
+- duplicação de usuários/unidades no módulo;
+- exclusão de unidade Core pela Auditoria com cascata dos dados;
+- dependências de fornecedor de infraestrutura contrárias aos ADRs.
 
-### Core
-- authenticated identity/profile;
-- authorization/permission evaluation;
-- organizational unit;
-- optional sector reference where needed by Action Plans;
-- organizational data scope;
-- system audit-event capability.
+## Dependências da plataforma para Auditoria v1
 
-### Shared/platform
-- App Shell/navigation;
-- common modal/form primitives;
-- file/attachment contract;
-- error/loading/empty-state patterns;
-- date/time formatting;
-- deployment/configuration conventions.
+**Core:** identidade e perfil autenticados, autorização por permissão, unidade, setor opcional em Planos, escopo organizacional e log sistêmico.
 
-### Transversal business capability
-- Action Plans, according to ADR-003.
+**Shared/plataforma:** App Shell/navegação, modais/formulários, contrato de arquivos/anexos, estados erro/carregando/vazio, formatação de data/hora e convenções de deploy/configuração.
 
-## Recommended logical route placement
+**Negócio transversal:** Planos de Ação conforme [ADR-003](../../decisions/ADR-003-action-plans-transversal-module.md).
 
-User-facing navigation:
+## Posicionamento da navegação (decisão de produto)
 
-```text
+~~~text
 Qualidade
 ├── Auditorias
 ├── Planos de Ação
 ├── Registros ISO
 └── Pesquisa de Satisfação
-```
+~~~
 
-Possible route shape is intentionally not finalized until the web framework/router decision, but Audit must remain addressable as its own module boundary.
+A forma exata das rotas não foi fixada no planejamento inicial; Auditoria precisava manter **fronteira de módulo própria**, independentemente do agrupamento visual.
 
-## Migration phases
+## Fases históricas da migração
 
-### A. Freeze functional baseline
+**A — Congelar baseline funcional.** Feito para planejamento: artefato v2.9.1 por SHA-256, `main` do online v3 e brief posterior identificados.
 
-Done for planning:
-- v2.9.1 artifact identified by SHA-256;
-- current online v3 main identified;
-- post-demonstration brief identified.
+**B — Contratos da fundação.** Selecionar stack web/backend/Auth/Storage, entidades Core, permissões iniciais, fronteira do módulo e estratégia de migração/testes.
 
-### B. Foundation contract
+**C — Esqueleto de Auditoria.** Entrada em Qualidade, interface pública do módulo, páginas/rotas, permissões e consultas com escopo por unidade. Não migrar tudo de uma vez.
 
-Before moving Audit code:
-- select platform application/backend/auth/data/storage architecture;
-- define Core entity contracts;
-- define first permission catalog;
-- define module boundary and public interfaces;
-- define migration/test strategy.
+**D — Domínio.** Template, inspeções, respostas, cálculo, concorrência, finalização e testes de regressão.
 
-### C. Audit skeleton
+**E — Planos de Ação.** Origem `checklist` e manual, planejamento/verificação de eficácia, evidências, setor opcional, prevenção de plano duplicado por item.
 
-Create:
-- platform navigation entry under Quality;
-- Audit module public entry;
-- module routes/pages;
-- permissions;
-- unit-scoped read path.
+**F — Arquivos e relatórios.** Evidências por critério, evidências de plano e comportamentos de exportação/relatório.
 
-Do not migrate all functionality at once.
+**G — Reconciliação.** Comparar com casos legados/online: pontuação, respostas, ciclo da inspeção, criação de plano, anexos, exportações, permissões, unidade e comportamento móvel.
 
-### D. Domain migration
+Essas fases são **marcos históricos**; os itens implementados na plataforma não devem ser recriados.
 
-Move/reimplement:
-- template;
-- inspections;
-- answers;
-- scoring;
-- concurrency;
-- finalization;
-- regression tests.
+## Questões abertas na época
 
-### E. Action Plans
+1. Preservar reabertura explícita de inspeção finalizada?
+2. Manter Excel de histórico de unidade?
+3. Além de backup infra, precisar arquivo portátil por usuário?
+4. Que partes da interface online seriam reaproveitadas ou recriadas?
+5. Realtime em todas as telas ou apenas colaboração/status?
+6. Catálogo de permissões e escopo unidade/setor?
+7. Retenção de inspeções/evidências finalizadas?
 
-Implement the generalized model:
-- checklist source;
-- manual source;
-- effectiveness planning/verification;
-- evidence;
-- optional sector;
-- no duplicate checklist plan.
-
-### F. Media and export
-
-Integrate:
-- checklist evidence;
-- Action Plan evidence;
-- export/report behavior.
-
-### G. Reconciliation
-
-Validate the new module against known standalone/online scenarios:
-- score results;
-- response counts;
-- inspection lifecycle;
-- Action Plan creation;
-- attachments;
-- exports;
-- permissions;
-- unit scope;
-- mobile behavior.
-
-## Open migration decisions
-
-Must be resolved explicitly:
-
-1. Does platform Audit preserve explicit reopening of a finalized inspection?
-2. Is unit-history Excel export retained in v1?
-3. Does Audit need a user-facing portable archive in addition to infrastructure backup?
-4. Which existing online UI components are clean enough to transplant versus reimplement?
-5. Is Realtime required for every Audit view or only collaborative editing/status surfaces?
-6. Exact permission catalog and unit/sector scope model.
-7. Exact retention policy for finalized inspections and evidence.
-
-None of these questions justify blocking architecture work outside their affected area.
-
+**Resolução atual:** reabertura, exportações, contratos de permissão e evidências foram aprovados e implementados; Realtime e arquivo portátil não entraram na v1; retenção continua pendente. Não converter dúvidas históricas em blockers novos sem issue/brief aceito.
