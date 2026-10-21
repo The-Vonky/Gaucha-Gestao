@@ -1,6 +1,7 @@
-# Desenvolvimento paralelo com agentes — Gestão-Gaúcha
+# Desenvolvimento paralelo com agentes — Gaúcha Gestão
 
-**Estado:** protocolo de colaboração proposto. Aplicável depois de aprovado e integrado à `main`.
+**Estado em 21/10/2026:** documento integrado à `main` desde a PR #43. Funciona como **disciplina operacional manual de colaboração**, não como ruleset automático ou autorização para ambiente persistente. O escopo de cinco dias abaixo é histórico e não distribui tarefas futuras por padrão.
+**Idioma de trabalho:** pt-BR para registros, handovers, issues e PRs. Consulte [AGENTS.md](../../AGENTS.md) como regra compartilhada; este documento detalha somente coordenação entre agentes.
 **Objetivo:** dois desenvolvedores, agentes simultâneos, um único fluxo de integração e nenhuma concorrência sobre ambientes persistentes ou produção.
 
 > **Decisão do responsável técnico — 15/10/2026:** a proteção técnica (`ruleset`/branch protection) da `main` será implementada **somente na fase final do projeto**. O risco de push/merge sem bloqueio automático foi conscientemente aceito; **não equivale a mitigação técnica**. Até lá, PR, CI e revisão humana independente são exigências **operacionais manuais**, não gates impostos pelo GitHub. Sem habilitar ou alterar ruleset neste ciclo. Reavaliar a ordem exata e as condições antes de qualquer GO de produção.
@@ -14,7 +15,7 @@
 | Core/Auth e migrations | Dev A (ou outro responsável expressamente nomeado na issue) | `apps/web/src/core/**`, `supabase/migrations/**`, regras de autorização e Identity Boundary; depende dos gates do ADR-007 |
 | Integração | Responsável técnico, com revisão de outro humano | `main`, resolução de conflitos, release, mudanças operacionais |
 
-**Divisão dos cinco dias (issues #46–#59):** Dev A (`The-Vonky`) cuida de Core, arquitetura, infraestrutura, recovery, decisões e handover; Dev B assume Qualidade v1, setup/testes, matriz P1–P9, bugs e regressões; Matheus apoia o diagnóstico e a montagem física da C30/HD HPE. O login GitHub de Dev B e os autorizadores de arquitetura, backup, servidor e produção ainda precisam ser informados; não inferir aprovação ou conceder acesso por esse registro.
+**Divisão dos cinco dias (issues #46–#59):** Dev A (`The-Vonky`) cuida de Core, arquitetura, infraestrutura, recovery, decisões e handover; Dev B assume Qualidade v1, setup/testes, matriz P1–P9, bugs e regressões; Matheus apoia o diagnóstico e a montagem física da C30/HD HPE. O login GitHub de Dev B foi confirmado como [@bernardowillian](https://github.com/bernardowillian) na Issue #47 e como colaborador com permissão de escrita na revisão de 20/10/2026. **Isso não atribui autorização de produção, backup, arquitetura ou merge de novas PRs.** Os responsáveis por decisões sensíveis continuam definidos por issue/ADR/ata, não por inferência.
 
 Propriedade é **por tarefa/arquivo**, não propriedade permanente do diretório. Qualquer mudança que atravessar a fronteira deve ser dividida ou coordenada na issue antes da edição. Evite dois agentes escritores no mesmo arquivo, migration, branch, banco ou projeto Docker. Revisores trabalham preferencialmente sem escrever código.
 
@@ -22,7 +23,7 @@ A proposta do ADR-007 no [PR #24](https://github.com/The-Vonky/Gaucha-Gestao/pul
 
 ## 2. Preparação dos dois desenvolvedores
 
-1. Convide o segundo desenvolvedor pelo **username GitHub exato** em **Settings → Collaborators**, com o menor nível de acesso capaz de enviar branches e PRs; não conceda credenciais de deploy nem segredos de produção.
+1. **Verifique** se [@bernardowillian](https://github.com/bernardowillian) ainda possui o acesso mínimo necessário em **Settings → Collaborators** (permissão de escrita verificada em 20/10/2026). Não enviar convite duplicado nem aumentar privilégios sem necessidade; nunca conceder credenciais de deploy ou segredos de produção por esta regra.
 2. **Não configurar proteção/ruleset da `main` nesta fase.** A ativação foi adiada por decisão consciente para a **etapa final do projeto**. Registrar o risco residual e, antes do GO, confirmar a sequência de proteção, aprovação e implantação. Quando a fase final for autorizada e houver revisor elegível, propor checks obrigatórios, aprovação humana de outra pessoa e bloqueio de force-push/deleção como mudança separada, sem antecipá-la agora.
 3. **Disciplina manual até a proteção:** não fazer push direto na `main`, não usar auto-merge/bypass, verificar `validate`, `action-plans-integration` e `infra-validate` quando pertinentes e exigir revisão humana independente antes do merge. Essa disciplina depende das pessoas e não substitui enforcement técnico; se não houver revisor elegível, a mudança crítica aguarda.
 4. Não configurar `CODEOWNERS` com um único usuário e revisão obrigatória: isso poderia bloquear PRs de autoria do próprio dono. Adicionar nomes reais e revisão por CODEOWNERS somente após o segundo colaborador aceitar o convite.
@@ -79,7 +80,7 @@ Sessão de agente:
 5. Revisar diff e executar os checks pertinentes; reportar comandos **realmente executados** e limitações.
 6. Abrir PR pequeno; não fazer merge, deploy, tag, migration compartilhada ou release autonomamente.
 
-Revisão deve usar outro agente/modelo quando útil, mas a aprovação de merge é **humana**. A avaliação de segurança de Auth/RLS/concurrency não pode ser substituída por CI verde.
+Revisão pode usar outro agente/modelo para parecer técnico, mas a aprovação de merge é **humana**. Uma aprovação verbal precisa ser descrita **como verbal**, com data, autor do relato e escopo da PR; não inventar review formal `APPROVED` no GitHub. Não estender autorização de uma PR a outra. Segurança de Auth/RLS/concorrência não pode ser substituída por CI verde.
 
 ## 6. Merge, CI e liberação
 
@@ -87,7 +88,7 @@ Pipeline: **Issue → worktree/branch isolada → commits focalizados → PR →
 
 Checks existentes: `validate` (typecheck, lint, Vitest, build, npm audit), `action-plans-integration` (Supabase local/E2E), `infra-validate` (stack reproduzível). Rodar testes de domínio pertinentes mesmo quando a suíte completa for exigida para merge. Se `action-plans-integration` falhar intermitentemente, consultar a [Issue #41](https://github.com/The-Vonky/Gaucha-Gestao/issues/41) (encerrada administrativamente, sem correção comprovada) e registrar nova ocorrência na [Issue #57](https://github.com/The-Vonky/Gaucha-Gestao/issues/57) antes de abrir issue específica; não mascarar o erro apenas repetindo execução.
 
-**Produção não está liberada:** P1–P9 e O1–O8 seguem conforme `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md`, junto dos gates de segurança, recuperação e autorização explícita de deploy. Não confundir branch protegida ou CI verde com homologação física.
+**Documentação atualizada em 21/10:** Core/Qualidade/ABC v1 estão integrados ao código; a PR #62 de restore foi mergeada com 8 PASS / DR-08 PARCIAL; a Issue #51 continua aberta. O documento de colaboração não decide o fechamento desses gates. **Produção não está liberada:** P1–P9 e O1–O8 seguem conforme `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md`, junto dos gates de segurança, recuperação e autorização explícita de deploy. Não confundir branch protegida ou CI verde com homologação física.
 
 ## 7. Capacidade e coordenação
 
