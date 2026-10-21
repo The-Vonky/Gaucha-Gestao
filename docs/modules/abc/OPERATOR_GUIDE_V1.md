@@ -35,6 +35,18 @@ flowchart TD
 5. Após a publicação, consulte total, itens, classe informada pelo ERP e **classe calculada** (`abc-70-90-inicio-v1`, acumulado anterior ao item), revisões anteriores e autoria.
 6. Use **Baixar original** e **Conferir com o arquivo**. Esta última opção baixa o XLSX, reprocessa e compara o conteúdo, registrando o resultado em log.
 
+## Mensagens da importação e o que fazer
+
+| Mensagem | Significado | Ação |
+| --- | --- | --- |
+| "O formato .xls (Excel 97-2003) não é aceito" | Arquivo no formato antigo | Exportar o relatório do ERP em `.xlsx` |
+| "…partes que o relatório do ERP não tem… (código: unsupported_part)" | A planilha foi aberta e **salva** no Excel (ou editada), que acrescenta tema/imagens | Exportar de novo do ERP e enviar **sem salvar** no Excel |
+| "…contém fórmulas" / "…vínculos externos" / "…protegido por senha" | Conteúdo fora do perfil estático do ERP | Reexportar do ERP |
+| Bloqueio `INVALID_TEXT` numa célula | Texto com quebra de linha/caractere de controle ou acima do limite do banco | Corrigir o cadastro no ERP e reexportar |
+| "Falha técnica ao ler o arquivo neste navegador (…)" | Problema do navegador ou do sistema, não do arquivo | Atualizar a página; persistindo, enviar a mensagem ao suporte |
+
+Até 21/10/2026, abrir o sistema por **HTTP num IP de rede** (ex.: DEV compartilhado em `http://10.1.10.94:5173`) fazia qualquer importação falhar com "Não foi possível ler o arquivo". Corrigido na branch `fix/abc-import-p0-20261021`; detalhes em [MATRIZ_EQUIVALENCIA_LEGADO](MATRIZ_EQUIVALENCIA_LEGADO.md).
+
 ## Integridade — não confundir prévia com garantia do servidor
 
 A `confirm_source_upload` verifica **existência, tamanho e MIME** do Storage; **não recalcula o SHA-256 dos bytes no servidor**. A `publish_revision` revalida o payload e o `content_hash`, mas não prova que ele corresponde aos bytes do XLSX. O browser faz a conferência posterior; um publicador autorizado poderia enviar linhas falsas coerentes. Algumas regras do parser (ex.: período fechado) não estão repetidas identicamente no SQL.

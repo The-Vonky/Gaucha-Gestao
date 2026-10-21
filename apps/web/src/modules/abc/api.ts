@@ -93,6 +93,12 @@ export async function recordFileCheck(revisionId: string, contentHash: string): 
   return data as boolean;
 }
 
+/** Technical failure while reading a file in the browser (file problems are preview blockers). */
+export function readFailureMessage(e: unknown): string {
+  const detail = e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 160) : "erro desconhecido";
+  return `Falha técnica ao ler o arquivo neste navegador (${detail}). Atualize a página e tente novamente; se persistir, informe esta mensagem ao suporte.`;
+}
+
 /** Business-rule rejections from abc_private.fail are already in Portuguese; map the rest. */
 export function abcMessage(e: unknown): string {
   const text = String((e as { message?: unknown } | null)?.message ?? "");

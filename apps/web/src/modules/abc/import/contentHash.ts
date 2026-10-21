@@ -1,4 +1,5 @@
 import type { ReportPayload } from "../types";
+import { sha256Portable } from "./sha256";
 
 /**
  * Canonical content hash of a parsed report. Mirrors abc_private.content_hash in
@@ -27,8 +28,10 @@ export function canonicalContent(p: HashInput): string {
 export async function sha256Hex(data: Uint8Array | string): Promise<string> {
   // Copy into a plain ArrayBuffer-backed view, as Web Crypto requires.
   const bytes = typeof data === "string" ? new TextEncoder().encode(data) : new Uint8Array(data);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  // Web Crypto exists only in secure contexts; plain-HTTP LAN access (shared DEV) lacks it.
+  const subtle = globalThis.crypto?.subtle;
+  const digest = subtle ? new Uint8Array(await subtle.digest("SHA-256", bytes)) : sha256Portable(bytes);
+  return Array.from(digest, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export function contentHash(p: HashInput): Promise<string> {

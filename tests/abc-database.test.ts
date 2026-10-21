@@ -4,6 +4,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { STORAGE_STUB } from "./storage-stub";
 import { contentHash } from "../apps/web/src/modules/abc/import/contentHash";
+import { buildPayload, parseReport } from "../apps/web/src/modules/abc/import/parser";
+import { erpWorkbook, syntheticProducts } from "./abc-erp-workbook.mjs";
+import { JSDOM } from "jsdom";
+
+// The browser parser needs DOMParser; this suite runs in Node for PGlite/PostgreSQL.
+globalThis.DOMParser ??= new JSDOM().window.DOMParser;
 import { sum as decimalSum } from "../apps/web/src/modules/abc/import/decimal";
 import type { ReportLine, ReportPayload } from "../apps/web/src/modules/abc/types";
 
@@ -339,6 +345,40 @@ describe("Curva ABC database", { concurrent: false }, () => {
     expect((await db.query("select * from storage.objects where name=$1", [ready.object_key])).rows.length).toBe(0);
     await login(users.viewerA);
     expect((await db.query("select * from storage.objects where name=$1", [ready.object_key])).rows.length).toBe(1);
+  });
+
+  it("publishes the browser parser's payload for an ERP-shaped workbook, byte-exact and hash-equal", async () => {
+    // Unit C has a leading-zero code: the ERP branch code must match it as exact text.
+    await login(users.global);
+    const products = syntheticProducts(234);
+    const { bytes } = erpWorkbook({ branch: "0042", products, month: "2026-06" });
+    const preview = await parseReport(bytes, { expectedBranchCode: "0042", today: "2026-10-21" });
+    expect(preview.blocked).toBe(false);
+    const payload = await buildPayload(preview);
+    const f = await readyFile(C, { sha: payload.file_sha256 });
+    // The browser's content_hash is accepted only if the SQL serialization reproduces it.
+    const id = (await one<{ id: string }>("select abc.publish_revision($1,$2,0,null,true) id", [f.id, payload])).id;
+    const rows = await owner<{ product_code: string; product_name: string; quantity: string; unit_cost: string; total: string; erp_class: string }>(
+      "select product_code,product_name,quantity::text,unit_cost::text,total::text,erp_class from abc.revision_lines where revision_id=$1 order by line_no", [id],
+    );
+    expect(rows).toEqual(products.map((p) => ({ product_code: p.code, product_name: p.name, quantity: p.quantity, unit_cost: p.unitCost, total: p.total, erp_class: p.cls })));
+    const [rev] = await owner<{ content_hash: string; declared_total: string; zero: boolean }>(
+      "select content_hash,declared_total::text,difference=0 zero from abc.report_revisions where id=$1", [id],
+    );
+    expect(rev).toEqual({ content_hash: payload.content_hash, declared_total: preview.declaredTotal, zero: true });
+  });
+
+  it("accepts a parser payload with many zero/zero lines (aggregated client warnings)", async () => {
+    await login(users.global);
+    const products = [
+      ...syntheticProducts(3),
+      ...Array.from({ length: 80 }, (_, i) => ({ code: `9.${i}`, name: `Sem movimento ${i}`, unit: "KG", quantity: "0", unitCost: "0", total: "0", cls: "C" })),
+    ];
+    const preview = await parseReport(erpWorkbook({ branch: "0042", products, month: "2026-05" }).bytes, { expectedBranchCode: "0042", today: "2026-10-21" });
+    const payload = await buildPayload(preview);
+    const f = await readyFile(C, { sha: payload.file_sha256 });
+    const id = (await one<{ id: string }>("select abc.publish_revision($1,$2,0,null,true) id", [f.id, payload])).id;
+    expect((await owner<{ n: number }>("select count(*)::int n from abc.revision_lines where revision_id=$1 and calculated_class is null", [id]))[0].n).toBe(80);
   });
 
   it("rejects confirming an upload whose stored object does not match", async () => {

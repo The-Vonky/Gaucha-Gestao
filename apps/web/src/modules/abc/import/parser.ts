@@ -19,6 +19,33 @@ const UNITS: Record<string, string> = { KG: "KG", G: "G", LT: "L", L: "L", ML: "
 const EXPECTED_HEADER: Record<string, string> = {
   A: "codigo", B: "nome do produto", D: "un", E: "realizado", F: "custo unit.", G: "custo total", H: "sobre total",
 };
+/** Limits enforced by abc.publish_revision; checked here so a clean preview never fails to publish. */
+export const MAX_PRODUCTS = 20000;
+const TEXT_LIMITS = { code: 60, name: 500, unit: 40, branch: 40, basis: 200 } as const;
+/** U+0000–U+001F or U+007F: the range abc_private.clean_text rejects. */
+function hasControl(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (c < 0x20 || c === 0x7f) return true;
+  }
+  return false;
+}
+/** Operator guidance for the reader's stable codes (the file is never repaired or partially read). */
+const XLSX_MESSAGES: Record<string, string> = {
+  invalid_zip: "O arquivo não é um pacote XLSX válido ou está corrompido.",
+  file_too_large: "O arquivo excede o limite de 10 MB.",
+  unsupported_part:
+    "O arquivo contém partes que o relatório do ERP não tem (por exemplo, tema, imagens ou macros, comuns quando a planilha é aberta e salva no Excel). Exporte novamente do ERP e envie sem salvar no Excel.",
+  formula: "O arquivo contém fórmulas. Envie a exportação estática do ERP, sem fórmulas.",
+  encrypted_part: "O arquivo está protegido por senha ou criptografado.",
+  external_relationship: "O arquivo contém vínculos externos, que não são aceitos.",
+  unsupported_cell_type: "O arquivo contém células de tipo não suportado (data, booleano, erro ou fórmula de texto).",
+  xml_doctype: "O arquivo contém declarações XML não permitidas.",
+  invalid_xml: "O conteúdo XML do arquivo é inválido ou não está em UTF-8.",
+};
+export function xlsxMessage(code: string): string {
+  return `${XLSX_MESSAGES[code] ?? "A estrutura do arquivo XLSX não é suportada."} (código: ${code})`;
+}
 
 export type Severity = "BLOCKER" | "WARNING";
 export type Issue = { code: string; severity: Severity; message: string; row: number | null; cell: string | null };
@@ -100,8 +127,10 @@ export async function parseReport(input: ArrayBuffer | Uint8Array, ctx: ParseCon
   try {
     workbook = readXlsx(data);
   } catch (e) {
-    const code = e instanceof XlsxError ? e.code : "invalid_xml";
-    return empty({ code: "XLSX_INVALID", severity: "BLOCKER", message: `Arquivo XLSX inválido (${code}).`, row: null, cell: null });
+    // An unexpected exception still comes from untrusted bytes: fail closed, but keep it diagnosable.
+    if (!(e instanceof XlsxError)) console.error("Curva ABC: falha inesperada ao ler o XLSX", e);
+    const code = e instanceof XlsxError ? e.code : "unreadable";
+    return empty({ code: "XLSX_INVALID", severity: "BLOCKER", message: xlsxMessage(code), row: null, cell: null });
   }
   const issues = new Issues();
   let target = workbook.sheets.filter((s) => norm(s.name) === norm(SHEET_NAME));
@@ -176,6 +205,8 @@ function parseMetadata(indexed: Map<number, Cells>, header: number | null, ctx: 
   else if (branch && branch !== ctx.expectedBranchCode)
     issues.add("BRANCH_MISMATCH", "Filial não corresponde à unidade selecionada.", 1, "B1");
   if (c1.has("C") && !isText(c1.get("C"))) issues.add("INVALID_BRANCH_NAME", "Nome da filial deve ser textual.", 1, "C1");
+  if (branch && (branch.length > TEXT_LIMITS.branch || hasControl(branch)))
+    issues.add("INVALID_TEXT", `Código da filial deve ter até ${TEXT_LIMITS.branch} caracteres, sem caracteres de controle.`, 1, "B1");
 
   let start: string | null = null;
   let end: string | null = null;
@@ -212,6 +243,8 @@ function parseMetadata(indexed: Map<number, Cells>, header: number | null, ctx: 
   }
   // The basis text is read from the report; only the exact label after "Tipo de Custo:" is kept.
   const basisText = rawBasis?.replace(/^\s*tipo de custo:\s*/i, "").trim() ?? null;
+  if (basisText && (basisText.length > TEXT_LIMITS.basis || hasControl(basisText)))
+    issues.add("INVALID_TEXT", `Modalidade de custo deve ter até ${TEXT_LIMITS.basis} caracteres, sem caracteres de controle.`, 2, "E2");
   return { branchCode: branch, branchName: name, start, end, costBasis: basis, costBasisRaw: basisText };
 }
 
@@ -279,7 +312,11 @@ function parseBody(rows: Row[], header: number, issues: Issues) {
         issues.add("DUPLICATE_PRODUCT", "Código de produto duplicado.", first, `A${first}`);
         issues.add("DUPLICATE_PRODUCT", "Código de produto duplicado.", row.number, `A${row.number}`);
       } else codes.set(code, row.number);
+      const description = (valueOf(cells, "B") ?? "").trim();
       const unitRaw = (valueOf(cells, "D") ?? "").trim();
+      for (const [column, text, limit] of [["A", code, TEXT_LIMITS.code], ["B", description, TEXT_LIMITS.name], ["D", unitRaw, TEXT_LIMITS.unit]] as const)
+        if (text.length > limit || hasControl(text))
+          issues.add("INVALID_TEXT", `Texto deve ter até ${limit} caracteres, sem quebras de linha ou caracteres de controle.`, row.number, `${column}${row.number}`);
       const unit = UNITS[unitRaw.toUpperCase()] ?? null;
       if (!unit) issues.add("UNKNOWN_UNIT", "Unidade não homologada.", row.number, `D${row.number}`);
       const quantity = numberAt(cells.get("E"), issues, row.number);
@@ -287,7 +324,7 @@ function parseBody(rows: Row[], header: number, issues: Issues) {
       const total = numberAt(cells.get("G"), issues, row.number);
       const sourceShare = numberAt(cells.get("H"), issues, row.number, true);
       if ([quantity, unitCost, total, sourceShare].includes(null)) complete = false;
-      lines.push({ row: row.number, code, description: (valueOf(cells, "B") ?? "").trim(), unitRaw, unit,
+      lines.push({ row: row.number, code, description, unitRaw, unit,
         quantity, unitCost, total, sourceShare, sourceClass: current });
     } else {
       records.push({ row: row.number, kind: "UNKNOWN" });
@@ -299,6 +336,7 @@ function parseBody(rows: Row[], header: number, issues: Issues) {
   if ([...seen].some((g) => !subtotals.has(g))) issues.add("UNCLOSED_GROUP", "Toda curva presente precisa de subtotal.");
   if (!totalSeen) issues.add("MISSING_TOTAL", "Total geral ausente.");
   if (!lines.length) issues.add("MISSING_PRODUCTS", "Relatório deve conter ao menos um produto.");
+  if (lines.length > MAX_PRODUCTS) issues.add("TOO_MANY_PRODUCTS", `Relatório excede ${MAX_PRODUCTS} produtos por publicação.`);
   for (const [g, s] of subtotals) {
     const group = lines.filter((l) => l.sourceClass === g);
     if (s.total !== null && group.every((l) => l.total !== null) && differsBy(s.total, sum(group.map((l) => l.total!)), "0.05"))
@@ -349,6 +387,26 @@ export function warningText(issue: Issue): string {
   return issue.row !== null ? `${issue.message} (linha ${issue.row})` : issue.message;
 }
 
+/** The database accepts at most 50 client warnings of up to 200 characters: one per code, listing rows. */
+export function clientWarnings(issues: Issue[]): string[] {
+  const byCode = new Map<string, Issue[]>();
+  for (const i of issues)
+    if (i.severity === "WARNING" && CLIENT_WARNINGS.has(i.code)) {
+      const group = byCode.get(i.code) ?? [];
+      group.push(i);
+      byCode.set(i.code, group);
+    }
+  return [...byCode.values()].map((group) => {
+    const rows = group.map((i) => i.row).filter((r): r is number => r !== null);
+    if (!rows.length) return group[0].message;
+    let text = `${group[0].message} (${rows.length === 1 ? "linha" : "linhas"} `;
+    let shown = 0;
+    while (shown < rows.length && text.length + String(rows[shown]).length + 24 <= 200)
+      text += `${shown ? ", " : ""}${rows[shown++]}`;
+    return `${text}${shown < rows.length ? ` e mais ${rows.length - shown}` : ""})`;
+  });
+}
+
 /** Builds the publication payload from an unblocked preview. */
 export async function buildPayload(preview: Preview): Promise<ReportPayload> {
   const m = preview.metadata;
@@ -381,7 +439,7 @@ export async function buildPayload(preview: Preview): Promise<ReportPayload> {
     ...draft,
     parser_version: preview.parserVersion,
     file_sha256: preview.sourceSha256,
-    warnings: preview.issues.filter((i) => i.severity === "WARNING" && CLIENT_WARNINGS.has(i.code)).map(warningText),
+    warnings: clientWarnings(preview.issues),
     content_hash: await contentHash(draft),
   };
 }

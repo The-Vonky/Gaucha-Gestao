@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
+import { spawn } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { createServer } from "node:net";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import pg from "pg";
+import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
+import { erpWorkbook, syntheticProducts } from "../abc-erp-workbook.mjs";
 
 // Curva ABC v1 on a real, disposable local Supabase: Auth JWT, PostgREST, Storage API and
 // RLS together, plus two concurrent publishers. Never prints sessions, keys or signed URLs.
@@ -18,7 +25,7 @@ const password = "Local-" + randomUUID() + "-aA1!";
 const tag = randomUUID().slice(0, 8);
 const A = randomUUID(), B = randomUUID();
 const codeA = `ABC-A-${tag}`, codeB = `ABC-B-${tag}`;
-const users = {}, clients = {};
+const users = {}, clients = {}, emails = {};
 let phase = "setup";
 const abc = (user) => clients[user].schema("abc");
 const bucket = (user) => clients[user].storage.from(BUCKET);
@@ -39,6 +46,7 @@ async function authUser(name) {
   assert.equal(response.status, 200, "Local Auth user creation");
   const { id, email } = await response.json();
   users[name] = id;
+  emails[name] = email;
   clients[name] = createClient(config.API_URL, config.ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
   must(await clients[name].auth.signInWithPassword({ email, password }), "Real Auth sign-in");
 }
@@ -76,6 +84,93 @@ async function storeFile(user, unit, bytes = Buffer.from("PK synthetic " + rando
 }
 const publish = (user, file, p, version = 0, reason = null, accept = false) =>
   abc(user).rpc("publish_revision", { p_file: file.id, p_payload: p, p_expected_version: version, p_reason: reason, p_accept_warnings: accept });
+
+/**
+ * The P0 flow end to end: a real ERP-shaped XLSX selected in Chromium, parsed in the page, original
+ * uploaded to Storage, published by RPC and re-checked against the stored bytes. One context keeps
+ * Web Crypto; the other removes crypto.subtle, as on the plain-HTTP LAN shared DEV.
+ */
+async function browserImport() {
+  phase = "browser import: build";
+  const port = await new Promise((done, fail) => {
+    const probe = createServer();
+    probe.once("error", fail);
+    probe.listen(0, "127.0.0.1", () => { const p = probe.address().port; probe.close(() => done(p)); });
+  });
+  const origin = "http://127.0.0.1:" + port;
+  const outDir = mkdtempSync(join(tmpdir(), "abc-import-e2e-"));
+  const vite = (args, stdio) => spawn(process.execPath, [resolve("node_modules/vite/bin/vite.js"), ...args], {
+    cwd: "apps/web", env: { ...process.env, VITE_SUPABASE_URL: config.API_URL, VITE_SUPABASE_PUBLISHABLE_KEY: config.ANON_KEY }, stdio,
+  });
+  const build = vite(["build", "--outDir", outDir, "--emptyOutDir"], "inherit");
+  assert.equal(await new Promise((done) => build.on("exit", done)), 0, "Build the application");
+  const server = vite(["preview", "--outDir", outDir, "--host", "127.0.0.1", "--port", String(port), "--strictPort"], "ignore");
+  let browser;
+  try {
+    for (const deadline = Date.now() + 60000; ;) {
+      try { if ((await fetch(origin)).ok) break; } catch { /* preview starting */ }
+      if (Date.now() > deadline) throw Error("Local preview did not become ready");
+      await new Promise((done) => setTimeout(done, 100));
+    }
+    browser = await chromium.launch();
+    const now = new Date();
+    const month = (back) => { const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1)); return d.toISOString().slice(0, 7); };
+    for (const run of [{ width: 1280, webCrypto: true, month: month(2) }, { width: 375, webCrypto: false, month: month(3) }]) {
+      const label = `${run.width}px ${run.webCrypto ? "Web Crypto" : "sem crypto.subtle"}`;
+      phase = `browser import ${label}: login`;
+      const context = await browser.newContext({ viewport: { width: run.width, height: 812 }, hasTouch: run.width === 375 });
+      if (!run.webCrypto) await context.addInitScript(() => Object.defineProperty(globalThis.crypto, "subtle", { value: undefined }));
+      const page = await context.newPage();
+      await page.goto(origin);
+      await page.getByLabel(/E-mail/i).fill(emails.otherUnit);
+      await page.getByLabel(/^Senha$/i).fill(password);
+      await page.getByRole("button", { name: "Entrar", exact: true }).click();
+      await page.getByLabel(/^Senha$/i).waitFor({ state: "detached" });
+      assert.equal(await page.evaluate(() => typeof crypto.subtle), run.webCrypto ? "object" : "undefined", label);
+
+      phase = `browser import ${label}: preview`;
+      const products = syntheticProducts(234, run.width);
+      const book = erpWorkbook({ branch: codeB, products, month: run.month });
+      const name = `curva_abc_01-${run.month.slice(5)}_ate_${book.end.slice(8)}-${run.month.slice(5)}.xlsx`;
+      await page.goto(origin + "/abc/units/" + B + "/import");
+      await page.locator('input[type="file"]').setInputFiles({ name, mimeType: XLSX, buffer: Buffer.from(book.bytes) });
+      await page.getByText("Validação concluída", { exact: false }).waitFor();
+      assert.match(await page.locator(".abc-facts").innerText(), /Produtos: 234/, "Preview counts 234 products");
+      const sha = createHash("sha256").update(book.bytes).digest("hex");
+
+      phase = `browser import ${label}: publish`;
+      await page.getByRole("button", { name: "Publicar relatório" }).click();
+      await page.waitForURL(/\/abc\/revisions\/[0-9a-f-]{36}$/);
+      const revision = page.url().split("/").pop();
+      const stored = (await db.query(
+        `select r.line_count,r.content_hash,r.declared_total::text,f.sha256,f.object_key,r.published_by,
+          (select count(*)::int from abc.revision_lines l where l.revision_id=r.id and l.total::text=any($2)) exact
+         from abc.report_revisions r join abc.source_files f on f.id=r.source_file_id where r.id=$1`,
+        [revision, products.map((p) => p.total)])).rows[0];
+      assert.equal(stored.line_count, 234, "All products published");
+      assert.equal(stored.exact, 234, "Totals stored digit for digit");
+      assert.equal(stored.declared_total, book.grand, "Total Geral preserved");
+      assert.equal(stored.sha256, sha, "SHA-256 of the original computed in the page");
+      assert.equal(stored.published_by, users.otherUnit, "Authorship from the JWT");
+      const { data: original, error } = await bucket("otherUnit").download(stored.object_key);
+      assert.equal(error, null, "Original stored");
+      assert.equal(createHash("sha256").update(Buffer.from(await original.arrayBuffer())).digest("hex"), sha, "Stored bytes equal the selected file");
+
+      phase = `browser import ${label}: check original`;
+      await page.getByRole("button", { name: "Conferir com o arquivo" }).click();
+      await page.getByText("O arquivo original reproduz exatamente esta publicação.").waitFor();
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      assert.ok(overflow <= 1, `No page-level horizontal overflow at ${run.width}px`);
+      await context.close();
+    }
+    const checks = (await db.query("select count(*)::int n from core.system_audit_log where module='abc' and unit_id=$1 and action='revision.file_check_ok'", [B])).rows[0].n;
+    assert.equal(checks, 2, "Both browser checks logged");
+  } finally {
+    await browser?.close();
+    server.kill();
+    rmSync(outDir, { recursive: true, force: true });
+  }
+}
 
 try {
   await db.connect();
@@ -129,6 +224,7 @@ try {
   phase = "audit log";
   const actions = (await db.query("select action,count(*)::int n from core.system_audit_log where module='abc' and unit_id=$1 group by action order by action", [A])).rows;
   assert.deepEqual(actions, [{ action: "revision.file_check_ok", n: 1 }, { action: "revision.publish", n: 2 }]);
+  await browserImport();
   console.log("PASS Curva ABC real local integration suite");
 } catch (error) {
   const code = /^[A-Z0-9_]{1,32}$/.test(String(error.code ?? "")) ? error.code : "CHECK_FAILED";

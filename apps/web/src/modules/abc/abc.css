@@ -167,7 +167,11 @@
     grid-template-columns: 1fr;
   }
 }
-.abc-import-preview .metric-value {
+/* Long BRL amounts must wrap inside their tile at 375px instead of widening the page. */
+.abc-metrics > * {
+  min-width: 0;
+}
+.abc-metrics .metric-value {
   font-size: clamp(1.25rem, 2.2vw, 1.75rem);
   overflow-wrap: anywhere;
 }
@@ -179,5 +183,10 @@
   .abc-steps li {
     flex-direction: column;
     gap: var(--space-1);
+  }
+}
+@media (max-width: 480px) {
+  .abc-metrics {
+    grid-template-columns: 1fr;
   }
 }
