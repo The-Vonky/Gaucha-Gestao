@@ -1,59 +1,38 @@
-# Implementation Brief — Platform Foundation v1
+# Brief de implementação — Fundação da plataforma v1
 
-Status: CLOSED FOR IMPLEMENTATION PREPARATION  
-Date: 2026-09-24
+**Estado histórico: FECHADO PARA PREPARAÇÃO DE IMPLEMENTAÇÃO**  
+**Data: 24/09/2026**
 
-> This brief defines the first application-code foundation for Gaúcha Gestão. It does not authorize production deployment, production infrastructure configuration, or migration of standalone business data.
+> Este brief definiu **a primeira fundação de código** da Gaúcha Gestão. Não autorizava implantar produção, configurar infraestrutura produtiva nem migrar dados de negócio dos legados. Suas tarefas de Core foram posteriormente implementadas; não iniciar trabalho novamente apenas por este texto. Consultar [README atual](../../README.md) e [mapa de implementação](../architecture/IMPLEMENTATION_MAP.md).
 
-## Objective
+## Objetivo
 
-Create the minimum working platform skeleton needed to host Audit as the first business module while establishing:
-- application shell;
-- Supabase client integration;
-- Core identity/profile;
-- units/sectors;
-- RBAC with scoped role assignments;
-- permission-driven navigation;
-- system audit-log foundation;
-- database schema/migrations;
-- automated validation.
+Criar a menor plataforma funcional que suportasse Auditoria como primeiro módulo, incluindo:
+- App Shell;
+- cliente Supabase;
+- identidade/perfil Core;
+- unidades e setores;
+- RBAC com atribuições por escopo;
+- navegação por permissões;
+- auditoria sistêmica;
+- schemas/migrations;
+- validação automatizada.
 
-Do not migrate the Audit domain in this brief.
+**Não migrar o domínio Auditoria neste brief inicial.**
 
-## Required reading
+## Leituras exigidas originalmente
 
-Before implementation:
-- `AGENTS.md`;
-- `docs/decisions/ADR-001-modular-monolith.md`;
-- `docs/decisions/ADR-002-core-and-module-ownership.md`;
-- `docs/decisions/ADR-004-platform-stack.md`;
-- `docs/decisions/ADR-005-core-authorization.md`;
-- `docs/architecture/PRODUCT_STRUCTURE.md`;
-- `docs/architecture/AUTHORIZATION.md`;
-- `docs/architecture/DATA_MODEL.md`;
-- `docs/architecture/SECURITY.md`.
+`AGENTS.md`; ADR-001, ADR-002, ADR-004, ADR-005; `docs/architecture/PRODUCT_STRUCTURE.md`, `AUTHORIZATION.md`, `DATA_MODEL.md`, `SECURITY.md`. Não ler módulos não relacionados sem dependência.
 
-Do not read unrelated module documentation unless required by an encountered dependency.
+## Stack e estrutura inicial
 
-## Stack
+Usar stack aceita: **React, TypeScript, Vite, supabase-js, arquivos de migration PostgreSQL/Supabase e workspaces npm** adequados ao monólito modular.
 
-Use the accepted stack:
-- React;
-- TypeScript;
-- Vite;
-- Supabase client;
-- PostgreSQL/Supabase migration files;
-- npm workspace/monorepo organization appropriate for the modular monolith.
+Não configurar ML350, Cloudflare, R2 nem deploy Supabase produtivo. **A escolha física da ML350 foi posteriormente substituída pelo ADR-008 (C30).**
 
-Do not configure the physical ML350, Cloudflare, R2 or production Supabase deployment in this brief.
+Estrutura conceitual mínima:
 
-## Target repository shape
-
-Keep the initial repository small.
-
-Expected conceptual organization:
-
-```text
+~~~text
 apps/
   web/
     src/
@@ -61,63 +40,26 @@ apps/
       core/
       modules/
       shared/
-
 supabase/
   migrations/
-
 docs/
-```
+~~~
 
-Do not create empty folders/files for all nine modules.
+Não criar pastas/arquivos vazios para nove módulos: placeholders somente quando exigidos por contrato de navegação.
 
-Only create module placeholders when required for navigation contracts.
+## Fundação frontend
 
-## Frontend foundation
+Implementar aplicação React/Vite/TS, router, App Shell, sidebar responsiva desktop, drawer mobile, fronteira de sessão/login, bootstrap perfil/usuário atual, estados carregando/erro/negado e registro de navegação filtrado por permissões.
 
-Create:
-- React/Vite/TypeScript application;
-- router;
-- application shell;
-- responsive desktop sidebar;
-- responsive mobile navigation/drawer;
-- login/session boundary;
-- current-user/profile bootstrap;
-- loading/error/unauthorized states;
-- permission-aware navigation registry.
+Mostrar somente destinos realmente suportados; **não fabricar dashboards** para módulos inexistentes.
 
-Initial visible product structure may show only destinations the current implementation actually supports.
+O registro precisa comportar grupos: Qualidade, Custos, Administrativo, Comercial, Transporte, Administração. Cada destino define permissões necessárias. Grupos sem destino visível são omitidos. Na fundação v1, páginas de Administração e entrada/placeholder da Auditoria só aparecem com contratos de permissão reais.
 
-Do not build fake dashboards for unimplemented modules.
+## Schemas e tabelas Core
 
-## Product navigation model
+Migrations versionadas criam schemas `core` e `private`, enums/domains apenas quando necessários, tabelas do ADR-005/DATA_MODEL, índices, grants, RLS e helpers de autorização.
 
-The registry must be capable of representing the accepted groups:
-- Qualidade;
-- Custos;
-- Administrativo;
-- Comercial;
-- Transporte;
-- Administração.
-
-A destination declares required permission(s).
-
-Groups with no visible destination are omitted.
-
-For v1 foundation, Administration pages implemented below and Audit placeholder/entry may be registered only when its permission contract is real.
-
-## Core database schemas
-
-Create source-controlled migrations for:
-- schema `core`;
-- schema `private`;
-- required custom enums/domains only when justified;
-- tables from ADR-005/DATA_MODEL;
-- indexes;
-- grants;
-- RLS;
-- authorization helper functions.
-
-Core tables:
+Tabelas:
 - `core.profiles`;
 - `core.units`;
 - `core.sectors`;
@@ -128,252 +70,110 @@ Core tables:
 - `core.user_role_assignments`;
 - `core.system_audit_log`.
 
-Do not create Audit/Action Plan business tables in this brief.
+Não criar tabelas de negócio Auditoria/Planos neste brief.
 
-## Auth integration
+## Integração Auth
 
-Use Supabase Auth.
+Usar Supabase Auth. Exigências:
+- identidade autenticada vinculada a `core.profiles`;
+- perfil inativo **não** recebe acesso;
+- browser sem chave `service_role`/secret;
+- bootstrap do primeiro administrador explícito e seguro;
+- cadastro comum não concede acesso de negócio automaticamente;
+- criação/convite preferencialmente administrados, se cadastro público não fizer parte do fluxo corporativo;
+- **não** implementar armazenamento próprio de senhas.
 
-Requirements:
-- authenticated identity maps to `core.profiles`;
-- inactive profile receives no application data access;
-- no service/secret key in browser code;
-- first-user/bootstrap administrator mechanism must be explicit and safe;
-- ordinary sign-up must not accidentally grant business access.
+## Autorização
 
-If public self-signup is not needed for the company workflow, keep account creation/invitation administration-oriented rather than designing consumer signup UX.
+Seguir ADR-005: usuário pode ter várias `user_role_assignments`, cada uma com escopo `global`, `unit` ou `sector`. Helpers de banco limitados avaliam permissões efetivas; **RLS é autoridade**.
 
-Do not implement custom password storage.
+Frontend pode manter `can(permission)` e equivalentes com escopo para exibir acesso, mas isso **não substitui** validação de banco.
 
-## Authorization
+### Catálogo inicial de permissões
 
-Implement the ADR-005 model.
+**Auditoria:** `audit.inspection.read`, `audit.inspection.create`, `audit.inspection.edit`, `audit.inspection.finalize`, `audit.inspection.reopen`, `audit.inspection.export`.
 
-A user may have multiple `user_role_assignments`.
+**Planos de Ação:** `action_plan.read`, `action_plan.create_manual`, `action_plan.write`, `action_plan.verify`.
 
-Assignment scope:
-- global;
-- unit;
-- sector.
+**Administração:** `admin.user.read/manage`, `admin.role.read/manage`, `admin.unit.read/manage`, `admin.sector.read/manage`, `admin.audit_log.read` (as expressões abreviadas representam ambas as chaves, não uma chave literal).
 
-Implement narrowly scoped database helper functions for effective permission evaluation.
+**Não** pré-criar permissões dos outros módulos.
 
-RLS remains authoritative.
+### Papéis iniciais
 
-Frontend helper(s) such as `can(permission)` and scope-aware equivalents may cache/display effective access but cannot replace database enforcement.
+Semear **Administrador da Plataforma, Qualidade e Visualizador de Qualidade**. Composição pertence ao seed/migration e a lógica **não deve testar a chave do papel**. Administrador bootstrap recebe papel Administrador da Plataforma com escopo global.
 
-## Initial permissions
+## UI mínima de Administração
 
-Seed only:
+**Usuários:** listar perfis e status ativo/inativo, consultar atribuições, ativar/desativar, conceder/revogar papel por escopo. Sem exclusão física.
 
-Audit contract:
-- `audit.inspection.read`;
-- `audit.inspection.create`;
-- `audit.inspection.edit`;
-- `audit.inspection.finalize`;
-- `audit.inspection.reopen`;
-- `audit.inspection.export`.
+**Papéis:** listar/composição, criar/editar papel não sistêmico quando seguro, atribuir permissões, proteger papéis de sistema contra exclusão destrutiva.
 
-Action Plan contract:
-- `action_plan.read`;
-- `action_plan.create_manual`;
-- `action_plan.write`;
-- `action_plan.verify`.
+**Unidades:** listar/criar/editar/ativar/desativar; não excluir fisicamente unidade com histórico.
 
-Administration:
-- `admin.user.read`;
-- `admin.user.manage`;
-- `admin.role.read`;
-- `admin.role.manage`;
-- `admin.unit.read`;
-- `admin.unit.manage`;
-- `admin.sector.read`;
-- `admin.sector.manage`;
-- `admin.audit_log.read`.
+**Setores:** listar/criar/editar/ativar/desativar e relacionar às unidades.
 
-Do not seed permissions for other modules.
+**Permissões:** catálogo somente leitura suficiente para v1; não permitir criar strings arbitrárias na UI comum.
 
-## Initial roles
+**Logs:** visão sistêmica paginada e somente leitura, protegida por permissão, com filtros básicos data, ator, módulo/ação quando viável.
 
-Seed:
-- Platform Administrator;
-- Quality;
-- Quality Viewer.
+## Eventos de auditoria sistêmica
 
-Role composition should be declared in seed/migration data but application logic must not depend on role keys.
+Registrar no mínimo: ativação/inativação de perfil, criação/edição de papel, alteração de permissões, concessão/revogação de papel, criação/edição/ativação/inativação de unidade ou setor e mudança de vínculo unidade–setor.
 
-The bootstrap administrator receives Platform Administrator with global scope.
+Clientes **não** escrevem linhas arbitrárias de log diretamente.
 
-## Administration UI
+## Segurança / RLS
 
-Implement the minimum usable administration surface for:
+Para cada tabela Core exposta:
+- habilitar RLS;
+- grants mínimos;
+- testar negação anônima;
+- testar negação autenticada sem permissão;
+- testar escopo autorizado e incorreto.
 
-### Users
-- list Core profiles;
-- active/inactive status;
-- inspect role assignments;
-- activate/deactivate;
-- assign/remove role with scope.
+Helpers internos residem em schema `private` quando não precisam Data API. `SECURITY DEFINER` exige `search_path` fixo/vazio, nomes qualificados e `EXECUTE` mínimo. **Botão escondido não é segurança.**
 
-Do not physically delete users.
+## Concorrência
 
-### Roles
-- list roles;
-- inspect permission composition;
-- create/edit non-system role if this can be done safely within the brief;
-- assign permissions.
+Mutações administrativas passíveis de sobrescrever outra edição usam estratégia otimista simples (`updated_at`/`version`) quando conveniente, sem framework genérico. Não superprojetar concorrência para seeds imutáveis de permissões.
 
-Protect system roles against accidental destructive deletion.
+## Experiência
 
-### Units
-- list;
-- create;
-- edit;
-- activate/deactivate.
+Shell corporativo profissional e responsivo, acessibilidade por teclado/foco visível, estados carregando/vazio/erro claros, sem `alert()`, `confirm()`, `prompt()` nativos. Ações destrutivas/inativação usam modal/diálogo da aplicação. Teclado mobile abre apenas por interação explícita com campo. Não criar dashboard decorativo sem dados úteis.
 
-Do not hard-delete referenced units.
+## Explicitamente fora do escopo original
 
-### Sectors
-- list;
-- create;
-- edit;
-- activate/deactivate;
-- associate sector with units.
+- inspeções/checklist da Auditoria;
+- tabelas/UI de negócio Planos de Ação;
+- ISO, Satisfação, ABC, Planejado×Realizado, Contratos, Reuniões, Vendas, Frota;
+- deploy Cloudflare, buckets R2, Docker Compose produtivo, Ansible, scripts PITR, observabilidade, Studio exposto e segredos produtivos.
 
-### Permissions
-Read-only catalog is sufficient for v1. Do not provide arbitrary creation of permission strings through ordinary UI.
+**Nota histórica:** Audit/Planos/ABC foram implementados **depois**, em briefs próprios. O «fora do escopo» deste brief não é proibição permanente.
 
-### Logs
-- read-only paginated system audit-log view;
-- permission protected;
-- basic filters: date, actor, module/action when practical.
+## Testes automatizados exigidos originalmente
 
-## System audit events
+1. Negar usuário inativo.
+2. Negar autenticado sem atribuição.
+3. Negar sem permissão específica.
+4. Permitir grant global pertinente.
+5. Permitir grant por unidade somente na unidade certa.
+6. Negar outra unidade.
+7. Permitir grant por setor somente em unidade/setor compatíveis.
+8. Compor múltiplas atribuições **sem misturar escopos**.
+9. Papel de um domínio não libera outro.
+10. Administração exige permissão administrativa.
+11. Cliente comum não insere/atualiza/exclui log arbitrariamente.
+12. IDs adivinhados não burlam RLS.
 
-At minimum record:
-- user/profile activation/deactivation;
-- role creation/update;
-- role permission changes;
-- user role assignment grant/revoke;
-- unit create/update/activate/deactivate;
-- sector create/update/activate/deactivate;
-- unit-sector relationship change.
+Frontend deve testar navegação por permissão e fluxos Admin críticos quando o stack de testes permitir.
 
-Client code must not write arbitrary audit rows directly.
+## Validação e Git da época
 
-## RLS / security requirements
+Antes de concluir: dependências instalam, typecheck, lint quando configurado, testes, build, migration nova aplica em Supabase/PostgreSQL de teste e RLS funciona; diff sem segredos, sem `alert(`/`confirm(`/`prompt(` nativos; nenhum deploy produtivo.
 
-For every exposed Core table:
-- enable RLS;
-- grant only required operations;
-- test anonymous denial;
-- test authenticated denial without permission;
-- test correct scoped access.
+Se não houver Supabase local, declarar **essa limitação**, nunca simular PASS.
 
-Keep internal helpers in `private` where they do not need Data API exposure.
+Commits atômicos possíveis: workspace/shell, migrations/helpers, Auth/bootstrap, navegação, UI Admin e testes/hardening. A divisão pode variar mantendo commits focados.
 
-If a SECURITY DEFINER function is required:
-- fixed/empty search_path;
-- fully qualified table names;
-- minimal execute grants.
-
-Do not rely on hidden buttons for security.
-
-## Concurrency
-
-Administration mutations that can overwrite concurrent edits should use a simple optimistic strategy where useful (updated_at/version), without creating a generic framework.
-
-Do not overengineer concurrency for immutable permission seed rows.
-
-## UX
-
-- professional corporate shell consistent with the product structure;
-- responsive desktop/mobile;
-- keyboard accessible;
-- visible focus;
-- explicit loading/empty/error states;
-- no native `alert()`, `confirm()`, `prompt()`;
-- destructive/deactivation actions use application modal/dialog;
-- mobile keyboard opens only by explicit field interaction.
-
-Do not build decorative dashboards without useful data.
-
-## Out of scope
-
-Do not implement:
-- Audit inspections/checklist;
-- Action Plan business tables/UI;
-- ISO;
-- Satisfaction;
-- ABC;
-- Planned vs Actual;
-- Contracts;
-- Meetings;
-- Sales;
-- Fleet;
-- Cloudflare deployment;
-- R2 buckets;
-- production Docker Compose;
-- Ansible;
-- PITR scripts;
-- monitoring stack;
-- Supabase Studio exposure;
-- production secrets.
-
-## Automated tests
-
-At minimum cover authorization logic:
-
-1. inactive user denied;
-2. authenticated user with no assignment denied;
-3. missing permission denied;
-4. global role assignment grants allowed permission;
-5. unit role assignment grants only matching unit;
-6. other unit denied;
-7. sector assignment grants only matching sector/unit;
-8. multiple role assignments compose correctly without sharing scopes;
-9. role from one domain does not grant another-domain permission;
-10. administrative permission is required for admin mutations;
-11. audit log cannot be arbitrarily inserted/updated/deleted by normal client;
-12. direct guessed IDs do not bypass RLS.
-
-Frontend tests should cover permission-driven navigation and critical admin flows if the chosen testing setup supports them reasonably.
-
-## Validation
-
-Before completion:
-- dependency install succeeds;
-- typecheck passes;
-- lint passes if configured;
-- automated tests pass;
-- production build passes;
-- migration applies cleanly to a fresh local/test Supabase/PostgreSQL environment where available;
-- RLS tests pass;
-- final diff contains no secrets;
-- no native `alert(`, `confirm(`, `prompt(`;
-- no production deploy/configuration performed.
-
-If local Supabase execution is unavailable, report that exact limitation rather than claiming migration/RLS validation passed.
-
-## Git
-
-Use focused atomic commits.
-
-A sensible split:
-1. workspace/app skeleton;
-2. Core migrations + authorization helpers;
-3. auth/profile bootstrap;
-4. permission-aware shell/navigation;
-5. administration UI;
-6. tests/hardening.
-
-Do not force this exact split when a smaller atomic grouping is clearer.
-
-## Completion report
-
-Return:
-1. main files changed;
-2. migrations created;
-3. tests/validation executed;
-4. real pending issues;
-5. commits.
+**Relatório esperado:** arquivos, migrations, checks executados, pendências reais e commits. Este brief permanece **histórico**, não uma issue para implementar novamente.
