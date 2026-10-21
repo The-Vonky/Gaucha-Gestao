@@ -14,6 +14,11 @@ const api = vi.hoisted(() => ({
   units: vi.fn(),
   unitSeries: vi.fn(),
   revisionDetail: vi.fn(),
+  unitRevisions: vi.fn(),
+  overview: vi.fn(),
+  competencyProducts: vi.fn(),
+  productHistory: vi.fn(),
+  compare: vi.fn(),
   publish: vi.fn(),
   downloadOriginal: vi.fn(),
   downloadUrl: vi.fn(),
@@ -163,7 +168,7 @@ describe("Curva ABC import", () => {
 
   it("hides import for users who cannot publish", async () => {
     api.units.mockResolvedValue([{ ...unit, can_publish: false }]);
-    api.unitSeries.mockResolvedValue([]);
+    api.unitRevisions.mockResolvedValue([]);
     renderAt("/abc/units/U1");
     expect(await screen.findByText("Ainda não há relatórios publicados para esta unidade.")).toBeTruthy();
     expect(screen.queryByText("Importar relatório")).toBeNull();

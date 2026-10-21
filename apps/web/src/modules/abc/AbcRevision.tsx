@@ -74,7 +74,7 @@ export function AbcRevision() {
       <nav className="breadcrumb" aria-label="Você está em">
         <Link to="/abc">Curva ABC</Link>
         <Icon name="chevronRight" />
-        {d ? <Link to={`/abc/units/${d.unit.id}`}>{d.unit.name}</Link> : <span>Unidade</span>}
+        {d ? <Link to={`/abc/imports?unidade=${d.unit.id}&modalidade=${d.series.cost_basis}`}>{d.unit.name}</Link> : <span>Unidade</span>}
         <Icon name="chevronRight" />
         <span aria-current="page">{d ? competency(d.series.competency) : "Revisão"}</span>
       </nav>

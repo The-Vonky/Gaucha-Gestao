@@ -67,6 +67,14 @@ export const destinations: Destination[] = [
     permissions: ["abc.report.read"],
     scope: "any",
     nested: true,
+    children: [
+      { path: "/abc/overview", label: "Visão geral" },
+      { path: "/abc/imports", label: "Importações" },
+      { path: "/abc/compare", label: "Comparações" },
+      { path: "/abc/reports", label: "Relatórios" },
+      { path: "/abc/products", label: "Produtos" },
+      { path: "/abc/categories", label: "Categorias" },
+    ],
   },
   {
     path: "/admin/users",

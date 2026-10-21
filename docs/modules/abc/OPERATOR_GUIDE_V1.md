@@ -35,6 +35,21 @@ flowchart TD
 5. Após a publicação, consulte total, itens, classe informada pelo ERP e **classe calculada** (`abc-70-90-inicio-v1`, acumulado anterior ao item), revisões anteriores e autoria.
 6. Use **Baixar original** e **Conferir com o arquivo**. Esta última opção baixa o XLSX, reprocessa e compara o conteúdo, registrando o resultado em log.
 
+## Áreas analíticas (v2 — em revisão nas PRs #79 e seguinte)
+
+Menu **Custos → Curva ABC**, com as mesmas abas no topo de cada tela. Unidade e modalidade escolhidas ficam no endereço (`?unidade=…&modalidade=…`) e acompanham a navegação entre áreas. Tudo usa somente **revisões vigentes publicadas** e a permissão `abc.report.read` da unidade; nenhuma área grava dados.
+
+| Área | Para que serve | Observações |
+| --- | --- | --- |
+| **Visão geral** | Última competência: consumo valorizado, produtos, divisão A/B/C, evolução, maiores produtos, aumentos e reduções contra a competência anterior | Sem publicação, orienta a primeira importação (quem publica) |
+| **Importações** | Todas as revisões, vigentes e substituídas, com autor, data, motivo, avisos e arquivo | "Importar relatório" só aparece para quem publica; substituir cria nova revisão, nada é apagado |
+| **Comparações** | Base × atual: diferença no total, efeitos de preço e quantidade, novos, ausentes, não comparáveis, rankings, filtros | Produtos casam **somente pelo código do ERP**; unidade de medida diferente ou quantidade zero = "não comparável" |
+| **Relatórios** | Distribuição por classe, ERP × calculada, principais produtos, custos médios, gasto por unidade de medida, evolução, variações, impactos e itens para conferir | "Imprimir ou salvar em PDF" usa o navegador; planilha aguarda decisão D5 |
+| **Produtos** | Busca por código/descrição, filtros por classe calculada e do ERP, histórico do produto por competência com a revisão e linha de origem | Categoria comercial ainda não disponível (D3) |
+| **Categorias** | Distribuição financeira entre as **classes** A, B e C por competência | Classe ABC **não** é categoria comercial |
+
+**Como ler a comparação:** custo médio = custo total ÷ quantidade. Efeito de preço = (custo médio atual − base) × quantidade atual; efeito de quantidade = custo médio base × variação da quantidade. A soma dos efeitos com novos, ausentes e não comparáveis fecha a diferença do total (resíduo exibido, esperado R$ 0,00). Alertas de +300% / −75% pedem conferência no ERP; não provam erro. Regras completas no [brief v2](../../briefs/ABC_ANALYTICS_V2.md).
+
 ## Mensagens da importação e o que fazer
 
 | Mensagem | Significado | Ação |
@@ -53,4 +68,4 @@ A `confirm_source_upload` verifica **existência, tamanho e MIME** do Storage; *
 
 O teste `tests/integration/abc.mjs` cobre Auth, RLS, Storage e concorrência com **bytes sintéticos**, não uma importação completa de XLSX legítimo. Antes de uso real, validar as quatro amostras ERP (234/234/234/206 produtos) apenas em ambiente aprovado; registrar evidência **sem anexar dados reais ao GitHub público**. A [Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) trata os testes dos dois operadores e da integridade.
 
-**Fora da v1:** comparação de períodos, exportação própria de ABC, correção manual, fechamento administrativo e migração de histórico do standalone. Toda evolução requer brief e testes novos. Produção permanece **NO-GO**.
+**Fora do escopo atual:** exportação em planilha (D5), correção manual (D4), categorias comerciais (D3), comparação entre unidades (D6), fechamento administrativo e migração de histórico do standalone ([matriz](MATRIZ_EQUIVALENCIA_LEGADO.md)). Toda evolução requer brief e testes novos. Produção permanece **NO-GO**.
