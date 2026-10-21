@@ -1,45 +1,45 @@
-# ADR-001 — Modular Monolith
+# ADR-001 — Monólito modular
 
-Status: Accepted  
-Date: 2026-09-24
+**Status: Aceito**  
+**Data: 24/09/2026**
 
-## Context
+## Contexto
 
-Gaúcha Gestão will consolidate nine internal systems. The platform is expected to be maintained by a small development capacity and several domains share corporate concepts such as users and units.
+A Gaúcha Gestão consolidará nove sistemas internos. Espera-se que a plataforma seja mantida por uma equipe de desenvolvimento pequena, e diferentes domínios compartilham conceitos corporativos, como usuários e unidades.
 
-Independent microservices would add deployment, networking, observability, consistency and operational overhead before that complexity is justified.
+Microsserviços independentes adicionariam custos de implantação, rede, observabilidade, consistência e operação antes de haver justificativa para essa complexidade.
 
-A single unstructured monolith, however, would make nine domains increasingly difficult to maintain and expensive for both humans and coding agents to understand.
+Por outro lado, um monólito único e sem estrutura tornaria os nove domínios progressivamente difíceis de manter e caros de compreender, tanto para pessoas quanto para agentes de desenvolvimento.
 
-## Decision
+## Decisão
 
-Use a modular monolith.
+Adotar um **monólito modular**.
 
-The application is deployed/operated as one platform architecture, while business domains remain explicit modules with controlled dependencies.
+A aplicação é implantada e operada como uma arquitetura de plataforma única, enquanto os domínios de negócio permanecem em módulos explícitos, com dependências controladas.
 
-Core provides stable shared corporate capabilities.
+O **Core** fornece capacidades corporativas compartilhadas e estáveis.
 
-Modules can depend on Core/Shared but cannot reach into other modules' internal implementation.
+Módulos podem depender de Core/Shared, mas não podem acessar detalhes internos da implementação de outros módulos.
 
-## Consequences
+## Consequências
 
-Positive:
-- simpler deployment and operations;
-- easier transactions and shared infrastructure;
-- fewer distributed-system failure modes;
-- faster development;
-- reduced context required to work within one domain;
-- future extraction remains possible if a domain truly needs independent scaling/team ownership.
+**Benefícios:**
+- implantação e operação mais simples;
+- transações e infraestrutura compartilhadas mais diretas;
+- menos modos de falha próprios de sistemas distribuídos;
+- desenvolvimento mais rápido;
+- menos contexto necessário para trabalhar em um domínio;
+- possibilidade de extrair um serviço futuramente caso um domínio realmente exija escala independente ou propriedade por outra equipe.
 
-Trade-offs:
-- boundaries rely on engineering discipline;
-- careless imports/database access can create hidden coupling;
-- a platform-level outage can affect multiple modules.
+**Trade-offs:**
+- as fronteiras dependem de disciplina de engenharia;
+- imports imprudentes ou acesso direto entre tabelas podem criar acoplamento oculto;
+- uma indisponibilidade da plataforma pode afetar vários módulos.
 
-## Revisit when
+## Quando reconsiderar
 
-Reconsider service extraction only when there is evidence such as:
-- materially different scaling requirements;
-- independent deployment cadence with real organizational ownership;
-- isolation/compliance requirement;
-- clear operational benefit greater than distributed-system cost.
+Avaliar a extração de serviços somente diante de evidências como:
+- necessidades de escalabilidade significativamente diferentes;
+- ritmo de deploy independente e responsabilidade organizacional real;
+- requisito de isolamento ou compliance;
+- benefício operacional claramente maior que o custo de manter um sistema distribuído.

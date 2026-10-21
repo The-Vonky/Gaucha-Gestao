@@ -1,116 +1,36 @@
-# Core Foundation v2 — Wave 2 Orchestration
+> **Brief histórico do Core v2.** As branches de integração, proprietários de arquivos e estados de execução aqui citados valem **somente para a rodada original**. Não iniciar tarefa nova nem recriar essas branches sem uma issue atual aprovada; usar `origin/main` conforme [AGENTS.md](../../AGENTS.md).
 
-Status: READY FOR PARALLEL IMPLEMENTATION
-Baseline: integration/core-foundation-v2-wave2
+# Fundação Core v2 — coordenação da segunda onda
 
-## Objective
+**Estado histórico: PRONTA PARA IMPLEMENTAÇÃO PARALELA.**  
+**Baseline histórica:** `integration/core-foundation-v2-wave2`.
 
-Deliver the stable Core read/administration contracts needed by all business modules while preserving the long-term architecture.
+## Objetivo
 
-This wave is deliberately split so parallel agents do not edit the same surfaces.
+Entregar contratos estáveis de leitura/Admin do Core consumidos pelos módulos, preservando a arquitetura e isolando arquivos entre agentes.
 
-## Included baseline
+Na época, a branch já continha quick wins Admin até `5d5c9e91fff8a4e167ffed26d4d0647e7336520f`, `CORE_FOUNDATION_V2.md`, `ACCOUNT_LIFECYCLE_V1.md`, `ACCESS_GOVERNANCE_V1.md` e `CORE_CONSUMER_CONTRACT_MAP_V1.md`. Qualidade/Auditoria/Planos ficavam congelados salvo compatibilidade aprovada.
 
-This branch already contains:
-- the reconciled Core Admin quick wins through `5d5c9e91fff8a4e167ffed26d4d0647e7336520f`;
-- `CORE_FOUNDATION_V2.md`;
-- `ACCOUNT_LIFECYCLE_V1.md`;
-- `ACCESS_GOVERNANCE_V1.md`;
-- `CORE_CONSUMER_CONTRACT_MAP_V1.md`.
+## Trilhas paralelas originais
 
-Quality/Audit/Action Plans remain frozen except for compatibility work explicitly approved after Core contracts stabilize.
+**A — Resolutores de referência Core:** branch `feat/core-reference-resolvers-v1`, RPCs mínimas para usuários/unidades/setores por ID conhecido, sem enumeração corporativa nem lifecycle/UX; migration aditiva e testes SQL/RLS, sem UI.
 
-## Parallel tracks
+**B — Leitura de governança de acessos:** branch `feat/core-access-governance-read-v1`, resumos por usuário/unidade, impacto do perfil e histórico, mantendo RLS; migration e testes, sem mudanças de mutação e sem telas.
 
-### A — Core reference resolvers
-Branch: `feat/core-reference-resolvers-v1`
+**C — Logs sistêmicos legíveis:** branch `feat/core-audit-log-read-model-v1`, projeção/pesquisa autorizada, nome só quando permitido/snapshot existente, IDs originais preservados; migration e testes, sem UI.
 
-Purpose:
-- safe, minimal Core read contracts for resolving canonical users/units/sectors by known identifiers;
-- no unrestricted corporate user enumeration;
-- no account lifecycle or access-review UI.
+**D — Fronteira confiável de identidade:** branch histórica `docs/adr-core-identity-boundary-v1`, definir ADR e brief de runtime confiável, ingress, segredos, operações Auth admin, auditoria, compensação de falhas, healthchecks e deploy. **Somente documentação, sem criar serviço. A proposta antiga não foi aprovada (Issue #49).**
 
-Primary ownership:
-- additive PostgreSQL migration(s);
-- database/RLS/integration tests;
-- no Administration UI.
+## Regras de exclusividade
 
-### B — Access governance read model
-Branch: `feat/core-access-governance-read-v1`
+A/B/C podiam criar migrations independentes, mas nunca editar migration aplicada; não alteravam Admin React/Shared/Audit/Planos/Auth runtime. D não implementava código. Nenhuma trilha semeava permissões de módulos futuros, enfraquecia RLS, expunha `service_role` ao browser ou criava tabela universal de «pessoas»/anexos.
 
-Purpose:
-- read-only server/database contracts for user access summary, unit access summary, profile impact and assignment history;
-- preserve current authorization boundaries;
-- no mutation redesign yet.
+## Ordem histórica de integração
 
-Primary ownership:
-- additive PostgreSQL migration(s);
-- database/RLS/integration tests;
-- no frontend pages.
+A/B/C/D concluíam separadamente → revisão de cada delta → merge/rebase serializado em integração → CI completa após cada migration → iniciar consumidores de UI (2B) **somente após contratos prontos**.
 
-### C — Human-readable system log read model
-Branch: `feat/core-audit-log-read-model-v1`
+**Onda 2B planejada:** revisão de acessos na Administração, dossiê de unidade, logs legíveis; depois de D aceito, runtime de identidade privilegiada/criação/reset/primeiro acesso/Minha Conta. **A condição de D não foi satisfeita** e não deve ser reinterpretada.
 
-Purpose:
-- authorized log projection/filtering suitable for non-technical Administration;
-- resolve names only when authorized or from approved event snapshots;
-- keep raw immutable IDs/details available as technical detail;
-- no broad directory bypass.
+## Invariantes permanentes
 
-Primary ownership:
-- additive PostgreSQL migration(s);
-- database/RLS/integration tests;
-- no frontend redesign yet.
-
-### D — Trusted identity boundary ADR + implementation brief
-Branch: `docs/adr-core-identity-boundary-v1`
-
-Purpose:
-- close the only high-risk infrastructure decision blocking account lifecycle implementation;
-- choose a trusted runtime/topology compatible with ADR-004 and self-hosted Supabase;
-- define ingress, secrets, Auth admin operations, audit, failure compensation, healthcheck and deployment boundaries.
-
-Primary ownership:
-- ADR/documentation only;
-- no runtime/service code in this track.
-
-## Non-overlap rules
-
-- A/B/C may each add their own migration; never edit an already applied migration.
-- A/B/C must not edit Admin React pages, shared UI, Audit, Action Plans or account/Auth runtime.
-- D must not implement code.
-- No track may add future-module permissions.
-- No track may weaken existing RLS or expose Auth/service-role data to browser clients.
-- Do not create one universal "people" table or a universal business attachment table.
-
-## Integration order
-
-1. A, B, C and D complete independently.
-2. Independent review of each delta.
-3. Merge/rebase into this integration branch one at a time after review.
-4. Run foundation + reproducible infrastructure validation after each database merge.
-5. Only then start Wave 2B frontend consumers and account lifecycle implementation.
-
-## Wave 2B, prepared but not started yet
-
-After A/B/C contracts are integrated:
-- Administration access-review UI;
-- Unit dossier UI;
-- readable Logs UI.
-
-After D is accepted:
-- trusted identity service/runtime implementation;
-- account creation/reset/first-access;
-- My Account/self-service password change.
-
-## Durability guardrails
-
-- stable UUID references; names/codes are presentation/business identifiers;
-- inactive entities preserve history;
-- responsibility does not implicitly grant access;
-- authorization remains permission + scope + domain rule;
-- Core owns users/units/sectors/RBAC/system audit; modules own business workflow;
-- raw technical identifiers stay available for diagnostics but do not dominate operator UX;
-- migrations remain append-only;
-- no production deployment from this wave;
-- no `supabase db reset` on the user's working environment.
+UUID para referência estável; nomes/códigos para apresentação; entidades inativas preservam histórico; responsabilidade não concede acesso; autorização = permissão + escopo + domínio; Core detém usuários/unidades/setores/RBAC/log, módulos detêm negócio; IDs técnicos disponíveis no detalhe; migrations append-only; nenhum deploy produtivo ou `supabase db reset` em ambiente compartilhado.

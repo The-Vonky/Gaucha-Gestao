@@ -1,144 +1,75 @@
-# AI-Assisted Development Workflow
+# Fluxo de desenvolvimento assistido por IA
 
-## Goal
+**Idioma padrão:** pt-BR em briefs, tarefas, comentários, PRs, handovers, relatórios e documentação. Preservar identificadores técnicos em sua grafia original. **Fonte neutra para todos os agentes:** [AGENTS.md](../../AGENTS.md); o [CLAUDE.md](../../CLAUDE.md) contém apenas adaptações específicas para aquela ferramenta.
 
-Use AI for high implementation throughput without paying repeatedly for unnecessary repository context.
+## Objetivo e divisão de responsabilidades
 
-## Shared agent contract
+Usar agentes para implementar trabalho de engenharia **aprovado**, reduzindo leitura repetida e preservando revisão humana, segurança e contexto verificável no Git.
 
-`AGENTS.md` is the tool-neutral repository instruction file.
+| Etapa | Quem decide / executa | Resultado |
+| --- | --- | --- |
+| Planejamento e arquitetura | Responsável humano, com apoio técnico | Requisitos, decisão de produto, ADR/segurança, UX, brief, fora de escopo, aceite |
+| Implementação | Agente/desenvolvedor autorizado | Código, migration nova quando aplicável, testes, documentação canônica, commits focalizados |
+| Revisão | Outro humano, com parecer de agente quando útil | Evidências, riscos, autorização de merge proporcional à criticidade |
+| Operação persistente / produção | Responsável operacional explicitamente autorizado | Inventário, preservação, validações e registro do GO; nunca inferido de CI verde |
 
-Coding environments that support `AGENTS.md` should use it directly. Tool-specific instruction files may add only small tool-specific guidance and must not duplicate the full rule set.
+Uma sessão de implementação **não** substitui a aprovação do responsável e não deve redesenhar a plataforma opportunisticamente.
 
-## Responsibilities
+## Unidade de trabalho e contexto
 
-Planning/architecture stage:
-- requirements;
-- domain decisions;
-- architectural decisions;
-- security constraints;
-- UX direction;
-- implementation brief;
-- acceptance criteria.
+Prefira **uma feature, correção ou atualização documental claramente limitada por sessão**. Contexto inicial esperado:
 
-Coding agent stage:
-- inspect affected code;
-- implement approved brief;
-- run validation;
-- correct regressions;
-- produce focused commits.
-
-The coding agent should not be asked to rediscover product architecture for every task.
-
-## Unit of work
-
-Prefer one focused feature/fix per coding session.
-
-Input should normally be:
-
-~~~
+~~~text
 AGENTS.md
-+ task-specific brief
-+ only the relevant ADR/architecture docs
-+ affected module/code
++ issue/brief autorizado e critérios de aceite
++ ADRs/contratos relevantes
++ arquivos efetivamente afetados
++ git status, diff e commits da branch
 ~~~
 
-Avoid:
+Evite instruções vagas como «leia todo o projeto e melhore tudo». Se a tarefa for uma auditoria de todo o acervo, declare explicitamente o escopo amplo e identifique primeiro inventário/riscos antes de editar.
 
-~~~
-Read the entire repository and improve everything.
-~~~
+Um brief útil registra: objetivo, comportamento atual, escopo e exclusões, módulo e proprietário dos dados, mudança de schema, RLS/Storage, UI, compatibilidade, validação, ambiente isolado, responsável humano e evidências exigidas. **Não copie toda a arquitetura** para cada brief: referencie a fonte canônica.
 
-## Brief format
+## Passagem entre agentes ou modelos
 
-A useful implementation brief should contain:
-- objective;
-- current behavior/context;
-- in-scope requirements;
-- explicitly out-of-scope items;
-- affected domain/module;
-- data/schema impact;
-- security/access impact;
-- UX requirements;
-- compatibility constraints;
-- validation/acceptance criteria.
+O **repositório** (branch, commits, diff, issue e brief) é a fonte do trabalho, não a memória do modelo nem a conversa anterior.
 
-Do not repeat all platform documentation inside every brief.
+1. Branch/worktree própria quando houver escrita, derivada de `origin/main`; preservar worktrees existentes.
+2. Commits atômicos em checkpoints estáveis; mudanças não commitadas devem ser pequenas e conscientes.
+3. Registrar na issue/PR o que foi feito, o que faltou, riscos e testes com SHA e resultado.
+4. O próximo agente verifica `AGENTS.md`, o brief/issue, `git status`, diff e commits recentes **antes** de editar.
+5. Não refazer tarefas concluídas nem transferir íntegra de conversas ou credenciais para outra ferramenta.
 
-## Astra -> Claude -> Astra handoff
+Exemplo de retomada:
 
-The repository, not the model conversation, is the source of execution state.
-
-For substantial work:
-1. use a dedicated feature/fix branch when practical;
-2. keep the implementation brief committed in the repository;
-3. make focused atomic commits at meaningful stable checkpoints;
-4. keep uncommitted work small and intentional;
-5. before switching agents, ensure the current branch, `git status`, diff and recent commits explain the state.
-
-The next agent should begin by reading:
-- `AGENTS.md`;
-- the current task brief;
-- only relevant architecture/module docs;
-- `git status`;
-- current diff;
-- recent focused commits.
-
-Do not paste the entire previous AI conversation into the next model.
-
-A typical continuation instruction is:
-
-~~~
-Continue the current task from this repository state.
-
-Read AGENTS.md and <brief path>.
-Inspect git status, current diff and the recent commits on this branch.
-Do not redo completed work.
-Continue the remaining scope, validate it and keep commits atomic.
+~~~text
+Continue a tarefa autorizada a partir do estado atual deste repositório.
+Leia AGENTS.md e o brief <caminho do brief>.
+Confira a branch, git status, diff e commits recentes; preserve mudanças de outros agentes.
+Não refaça trabalho concluído. Termine o escopo pendente,
+execute validações pertinentes e relate os resultados reais em pt-BR.
 ~~~
 
-This makes switching models inexpensive because completed reasoning is represented by code, Git history and the brief instead of chat tokens.
+## Custos de contexto e paralelismo
 
-## Context controls
+- Faça busca focalizada antes de abrir arquivos grandes; leia somente módulos/contratos usados pela tarefa.
+- Limpe contexto quando mudar para uma frente não relacionada; evite prompts e resumos duplicados.
+- Mais de um agente com escrita só quando o benefício justificar custos e conflitos; cada um com área de arquivos, branch e **runtime Docker/Supabase isolado**.
+- Não use o mesmo banco persistente, volume ou migration para tarefas paralelas. A [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) descreve DEV compartilhado que **não é descartável**.
+- A divisão de Core/migrations/CI deve ter um só escritor coordenado. Consulte o [protocolo paralelo](PARALLEL_AGENT_WORKFLOW.md).
 
-- module-specific docs stay separate;
-- architecture docs stay topic-specific;
-- path-scoped agent rules should be added only once a module exists and genuinely needs them;
-- avoid giant evergreen instruction files;
-- search first, read second;
-- clear sessions when moving to an unrelated task;
-- compact only when continuing the same long task.
+## Documentação e segurança
 
-## Model usage
+- Um arquivo de instruções **não deve duplicar o conteúdo inteiro** de `AGENTS.md`.
+- Atualize docs, diagramas e contratos **na mesma PR** da funcionalidade alterada; texto em **pt-BR**, preservando código e nomes oficiais.
+- Não converta ADR **Proposed** em **Accepted** nem declare GO de produção por mera tradução/revisão.
+- Não use segredos nem dados reais em prompts. Nunca mande `env`, JWT, dump ou arquivos corporativos para handover.
+- Confirme as versões e caminhos no código: snapshots históricos podem estar corretos para seu período, mas **não** representam a `main` atual.
+- PR deve passar nos checks exigidos e na revisão humana aplicável; aprovação verbal precisa ser identificada corretamente.
 
-Use the strongest available coding model while its quota is economically sensible, then continue with another capable agent from the same Git state.
+## Relatório de conclusão
 
-Do not ask the replacement agent to re-plan completed work.
+Use formato breve, factual e verificável: **arquivos modificados; migrations; checks com resultado e SHA; limitações; riscos; PR/commit; próxima decisão humana**. Não declare validações que não executou. Pare diante de ação destrutiva ou privilégio indefinido.
 
-Reserve high-cost reasoning for genuinely difficult debugging, migrations or architectural edge cases.
-
-Avoid multiple parallel agents unless the benefit clearly exceeds the extra token usage and merge complexity.
-
-## Repository organization
-
-The final source tree should make it possible for an agent working on Fleet, for example, to focus mainly on:
-
-~~~
-Core contracts actually used
-Shared primitives actually used
-Fleet module
-Current brief
-~~~
-
-It should not need Contracts, ABC, Audit and ISO internals to change a Fleet screen.
-
-## Completion report
-
-For code tasks, prefer:
-- main files changed;
-- migration created;
-- validations/tests executed;
-- real pending issues;
-- commits.
-
-Long narrative summaries usually add little value after the brief and Git history already exist.
+Para orientações de produto, arquitetura e prioridades, consulte [README](../../README.md), [documentação integrada](../README.md), [ADRs](../decisions/) e [Plano Diretor](../planning/PLANO_DIRETOR_2026.md).

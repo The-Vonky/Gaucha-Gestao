@@ -1,40 +1,40 @@
-# ADR-002 — Core and Module Ownership
+# ADR-002 — Propriedade do Core e dos módulos
 
-Status: Accepted  
-Date: 2026-09-24
+**Status: Aceito**  
+**Data: 24/09/2026**
 
-## Context
+## Contexto
 
-The existing standalone systems may each contain their own versions of units, users, file handling, navigation and other shared concepts.
+Sistemas legados independentes podem conter versões próprias de unidades, usuários, arquivos, navegação e outros conceitos compartilhados.
 
-Copying those concepts into the integrated platform would preserve fragmentation under one repository.
+Copiar esses conceitos para a plataforma integrada manteria a fragmentação dentro de um único repositório.
 
-Moving all common-looking data into a giant Core would create the opposite problem: an overcoupled shared domain.
+Mover tudo que parece comum para um Core gigante causaria o problema oposto: um domínio compartilhado excessivamente acoplado.
 
-## Decision
+## Decisão
 
-Core owns only stable corporate/platform concepts and capabilities.
+O **Core** detém apenas conceitos e capacidades corporativas/de plataforma **estáveis**.
 
-Initial Core candidates:
-- identity/profile;
-- authorization;
-- organizational units;
-- sectors;
-- user organizational scope;
-- system audit logging;
-- common file/attachment capability when storage design is approved.
+Candidatos iniciais ao Core:
+- identidade/perfil;
+- autorização;
+- unidades organizacionais;
+- setores;
+- escopo organizacional do usuário;
+- auditoria sistêmica;
+- capacidade comum de arquivos/anexos, quando o desenho de Storage estiver aprovado.
 
-Each business module owns its domain-specific records, rules and workflows.
+Cada módulo de negócio detém seus registros, regras e jornadas específicos.
 
-The dependency direction is one-way: business modules may depend on Core; Core never depends on a business module.
+A direção de dependência é **unidirecional**: módulos podem depender do Core; o Core nunca depende de módulos de negócio.
 
-## Consequences
+## Consequências
 
-- modules use canonical corporate identities instead of private copies;
-- module migration requires mapping old master data to Core;
-- module-specific aliases/import mappings can remain inside modules;
-- executive reporting must consume public module data/contracts rather than turning Core into a duplicate warehouse of every domain.
+- módulos compartilham identidades corporativas canônicas, sem cópias privadas;
+- migração de módulos requer mapear os cadastros mestres legados para o Core;
+- aliases e mapeamentos de importação específicos continuam dentro dos módulos;
+- relatórios executivos devem consumir contratos públicos dos módulos, não transformar o Core em uma cópia de todos os dados de negócio.
 
-## Guardrail
+## Regra de proteção
 
-A field/table/component does not belong in Core merely because two modules currently need something similar. Move it to Core/Shared only when its meaning is stable and genuinely platform-wide.
+Um campo, tabela ou componente não pertence ao Core apenas porque dois módulos têm necessidades semelhantes. Movê-lo para Core/Shared somente quando sua semântica for estável e realmente transversal à plataforma.

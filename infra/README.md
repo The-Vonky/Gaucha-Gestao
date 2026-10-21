@@ -1,32 +1,27 @@
-# Reproducible minimum Supabase (CI / disposable staging)
+# Supabase mínimo reproduzível — CI e laboratório descartável
 
-Five services only: PostgreSQL 17 (`db`), Kong (`kong`), GoTrue (`auth`), PostgREST
-(`rest`), Storage API (`storage`). No deploy, existing machine DB, physical server
-or production access is involved. See [upstream provenance](supabase/UPSTREAM.md)
-and [Proposed ADR-006](../docs/decisions/ADR-006-infra-v1-reused-hardware.md).
+**Status:** infraestrutura de validação, **não** receita de produção. Cinco serviços exatos: PostgreSQL 17 (`db`), Kong (`kong`), GoTrue/Auth (`auth`), PostgREST (`rest`) e Storage API (`storage`). Não operar servidor físico, banco preexistente, deploy nem dados produtivos por este procedimento.
 
-## Prerequisites and lifecycle
+Referências: [proveniência do upstream](supabase/UPSTREAM.md), [ADR-006 — Proposto](../docs/decisions/ADR-006-infra-v1-reused-hardware.md), [operações](../docs/operations/OPERATIONS_MATRIX.md).
 
-Use Linux, Docker Engine, Docker Compose v2 with `up --wait` / `config --format json`,
-Bash, Node >=22.12, Git, coreutils and ShellCheck. The CI uses an ephemeral Ubuntu
-runner. No npm install is needed for these ops scripts or the smoke.
+## Pré-requisitos e ciclo de vida
 
-Generate a **new** env file in an existing directory outside every Git checkout.
-The generator refuses internal/symlinked-internal destinations and existing files,
-uses mode 600 and never prints credentials. API JWT keys expire after one hour;
-regenerate a fresh stack for a new test session. This is not a persistent-secret
-lifecycle or production provisioning tool.
+Usar **Linux**, Docker Engine, Docker Compose v2 com `up --wait` e `config --format json`, Bash, Node >=22.12, Git, coreutils e ShellCheck. A CI usa runner Ubuntu efêmero. Estes scripts de operação/smoke não precisam de `npm install`.
 
-From the repository root:
+O gerador cria um env **novo, fora de todo checkout Git**, e recusa destino já existente ou apontando para o repositório (inclusive via symlink). Usa permissão 600 e não imprime segredos. Chaves JWT do gateway expiram em **uma hora**; gerar stack novo para outra sessão. Este processo **não** implementa ciclo de segredos de PROD.
+
+**Execute apenas em host/projeto comprovadamente descartável, com nomes, portas e volumes exclusivos.** Nunca use o mesmo `infra_project` de um ambiente preexistente. Inventariar `docker compose ls --all`, contêineres e volumes antes de criar/remover. O comando `down -v` abaixo é **destrutivo** e só pode atingir o projeto sintético explicitamente criado neste exemplo.
+
+### Exemplo de laboratório isolado
 
 ```bash
-# Choose an unused name and a new external directory for each disposable run.
+# Escolha nome exclusivo e diretório externo novo para cada laboratório descartável.
 infra_tmp=$(mktemp -d)
 infra_env="$infra_tmp/staging.env"
 infra_project="gaucha-infra-staging-$(date +%s)"
 bash scripts/ops/gen-secrets.sh --environment staging --output "$infra_env"
-# Edit SITE_URL, API_EXTERNAL_URL, ADDITIONAL_REDIRECT_URLS and GATEWAY_PORT
-# in this external file if needed. Keep permissions 600. Do not echo secrets.
+# Edite SITE_URL, API_EXTERNAL_URL, ADDITIONAL_REDIRECT_URLS e GATEWAY_PORT
+# somente no arquivo externo, se necessário. Use modo 600 e nunca exiba segredos.
 
 docker compose --env-file "$infra_env" -p "$infra_project" -f infra/supabase/docker-compose.yml config --quiet
 docker compose --env-file "$infra_env" -p "$infra_project" -f infra/supabase/docker-compose.yml up -d
@@ -35,88 +30,44 @@ docker compose --env-file "$infra_env" -p "$infra_project" -f infra/supabase/doc
 bash scripts/ops/healthcheck.sh --environment staging --env-file "$infra_env" --project "$infra_project" --database postgres
 node scripts/ops/smoke.mjs --environment staging --env-file "$infra_env" --project "$infra_project" --database postgres
 
-# Destructive disposal ONLY of this explicitly selected disposable project.
+# LIMPEZA DESTRUTIVA: somente do projeto descartável específico validado acima.
 docker compose --env-file "$infra_env" -p "$infra_project" -f infra/supabase/docker-compose.yml down -v --remove-orphans
 rm -f "$infra_env"
 rmdir "$infra_tmp"
 ```
 
-Use a shell `trap`/`finally` to perform the final cleanup on failure too; the workflow
-already does so with `if: always()`. Never run the example against a reused project's
-volumes. A new generated instance marker must match the DB bootstrap marker.
-Production mode is refused by every ops entrypoint; `production.env.example` is an
-explicitly non-runnable record of unresolved configuration, not a deploy template.
+Em falhas, encerrar **apenas** o laboratório explicitamente identificado, após revisar os alvos; um `trap` ou `finally` controla a limpeza quando autorizado. A CI usa `if: always()`. Nunca executar exemplo contra volumes de projeto reutilizado. O marcador de instância gerado deve coincidir com o registrado no bootstrap do DB.
 
-Only `127.0.0.1:GATEWAY_PORT` is exposed (default 54321). PostgreSQL has **no** host
-port; scripts use `compose exec` inside the named project. Ports/containers/volumes
-from existing development checkouts are not touched. If the gateway port is occupied,
-choose another unused port and update API_EXTERNAL_URL accordingly.
+Todos os entrypoints operacionais recusam modo `production`. `production.env.example` é registro **não executável** das decisões pendentes, não template de deploy produtivo.
 
-## Migration safety
+Somente `127.0.0.1:GATEWAY_PORT` é exposto, por padrão em 54321. PostgreSQL **não** publica porta no host: os scripts usam `compose exec` do projeto nomeado. Porta ocupada exige outra porta livre e atualização de `API_EXTERNAL_URL`, sem mexer em instâncias de outros desenvolvedores.
 
-Every command requires explicit environment, external env file, project name and
-DB name. `common.sh` parses data without shell evaluation and checks a fresh-instance
-marker inside the Compose DB. Only `ci` and disposable `staging` are supported.
-The target is the isolated Compose `db`, never a host connection string.
+## Segurança de aplicação de migrations
 
-`apply-migrations.sh` requires no existing `core` schema or infrastructure migration
-ledger, and executes `supabase/migrations/*.sql` in filename order **byte-for-byte**.
-The files execute as authenticated role `postgres`, retaining their own transactions
-and original ownership. Infrastructure marker/ledger operations use `supabase_admin`;
-each success records its SHA-256. No post-migration ownership reassignment occurs. Platform
-Auth/Storage migrations finish during service startup before application migrations.
-The initial `up -d` waits for DB/Auth/Storage via dependency health gates; REST starts
-with the exact app schemas but becomes healthy only after those migrations create
-them. The second `up --wait` requires all five services to be healthy. No temporary
-schema-list override or placeholder application schema is used.
-There is no reset/drop/replay mode. A partially applied run is a failed disposable
-stack: dispose that explicit project, generate new credentials and use a fresh
-project. Application schemas, storage policies and `supabase/config.toml` are unchanged.
+Todo comando exige ambiente, env externo, nome de projeto e banco explícitos. `common.sh` valida dados sem `eval` e confere marcador exclusivo de instância nova no DB. Somente `ci` e `staging` **descartável** são aceitos; alvos são DB do próprio Compose, não URI host arbitrária.
 
-## Validation contract
+`apply-migrations.sh` recusa schema `core` ou ledger pré-existente e aplica `supabase/migrations/*.sql` em ordem nominal, **sem mudar os bytes**. Migrations executam como `postgres` e preservam transações/owners originais. Ledger/marcador infra usam `supabase_admin`, gravando SHA-256 após êxito. Não há `ALTER OWNER` posterior.
 
-The smoke is for disposable targets only. It removes its temporary REST table and
-synthetic login identity; the synthetic unit and its audit records remain until
-the explicit `down -v`. Existing audit references intentionally prevent deleting
-that unit. The smoke never bypasses domain triggers or erases audit history.
+Migrations do Auth/Storage upstream terminam na inicialização dos serviços; a primeira subida espera dependências, e REST só fica saudável após os schemas da aplicação existirem. O segundo `up --wait` exige cinco serviços saudáveis. Não existe override temporário de schemas nem schema falso. **Não há reset/drop/replay.** Falha parcial exige descartar somente o laboratório exclusivo e criar outro com segredos novos.
 
-The new `infra-validate.yml` checks syntax and ShellCheck, missing-target/path guards,
-Compose config, exact five services, image version pins, no DB or internal API ports,
-loopback gateway, schemas/row limit/signup/file settings. It generates credentials
-outside checkout, masks them and starts only these services with bounded readiness.
+## Contrato de validação
 
-Healthcheck verifies container health, a working PostgreSQL 17 primary, active Auth,
-REST and Storage responses through Kong, free bytes/inodes and writable data paths
-(100 MiB / 100 inodes minimum; readiness guard, not capacity planning). Storage gets
-an actual tiny write/delete probe. Any mandatory failure returns non-zero.
+Smoke aceita **apenas alvos descartáveis**. Ele limpa sua tabela REST temporária, objeto de prova Storage e login sintético; unidade/registro de auditoria de prova permanecem até a exclusão explícita dos volumes do **próprio** laboratório. Não contorna triggers nem apaga histórico.
 
-Smoke verifies all current migration hashes and representative objects, public
-signup rejection, synthetic admin-created user login, denied anon access to an
-existing Core row, exactly two private buckets, 10 MiB bucket/module boundaries,
-exact exposed schemas (including rejection of a private profile) and actual
-PostgREST truncation to 1000 of 1001 synthetic rows. It also checks every application
-schema and SECURITY DEFINER function owner is `postgres`, including private helpers,
-and proves password authentication rejects an incorrect password.
+O workflow [infra-validate](../.github/workflows/infra-validate.yml) executa verificação de Bash/ShellCheck, guards de alvo/caminho, Compose config, **cinco serviços exatos**, versões fixadas, portas protegidas, schemas, signup desabilitado e limites de arquivos. Credenciais geradas fora do checkout são ocultadas. Contêineres só rodam em runner efêmero.
 
-The Storage transport check uploads a complete small PDF via Kong to an existing
-private evidence bucket using service credentials and random object identifiers,
-requests a 60-second signed URL, downloads through the loopback gateway without
-API credentials and compares every byte. It deletes the object through Storage,
-checks metadata absence and confirms the signed download no longer works. This
-checks the configured file backend without duplicating domain RLS scenarios.
-It removes its temporary REST table, Storage object and synthetic login identity;
-CI destroys all volumes regardless of outcome. Domain scenarios remain in existing
-integration tests, which still run against the original CLI stack.
+**Healthcheck:** saúde dos contêineres, PostgreSQL 17 primário, Auth/REST/Storage via Kong, bytes/inodes livres e caminhos graváveis (limites mínimos de readiness 100 MiB/100 inodes, **não** dimensionamento de produção). Faz pequena escrita e exclusão real no Storage; falhas obrigatórias retornam erro.
 
-The negative test stops Storage, requires healthcheck failure, restores Storage and
-requires health again. `docker stats` is informational only. Nothing here demonstrates
-physical-host health or capacity, durable staging readiness, or production readiness.
+**Smoke:** hashes atuais de migrations, objetos representativos, rejeição de cadastro público, login administrativo sintético, acesso anônimo negado, **quatro buckets privados** — dois de PDF (10 MiB), um `unit-covers` JPEG (1 MiB) e um `abc-source-files` XLSX (10 MiB) —, limites e MIME, schemas PostgREST expostos e negação de schemas privados, truncamento real de 1.001 linhas para 1.000. Verifica owner `postgres` de schemas da aplicação e funções `SECURITY DEFINER`, inclusive helpers privados; senha incorreta não autentica.
 
-## Omitted / residual work
+Teste de transporte: PDF pequeno enviado pelo Kong para bucket privado, URL assinada temporária (60 s), download no gateway loopback com comparação de todos os bytes, exclusão e verificação de que link antigo não funciona. Demonstra backend de arquivos configurado; testes RLS de domínio rodam **separadamente** na stack Supabase CLI de integração.
 
-Realtime, edge-runtime/Functions, imgproxy, Supavisor, analytics/Logflare, Vector,
-Studio, postgres-meta and Mailpit have no service definitions or routes. Mail delivery,
-production Storage backend, asymmetric/opaque API-key lifecycle, backups, restore,
-WAL/PITR, off-site storage, ingress/deploy and monitoring are not implemented.
-Images use release version tags; digest pinning and a production update policy are
-future decisions. See UPSTREAM.md for differences from CLI 2.117.0.
+Teste negativo interrompe o Storage obrigatório, exige falha do healthcheck, restabelece Storage e exige saúde novamente. `docker stats` é informativo; não prova capacidade do host físico.
+
+## Serviços omitidos e trabalho residual
+
+Não há Realtime, Edge Functions, imgproxy, Supavisor, analytics/Logflare, Vector, Studio, postgres-meta nem Mailpit no perfil mínimo. SMTP, backend de Storage produtivo, chaves API opacas/assimétricas, backups, restore operacional, WAL/PITR, off-site, ingress/deploy e monitoramento **não estão implementados neste laboratório como solução de produção**.
+
+Imagens usam tags de versão (não digest imutável); pinning por digest e política de atualização produtiva são decisões posteriores. Ver [UPSTREAM](supabase/UPSTREAM.md) para diferenças em relação à CLI 2.117.0.
+
+**Produção: NO-GO.** Este guia não autoriza parada/exclusão de DEV compartilhado, C30, ERP ou ambientes persistentes.

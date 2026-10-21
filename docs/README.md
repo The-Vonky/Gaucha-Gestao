@@ -2,6 +2,8 @@
 
 **Catálogo técnico e de planejamento** · reconciliado em 20/10/2026 com a `main` após as PRs #69 e #72 (`6373992`). Produção: **NO-GO**.
 
+> **Padrão de idioma:** toda **documentação nova ou atualizada** deve estar em **português brasileiro (pt-BR)**; preservar literalmente comandos, nomes de schemas, arquivos, contratos, produtos e identificadores oficiais. Arquivos históricos existentes em inglês estão sendo traduzidos progressivamente em PRs documentais, sem mudar decisões aceitas, datas ou evidências. Para agentes, consultar [AGENTS.md](../AGENTS.md), [CLAUDE.md](../CLAUDE.md) e [AI_WORKFLOW](development/AI_WORKFLOW.md). Não declarar o acervo integralmente traduzido sem auditoria de todos os documentos.
+
 > **Estado:** código da Fundação Core v2 e Qualidade v1 na main, mas **produção NO-GO**. Este índice organiza e relaciona documentos existentes; não transforma proposta em decisão, não comprova aceite operacional e não autoriza instalação, migração ou deploy.
 
 ## Início rápido por objetivo
@@ -26,6 +28,7 @@
 | Entender a proposta de Agendamento de Salas (ainda não aprovada) | [Brief AG-00](briefs/ROOM_BOOKING_V1.md) | [Critérios de aceite](modules/room-booking/ACCEPTANCE_V1.md), [PR #72](https://github.com/The-Vonky/Gaucha-Gestao/pull/72) |
 | Planejar os módulos futuros | [Blueprint por domínio](planning/MODULE_BLUEPRINTS.md) | [Roadmap canônico](migration/MODULE_ROADMAP.md) |
 | Evoluir módulos legados | [Roadmap de migração](migration/MODULE_ROADMAP.md) | [Mapa de consumidores Core](architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md) |
+| Agentes: regras comuns e instruções específicas | [AGENTS.md](../AGENTS.md) | [CLAUDE.md](../CLAUDE.md), [AI_WORKFLOW](development/AI_WORKFLOW.md) |
 | Contribuir com vários agentes | [Protocolo paralelo](development/PARALLEL_AGENT_WORKFLOW.md) | [AGENTS](../AGENTS.md), [Template PR](../.github/pull_request_template.md) |
 
 ## Mapa visual do acervo

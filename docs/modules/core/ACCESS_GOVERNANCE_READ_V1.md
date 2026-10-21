@@ -1,53 +1,51 @@
-# Access Governance Read v1 — read contracts
+# Governança de acessos — contratos de leitura v1
 
-Status: implemented on `feat/core-access-governance-read-v1` (PR #26, target `integration/core-foundation-v2-wave2`). Read-only; no UI, export, logs read model or mutation change. Not production ready.
+**Status histórico:** implementado na branch `feat/core-access-governance-read-v1`, PR #26, integração original `integration/core-foundation-v2-wave2`. Contratos **somente de leitura**, sem UI, exportação, mutação ou produção autorizada. Não recriar branch antiga.
 
-Brief: `docs/briefs/CORE_ACCESS_GOVERNANCE_READ_V1.md`. Design: `docs/architecture/ACCESS_GOVERNANCE_V1.md`. Integration gate: `docs/briefs/CORE_FOUNDATION_V2_INTEGRATION_REVIEW.md` (decision 2).
+Fontes: [brief](../../briefs/CORE_ACCESS_GOVERNANCE_READ_V1.md), [desenho](../../architecture/ACCESS_GOVERNANCE_V1.md), [revisão original](../../briefs/CORE_FOUNDATION_V2_INTEGRATION_REVIEW.md).
 
-## Contracts (migration `20261008130000_core_access_governance_read_v1.sql`)
+## Contratos — migration `20261008130000_core_access_governance_read_v1.sql`
 
-All functions are `SECURITY INVOKER`, `STABLE`, `search_path=''`, executable by `authenticated` only. Every join stays under the existing RLS of `profiles`, `user_role_assignments`, `roles`, `role_permissions`, `permissions`, `units`, `sectors`, `unit_sectors` and `system_audit_log`; no policy is broadened. Lists use `p_limit` 1–100 (`22023` otherwise), `p_offset ≥ 0`, a deterministic order and `total_count`/`people_count` for the whole filtered set.
+Todas as funções são `SECURITY INVOKER`, `STABLE`, com `search_path=''`, `EXECUTE` somente para `authenticated`. Joins mantêm a RLS existente de perfis, atribuições, papéis, permissões, unidades, setores e log; **nenhuma policy é ampliada**.
 
-| RPC | Question | Gate |
+Paginação: `p_limit` de **1–100** (fora: `22023`), `p_offset >= 0`, ordem determinística e contagens `total_count`/`people_count` do conjunto filtrado.
+
+| RPC | Pergunta respondida | Gate |
 | --- | --- | --- |
-| `user_access_summary(user)` | Assignment counts, effective assignment count, composition coverage | U |
-| `user_access_assignments(user, include_revoked, limit, offset)` | Assignment history with role, scope, unit/sector, grantor, timestamps, revocation evidence | U |
-| `unit_access_summary(unit, sector?)` | People/assignments covering the unit | T; people and counts only with U |
-| `unit_access_assignments(unit, sector?, include_revoked, limit, offset)` | Global, unit and (matching) sector assignments covering the unit | U + T |
-| `role_impact_summary(role)` | **Potential** impact of changing the role | U or R; holder figures only with U + R |
-| `role_holders(role, include_revoked, limit, offset)` | Users holding the role | U + R |
+| `user_access_summary(user)` | Atribuições, efetividade e cobertura de composição | U |
+| `user_access_assignments(user, include_revoked, limit, offset)` | Histórico com papel, escopo, unidade/setor, quem concedeu e datas/revogação | U |
+| `unit_access_summary(unit, sector?)` | Pessoas/atribuições que cobrem unidade | T; pessoas/contagens apenas com U |
+| `unit_access_assignments(unit, sector?, include_revoked, limit, offset)` | Grants globais, da unidade e setor correspondente | U + T |
+| `role_impact_summary(role)` | Impacto **potencial** de alterar papel | U ou R; titulares apenas com U+R |
+| `role_holders(role, include_revoked, limit, offset)` | Titulares de papel | U + R |
 
-U = global `admin.user.read`/`admin.user.manage`. R = global `admin.role.read`/`admin.role.manage`. T = the unit is readable under `units_read`. `admin.unit.read/manage` alone never yields people or counts. A sector filter requires the unit–sector link to be readable. An absent ID and an unreadable ID both return no rows.
+**U:** `admin.user.read/manage` global. **R:** `admin.role.read/manage` global. **T:** unidade legível em `units_read`. `admin.unit.read/manage` isoladamente **não** libera nomes/contagens. Filtro setorial requer vínculo setor–unidade legível. ID ausente e invisível retornam sem linhas, sem diferença enumerável.
 
-## Interpretation rules
+## Regras de interpretação
 
-- **An active assignment is not usable access.** `effective` (per assignment) is true only when the assignment, the user and the role are active and the role holds at least one active permission. It then covers only those keys at that assignment's scope: never other domains or scopes, and never a specific business record, whose module rules still apply. Unit/sector activity is reported separately; the Core helpers do not evaluate it.
-- **Restricted is not zero.** Without the needed audience a figure is `null` and the section says `restricted` (`composition_visibility`, `holders_visibility`, `people_visibility`) or `composition_coverage` is `partial`/`restricted`. `effective_people_count` is `null` without R or `admin.user.manage`.
-- **Keys keep their scope.** Permission keys are returned per assignment only; no flat union per user.
-- **History.** Revoked assignments stay listed (`include_revoked`). Grant evidence is the assignment row (`granted_by`, `created_at`). Revocation actor/time come only from a revoke event the caller may read under `logs_read` (`revocation_evidence='audit_event'`); otherwise `unavailable`. Never inferred from `updated_at`. Names are current names (`*_label_source='current'` or `restricted`); no historical name is reconstructed.
+- **Atribuição ativa não é acesso de negócio efetivo.** `effective` só é verdadeiro se atribuição, usuário e papel estiverem ativos e o papel tiver ao menos uma permissão ativa. Isso vale **somente** às chaves/escopo daquela atribuição; não cobre automaticamente outros domínios, unidades ou registros. Atividade da unidade/setor é informada separadamente.
+- **Restrito não é zero.** Sem audiência, contagem é `null` e visibilidade `restricted` (`composition_visibility`, `holders_visibility`, `people_visibility`) ou cobertura `partial/restricted`. `effective_people_count` é `null` sem R ou `admin.user.manage`.
+- **Permissões mantêm escopo por atribuição.** Não fazer união plana de chaves do usuário.
+- **Histórico:** revogações aparecem com `include_revoked`. Concessão vem de `granted_by`/`created_at`; autor/tempo da revogação só quando existir evento de log autorizado (`revocation_evidence='audit_event'`), senão `unavailable`. Não inferir por `updated_at`, nem reconstruir nomes históricos que não foram salvos. Rótulos são atuais (`*_label_source='current'`) ou restritos.
 
-## Role impact is potential, not exact
+## Impacto de papel: potencial, não exato
 
-`role_impact_summary` returns `impact_kind='potential'` and `overlap_evaluated=false`. It is a current-state snapshot of who holds the role. It does **not** simulate a proposed permission delta, evaluate overlapping grants or the residual coverage of other roles, or validate a future save, and it must not be presented as an exact preview or mutation confirmation. That requires a separate approved mutation contract.
+`role_impact_summary` retorna `impact_kind='potential'` e `overlap_evaluated=false`: snapshot de quem detém papel, **não** simulação do delta de permissões, grants sobrepostos, confirmação da mutação ou direitos futuros. Prévia exata requer outro contrato de escrita aprovado.
 
-| Field | Meaning |
+| Campo | Significado |
 | --- | --- |
-| `role_grants_capabilities` | Role active and with ≥ 1 active permission; `false` for an inactive role; `null` if composition is unreadable |
-| `holder_count` | Distinct users with an active assignment; overlapping assignments of one user count once |
-| `inactive_user_holder_count` | Holders whose user is inactive (the assignment grants them nothing) |
-| `potentially_affected_user_count` | Active users with an active assignment: their access may change if the role's composition or activation changes |
-| `currently_effective_user_count` | Of those, users who derive at least one capability from this role now; `0` for an inactive or permission-less role |
-| `holders_with_other_roles_count` | Potentially affected users who also hold another active role and *may* keep equivalent capabilities through it (not evaluated per permission) |
-| `active_assignment_count` / `revoked_assignment_count` | Assignments, not people |
+| `role_grants_capabilities` | Papel ativo e com pelo menos uma permissão ativa; `false` se inativo; `null` se composição invisível |
+| `holder_count` | Pessoas distintas com atribuição ativa (sem dupla contagem por grants sobrepostos) |
+| `inactive_user_holder_count` | Titulares inativos, sem acesso concedido |
+| `potentially_affected_user_count` | Usuários ativos com atribuição ativa, que podem ser afetados |
+| `currently_effective_user_count` | Entre os acima, quem recebe pelo menos uma capacidade desse papel; 0 se papel inativo/sem permissão |
+| `holders_with_other_roles_count` | Titulares potencialmente afetados com outro papel ativo; **não** prova equivalência das permissões |
+| `active_assignment_count` / `revoked_assignment_count` | Contagens de atribuições, **não pessoas** |
 
-An inactive role keeps its active assignments: `currently_effective_user_count=0`, while `potentially_affected_user_count` shows who a reactivation could affect. A deactivated user's assignments are revoked by the existing trigger, so they count as revoked assignments, not as holders.
+Papel inativo pode manter atribuições ativas: `currently_effective_user_count=0`, mas titulares potencialmente afetados mostram risco de reativação. Inativar usuário revoga grants por trigger existente.
 
-## Tests
+## Testes
 
-`tests/access-governance-database.test.ts` (PGlite, real grants/RLS) covers:
-- callers: global and read-only user admins, role-only, unit-only, user + unit without composition, anonymous, unassigned and inactive;
-- scopes: global, unit and sector coverage;
-- assignment states: revoked assignments with and without log access, inactive users and roles, a permission-less role;
-- overlapping assignments and partial composition;
-- leakage and enumeration: no identity leak to callers without user permissions, guessed IDs;
-- pagination bounds and determinism, read-only behaviour, and the revoke-lookup index.
+`tests/access-governance-database.test.ts` (PGlite, RLS/grants reais) cobre administradores globais/somente leitura, somente papel/unidade/usuário, anônimo/sem grant/inativo; escopos global/unidade/setor; revogações com/sem logs, inativos, papel sem permissões; sobreposição, composição restrita; ausência de vazamento/enumeration por ID adivinhado; paginação e índice de revogação.
+
+**Este contrato é histórico de implementação do Core. Para status corrente, consultar código, CI e [mapa](../../architecture/IMPLEMENTATION_MAP.md).**

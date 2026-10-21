@@ -1,93 +1,49 @@
-# Implementation Brief — Core Access Governance Read v1
+> **Documento histórico — brief da Fundação Core v2.** Os nomes de branches, bases e estados abaixo pertencem ao plano original. **Não recriar branches antigas nem iniciar implementação por este texto**: confirmar o código da `main`, a issue atual e as regras do [AGENTS.md](../../AGENTS.md). Tradução editorial para pt-BR; decisões e restrições originais foram preservadas.
 
-Status: READY FOR IMPLEMENTATION
-Base: `integration/core-foundation-v2-wave2`
-Target integration branch: `integration/core-foundation-v2-wave2`
+# Brief de implementação — Leitura de governança de acesso do Core v1
 
-## Objective
+**Estado histórico: PRONTO PARA IMPLEMENTAÇÃO**  
+**Base histórica:** `integration/core-foundation-v2-wave2`  
+**Branch de integração prevista à época:** `integration/core-foundation-v2-wave2`
 
-Implement read-only Core contracts that let Administration answer who has access, to what, through which profile/scope, who granted it and what users are affected by a profile or unit.
+## Objetivo
 
-No mutation redesign and no frontend in this branch.
+Criar contratos **somente de leitura** para Administração identificar: quem tem acesso, a quê, por qual papel/escopo, quem concedeu e quais pessoas seriam afetadas por alterações em papel ou unidade. **Sem redesenhar mutações e sem frontend nesta frente.**
 
-## Required reading
+## Leituras necessárias
 
-- `AGENTS.md`
-- `docs/architecture/ACCESS_GOVERNANCE_V1.md`
-- `docs/architecture/CORE_FOUNDATION_V2.md`
-- `docs/architecture/AUTHORIZATION.md`
-- `docs/architecture/SECURITY.md`
-- current Core migrations and admin integration tests.
+`AGENTS.md`, `docs/architecture/ACCESS_GOVERNANCE_V1.md`, `CORE_FOUNDATION_V2.md`, `AUTHORIZATION.md`, `SECURITY.md`, migrations Core e testes de integração administrativos vigentes.
 
-## In scope
+## Escopo
 
-Implement narrowly typed RPCs/read models for the approved v1 read side, including:
-- user access summary;
-- assignment history with role, scope, unit/sector, active/revoked state, granted_by and timestamps;
-- unit access summary: users/assignments that actually cover that unit, with authorization-safe counts/details;
-- profile impact: count and, when authorized, identities of users holding the role/assignments that would be affected;
-- profile membership/read view suitable for future “usuários com este perfil”;
-- deterministic pagination/order and explicit totals where needed.
+RPCs/projeções tipadas e restritas para:
+- resumo de acessos do usuário;
+- histórico de atribuições com papel, escopo, unidade/setor, ativo/revogado, `granted_by` e datas;
+- resumo de acesso da unidade com usuários/atribuições efetivos e contagens/detalhes seguros;
+- impacto de mudança de papel: quantidade e identidades quando autorizadas;
+- visão de membros por papel («usuários com este perfil»);
+- ordenação e paginação determinísticas, totais explícitos quando necessários.
 
-Use the current source tables as authority. Do not create a duplicate access ledger.
+Usar as tabelas canônicas; **não criar ledger duplicado**.
 
-## Authorization
+## Autorização
 
-Preserve existing admin permission semantics.
+Preservar permissões administrativas. `admin.unit.read/manage` isoladamente **não dá acesso nominativo a pessoas**; exigir `admin.user.read/manage` quando esse detalhe for necessário. Um operador com apenas permissão de papéis só vê dados permitidos pelas regras existentes. Não ampliar RLS para facilitar relatórios.
 
-Do not infer that `admin.unit.read/manage` alone grants visibility of people. Where nominative user information requires `admin.user.read/manage`, enforce it.
+## Histórico
 
-A caller with only role permissions may receive only information allowed by the current role/user visibility rules.
+Atribuições revogadas continuam visíveis a operadores autorizados; pessoas/papéis/unidades/setores inativos permanecem representáveis. Sem limpeza em cascata. Usar nomes atuais salvo snapshots históricos previamente registrados. **Não inventar nomes anteriores.**
 
-Do not broaden existing RLS just because a report is convenient.
+## Banco e testes
 
-## Historical behavior
+Migration apenas aditiva; funções/views restritas, `search_path` fixo para `SECURITY DEFINER`, grants explícitos, paginação limitada, sem N+1, índices conforme caminho de consulta comprovado.
 
-- revoked assignments stay visible where authorized;
-- inactive users/roles/units/sectors remain representable in history;
-- no cascade cleanup;
-- use current names unless the event/audit contract already provides historical snapshots;
-- do not fabricate old names.
+Testar: admin global/leitor, admin só de papéis, admin só de unidade, anônimo/inativo/não autorizado; atribuição ativa/revogada, escopo global/unit/sector, papel/pessoa inativa, impacto com atribuições sobrepostas, nomes protegidos, IDs adivinhados sem enumeração. Rodar validação completa do repo.
 
-## Database rules
+## Fora do escopo
 
-- additive migration only;
-- narrow functions/views;
-- fixed search_path for SECURITY DEFINER;
-- explicit grants;
-- bounded pagination;
-- avoid N+1 server logic;
-- indexes only when justified by actual query path and tested.
+Alterar `save_role`, composição de papel, confirmação de mutação, redesenho de desvinculação, telas UI, exportação CSV/XLSX, leitura de logs, ciclo de contas, Qualidade.
 
-## Tests
+## Conclusão prevista à época
 
-Cover:
-- global user admin;
-- read-only user admin;
-- role-only admin;
-- unit-only admin;
-- unauthorized/anonymous/inactive caller;
-- active vs revoked assignment;
-- global/unit/sector scope;
-- role inactive;
-- user inactive;
-- profile impact with overlapping assignments;
-- no identity leakage when caller lacks user-directory authority;
-- guessed IDs do not enumerate hidden data.
-
-Run full repository validation.
-
-## Explicitly out of scope
-
-- changing role composition or save_role;
-- confirmation-before-mutation;
-- unlink mutation redesign;
-- UI pages;
-- CSV/XLSX export;
-- logs read model;
-- account lifecycle;
-- Quality changes.
-
-## Completion
-
-Focused commits only. Do not merge. PR target: `integration/core-foundation-v2-wave2`.
+Commits focalizados; sem merge autônomo; PR dirigida à branch histórica acima. **Hoje, seguir o fluxo atual de PR com base em `main`.**

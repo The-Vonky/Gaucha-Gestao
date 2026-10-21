@@ -1,135 +1,79 @@
-# Product Structure and Navigation
+# Estrutura do produto e navegação
 
-Status: accepted baseline  
-Date: 2026-09-24
+**Estado: baseline de produto aceita em 24/09/2026.** A árvore representa **áreas previstas**, não prova que todas foram implementadas. Curva ABC v1 já entrou no código; Agendamento de Salas possui [AG-00 proposto](../briefs/ROOM_BOOKING_V1.md).
 
-## User-facing information architecture
+## Arquitetura da informação para a pessoa usuária
 
-```text
+~~~text
 Gaúcha Gestão
-│
 ├── Qualidade
 │   ├── Auditorias
 │   ├── Planos de Ação
 │   ├── Registros ISO
 │   └── Pesquisa de Satisfação
-│
 ├── Custos
 │   ├── Curva ABC
 │   └── Planejado × Realizado
-│
 ├── Administrativo
 │   ├── Contratos
 │   └── Agendamento de Salas
-│
 ├── Comercial
 │   └── Vendas / Maquininhas
-│
 ├── Transporte
 │   └── Frota
-│
 └── Administração
-    ├── Usuários
-    ├── Perfis
-    ├── Permissões
-    ├── Unidades
-    ├── Setores
+    ├── Usuários / Perfis / Permissões
+    ├── Unidades / Setores
     └── Logs
-```
+~~~
 
-This tree is the initial product/navigation baseline.
+A navegação **não** representa a estrutura de diretórios do repositório.
 
-It is not the source-code folder structure.
+## Propriedade técnica por área
 
-## Technical ownership map
-
-| Visible area | Technical owner |
+| Área visível | Módulo proprietário |
 | --- | --- |
-| Qualidade > Auditorias | Audit business module |
-| Qualidade > Planos de Ação | transversal Action Plans business module |
-| Qualidade > Registros ISO | ISO business module |
-| Qualidade > Pesquisa de Satisfação | Satisfaction business module |
-| Custos > Curva ABC | ABC business module |
-| Custos > Planejado × Realizado | Planned vs Actual business module |
-| Administrativo > Contratos | Contracts business module |
-| Administrativo > Agendamento de Salas | Meetings/Room Booking business module |
-| Comercial > Vendas / Maquininhas | Sales business module |
-| Transporte > Frota | Fleet business module |
-| Administração > Usuários | Core identity/profile administration |
-| Administração > Perfis | Core authorization administration |
-| Administração > Permissões | Core authorization administration |
-| Administração > Unidades | Core organizational structure |
-| Administração > Setores | Core organizational structure |
-| Administração > Logs | Core system audit trail |
+| Qualidade → Auditorias | Módulo Audit |
+| Qualidade → Planos de Ação | Módulo transversal Action Plans |
+| Qualidade → Registros ISO | Módulo futuro ISO |
+| Qualidade → Satisfação | Módulo futuro Satisfação |
+| Custos → Curva ABC | Módulo ABC |
+| Custos → Planejado × Realizado | Módulo futuro Planejado × Realizado |
+| Administrativo → Contratos | Módulo futuro Contratos |
+| Administrativo → Agendamento de Salas | Módulo futuro Meetings/Room Booking |
+| Comercial → Vendas/Maquininhas | Módulo futuro Vendas |
+| Transporte → Frota | Módulo futuro Frota |
+| Administração → Usuários | Core identidade/perfil |
+| Administração → Perfis/Permissões | Core autorização |
+| Administração → Unidades/Setores | Core organização |
+| Administração → Logs | Core trilha sistêmica |
 
-## Navigation is permission-driven
+## Navegação por permissões
 
-The sidebar/menu must be derived from permissions, not from job-title conditionals.
+O menu é derivado das **permissões efetivas**, não de condicionais por cargo. Grupo sem destino permitido fica oculto.
 
-A user should only see groups containing at least one capability they can access.
+**Exemplos do desenho de produto** (não promessa de telas implementadas):
 
-Examples:
+~~~text
+Pessoa de Transporte:
+Início > Transporte > Frota
+       > Administrativo > Agendamento de Salas
 
-### Transport user
+Pessoa de Qualidade:
+Início > Qualidade > Auditorias / Planos de Ação
+                   > Registros ISO / Pesquisa de Satisfação
+~~~
 
-Possible visible navigation:
+Pessoa executiva pode ler múltiplos domínios sem obter administração da plataforma.
 
-```text
-Início
-Transporte
-└── Frota
+## Página inicial e contexto de unidade
 
-Administrativo
-└── Agendamento de Salas
-```
+Início/Visão Geral é superfície da plataforma, **não** décimo módulo de negócio. Reúne somente dados que a pessoa tem permissão para ler. Começar por cartões de navegação/estado e só criar indicadores executivos entre módulos quando as fontes forem confiáveis.
 
-### Quality user
+Uma unidade canônica Core poderá servir como contexto comum a Auditoria/Planos, Satisfação, ABC, Planejado × Realizado, Frota e Contratos, sempre mediante **contratos públicos de leitura dos módulos e autorização**. Core não importa internos dos domínios.
 
-Possible visible navigation:
+## Mobile e limites de arquitetura
 
-```text
-Início
-Qualidade
-├── Auditorias
-├── Planos de Ação
-├── Registros ISO
-└── Pesquisa de Satisfação
-```
+A mesma arquitetura de informação vale no celular. Sidebar pode virar drawer/sheet, mantendo grupos, propriedade técnica e filtragem por permissão.
 
-### Executive user
-
-May receive read access across several business areas while not receiving platform-administration capabilities.
-
-## Home experience
-
-The Home/Overview is a platform surface, not a tenth business module.
-
-It should compose only data the current user is authorized to read.
-
-The first release does not need a complete cross-domain executive dashboard. Start with useful module entry/status cards and add cross-module KPIs only after their source modules produce trusted data.
-
-## Unit context
-
-A canonical Core Unit can be a cross-module navigation context.
-
-A future unit view may aggregate authorized information such as:
-- Audit conformity and pending Action Plans;
-- Satisfaction indicators;
-- ABC/cost indicators;
-- Planned vs Actual;
-- Fleet costs;
-- related contracts where the domain relationship is valid.
-
-This aggregated view must use public module read contracts and permission checks. It must not make Core depend on module internals.
-
-## Mobile
-
-The same information architecture applies on mobile.
-
-The persistent desktop sidebar may become a drawer/sheet, but permission filtering, group names and module ownership stay consistent.
-
-## Guardrail
-
-Changing where an item appears in navigation must not require moving its business logic between modules.
-
-Menu grouping is a product concern; module ownership is an architecture concern.
+**Mover item de menu não move lógica de negócio**: agrupamento visual é decisão de produto, propriedade de domínio é decisão arquitetural.

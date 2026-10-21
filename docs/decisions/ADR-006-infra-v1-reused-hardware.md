@@ -1,64 +1,38 @@
-# ADR-006 — Reproducible infrastructure v1, hardware decision deferred
+# ADR-006 — Infraestrutura v1 reproduzível; decisão de hardware originalmente adiada
 
-Status: Proposed
-Date: 2026-10-01
+**Status: Proposto**  
+**Data: 01/10/2026**
 
-> **Update 2026-10-15:** the hardware decision deferred here is now taken in [ADR-008](ADR-008-production-host-thinkstation-c30.md): a dedicated Lenovo ThinkStation C30 with Ubuntu Server LTS on bare metal. References to the ML350 below are historical. WAL-G versus pgBackRest, backup/restore and off-site recovery remain open.
+> **Atualização 15/10/2026:** a escolha de hardware antes adiada foi tomada no [ADR-008](ADR-008-production-host-thinkstation-c30.md): Lenovo ThinkStation C30 dedicada, com Ubuntu Server LTS bare metal. Referências à ML350 abaixo são históricas. WAL-G versus pgBackRest, backup/restauração e recuperação off-site continuam abertos.
 
-## Context and scope
+## Contexto e escopo
 
-The current application CI uses a disposable Supabase CLI 2.117.0 stack. This PR
-adds a reproducible self-hosted Compose validation path for the same application
-contract. It does not deploy, accept production infrastructure, or validate P1–P9.
-The filename refers to the future reused-hardware evaluation, not evidence that
-any physical server is suitable.
+A CI da aplicação usa uma instância descartável da Supabase CLI 2.117.0. A PR original acrescentou uma validação reproduzível por Docker Compose self-hosted para o **mesmo contrato da aplicação**. Ela não implanta nem aceita infraestrutura produtiva, tampouco valida P1–P9.
 
-ADR-004 remains the historical accepted platform direction. For this PR, the
-explicit brief limits the implemented profile to current functional dependencies;
-this proposed ADR does not ratify or replace ADR-004's production choices.
+O nome do arquivo refere-se à avaliação futura de hardware reaproveitado, **não** comprova que algum servidor físico seja adequado.
 
-## Decisions proposed by this PR
+O ADR-004 continua sendo a direção de plataforma aceita historicamente. O brief específico desta proposta limita o perfil implementado às dependências funcionais existentes; este ADR **Proposto** não ratifica nem substitui as escolhas de produção do ADR-004.
 
-- The default and only implemented profile contains PostgreSQL major 17, Kong,
-  GoTrue/Auth, PostgREST and Storage API. The application currently requires these
-  five services. Realtime, Functions, imgproxy, Supavisor, analytics/Logflare,
-  Vector, Studio, Meta and Mailpit are omitted.
-- CI and disposable staging use Storage's local/file backend in an isolated named
-  volume. Both application evidence buckets remain private, with their existing
-  10 MiB limits and unchanged migration policies. This is not a production
-  object-storage decision.
-- The Compose source is official `self-hosted/v0.8.1`, commit
-  `8c7a4d9dbbaf8b552893822e89d7bf06f33f9220`, using its official Kong override.
-  Every runtime image has an explicit version tag. See `infra/supabase/UPSTREAM.md`
-  for versions, CLI comparison and the exact minimal adaptations.
-- Existing application migrations/config are unchanged. The runner applies the
-  existing migration files to an explicitly identified fresh isolated DB. No reset,
-  implicit target or production mode is provided.
-- Env examples are placeholders. Credentials are generated outside Git checkouts;
-  CI credentials, API keys, users, volumes and all test data are ephemeral.
-- PostgreSQL has no published host port; only the gateway binds a loopback HTTP
-  port. URLs and redirects are configured per environment. No real ingress or
-  production endpoint is configured.
+## Decisões propostas pela PR original
 
-## Explicitly undecided / deferred
+- O único perfil implementado contém **PostgreSQL 17, Kong, GoTrue/Auth, PostgREST e Storage API**. A aplicação usa esses cinco serviços. Realtime, Functions, imgproxy, Supavisor, analytics/Logflare, Vector, Studio, Meta e Mailpit ficam de fora.
+- CI e staging **descartável** usam Storage local em volume nomeado isolado. Os buckets privados de evidências da época conservam limites de 10 MiB e políticas das migrations; **isso não decide Storage de produção**. O inventário atual de buckets cresceu com a Curva ABC — ver [mapa de implementação](../architecture/IMPLEMENTATION_MAP.md).
+- O Compose deriva do release oficial `self-hosted/v0.8.1`, commit `8c7a4d9dbbaf8b552893822e89d7bf06f33f9220`, com override oficial do Kong. Imagens têm tags explícitas. Consultar [UPSTREAM](../../infra/supabase/UPSTREAM.md) para versões e adaptações.
+- Migrations/configuração da aplicação são preservadas. O runner aplica arquivos existentes a um banco **novo, isolado e explicitamente identificado**; não existe modo de reset nem alvo implícito/produção.
+- Exemplos de `.env` são placeholders. Credenciais são geradas fora dos checkouts; chaves, contas, volumes e dados da CI são efêmeros.
+- PostgreSQL não publica porta no host; somente o gateway expõe HTTP em loopback. URLs/redirects variam por ambiente. Não há ingresso real nem endpoint produtivo.
 
-- Production architecture and configuration remain undefined by this PR.
-- Physical hardware, including the ML350, has not been inventoried or validated.
-- VM versus bare metal has not been decided here.
-- WAL-G versus pgBackRest has not been decided.
-- Backup/restore, WAL/PITR, Google Drive, rclone and off-site recovery are for later
-  PRs. This PR implements none of them.
-- Production ingress, deploy, Ansible, monitoring/alerting, reconciliation timers,
-  edge nosniff/cache rules and physical homologation remain outside this PR.
+## Explicitamente não decidido nesta proposta
 
-## Consequences
+- Esta PR não define arquitetura/configuração final de produção.
+- A inspeção física do hardware era pendente na data original; a **escolha da C30 foi tomada depois pelo ADR-008**, mas seu aceite operacional continua pendente.
+- VM versus bare metal não foi resolvido **neste** ADR, tendo sido decidido posteriormente no ADR-008.
+- WAL-G versus pgBackRest permanece aberto.
+- Backup/restore, WAL/PITR, Google Drive, rclone e recuperação off-site ficaram para PRs futuras; não foram implementados pela proposta.
+- Ingresso produtivo, deploy, Ansible, alertas, reconciliação periódica, políticas `nosniff`/cache e homologação física estão fora do escopo original.
 
-A clean CI runner can start the minimum stack, apply current migrations, actively
-check health and prove the infrastructure contract. A stopped mandatory Storage
-service must make the healthcheck fail; the runner then restores it and checks
-health again before destroying all volumes.
+## Consequências
 
-The runner's Docker stats are informational and provide no evidence of ML350
-capacity. File storage is disposable, not backed up. Partial migration failures
-require a new disposable stack. Version differences from the CLI remain visible
-and are tested, not assumed equivalent. Production readiness remains **NO**.
+Um runner limpo de CI consegue subir o stack mínimo, aplicar migrations, verificar saúde e provar o contrato de infraestrutura. Parar um serviço Storage obrigatório deve fazer o healthcheck falhar; após restaurá-lo, uma nova verificação deve passar antes da destruição dos volumes **descartáveis do próprio runner**.
+
+Métricas de `docker stats` são informativas e não comprovam capacidade da ML350 nem da C30. Storage em arquivos locais do laboratório é descartável, não possui backup garantido. Falha parcial de migration exige **novo stack descartável**. Diferenças em relação à CLI ficam explícitas e são testadas, **não presumidas equivalentes**. **Produção: NO-GO.**

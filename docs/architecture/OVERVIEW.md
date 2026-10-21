@@ -1,170 +1,90 @@
-# Architecture Overview
+# Visão geral da arquitetura
 
-## Purpose
+## Propósito e estilo
 
-Gaúcha Gestão will consolidate nine existing/internal systems into one corporate platform while preserving clear domain boundaries and allowing gradual migration.
+Consolidar sistemas corporativos internos da Gaúcha Gestão em uma plataforma com fronteiras de domínio e migração gradual. O objetivo não é reunir arquivos numa pasta gigante, mas compartilhar a fundação sem tornar os módulos inseparáveis.
 
-The goal is not to merge source code into one large folder. The goal is to share the corporate foundation while keeping business domains independently understandable and maintainable.
+**Decisão arquitetural:** monólito modular ([ADR-001](../decisions/ADR-001-modular-monolith.md)).
 
-## Architecture style
-
-Decision: modular monolith.
-
-Logical structure:
-
-~~~
-Platform
-|
-+-- App Shell
-|   +-- navigation
-|   +-- session
-|   +-- global context
-|
-+-- Core
-|   +-- identity
-|   +-- authorization
-|   +-- users/profiles
-|   +-- units
-|   +-- sectors
-|   +-- shared file contract (metadata owned by modules)
-|   +-- system audit log
-|
-+-- Shared
-|   +-- UI primitives
-|   +-- generic utilities
-|   +-- technical contracts
-|
-+-- Modules
-    +-- Audit
-    +-- Action Plans (transversal business module)
-    +-- ISO
-    +-- Sales
-    +-- Satisfaction
-    +-- Meetings
-    +-- Fleet
-    +-- Planned vs Actual
-    +-- ABC
-    +-- Contracts
+~~~text
+Plataforma
++-- App Shell (navegação / sessão / contexto global)
++-- Core (identidade / autorização / unidades / setores / logs)
++-- Shared (primitivas UI / utilitários / contratos)
++-- Módulos
+    +-- Auditorias (Qualidade)
+    +-- Planos de Ação (transversal)
+    +-- Curva ABC
+    +-- ISO / Vendas / Satisfação / Salas / Frota
+    +-- Planejado×Realizado / Contratos (futuros)
 ~~~
 
-## Dependency rule
+## Dependências permitidas e proibidas
 
-Allowed:
+~~~text
+PERMITIDO
+Módulo de negócio -> Core ou Shared
+App Shell -> Core ou entrada pública do módulo
 
-~~~
-Business Module -> Core
-Business Module -> Shared
-App Shell -> Core
-App Shell -> module public entry points
-~~~
-
-Forbidden:
-
-~~~
-Core -> Business Module
-Module A -> internal files of Module B
-Shared -> Business Module
+PROIBIDO
+Core -> módulo de negócio
+Módulo A -> arquivos internos do módulo B
+Shared -> módulo de negócio
 ~~~
 
-Cross-module integrations must use explicit contracts. A module must not become coupled to another module's tables, internal components or implementation details without an architectural decision.
+Integrações entre módulos devem passar por **contratos públicos**. Acesso direto à tabela/componente interno de outro módulo exige decisão arquitetural.
 
-## Shared corporate concepts
+## O que pertence ao Core
 
-Candidates for Core ownership:
+Identidade/perfil, papéis, permissões, unidade, setor, escopo organizacional, eventos sistêmicos e contrato técnico compartilhado de arquivos. Metadados de anexos específicos e acesso a entidades pertencem aos módulos, conforme [DATA_MODEL](DATA_MODEL.md).
 
-- user/profile;
-- role;
-- permission;
-- organizational unit;
-- sector;
-- user scope by unit/sector;
-- shared file contract; attachment metadata and entity-specific access remain module-owned (DATA_MODEL.md);
-- system audit event;
-- common application settings.
+Semântica parecida em dois módulos não justifica mover tudo para Core.
 
-A concept is not moved to Core merely because two modules happen to use similar data. Core is reserved for stable corporate concepts.
+## Módulos e estado de implementação
 
-## Module catalog
+| Domínio | Estado verificado no repositório em 21/10/2026 |
+| --- | --- |
+| Auditoria/Qualidade | v1 integrada ao código, sem homologação P1–P9/O1–O8 |
+| Planos de Ação | Transversal e integrado |
+| Curva ABC | v1 integrada na PR #69, homologação [#70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) aberta |
+| ISO/Propostas ISO, Vendas, Satisfação | Legados; migração futura |
+| Agendamento de Salas | Legado funcional, [AG-00](../briefs/ROOM_BOOKING_V1.md) proposto e não aprovado |
+| Frota | Legado em desenvolvimento |
+| Planejado×Realizado | Legado a revisar antes de migrar |
+| ERP de Contratos | Legado; backup/recuperação exige revisão |
 
-1. Audit / Quality Audit — active development; first module.
-2. ISO Records — standalone complete.
-3. Sales / Card Machines — standalone complete.
-4. Satisfaction Survey — standalone complete.
-5. Meeting Room Scheduling — standalone complete but requires redesign.
-6. Fleet — active development.
-7. Planned vs Actual — standalone complete, review desirable.
-8. ABC Curve — active development.
-9. Contracts ERP — standalone complete, backup/recovery review required.
+## Migração incremental
 
-## Migration strategy
-
-No big-bang rewrite.
-
-For each system:
-
-~~~
-inventory current behavior
--> define module boundary
--> define migration brief
--> reuse validated domain logic
--> integrate with Core
--> migrate data in controlled fashion
--> validate against standalone
--> cut over
--> retain standalone recovery point
+~~~text
+inventariar comportamento legado
+-> definir fronteira do módulo
+-> aprovar brief e critérios de aceite
+-> reutilizar regras de negócio validadas
+-> integrar Core
+-> migrar dados controladamente
+-> reconciliar com legado
+-> homologar e autorizar corte
+-> preservar recuperação do legado
 ~~~
 
-A system being "complete" does not mean its current architecture must be copied. Valid business rules and calculations are assets; incidental technical structure can be replaced.
+Um legado “finalizado” não obriga copiar sua arquitetura técnica.
 
-## Platform-wide capabilities before broad migration
+## Capacidades antes de múltiplos módulos produtivos
 
-Before several modules are operational together, the platform needs stable foundations for:
+Identidade/sessões, autorização granular, escopo, audit log, navegação, disciplina de migrations, backups/restore, segredos, ambientes e observabilidade precisam ser confiáveis.
 
-- identity and session handling;
-- granular authorization;
-- organizational scope;
-- audit logging;
-- common navigation/app shell;
-- database migration discipline;
-- backup and restore;
-- secrets/configuration management;
-- deployment environments;
-- error handling and observability.
+A primeira entrega operacional é **Qualidade v1**. Não reimplementar Auditoria, Planos, evidências e relatórios concluídos; consultar [QUALITY_COMPLETION](../modules/audit/QUALITY_COMPLETION_V1.md). O código está integrado, **a produção não**.
 
-## Current implementation policy
+## Tecnologias atuais versus futuras
 
-The Audit system remains the priority. This repository must not delay completion of the standalone Audit system with speculative platform work.
+**AS-IS em código/CI:** React/TypeScript/Vite, GoTrue/Auth, PostgREST, Storage API, PostgreSQL 17/RLS e Kong em Compose mínimo de cinco serviços, além de CI Supabase CLI. **Realtime/Supavisor não fazem parte desse perfil.**
 
-Platform Foundation, Audit Domain, Action Plans and Action Plan Evidence have implementations. See `docs/modules/audit/QUALITY_COMPLETION_V1.md` for the commit-pinned comparison and remaining briefs. This does not assert production rollout or standalone data migration.
+**TO-BE produção:** frontend Cloudflare Workers Static Assets, Cloudflare DNS/WAF/Tunnel, R2, ThinkStation C30 Ubuntu bare metal, backup lógico+base/WAL/PITR off-site, Ansible e alertas. A escolha está nos [ADR-004](../decisions/ADR-004-platform-stack.md) e [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md), **sem comprovar implantação**.
 
-## Selected platform stack
+Detalhes: [DIAGRAMS](DIAGRAMS.md), [STACK_INTEGRATION](STACK_INTEGRATION.md), [TECHNOLOGY_DECISIONS](TECHNOLOGY_DECISIONS.md).
 
-The production baseline is now accepted in `docs/decisions/ADR-004-platform-stack.md`.
+## Decisões abertas
 
-Selected direction:
-- React + TypeScript + Vite;
-- Cloudflare Workers Static Assets for the frontend;
-- Supabase Self-Hosted;
-- PostgreSQL/Auth/PostgREST/Realtime/Storage;
-- Cloudflare R2 as preferred production object storage;
-- Ubuntu Server LTS on bare metal on a dedicated Lenovo ThinkStation C30 (ADR-008, replacing ADR-004's HP ProLiant ML350 VM);
-- Docker Compose;
-- Cloudflare DNS/WAF/Tunnel;
-- GitHub Actions;
-- automated backups, WAL/PITR, restore testing and Ansible-based recovery.
+Backup/PITR e retenção, RPO/RTO, observabilidade/alertas, política de exclusão de evidências, STAGING/PROD, capacidade física da C30 (RAM/SSD) e identidade privilegiada ADR-007 (NO-GO). Não reabrir stack aceita para resolver detalhe sem requisito/novo ADR.
 
-These choices are no longer open design questions unless ADR-004 (or ADR-008 for the host) is explicitly superseded.
-
-## Decisions still intentionally open
-
-RBAC/scope, the initial permission catalog and Core physical schema are decided in ADR-005 and implemented in migrations 0001–0003. Supabase Storage and the Action Plan file contract are defined by ADR-004 and Evidence/Storage v1 (migration 0008). Remaining details:
-
-- exact backup/PITR tool and retention;
-- RPO/RTO;
-- monitoring/observability tooling;
-- evidence retention/purge policy; checklist-specific limits and reopen policy proposed in its new brief;
-- exact DEV/STAGING/PROD layout;
-- C30 capacity acceptance: re-measurement on Ubuntu with the ADR-006 profile and the RAM/SSD upgrade triggers (ADR-008, Plano Diretor §7).
-
-Do not reopen the accepted platform stack while solving one of these implementation details.
-
+**Produção NO-GO** até evidências P1–P9/O1–O8 e liberação humana.

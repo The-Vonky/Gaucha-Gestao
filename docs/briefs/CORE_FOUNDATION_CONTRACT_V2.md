@@ -1,62 +1,38 @@
-# Design Brief — Core Foundation Contract v2
+> **Documento histórico — brief da Fundação Core v2.** Os nomes de branches, bases e estados abaixo pertencem ao plano original. **Não recriar branches antigas nem iniciar implementação por este texto**: confirmar o código da `main`, a issue atual e as regras do [AGENTS.md](../../AGENTS.md). Tradução editorial para pt-BR; decisões e restrições originais foram preservadas.
 
-Status: DESIGN ONLY
-Base: `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`
-Target integration branch: `integration/core-foundation-v2`
+# Brief de desenho — Contratos da Fundação Core v2
 
-## Objective
+**Estado histórico: SOMENTE DESENHO**  
+**Base:** `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`  
+**Branch planejada:** `integration/core-foundation-v2`
 
-Define the stable platform-wide Core contract that all current and future business modules may consume.
+## Objetivo
 
-This track must not implement code.
+Definir os contratos Core estáveis consumidos por módulos existentes e futuros. Esta frente original **não autorizava código**.
 
-## Required reading
+## Leituras
 
-- `AGENTS.md`
-- `docs/decisions/ADR-001-modular-monolith.md`
-- `docs/decisions/ADR-002-core-and-module-ownership.md`
-- `docs/decisions/ADR-005-core-authorization.md`
-- `docs/architecture/AUTHORIZATION.md`
-- `docs/architecture/DATA_MODEL.md`
-- `docs/architecture/PRODUCT_STRUCTURE.md`
-- current Core/Admin code and migrations at the branch base.
+`AGENTS.md`, ADR-001/002/005, `AUTHORIZATION.md`, `DATA_MODEL.md`, `PRODUCT_STRUCTURE.md`, código Core/Admin e migrations na base histórica.
 
-## Questions to close
+## Questões do desenho
 
-Define canonical contracts and lifecycle semantics for:
-- Auth identity vs Core profile;
-- user/person usable as a responsible party in business modules;
-- active/inactive user behavior and historical references;
-- unit identity, code, name, active/inactive lifecycle;
-- sector identity and unit-sector validity;
-- role, permission and scoped assignment semantics;
-- how modules select/reference users, units and sectors;
-- what happens when referenced users/units/sectors become inactive;
-- read contracts suitable for selectors/directories without bypassing RLS;
-- ownership boundary between Core and business modules;
-- system audit trail contract.
+- identidade Auth versus perfil Core;
+- usuário/pessoa elegível como responsável de domínio;
+- ativo/inativo e vínculos históricos;
+- identidade/código/nome/ciclo da unidade;
+- identidade setorial e validade unidade–setor;
+- papéis, permissões e atribuições por escopo;
+- seletores e referências de usuários/unidades/setores pelos módulos;
+- comportamento quando entidade referenciada se torna inativa;
+- leitura para seletores/diretórios sem bypass de RLS;
+- fronteira Core × módulo e auditoria sistêmica.
 
-## Deliverable
+## Entregável original
 
-Create a new architecture document, preferably:
-`docs/architecture/CORE_FOUNDATION_V2.md`
+`docs/architecture/CORE_FOUNDATION_V2.md`, com tabela de propriedade, diagrama de relações, estados/ciclos, regras de consumo, invariantes RLS, referências históricas, exclusões e decisões ainda dependentes do responsável.
 
-It must contain:
-- entity ownership table;
-- relationship diagram;
-- lifecycle/state rules;
-- module-consumption rules;
-- authorization invariants;
-- historical-reference rules;
-- explicit non-goals;
-- unresolved product decisions requiring PO approval.
+## Proteções
 
-Do not silently decide uncertain product behavior. Mark decisions clearly.
+Core guarda **somente** conceitos corporativos estáveis; nunca depende de Auditoria ou outro módulo; não semear permissões de domínios inexistentes; não criar modelo universal polimórfico de negócio; sem alteração de código/migration.
 
-## Guardrails
-
-Core owns stable corporate concepts only.
-Core never depends on Audit or another business module.
-Do not pre-seed permissions for unimplemented modules.
-Do not design a universal polymorphic business model.
-No code/migration changes in this branch.
+**Não decidir silenciosamente comportamento de produto incerto.** Identificar pendências para aprovação do PO.

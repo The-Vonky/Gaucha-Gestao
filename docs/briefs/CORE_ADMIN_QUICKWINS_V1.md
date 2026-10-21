@@ -1,56 +1,35 @@
-# Implementation Brief — Core Admin Quick Wins v1
+> **Documento histórico — brief da Fundação Core v2.** Os nomes de branches, bases e estados abaixo pertencem ao plano original. **Não recriar branches antigas nem iniciar implementação por este texto**: confirmar o código da `main`, a issue atual e as regras do [AGENTS.md](../../AGENTS.md). Tradução editorial para pt-BR; decisões e restrições originais foram preservadas.
 
-Status: READY FOR IMPLEMENTATION
-Base: `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`
-Target integration branch: `integration/core-foundation-v2`
+# Brief de implementação — Melhorias rápidas da Administração Core v1
 
-## Objective
+**Estado histórico: PRONTO PARA IMPLEMENTAÇÃO**  
+**Base:** `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`  
+**Branch planejada:** `integration/core-foundation-v2`
 
-Apply only low-risk Core/Admin improvements already identified during manual review, without redesigning account lifecycle, RBAC, logging contracts or business modules.
+## Objetivo
 
-## In scope
+Aplicar somente melhorias Core/Admin de baixo risco identificadas na avaliação manual, sem redesenhar lifecycle de contas, RBAC, logs ou módulos de negócio.
 
-1. Unit/Sector search must match business code as well as name.
-2. Reduce technical noise in day-to-day Administration screens:
-   - do not lead with UUIDs/technical keys when they are not needed for the task;
-   - retain identifiers where useful for diagnostics/details.
-3. Replace product copy that mentions implementation jargon such as “Auth” with administrator-facing language.
-4. Remove the unused `role_permissions` fetch/value from `UserAssignments` if it is truly unused.
-5. Make the ambiguous stale/authorization client error more honest if this can be done without pretending to know which cause occurred. Do not invent a precise authorization diagnosis from `PGRST116`.
+## Incluído
 
-## Explicitly out of scope
+1. Busca de unidade/setor por **código de negócio e nome**.
+2. Reduzir ruído técnico nas telas: não destacar UUIDs/chaves desnecessárias, mas mantê-las em diagnósticos/detalhes úteis.
+3. Substituir texto de produto com jargão de implementação («Auth») por linguagem de operador.
+4. Retirar `role_permissions` não utilizado de `UserAssignments`, se comprovadamente sem uso.
+5. Tornar erro cliente ambíguo de autorização/versão obsoleta mais honesto, **sem diagnosticar causa não conhecida** a partir de `PGRST116`.
 
-- user creation;
-- password reset;
-- My Account;
-- MFA;
-- new access-review queries/reports;
-- unit dossier;
-- log actor directory;
-- role-impact queries;
-- new migrations/RPCs/policies;
-- Quality/Audit/Action Plans behavior;
-- production deployment.
+## Fora do escopo
 
-## Security / compatibility
+Criar contas, reset de senha, Minha Conta, MFA, consultas novas de revisão de acessos, dossiê de unidade, diretório de autores, impacto de papéis, novas migrations/RPC/policies, comportamento da Qualidade/Planos ou deploy de produção.
 
-Do not weaken RLS or change existing permission semantics.
-Do not expose service credentials.
-Do not change database schema.
-Keep current pagination, optimistic-version behavior and active/inactive semantics.
+## Segurança e compatibilidade
 
-## Validation
+Preservar RLS, semântica de permissões, paginação, versões otimistas e inativação. Sem credenciais privilegiadas. Sem alterar schema.
 
-Run at minimum:
-- typecheck;
-- lint;
-- unit/UI tests affected;
-- full `npm test`;
-- build;
-- existing Admin integration when practical.
+## Validação original
 
-Add focused tests for code-or-name search and any changed copy/error mapping.
+Typecheck, lint, testes UI/unit afetados, `npm test` completo, build, integração Admin quando viável. Adicionar teste específico para busca código/nome e texto/erros modificados.
 
-## Completion
+## Encerramento previsto à época
 
-Commit focused changes only. Do not merge. Open a PR targeting `integration/core-foundation-v2` only after validation.
+Commits pequenos e PR para a branch histórica somente após validações. **Não executar como tarefa nova sem issue vigente.**

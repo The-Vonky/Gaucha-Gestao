@@ -1,63 +1,34 @@
-# Design Brief — Core Account Lifecycle v1
+> **Documento histórico — brief da Fundação Core v2.** Os nomes de branches, bases e estados abaixo pertencem ao plano original. **Não recriar branches antigas nem iniciar implementação por este texto**: confirmar o código da `main`, a issue atual e as regras do [AGENTS.md](../../AGENTS.md). Tradução editorial para pt-BR; decisões e restrições originais foram preservadas.
 
-Status: DESIGN ONLY
-Base: `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`
-Target integration branch: `integration/core-foundation-v2`
+# Brief de desenho — Ciclo de contas do Core v1
 
-## Objective
+**Estado histórico: SOMENTE DESENHO**  
+**Base:** `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`  
+**Branch planejada:** `integration/core-foundation-v2`
 
-Design an operationally self-sufficient account lifecycle for Gaúcha Gestão without exposing privileged Supabase credentials to the browser.
+## Objetivo
 
-No implementation in this track.
+Projetar ciclo de contas operacionalmente autossuficiente na Gaúcha Gestão **sem expor chaves privilegiadas Supabase ao browser**. Sem implementação nesta etapa.
 
-## Current facts to verify
+## Premissas a conferir na baseline original
 
-- Supabase Auth is the identity provider.
-- Public sign-up is disabled.
-- The application currently has login only.
-- No app flow exists for administrator-created users, password reset or self-service password change.
-- No SMTP configuration is currently present in the repository.
-- Core profile activation is separate from Auth session existence.
+Supabase Auth é identidade; cadastro público desativado; a aplicação possuía somente login naquele snapshot, sem fluxo administrativo de criação/reset e troca autônoma de senha; nenhuma configuração SMTP identificada; perfil Core ativo é distinto de sessão Auth válida. **Não tomar essas ausências históricas como diagnóstico atual sem verificar o código.**
 
-## Design scope
+## Escopo do desenho
 
-Define:
-- administrator user creation;
-- initial/temporary password strategy;
-- forced first-login change if appropriate;
-- administrator reset strategy;
-- self-service authenticated password change;
-- forgotten-password path with and without SMTP;
-- account deactivation/reactivation and session consequences;
-- relationship between Auth account and Core profile creation;
-- failure/rollback behavior if Auth creation succeeds but profile creation fails, or vice versa;
-- auditing requirements;
-- rate limiting/abuse controls;
-- secret/service-role boundary;
-- whether an Edge Function or another trusted server path is appropriate;
-- optional MFA boundary: design whether it belongs in v1, not implementation unless explicitly approved later.
+Definir criação administrativa; estratégia de senha inicial/temporária; troca forçada no primeiro acesso se pertinente; reset administrativo; troca autenticada da própria senha; «esqueci a senha» com/sem SMTP; inativação/reativação e sessões; vínculo Auth↔Core; recuperação se uma criação falhar após outra; auditoria; rate limiting/abuso; fronteira de `service_role`; avaliação de Edge Function ou outro processo confiável; MFA opcional (decidir se pertence à v1, **não implementar sem GO**).
 
-## Security requirements
+## Segurança
 
-- service-role/admin Auth credentials never enter browser code;
-- administrative account operations require explicit authorization;
-- ordinary users cannot create/reset other accounts;
-- sensitive operations are auditable without logging secrets/passwords;
-- temporary credentials must not be persisted in Core/system logs;
-- design should work with the repository's self-hosted Supabase direction.
+- Credenciais administrativas Auth/`service_role` nunca no browser.
+- Operações administrativas exigem autorização explícita.
+- Usuário comum não cria nem redefine conta alheia.
+- Auditar sem registrar senhas/segredos.
+- Credenciais temporárias não persistem em Core/logs.
+- Compatibilidade com Supabase self-hosted aprovado.
 
-## Deliverable
+## Entregável original
 
-Create:
-`docs/architecture/ACCOUNT_LIFECYCLE_V1.md`
+`docs/architecture/ACCOUNT_LIFECYCLE_V1.md` com diagramas de sequência para: criação administrativa, primeiro login, troca da própria senha, reset por admin, inativação/reativação; decisões pendentes do responsável.
 
-Include a sequence diagram for:
-1. administrator creates user;
-2. user first signs in;
-3. user changes own password;
-4. administrator resets credentials;
-5. deactivation/reactivation.
-
-Include explicit decisions still requiring PO approval.
-
-No implementation, migrations or Edge Functions in this branch.
+**Sem código, migration ou Edge Functions autorizados por este brief.** ADR-007 continua NO-GO conforme [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49).

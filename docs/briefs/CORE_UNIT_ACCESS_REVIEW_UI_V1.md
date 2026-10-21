@@ -1,13 +1,16 @@
-# Brief — Unit Access Review UI v1
+> **Brief histórico do Core v2.** As branches de integração, proprietários de arquivos e estados de execução aqui citados valem **somente para a rodada original**. Não iniciar tarefa nova nem recriar essas branches sem uma issue atual aprovada; usar `origin/main` conforme [AGENTS.md](../../AGENTS.md).
 
-Read AGENTS.md, docs/briefs/CORE_ADMIN_UI_WAVE3.md, docs/modules/core/ACCESS_GOVERNANCE_READ_V1.md, and existing OrganizationPage.
+# Brief — Interface de revisão de acessos por unidade v1
 
-Create a SELF-CONTAINED, exportable UnitAccessReview React component, ready for subsequent mounting by integration coordinator, which:
-- consumes core.unit_access_summary and core.unit_access_assignments through its own unit-access-review-api.ts;
-- shows unit context, user counts and assignments when allowed, global/unit/sector origins, active/revoked, readable labels and safe scoped sector filter;
-- distinguishes unit visibility from authorization to list people; restricted people counts must not appear as zero;
-- properly treats null/restricted permission composition, inactive users/roles and overlapping grants;
-- provides pagination, loading/error/denied/empty states, responsive accessible PT-BR UI.
-Important: DO NOT modify OrganizationPage.tsx, SectorUnits.tsx, shared admin api/types/admin.css, App.tsx or other owners' files. Coordinator will mount after both branches are merged. New feature-specific CSS and tests allowed.
-No schema/migrations, no access expansion, no mutation. Explicitly report that unit UI is developed but not mounted until coordinator step. Test negative privacy cases.
-Push normal, open PR to integration/core-foundation-v2-wave2; no merge.
+Ler `AGENTS.md`, `CORE_ADMIN_UI_WAVE3.md`, `ACCESS_GOVERNANCE_READ_V1.md` e `OrganizationPage`.
+
+Desenvolver componente React `UnitAccessReview` **autocontido e exportável**, para montagem posterior pelo coordenador, que:
+- chama `core.unit_access_summary` e `core.unit_access_assignments` pelo adaptador `unit-access-review-api.ts`;
+- mostra contexto da unidade, totais de usuários/atribuições quando autorizados, origem global/unidade/setor, ativa/revogada, rótulos e filtro setorial seguro;
+- distingue visibilidade da unidade da autorização de listar pessoas; contagem restrita **não pode aparecer como zero**;
+- diferencia composição nula/restrita, usuários/papéis inativos e grants sobrepostos;
+- suporta paginação, carregando/erro/negado/vazio, responsividade e acessibilidade pt-BR.
+
+**Divisão de arquivos histórica:** não alterar `OrganizationPage.tsx`, `SectorUnits.tsx`, API/tipos/CSS compartilhados Admin ou `App.tsx` de outro proprietário; o coordenador montaria após integrar as duas branches. CSS/testes próprios permitidos.
+
+Sem schema, migration, ampliação de acesso ou mutação. Informar se UI está pronta mas **não montada**. Testar casos negativos de privacidade. A PR original seria para `integration/core-foundation-v2-wave2`, sem merge autônomo; **essa instrução não vale para novas tarefas**.

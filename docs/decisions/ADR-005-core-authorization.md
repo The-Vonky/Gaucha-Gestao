@@ -1,285 +1,205 @@
-# ADR-005 — Core Identity, Authorization and Organizational Scope
+# ADR-005 — Identidade, autorização e escopo organizacional do Core
 
-Status: Accepted  
-Date: 2026-09-24
+**Status: Aceito**  
+**Data: 24/09/2026**
 
-## Context
+## Contexto
 
-Gaúcha Gestão has nine business modules with different audiences and organizational scopes.
+A Gaúcha Gestão reúne nove módulos de negócio com públicos e escopos organizacionais distintos.
 
-A user may need:
-- different capabilities in different domains;
-- access to all units or only selected units;
-- future sector-level restrictions;
-- more than one functional responsibility.
+Uma pessoa pode precisar de permissões diferentes por domínio, acesso a todas ou apenas algumas unidades, restrições por setor e mais de uma responsabilidade funcional.
 
-Hard-coded application roles such as `admin`, `qualidade`, `gestor` and `viewer` are insufficient for the integrated platform.
+Papéis fixados diretamente na lógica (`admin`, `qualidade`, `gestor`, `viewer`) são insuficientes.
 
-## Decision
+## Decisão
 
-Authorization uses:
+A autorização usa:
 
-```text
-Authenticated User
+~~~text
+Usuário autenticado
       |
       v
-Core Profile (active?)
+Perfil Core (ativo?)
       |
       v
-User Role Assignment
+Atribuição de papel ao usuário
       |
-      +--> Role --> Permissions
+      +--> Papel --> Permissões
       |
-      +--> Scope
+      +--> Escopo
            global
            unit
            sector
-```
+~~~
 
-A user can have multiple role assignments.
+Uma pessoa pode ter **várias atribuições de papel**. O escopo pertence à **atribuição**, não globalmente ao usuário.
 
-Scope belongs to the role assignment, not globally to the user.
+Exemplo:
 
-This allows, for example:
+~~~text
+Usuário
+├── Papel Qualidade @ CMD + HRAD
+└── Papel Frota @ Matriz
+~~~
 
-```text
-User
-├── Quality role @ CMD + HRAD
-└── Fleet role @ Matriz
-```
+Isso não dá acesso à Qualidade da Matriz nem à Frota de CMD/HRAD.
 
-without granting Quality access to Matriz or Fleet access to CMD/HRAD.
+## Autenticação
 
-## Authentication
+Supabase Auth é o provedor de identidade.
 
-Supabase Auth is the identity provider.
+`auth.users.id` é a identidade canônica autenticada. O Core tem um perfil 1:1 referenciando esse usuário.
 
-`auth.users.id` is the canonical authenticated identity.
+Usuário autenticado com perfil Core **inativo** tem acesso aos dados negado mesmo que a sessão Auth permaneça tecnicamente válida.
 
-Core owns a one-to-one platform profile that references the Auth user.
+## Schemas de banco
 
-An authenticated user whose Core profile is inactive is denied application data access even if their Auth session is still technically valid.
+Schemas iniciais desta decisão:
 
-## Database schemas
-
-Initial domain schemas:
-
-```text
+~~~text
 core
 audit
 action_plans
-```
+~~~
 
-Future modules receive their own schema when implemented.
+Módulos futuros recebem schema próprio quando implementados. **Evolução histórica:** o schema `abc` foi integrado posteriormente (PR #69); não alterar o snapshot inicial desta decisão por retroatividade.
 
-Exposed schemas must be configured explicitly in the Supabase/PostgREST Data API and every exposed table must use RLS plus explicit grants.
+Schemas expostos devem ser configurados explicitamente na Data API/PostgREST. **Toda tabela exposta exige RLS e grants explícitos.** Helpers sensíveis que não precisam ser chamados diretamente pela API devem morar em schema não exposto, como `private`.
 
-Sensitive helper functions that do not need direct API access should live in a non-exposed schema such as `private`.
+## Tabelas Core
 
-## Core tables
+### `core.profiles`
 
-### core.profiles
+Perfil da plataforma vinculado a `auth.users`.
 
-Purpose: platform profile associated with `auth.users`.
+Campos iniciais: `id uuid primary key` → `auth.users(id)`, `display_name text`, `active boolean`, metadados corporativos opcionais somente quando justificados, timestamps de criação/atualização.
 
-Initial fields:
-- `id uuid primary key` -> `auth.users(id)`;
-- `display_name text`;
-- `active boolean`;
-- optional business metadata added only when justified;
-- created/updated timestamps.
+**Não** armazenar hashes de senha nem duplicar credenciais Auth.
 
-Do not store password hashes or duplicate Auth credentials.
+### `core.units`
 
-### core.units
+Unidade organizacional corporativa canônica.
 
-Canonical company organizational unit.
+Campos iniciais: `id uuid`, `code text` (código de negócio único/estável quando existir), `name text`, `active boolean`, timestamps, autoria de criação/atualização.
 
-Initial fields:
-- `id uuid`;
-- `code text` stable unique business code where available;
-- `name text`;
-- `active boolean`;
-- timestamps;
-- created/updated actor metadata.
+Uma unidade já referenciada historicamente deve ser **desativada**, em vez de excluída fisicamente por padrão.
 
-Units are deactivated by default rather than physically deleted once referenced by business history.
+### `core.sectors`
 
-### core.sectors
+Definição canônica de setor: `id uuid`, `code text`, `name text`, `active boolean`, timestamps.
 
-Canonical sector definition.
+### `core.unit_sectors`
 
-Initial fields:
-- `id uuid`;
-- `code text`;
-- `name text`;
-- `active boolean`;
-- timestamps.
+Relaciona setores às unidades onde são válidos, sem duplicar o conceito canônico de setor.
 
-### core.unit_sectors
+Chave inicial: `unit_id`, `sector_id`, com estado/ativo se necessário depois.
 
-Associates sectors with the units where they are valid.
+### `core.permissions`
 
-This allows one canonical sector concept to exist across multiple units without duplicating the sector definition.
+Catálogo de permissões. Sempre que viável, usar a própria **chave de permissão como identificador estável**. Exemplo: `audit.inspection.finalize`.
 
-Initial key:
-- `unit_id`;
-- `sector_id`;
-- active/status metadata if later needed.
+Metadados: domínio, recurso, ação, descrição legível e indicador ativo. Criar permissões apenas para capacidades implementadas.
 
-### core.permissions
+### `core.roles`
 
-Permission catalog.
+Conjunto reutilizável de permissões.
 
-Use the permission key itself as the stable identifier when practical.
+Campos iniciais: `id uuid`, `key text unique`, `name text`, `description text`, `system boolean`, `active boolean`, timestamps.
 
-Example key:
-`audit.inspection.finalize`
+A lógica de aplicação não deve testar o nome/chave do papel se uma **permissão** expressa a necessidade.
 
-Metadata:
-- domain;
-- resource;
-- action;
-- human-readable description;
-- active flag.
+### `core.role_permissions`
 
-Permissions are introduced only for implemented capabilities.
+Relação N:N entre `role_id` e `permission_key`.
 
-### core.roles
+### `core.user_role_assignments`
 
-Reusable permission bundle.
+Atribui papel ao usuário com escopo organizacional.
 
-Initial fields:
-- `id uuid`;
-- `key text unique`;
-- `name text`;
-- `description text`;
-- `system boolean`;
-- `active boolean`;
-- timestamps.
+Campos iniciais: `id uuid`, `user_id`, `role_id`, `scope_type` (`global | unit | sector`), `unit_id` anulável, `sector_id` anulável, indicador ativo, timestamps e `granted_by`.
 
-Application logic must not branch on role key when a permission can express the requirement.
+**Regras de formato:**
+- `global` → `unit_id` nulo, `sector_id` nulo;
+- `unit` → `unit_id` obrigatório, `sector_id` nulo;
+- `sector` → `unit_id` e `sector_id` obrigatórios;
+- atribuição setorial requer vínculo válido entre setor e unidade.
 
-### core.role_permissions
+**Não criar** tabelas separadas `user_unit_access` e `user_sector_access` na v1: a atribuição por papel e escopo representa a relação com mais precisão.
 
-Many-to-many relation:
-- `role_id`;
-- `permission_key`.
+### `core.system_audit_log`
 
-### core.user_role_assignments
+Trilha de auditoria de segurança/operação da plataforma.
 
-Assigns a role to a user with an organizational scope.
-
-Initial fields:
-- `id uuid`;
-- `user_id`;
-- `role_id`;
-- `scope_type`: `global | unit | sector`;
-- nullable `unit_id`;
-- nullable `sector_id`;
-- active flag;
-- timestamps;
-- granted_by.
-
-Shape rules:
-- global => unit_id null, sector_id null;
-- unit => unit_id required, sector_id null;
-- sector => unit_id required, sector_id required;
-- a sector assignment must reference a sector associated with that unit.
-
-Do not create separate `user_unit_access` and `user_sector_access` tables in v1; role-scoped assignments already express the required relationship more precisely.
-
-### core.system_audit_log
-
-Platform security/operational audit trail.
-
-Initial fields:
-- `id uuid`;
-- `occurred_at timestamptz`;
+Campos iniciais:
+- `id uuid`, `occurred_at timestamptz`;
 - `actor_user_id uuid null`;
-- `module text`;
-- `action text`;
-- `entity_type text`;
-- `entity_id text/uuid representation`;
-- nullable `unit_id`;
-- nullable `sector_id`;
-- `before_data jsonb null`;
-- `after_data jsonb null`;
-- `metadata jsonb`;
-- correlation/request identifier when available.
+- `module text`, `action text`, `entity_type text`, `entity_id` (texto/UUID);
+- `unit_id` e `sector_id` opcionais;
+- `before_data jsonb null`, `after_data jsonb null`, `metadata jsonb`;
+- identificador de correlação/requisição, quando disponível.
 
-Authenticated application clients receive no direct INSERT/UPDATE/DELETE privilege on this table.
+Clientes autenticados não recebem INSERT/UPDATE/DELETE direto nessa tabela. Operações sensíveis registram eventos por mecanismos confiáveis de aplicação/banco. Payloads **não** devem conter segredos nem dados sensíveis desnecessários.
 
-Sensitive operations write audit events through trusted database/application mechanisms.
+## Avaliação de escopo
 
-Audit payloads must exclude secrets and unnecessary sensitive content.
+Para recurso de unidade e setor opcional, a permissão é concedida quando **todas** as condições são verdadeiras:
 
-## Scope evaluation
+1. perfil está ativo;
+2. atribuição ativa de papel existe;
+3. papel contém a permissão requerida;
+4. escopo da atribuição cobre o recurso.
 
-For a resource with unit and optional sector:
+Cobertura:
 
-A permission is granted when:
-1. profile is active;
-2. an active user-role assignment exists;
-3. that role contains the requested permission;
-4. assignment scope covers the resource.
-
-Coverage:
-
-```text
+~~~text
 global
-  -> every unit/sector allowed by permission
+  -> unidades/setores permitidos pela permissão
 
 unit(U)
-  -> resources belonging to unit U
+  -> recursos pertencentes à unidade U
 
 sector(U,S)
-  -> resources belonging to sector S within unit U
-```
+  -> recursos pertencentes ao setor S, dentro da unidade U
+~~~
 
-A broader scope covers a narrower resource.
+Escopo mais amplo cobre recurso mais restrito. **Atribuição por setor não concede acesso a registros gerais da unidade** que não pertençam explicitamente ao setor.
 
-A sector-scoped assignment does not grant access to unrelated unit-wide records unless the resource explicitly belongs to that sector.
+## Helpers de autorização confiáveis
 
-## Trusted authorization helpers
+Usar helpers no banco conceitualmente equivalentes a:
 
-Use database helpers conceptually equivalent to:
+- `private.is_active_user()`;
+- `private.has_global_permission(permission_key)`;
+- `private.has_unit_permission(permission_key, unit_id)`;
+- `private.has_scoped_permission(permission_key, unit_id, sector_id)`.
 
-- `private.is_active_user()`
-- `private.has_global_permission(permission_key)`
-- `private.has_unit_permission(permission_key, unit_id)`
-- `private.has_scoped_permission(permission_key, unit_id, sector_id)`
+Assinaturas exatas podem evoluir durante implementação.
 
-Exact signatures may evolve during implementation.
+Helpers `SECURITY DEFINER`, quando usados, precisam:
+- fixar `search_path` ou mantê-lo vazio;
+- qualificar integralmente tabelas referenciadas;
+- expor `EXECUTE` apenas quando necessário;
+- não se tornar bypass genérico de privilégios.
 
-Security-definer helpers, when used, must:
-- have a fixed/empty search path;
-- fully qualify referenced relations;
-- expose execute permission only where necessary;
-- not become generic privilege bypasses.
+## Padrão RLS
 
-## RLS pattern
+**Toda tabela exposta usa RLS**. Uma tabela de módulo vinculada a unidade deve usar helper Core pertinente em políticas SELECT/INSERT/UPDATE/DELETE.
 
-Every exposed table uses RLS.
+Exemplos conceituais:
 
-A module table that belongs to a unit should use the relevant Core helper in SELECT/INSERT/UPDATE/DELETE policies.
-
-Example concept:
-
-```text
+~~~text
 audit.inspections SELECT
 -> has_unit_permission('audit.inspection.read', unit_id)
 
 audit.inspections INSERT
 -> has_unit_permission('audit.inspection.create', unit_id)
-```
+~~~
 
-UI filtering mirrors these rules but is never authoritative.
+Filtragem de UI espelha essas regras, **mas não tem autoridade de segurança**.
 
-## First permission catalog
+## Primeiro catálogo de permissões
 
-### Audit
-
+### Auditoria
 - `audit.inspection.read`
 - `audit.inspection.create`
 - `audit.inspection.edit`
@@ -287,119 +207,75 @@ UI filtering mirrors these rules but is never authoritative.
 - `audit.inspection.reopen`
 - `audit.inspection.export`
 
-### Action Plans
-
+### Planos de Ação
 - `action_plan.read`
 - `action_plan.create_manual`
 - `action_plan.write`
 - `action_plan.verify`
 
-### Platform Administration
-
-- `admin.user.read`
-- `admin.user.manage`
-- `admin.role.read`
-- `admin.role.manage`
-- `admin.unit.read`
-- `admin.unit.manage`
-- `admin.sector.read`
-- `admin.sector.manage`
+### Administração da plataforma
+- `admin.user.read`, `admin.user.manage`
+- `admin.role.read`, `admin.role.manage`
+- `admin.unit.read`, `admin.unit.manage`
+- `admin.sector.read`, `admin.sector.manage`
 - `admin.audit_log.read`
 
-Do not seed permissions for unimplemented business modules yet.
+**Não incluir permissões de módulos de negócio não implementados.**
 
-## Initial role templates
+## Modelos iniciais de papéis
 
-Seed templates are convenience only and may be managed later.
+Templates de seed são **conveniência**, não lógica de autorização; podem ser administrados depois.
 
-### Platform Administrator
+**Administrador da plataforma:** atribuição somente global, com permissões de administração e negócio implementadas. Papel privilegiado cuja concessão/remoção deve ser auditada.
 
-Global assignment only.
+**Qualidade:** atribuível globalmente ou por unidades escolhidas, com as permissões operacionais de Auditoria e Planos de Ação.
 
-Contains all currently implemented administration and business permissions.
+**Visualizador de Qualidade:** leitura/exportação de Auditoria e Planos conforme necessário.
 
-This role is privileged and its assignment/removal must be audited.
+A composição concreta dos templates pertence ao seed da migration, **não à lógica codificada de autorização**.
 
-### Quality
+## Ciclo de vida do usuário
 
-Intended to be assignable globally or to selected units.
+**Criação:** conta Auth criada/convidada por fluxo administrativo aprovado; perfil Core criado; acesso de negócio só após atribuição, salvo administrador inicial explicitamente bootstrapado.
 
-Contains Audit and Action Plan operational permissions required by Quality.
+**Inativação:** marcar perfil Core `active = false`; helpers RLS negam acesso; referências históricas de autoria preservadas; sessões Auth podem ser revogadas por processo administrativo.
 
-### Quality Viewer
+**Reativação:** ação administrativa explícita; restauração de atribuições antigas depende de política.
 
-Read/export-only Audit/Action Plan capabilities where needed.
+Excluir fisicamente usuários **não** é o mecanismo normal do ciclo de vida.
 
-Exact template composition is migration seed data, not authorization logic.
+## Ciclo de vida da unidade
 
-## User lifecycle
+Unidade referenciada por dados históricos **não** é removida fisicamente pela UI comum: usar `active = false`. Desaparece de seletores de criação, mas permanece legível no histórico para usuários autorizados.
 
-Creation:
-- Auth account is created/invited through an approved administrative flow;
-- Core profile is created;
-- no business access is granted until role assignment exists, except explicitly bootstrapped initial administrator.
+## Salvaguardas administrativas
 
-Deactivation:
-- set Core profile `active = false`;
-- all RLS authorization helpers deny access;
-- preserve historical actor references;
-- optionally revoke Auth sessions through the administrative process.
+- mudanças de papel/permissão/escopo geram auditoria sistêmica;
+- ninguém concede permissões que não possa administrar;
+- código de browser não contorna RLS usando chave privilegiada;
+- `service_role` e chaves secretas nunca chegam ao frontend;
+- ações administrativas destrutivas exigem confirmação explícita na UI **e** validação no servidor/banco.
 
-Reactivation:
-- explicit administrative action;
-- existing role assignments may be restored only according to policy.
+## Consequências
 
-Physical deletion of users is not the ordinary lifecycle mechanism.
+**Benefícios:** múltiplas responsabilidades por usuário, escopos por papel/domínio, redução da explosão de papéis, identidades corporativas únicas e contrato de autorização estável para os módulos.
 
-## Unit lifecycle
+**Trade-offs:** consultas de autorização mais complexas que um enum único; helpers RLS exigem índices e testes; UI administrativa precisa explicar papel + escopo.
 
-Once referenced by business data:
-- do not hard-delete through ordinary UI;
-- set `active = false`;
-- preserve historical references.
+## Alternativas rejeitadas na v1
 
-Inactive units disappear from normal creation selectors but remain readable in historical records for users with permission.
+**Um campo de papel no perfil:** rejeitado porque não representa domínios/escopos múltiplos.
 
-## Administrative safeguards
+**Acesso usuário-unidade separado do papel:** rejeitado porque concederia o mesmo escopo a todas as permissões do usuário, impedindo expressar `Qualidade@UnidadeA` + `Frota@UnidadeB`.
 
-- role/permission/scope changes generate system audit events;
-- a user cannot grant permissions they are not authorized to administer;
-- ordinary client-side code cannot bypass RLS using a privileged secret;
-- service/secret keys never ship to the browser;
-- destructive administration actions require explicit confirmation UI and server/database enforcement.
+**Sobrescrita direta de permissões por usuário:** adiada; papéis são suficientes para v1 e sobrescritas complicam auditoria e UX.
 
-## Consequences
+**Autorização apenas em claims customizados do JWT:** rejeitada como fonte primária. O banco deve refletir as atribuições **atuais**, não claims de longa duração já obsoletos.
 
-Positive:
-- supports multiple responsibilities per user;
-- supports different unit scope by role/domain;
-- avoids role explosion;
-- avoids module-specific user copies;
-- creates a stable authorization contract for all modules.
+## Quando reconsiderar
 
-Trade-offs:
-- authorization queries are more complex than one enum role;
-- RLS helpers require careful indexing and tests;
-- administrator UX must explain role + scope clearly.
-
-## Rejected v1 alternatives
-
-### One role field on profile
-Rejected because it cannot represent multiple domains/scopes.
-
-### Separate user-unit access independent of role
-Rejected because it would grant the same organizational scope to every permission a user has and cannot express Quality@UnitA + Fleet@UnitB cleanly.
-
-### Per-user direct permission overrides
-Deferred. Roles are sufficient for v1 and direct overrides create audit/UX complexity.
-
-### Custom authorization data stored only in JWT claims
-Rejected as the primary source of truth. Database authorization must reflect current assignments without relying on stale long-lived claims.
-
-## Revisit when
-
-Reconsider the model if:
-- permission evaluation becomes a measurable database bottleneck;
-- a real use case requires explicit per-user permission overrides;
-- hierarchy beyond unit/sector becomes necessary;
-- external identity/SSO changes account lifecycle requirements.
+Reavaliar se:
+- consultas de autorização virarem gargalo mensurável;
+- surgir necessidade comprovada de sobrescrita de permissões por usuário;
+- a organização exigir hierarquia além de unidade/setor;
+- identidade externa/SSO alterar o ciclo de vida de contas.

@@ -1,15 +1,19 @@
-# Brief — User Access Review UI v1
+> **Brief histórico do Core v2.** As branches de integração, proprietários de arquivos e estados de execução aqui citados valem **somente para a rodada original**. Não iniciar tarefa nova nem recriar essas branches sem uma issue atual aprovada; usar `origin/main` conforme [AGENTS.md](../../AGENTS.md).
 
-Read AGENTS.md, docs/briefs/CORE_ADMIN_UI_WAVE3.md, docs/modules/core/ACCESS_GOVERNANCE_READ_V1.md, and existing UsersPage/UserAssignments.
+# Brief — Interface de revisão de acessos por usuário v1
 
-Create an operator-facing read-only section/detail on UsersPage showing:
-- user access summary via core.user_access_summary;
-- active assignments and, on request, revoked history via core.user_access_assignments;
-- profile, global/unit/sector scope, granted by/on, revocation evidence when authorized;
-- composition_visibility, effective and permission keys only as granted by RPC. Show "informação restrita" for null/restricted, not "sem permissões";
-- operator-friendly Portuguese and secondary technical identifiers;
-- accessible loading/error/denied/empty states, responsive 375px minimum, pagination and privacy-safe errors.
-Keep existing CRUD, role grants and legacy behavior untouched. Never treat an active assignment as proof of effective business permission.
-Own only UsersPage.tsx and new user-access-review* files/test. No shared API/types/CSS/parts edits, no migrations.
-Test user-only reader, role-only reader, restricted composition, revoked assignment, inactive user/role and pagination using mocked RPC responses; existing UI flows must not regress.
-Push normal and open PR against integration/core-foundation-v2-wave2, no merge.
+Ler `AGENTS.md`, `CORE_ADMIN_UI_WAVE3.md`, `ACCESS_GOVERNANCE_READ_V1.md` e implementações `UsersPage/UserAssignments`.
+
+Criar visão **somente de leitura** de acessos do usuário em `UsersPage`:
+- resumo por `core.user_access_summary`;
+- atribuições ativas e, sob demanda, revogadas por `core.user_access_assignments`;
+- papel, escopo global/unidade/setor, concessor/data, evidência de revogação quando autorizada;
+- `composition_visibility`, efetividade e permission keys **somente como devolvidas pela RPC**; nulo/restrito = «informação restrita», **nunca «sem permissões»**;
+- linguagem clara em pt-BR, IDs técnicos secundários;
+- estados loading/erro/negado/vazio acessíveis, largura mínima 375 px, paginação e erros que não vazem privacidade.
+
+Preservar CRUD, grants e comportamento existente. **Atribuição ativa não comprova permissão de negócio efetiva.**
+
+Propriedade histórica: apenas `UsersPage.tsx` e novos `user-access-review*`/testes; sem mexer em API/tipos/CSS/parts compartilhados nem migrations.
+
+Testes mockados: leitor apenas usuário, leitor apenas papéis, composição restrita, atribuição revogada, pessoa/papel inativo e paginação; não regredir fluxos existentes. Push normal para a integração original, sem merge — **não usar essa branch antiga agora**.

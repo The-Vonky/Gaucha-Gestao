@@ -1,41 +1,44 @@
-## Objetivo e escopo
+## Objetivo, contexto e escopo
 
-- Issue/brief:
-- Responsável humano:
-- O que foi implementado:
-- Fora do escopo / dependências:
+- Issue/brief aprovado:
+- Responsável humano pela decisão:
+- Módulo / proprietário dos dados:
+- O que mudou (AS-IS anterior → novo comportamento):
+- Fora de escopo / dependências:
+- Documentação canônica/ADR envolvidos:
 
 ## Isolamento e riscos
 
-- [ ] Branch/worktree exclusiva; sem alterações concorrentes nos mesmos arquivos
-- [ ] Ambiente de testes isolado; sem acesso a produção ou banco compartilhado
-- [ ] Nenhuma migration já aplicada foi editada
-- [ ] Sem segredos, dados reais, senhas, JWTs ou URLs assinadas em código, commits e logs
-- [ ] Efeitos em Auth/RLS/Storage/concorrência foram analisados quando pertinentes
-- [ ] Mudanças fora da propriedade inicialmente combinada foram coordenadas
+- [ ] Branch/worktree exclusiva; alterações concorrentes nos mesmos arquivos coordenadas
+- [ ] Runtime de testes exclusivo; sem acesso a PROD, DEV compartilhado ou banco persistente não autorizado
+- [ ] Nenhuma migration já aplicada foi editada; alterações incrementais e plano de reversão analisados
+- [ ] Sem segredos, dados pessoais/financeiros reais, senhas, JWTs, dumps ou URLs assinadas no diff/logs
+- [ ] Impacto em Auth/RLS/Storage, escopos, concorrência e auditoria revisado quando pertinente
+- [ ] Não há deploy, reset, migração remota nem exclusão de volumes implicitamente autorizados
+- [ ] **Documentação em pt-BR**, preservados comandos/identificadores; fluxos, ADRs, roadmap e diagramas atualizados quando mudaram
 
-## Validação executada
+## Validação realmente executada (informar SHA e resultado)
 
-Descrever os comandos e **resultados reais**; indicar explicitamente os não executados.
-
-- Typecheck / lint:
-- Testes unitários:
+- Baseline / HEAD testado:
+- Typecheck e lint:
+- Testes unitários / banco RLS:
 - Testes de integração / E2E:
-- Build / audit:
-- Verificação de diff:
-- Revisão de autorização/escopo:
-- Verificação manual em dispositivos, quando aplicável:
+- Build, verify:build e `npm audit`:
+- Links e renderização de diagramas (se documental):
+- Revisão de diff e autorização/escopo:
+- Homologação manual/dispositivos (ou **NÃO EXECUTADO**):
 
-## Revisão e liberação
+## Revisão e integração
 
 - [ ] `validate`, `action-plans-integration` e `infra-validate` aprovados quando exigidos
-- [ ] Revisão independente por outro humano concluída
-- [ ] Conversas de review resolvidas
-- [ ] Nenhum merge, deploy ou migração em produção será executado automaticamente
-- [ ] Riscos residuais e ações de rollback/forward-fix documentados, se aplicável
+- [ ] Revisão humana independente apropriada ao risco registrada
+- [ ] Se houve aprovação **verbal**, foi documentada como tal (não como review formal `APPROVED`)
+- [ ] Comentários e conflitos resolvidos; branch sincronizada com `main`
+- [ ] Limitações, riscos residuais e rollback/forward-fix documentados
+- [ ] Produção, dados persistentes e decisões bloqueadas continuam sem alteração, exceto autorização específica
 
-**Pendências / limitações conhecidas:**
+**Pendências e provas que não foram executadas:**
 
-**Notas de impacto operacional:**
+**Impacto operacional / segurança / disponibilidade:**
 
-> CI verde não significa produção autorizada. Seguir `docs/development/PARALLEL_AGENT_WORKFLOW.md` e os gates P1–P9/O1–O8.
+> CI verde não autoriza produção. Seguir [AGENTS.md](../AGENTS.md), [protocolo paralelo](../docs/development/PARALLEL_AGENT_WORKFLOW.md) e os gates P1–P9/O1–O8.
