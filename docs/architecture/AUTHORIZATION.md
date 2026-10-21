@@ -53,6 +53,16 @@ Atribuição de unidade não cobre outra unidade; atribuição setorial não con
 
 Não antecipar permissões de módulos **não implementados**. A Curva ABC acrescentou permissões próprias depois; consultar [mapa atual](IMPLEMENTATION_MAP.md).
 
+**Curva ABC:** `abc.report.read` (papéis `costs_viewer`, `costs`, `platform_administrator`) e `abc.report.publish` (`costs`, `platform_administrator`), sempre por unidade (`private.has_unit_permission`); atribuição de setor não concede a unidade.
+
+| Operação | Permissão na unidade | Implementação |
+| --- | --- | --- |
+| Consultar séries, revisões, linhas, original | `abc.report.read` | `units`, `unit_series`, `revision_detail`, RLS das tabelas e do bucket `abc-source-files` |
+| Visão geral, comparações, produtos, classes, histórico de revisões (v2) | `abc.report.read` | `overview`, `compare`, `competency_products`, `product_history`, `unit_revisions` — sem agregado entre unidades |
+| Conferir com o arquivo | `abc.report.read` | `record_file_check` (registra no log) |
+| Enviar original e publicar/substituir revisão | `abc.report.publish` | `begin_source_upload`, `confirm_source_upload`, `publish_revision` |
+| Categorias comerciais, ajustes, exportação em planilha, comparação entre unidades | **não implementado** | Decisões D3–D6 da [matriz](../modules/abc/MATRIZ_EQUIVALENCIA_LEGADO.md); exigirão permissões e contratos próprios |
+
 ## Navegação e aplicação no banco
 
 O menu deriva das permissões efetivas, mas sua ocultação é apenas **UX**. A autoridade está em grants, **RLS e RPCs** no banco.
