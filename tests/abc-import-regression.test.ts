@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { createHash, randomBytes } from "node:crypto";
+import { strToU8, unzipSync, zipSync } from "fflate";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sha256Portable } from "../apps/web/src/modules/abc/import/sha256";
 import { sha256Hex } from "../apps/web/src/modules/abc/import/contentHash";
@@ -53,10 +54,58 @@ describe("Curva ABC import P0 regressions", () => {
     expect(payload.lines.map((l) => l.code)).toEqual(products.map((p) => p.code));
   });
 
-  it("explains an Excel-resaved file instead of a bare code", async () => {
-    const preview = await parseReport(withExcelTheme(erpWorkbook().bytes), { expectedBranchCode: "0001", today: "2026-10-21" });
+  it("reads a canonical inert Excel theme without changing any business values", async () => {
+    const { bytes } = erpWorkbook();
+    const context = { expectedBranchCode: "0001", today: "2026-10-21" };
+    const original = await parseReport(bytes, context);
+    const withTheme = await parseReport(withExcelTheme(bytes), context);
+    expect(original.blocked).toBe(false);
+    expect(withTheme.blocked).toBe(false);
+    expect(withTheme.metadata).toEqual(original.metadata);
+    expect(withTheme.lines).toEqual(original.lines);
+    expect(withTheme.declaredTotal).toBe(original.declaredTotal);
+    expect(withTheme.calculatedTotal).toBe(original.calculatedTotal);
+    expect(withTheme.sourceSha256).not.toBe(original.sourceSha256);
+    expect((await buildPayload(withTheme)).content_hash).toBe((await buildPayload(original)).content_hash);
+    expect(withTheme.parserVersion).toBe("erp-curva-realizado-v2");
+  });
+
+  it.each([
+    "xl/media/image1.png",
+    "xl/vbaProject.bin",
+    "xl/calcChain.xml",
+    "xl/externalLinks/externalLink1.xml",
+    "docProps/custom.xml",
+    "xl/theme/theme2.xml",
+  ])("continues to reject unexpected XLSX part %s", async (name) => {
+    const parts = unzipSync(withExcelTheme(erpWorkbook().bytes));
+    parts[name] = strToU8("unexpected");
+    const preview = await parseReport(zipSync(parts), { expectedBranchCode: "0001", today: "2026-10-21" });
     expect(preview.blocked).toBe(true);
-    expect(preview.issues[0].message).toMatch(/salva no Excel.*\(código: unsupported_part\)/);
+    expect(preview.issues[0]).toMatchObject({ code: "XLSX_INVALID", severity: "BLOCKER" });
+    expect(preview.issues[0].message).toContain("unsupported_part");
+  });
+
+  it("rejects a theme without a matching canonical workbook relationship", async () => {
+    const parts = unzipSync(withExcelTheme(erpWorkbook().bytes));
+    const rels = "xl/_rels/workbook.xml.rels";
+    parts[rels] = strToU8(new TextDecoder().decode(parts[rels]).replace(
+      'Target="theme/theme1.xml"', 'Target="theme/theme2.xml"',
+    ));
+    const preview = await parseReport(zipSync(parts), { expectedBranchCode: "0001", today: "2026-10-21" });
+    expect(preview.blocked).toBe(true);
+    expect(preview.issues[0].message).toContain("missing_part");
+  });
+
+  it("rejects external theme relationships", async () => {
+    const parts = unzipSync(withExcelTheme(erpWorkbook().bytes));
+    const rels = "xl/_rels/workbook.xml.rels";
+    parts[rels] = strToU8(new TextDecoder().decode(parts[rels]).replace(
+      'Target="theme/theme1.xml"', 'Target="theme/theme1.xml" TargetMode="External"',
+    ));
+    const preview = await parseReport(zipSync(parts), { expectedBranchCode: "0001", today: "2026-10-21" });
+    expect(preview.blocked).toBe(true);
+    expect(preview.issues[0].message).toContain("external_relationship");
   });
 
   it("blocks texts the database would reject, with the cell location", async () => {
