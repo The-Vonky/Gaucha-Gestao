@@ -1,8 +1,8 @@
 # 02_RESTORE_DRILL — ensaio isolado de recuperação de banco e arquivos
 
-**Gaúcha Gestão · Issue #51 · 16/10/2026 · versão 0.1**  
-**Estado atualizado em 19/10/2026: ENSAIO SINTÉTICO EXECUTADO, ACEITE DOCUMENTAL PARCIAL.** O relatório da seção 9 registra as evidências fornecidas pelo operador; tarefas e nomes na seção 10 são históricos de preparação (16/10), não o inventário atual. A Issue #51 e a PR #62 permanecem abertas.  
-**Base inspecionada:** `main` `f016b3c2711a54775a470a7f01bb5c8c27dc2dd1` (PR #61 integrado).
+**Gaúcha Gestão · Issue #51 · preparação 16/10/2026 · revisão documental 21/10/2026**  
+**Estado atualizado em 19/10/2026: ENSAIO SINTÉTICO EXECUTADO, ACEITE DOCUMENTAL PARCIAL.** O relatório da seção 9 registra as evidências fornecidas pelo operador; tarefas e nomes na seção 10 são históricos de preparação (16/10), não o inventário atual. A Issue #51 continua aberta por evidências operacionais incompletas; incorporar este relato ao repositório **não** altera os resultados do ensaio nem fecha automaticamente DR-08.  
+**Base inicial do documento:** `main` `f016b3c2711a54775a470a7f01bb5c8c27dc2dd1` (PR #61). **Execução real documentada:** `1e818a45449c0720f7b5af5398e04e0a89c9b3ff` em 19/10, com **17 migrations** no snapshot. **Baseline de revisão:** `main` `f7f5dddbcc748c8fabf192b031ad658cfb57a8f5`, 21/10, com **18 SQL migrations**, incluindo Curva ABC. Estes estados **não foram submetidos ao mesmo teste de restore**.
 
 ## 1. Objetivo e limite da prova
 
@@ -17,6 +17,26 @@ Demonstrar que uma instalação **exclusivamente sintética** de cinco serviços
 
 Este primeiro ensaio é uma **cópia física a frio de três volumes de laboratório**, não um backup online, PITR, replicação, recuperação após perda do host ou implementação do plano de backup de produção. **Não satisfaz O1/O3/O4/O8 nem libera PROD.** WAL-G versus pgBackRest, R2, retenção, RPO/RTO e backup fora do host permanecem em aberto.
 
+## Visão visual — backup executado vs recuperação requerida
+
+~~~mermaid
+flowchart LR
+  subgraph LAB["LAB — comprovado em 19/10 com dados sintéticos"]
+    SRC["Origem parada: 5 serviços"] --> SNAP["Três volumes copiados a frio: db-data, db-config, storage-data"]
+    SNAP --> TAR["3 arquivos tar + SHA-256"]
+    TAR --> DST["Projeto Docker independente"]
+    DST --> TEST["Auth, DB, bytes, RLS: PASS; DR-08 parcial"]
+  end
+  subgraph FUT["PROD — planejado, sem prova"]
+    RUN["Postgres em operação"] -.-> WAL["Base backup + WAL/PITR TO-BE"]
+    OBJ["Storage: metadados + bytes"] -.-> OFF["Cópia independente/off-site TO-BE"]
+    WAL -.-> REST["Restore em host substituto + RPO/RTO medidos"]
+    OFF -.-> REST
+  end
+~~~
+
+**Leitura correta:** setas sólidas são etapas do ensaio **a frio, com origem parada e sem off-site**. Setas tracejadas são controles **futuros, não implementados**. A validação no laboratório provou DB/Auth/objetos/RLS na versão histórica do snapshot, **não** PITR, R2, destruição do servidor ou tempos de recuperação produtivos. A decisão técnica de [backup de produção](../architecture/BACKUP_RECOVERY.md) continua aberta.
+
 ## 2. Escopo exato e fontes
 
 | Componente | Origem versionada | O que precisa acompanhar a recuperação |
@@ -26,7 +46,8 @@ Este primeiro ensaio é uma **cópia física a frio de três volumes de laborat�
 | Storage local de CI/STAGING | mesmo Compose | Volume **storage-data** com arquivos físicos + tabelas `storage.buckets`/`storage.objects` no banco, tratados como conjunto |
 | Serviços/versionamento | `infra/supabase/docker-compose.yml`, `infra/supabase/UPSTREAM.md` | Mesmo commit do código e versões de imagens; registrar SHA, hashes das 17 migrations e versões resolvidas |
 | Configuração/segredos | `infra/env/staging.env.example`, `scripts/ops/gen-secrets.sh` | Referências e cópia protegida dos **segredos sintéticos temporários compatíveis com o snapshot**, fora do Git; nunca anexar valores ao relatório |
-| Buckets | migrations existentes | `action-plan-evidence`, `audit-checklist-evidence` e `unit-covers`; todos privados, conferir metadados e bytes físicos |
+| Buckets no snapshot de ensaio | migrations históricas, 17 arquivos | `action-plan-evidence`, `audit-checklist-evidence` e `unit-covers`; privados. Quatro PDFs validados no cenário, **não** todos os objetos/buckets possíveis |
+| Curva ABC após o snapshot | `20261020120000_abc_domain_v1.sql`, **18ª migration na main de 21/10** | O bucket privado `abc-source-files`, suas revisões e XLSX originais entram obrigatoriamente no **escopo de um novo ensaio** antes de alegar cobertura da plataforma atual. **Não foram testados no drill de 19/10** |
 
 **Regra de consistência:** a cópia dos volumes do banco **não pode ser feita com o PostgreSQL em execução**, mesmo que a aplicação não tenha usuários ativos. Parar todos os serviços **somente do projeto sintético explicitamente criado para este ensaio**, aguardar término completo e então copiar os três volumes. Para o ensaio a frio, banco e Storage devem compartilhar o mesmo ponto de parada. Não misturar banco de um instante com arquivos de outro.
 
@@ -88,7 +109,7 @@ Antes de congelar a origem, verificar que o app/Storage estão saudáveis, regis
 
 ## 7. Matriz obrigatória de evidências
 
-| ID | Prova | Critério | Estado inicial |
+| ID | Prova | Critério | Resultado observado em 19/10/2026 |
 | --- | --- | --- | --- |
 | DR-01 | Origem e destino com projetos, portas, env e volumes distintos | Sem identificadores/volumes compartilhados | PASS — projetos, portas e volumes distintos |
 | DR-02 | PostgreSQL 17 e migrations | Schemas/ledger e contagens coerentes com origem | PASS — 17/17 hashes SHA-256 do ledger idênticos aos arquivos locais do SHA validado; marcador e contagens confirmados |
@@ -159,6 +180,31 @@ Os quatro arquivos do cenário e seus hashes SHA-256 originais (arquivos puramen
 **Próximas ações:** completar ou registrar exceção formal justificada para a cronometração de DR-08; revisar o runbook e obter revisão humana na PR #62; demonstrar o procedimento ao Dev B e manter a decisão **PROD = NO-GO** até fechar os gates produtivos.
 
 **Política de retenção/limpeza:** manter origem, destino, arquivos tar e segredos sintéticos protegidos até conclusão e autorização humana. Nunca executar `down -v` ou `docker volume prune` sobre projetos existentes; preservar ERP de Contratos e DEV compartilhado.
+
+## 9.4 Como concluir DR-08 sem reescrever a história
+
+O ensaio funcional é aproveitável como evidência histórica; **DR-08 permanece PARCIAL**. Para fechá-lo, planejar e executar **novo ensaio** ou obter decisão documentada sobre o limite metodológico, com responsável designado e evidência independente:
+
+1. Identificar o SHA completo, versão das 18 migrations da plataforma corrente, duas instâncias Docker **novas e isoladas**, configuração compatível, volumes e buckets — inclusive `abc-source-files` e um XLSX **sintético** autorizado — ou registrar explicitamente o que ficará não coberto.
+2. Registrar horários confiáveis para **parada da origem, fim da cópia, início da restauração, primeira resposta de Auth/REST/Storage, validações e recuperação funcional**. Declarar cronômetro, fuso, volumes (bytes) e resultado; não deduzir os tempos do ensaio anterior.
+3. Reexecutar Auth com usuários sintéticos, grants/RLS cross-unit, checks de banco e ledger, SHA-256 de **cada arquivo efetivamente selecionado**, incluindo original ABC se presente. Garantir que os objetos e os metadados estejam no **mesmo ponto consistente**.
+4. Repetir o ciclo em host/destino independente **somente quando** houver operação autorizada e controlada para isso; separar `RTO observado no laboratório` da meta/aceite **RTO de produção**. Não alegar RPO=0 por haver backup de volume.
+5. Registrar falhas, duração, método, evidência sanitizada, aprovador, plano corretivo e limite da prova na [Issue #51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51), sem revelar tokens, senhas, dados reais ou caminhos sensíveis.
+
+**Pendências de produção independentes de DR-08:** escolha e ensaio WAL-G/pgBackRest (ou equivalente), WAL/PITR, política de retenção, destino externo ao host, criptografia/chaves recuperáveis, backup de objetos e metadados, UPS/capacidade C30, alertas, RPO/RTO definidos e aprovados. Não tratar o sucesso sintético como gate O1/O3/O4/O8 concluído.
+
+## 9.5 Regras rápidas para operar ou auditar este procedimento
+
+| Situação | Ação segura | Nunca concluir |
+| --- | --- | --- |
+| Origem/volumes não estão inequivocamente identificados | **BLOCKED**, inventariar e obter autorização | Que uma pasta antiga ou prefixo `gaucha` é descartável |
+| Banco ativo durante cópia de `PGDATA` | **FAIL** para o backup físico a frio; parar **somente** o laboratório definido | Que `docker cp` ou tar de banco em execução são backups consistentes |
+| Restore do DB sem os bytes de Storage | **FAIL** para recuperação integral | Que somente `storage.objects` preserva arquivos |
+| DR-08 sem medidas cronológicas | **PARCIAL**, repetir ensaio com cronometria | Que o tempo pode ser calculado retroativamente |
+| Evidência do snapshot 17 migrations | Preservar como histórico, planejar repetição com ABC/18 migrations | Que a `main` corrente já foi validada pelo ensaio antigo |
+| Necessidade de desligar/deletar projetos | Inventário + allowlist + aceite explícito, preservar ERP, C30, DEV compartilhado | Que esta PR autoriza `prune`, reset ou `down -v` |
+
+A exclusão de **branches Git** após o merge é independente da **limpeza de contêineres e volumes**. Nenhuma operação de Docker, banco ou host decorre automaticamente da integração do documento.
 
 ## 10. Histórico da preparação de 16/10 — computador temporário Windows/Docker Desktop e descarte controlado
 
