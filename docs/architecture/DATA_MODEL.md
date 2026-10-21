@@ -1,224 +1,79 @@
-# Core Data Model
+# Modelo de dados do Core
 
-Status: accepted logical v1 model  
-Decision reference: ADR-005
+**Estado:** modelo lógico inicial v1 aceito no [ADR-005](../decisions/ADR-005-core-authorization.md). Este texto preserva a baseline inicial; as migrations atuais são a fonte do schema físico.
 
-## Purpose
+## Fronteiras dos schemas
 
-Define Core ownership and the initial physical model required before Audit enters the platform.
+~~~text
+auth          identidade mantida pelo Supabase
+core          plataforma e organização
+private       helpers internos de segurança não expostos
+audit         Auditorias de Qualidade
+action_plans  módulo transversal Planos de Ação
+~~~
 
-Domain modules own their business records. Core owns stable company-wide identities, organization and authorization.
+O schema `abc` e seu schema privado `abc_private` foram integrados **depois** (PR #69). Módulos futuros recebem schemas próprios. Tabelas expostas exigem **RLS e grants explícitos**.
 
-## Database schema boundaries
+## Relacionamentos
 
-Initial schemas:
-
-```text
-auth          Supabase-owned identity
-core          platform Core
-private       non-exposed security/internal helpers
-audit         Quality Audit module
-action_plans  transversal Action Plans module
-```
-
-Future business modules get their own schema when implemented.
-
-Custom exposed schemas must use explicit grants and RLS.
-
-## Core relationships
-
-```text
+~~~text
 auth.users
     |
     1:1
     v
 core.profiles
     |
-    +-------------------------+
-    |                         |
-    v                         v
-core.user_role_assignments   historical created_by/updated_by
+    +--> core.user_role_assignments --> core.roles
+    |                                 |
+    |                                 v
+    |                            core.role_permissions
+    |                                 |
+    |                                 v
+    |                            core.permissions
     |
-    +--> core.roles
-    |       |
-    |       v
-    |   core.role_permissions
-    |       |
-    |       v
-    |   core.permissions
-    |
-    +--> scope
-          | global
-          | unit -> core.units
-          | sector -> core.units + core.sectors
+    +--> created_by / updated_by históricos
 
-core.units
-    |
-    v
-core.unit_sectors
-    ^
-    |
-core.sectors
-```
+core.user_role_assignments --> escopo global
+                           --> unit (core.units)
+                           --> sector (core.units + core.sectors)
 
-## core.profiles
+core.units -> core.unit_sectors <- core.sectors
+~~~
 
-- `id uuid` PK/FK to `auth.users.id`;
-- `display_name text not null`;
-- `active boolean not null default true`;
-- `created_at timestamptz`;
-- `updated_at timestamptz`.
+## Tabelas e campos iniciais
 
-Optional HR/profile attributes are not added without a concrete product need.
+| Tabela | Definição resumida |
+| --- | --- |
+| `core.profiles` | `id uuid` PK/FK de `auth.users.id`; `display_name text not null`, `active boolean not null default true`, `created_at`, `updated_at` |
+| `core.units` | `id uuid`, `code text unique`, `name text not null`, `active boolean not null default true`, timestamps e autoria |
+| `core.sectors` | `id uuid`, `code text unique`, `name text not null`, `active boolean not null default true`, timestamps |
+| `core.unit_sectors` | `unit_id uuid`, `sector_id uuid`, PK/unique composta; valida disponibilidade de setor na unidade |
+| `core.permissions` | `key text primary key` natural/estável; `domain`, `resource`, `action`, `description`, `active` |
+| `core.roles` | `id uuid`, `key text unique`, `name`, `description`, `system`, `active`, timestamps |
+| `core.role_permissions` | `role_id uuid`, `permission_key text`, PK/unique composta |
+| `core.user_role_assignments` | `id uuid`, `user_id`, `role_id`, `scope_type = global/unit/sector`, `unit_id`/`sector_id` anuláveis, `active`, `granted_by`, timestamps; CHECK de formato/uniqueness |
 
-## core.units
+Atributos adicionais de RH/perfil só entram mediante necessidade real aprovada.
 
-- `id uuid`;
-- `code text unique`;
-- `name text not null`;
-- `active boolean not null default true`;
-- created/updated timestamps;
-- actor metadata.
+### `core.system_audit_log`
 
-Normal lifecycle is deactivate/reactivate.
+Trilha de eventos orientada a append:
+`id uuid`, `occurred_at timestamptz`, `actor_user_id` opcional, `module text`, `action text`, `entity_type text`, `entity_id text`, `unit_id` e `sector_id` opcionais, `before_data jsonb`/`after_data jsonb` opcionais, `metadata jsonb`, identificador de correlação/requisição quando disponível.
 
-## core.sectors
+Clientes autenticados **não** têm escrita/exclusão direta comum na trilha. **Auditoria sistêmica é diferente do módulo Qualidade > Auditorias.**
 
-- `id uuid`;
-- `code text unique`;
-- `name text not null`;
-- `active boolean not null default true`;
-- created/updated timestamps.
+## Tipos e propriedade
 
-## core.unit_sectors
+- **Identificadores:** UUID por padrão; código de negócio estável é separado.
+- **Tempo:** `timestamptz` para instantes e log; `date` para datas de negócio.
+- **Dinheiro:** PostgreSQL `numeric` de precisão fixa, **não** float como fonte de verdade; módulo define regra de arredondamento.
+- **Anexos:** bytes no Storage/R2; módulos detêm metadados e vínculos, reutilizando contrato comum. Não criar tabela polimórfica universal sem necessidade comprovada.
+- **Importação:** distinguir lote de origem, resultado de validação, dados normalizados, aliases e metadados de auditoria. Não reescrever silenciosamente o histórico.
 
-- `unit_id uuid`;
-- `sector_id uuid`;
-- composite unique/primary key.
+## Ciclo de vida, exclusão e migrations
 
-Used to validate sector availability within a unit.
+Perfis, unidades, setores e papéis devem normalmente ser **desativados**, não apagados, após referenciados historicamente. Cada domínio define sua política de exclusão física sem cascata de perda de histórico.
 
-## core.permissions
+Migrations são **append-only** após aplicadas em ambiente compartilhado, com fonte versionada única, backup/recuperação para alterações destrutivas, ensaios fora de PROD e regressão de RLS/grants.
 
-Stable natural key:
-- `key text primary key`.
-
-Additional fields:
-- `domain text`;
-- `resource text`;
-- `action text`;
-- `description text`;
-- `active boolean`.
-
-## core.roles
-
-- `id uuid`;
-- `key text unique`;
-- `name text`;
-- `description text`;
-- `system boolean`;
-- `active boolean`;
-- timestamps.
-
-## core.role_permissions
-
-- `role_id uuid`;
-- `permission_key text`;
-- composite PK/unique.
-
-## core.user_role_assignments
-
-- `id uuid`;
-- `user_id uuid`;
-- `role_id uuid`;
-- `scope_type` = global/unit/sector;
-- nullable `unit_id`;
-- nullable `sector_id`;
-- `active boolean`;
-- `granted_by uuid`;
-- timestamps.
-
-Use check constraints for valid scope shapes and uniqueness to avoid duplicate effective assignments.
-
-## core.system_audit_log
-
-Append-oriented platform audit trail:
-- `id uuid`;
-- `occurred_at timestamptz`;
-- nullable `actor_user_id`;
-- `module text`;
-- `action text`;
-- `entity_type text`;
-- `entity_id text`;
-- nullable `unit_id`;
-- nullable `sector_id`;
-- nullable `before_data jsonb`;
-- nullable `after_data jsonb`;
-- `metadata jsonb`;
-- nullable correlation/request identifier.
-
-Authenticated clients must not have ordinary write/delete privileges.
-
-## IDs
-
-Use UUIDs for entity identifiers unless a domain has a strong reason for another technical key.
-
-Stable business codes remain separate from UUID identifiers.
-
-## Time
-
-Use `timestamptz` for instants/audit timestamps.
-
-Use PostgreSQL `date` for business dates that do not represent an instant.
-
-## Money
-
-Use PostgreSQL fixed-precision `numeric` for currency.
-
-Never use floating-point storage/arithmetic as the authoritative financial representation.
-
-Each financial module documents rounding semantics.
-
-## Attachments
-
-Binary bytes are stored through Supabase Storage/R2.
-
-Business/database records store controlled metadata and ownership references.
-
-Do not create one universal polymorphic attachment table until concrete cross-module use proves it beneficial. Each module may own attachment metadata while following a shared storage contract.
-
-## Imported source data
-
-Import-heavy modules distinguish:
-- source/import batch;
-- validation result;
-- normalized data;
-- mapping aliases;
-- audit metadata.
-
-New imports must not silently rewrite historical source data.
-
-## Delete policy
-
-Prefer preservation of referenced history.
-
-Core profiles, units, sectors and roles are normally deactivated.
-
-Business-domain physical deletion rules must be explicit per module.
-
-Never cascade-delete all platform history because a Core unit/user was removed from an administrative screen.
-
-## System audit vs Quality Audit
-
-`core.system_audit_log` is an operational/security trail.
-
-It is completely separate from the business concept:
-`Qualidade > Auditorias`.
-
-## Migrations
-
-- append-only after application to a shared environment;
-- one source-controlled migration history;
-- destructive changes require explicit recovery planning;
-- test migrations outside production;
-- validate RLS and grants after schema changes.
+Para implementação física atual: [mapa](IMPLEMENTATION_MAP.md) e arquivos `supabase/migrations/`.

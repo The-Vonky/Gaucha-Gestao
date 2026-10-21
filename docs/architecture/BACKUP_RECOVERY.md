@@ -1,109 +1,63 @@
-# Backup and Recovery
+# Backup e recuperação
 
-## Principle
+## Princípio
 
-A backup is not considered reliable until restoration has been tested.
+**Backup não é considerado confiável até ser restaurado e verificado.** A proteção envolve banco, objetos enviados, configurações, referências de segredos, artefatos de deploy e histórico de migrations — não apenas PostgreSQL.
 
-Backup design covers more than the database. The platform may depend on:
-- relational database;
-- uploaded files/object storage;
-- application configuration;
-- secrets/configuration references;
-- deployment artifacts;
-- migration history.
+## Propriedades exigidas
 
-## Required properties
+A implantação de produção precisa definir: escopo, frequência, retenção, destino independente, criptografia e controle de acesso, monitoramento de falhas, procedimento de restauração, responsável, **RPO** (ponto de recuperação) e **RTO** (tempo de recuperação).
 
-The production design must define:
-- what is backed up;
-- frequency;
-- retention;
-- destination;
-- encryption/access control;
-- monitoring of backup failures;
-- restoration procedure;
-- responsible person;
-- recovery point objective (RPO);
-- recovery time objective (RTO).
+RPO técnico, RTO dentro/fora da janela operacional e retenção **ainda dependem de definição e medição**.
 
-Technical RPO, RTO inside operating hours, RTO outside operating hours and retention periods remain pending definition/measurement.
+## Decisões operacionais de 01/10/2026
 
-## Operational decisions and provisions — 2026-10-01
-
-| Responsibility / provision | Current decision |
+| Responsabilidade | Registro |
 | --- | --- |
-| Operational owner | Current person responsible for the project |
-| Backup/restore owner | Same person responsible for the project |
-| Alert recipients | Current person responsible for the project + supervisor |
-| Provisional operating window | Monday–Friday, 07:00–18:00 (America/Sao_Paulo), with occasional exceptions |
-| Infrastructure expected to remain powered on | 24x7; not a verified availability or support guarantee |
+| Operação | Responsável atual pelo projeto |
+| Backup e restore | Mesmo responsável pelo projeto |
+| Alertas | Responsável pelo projeto + supervisor |
+| Janela provisória | Segunda a sexta, 07:00–18:00 (America/Sao_Paulo), com exceções |
+| Infra ligada | Expectativa 24x7, **sem SLA ou suporte comprovado** |
 
-Business requirement: data that the system has confirmed as saved must not be lost. This is a business requirement, not a proven technical recovery guarantee. **Do not record RPO=0:** no architecture has yet been demonstrated capable of guaranteeing zero RPO.
+**Requisito de negócio:** não perder dados confirmados como salvos. Isso não é garantia técnica provada: **não registrar RPO=0**. Retenções de backup, logs sistêmicos e objetos excluídos também estão pendentes. O1 permanece **PARCIAL**, não concluído.
 
-Technical RPO, RTO inside the provisional operating window, RTO outside that window, and retention for backups, system audit logs and removed objects remain pending definition/measurement. These decisions leave O1 **PARTIAL**, not CLOSED. Backup independence, restore drills and operational readiness still require evidence; this document does not authorize production release.
+## Cenários mínimos
 
-## Minimum recovery scenarios
+1. Exclusão ou corrupção acidental de registros.
+2. Deploy incorreto.
+3. Migration defeituosa.
+4. Perda de disco/servidor.
+5. Perda ou corrupção de bytes de arquivos.
+6. Perda de configuração/credenciais.
+7. Reconstrução completa em hardware substituto.
 
-The restore procedure must be able to address:
+## Banco, objetos e código
 
-1. accidental deletion/corruption of records;
-2. bad application deployment;
-3. bad schema migration;
-4. server/disk loss;
-5. loss/corruption of uploaded files;
-6. credential or configuration loss;
-7. complete rebuild on replacement infrastructure.
+Backups produtivos devem ser **automatizados e independentes** o suficiente para sobreviver à perda do host. Antes de alterações destrutivas: conferir ponto recuperável, ensaiar a migration fora da produção e preparar rollback/forward-fix.
 
-## Database
+Evidências, contratos, imagens e XLSX exigem **bytes e metadados** correspondentes. Restaurar só o DB pode deixar referências órfãs. Cloudflare R2 fora do host **não é, sozinho, backup**.
 
-Production database backups should be automated and stored independently enough that loss of the application server does not destroy the only backup.
+Git versiona aplicativo e migrations, **não os dados produtivos**. Deploy deve poder ser reproduzido a partir de versões e definições de configuração.
 
-Before destructive schema/data changes:
-- create/verify an appropriate recovery point;
-- test migration outside production;
-- document rollback or forward-fix strategy.
+## Ensaio sintético registrado em 19/10/2026
 
-## Files
+O [relatório da Issue #51](../planning/02_RESTORE_DRILL.md) descreve cópia física **a frio** de três volumes e restore em projeto isolado: **8 DR PASS / DR-08 PARCIAL**, pois os tempos não foram cronometrados adequadamente.
 
-If modules store evidence, contracts, images or documents, backup scope must include those files and their metadata.
+A evidência histórica cobriu **17 migrations**, antes da Curva ABC. O bucket `abc-source-files` e a 18ª migration **não foram ensaiados**. Esse teste não comprova PITR/WAL, backup on-line, cópia off-site, perda real de host nem RPO/RTO de PROD.
 
-Database restoration without matching file storage may produce an internally inconsistent platform.
+Ver [diagrama LAB x PROD](../planning/02_RESTORE_DRILL.md#visão-visual--backup-executado-vs-recuperação-requerida) e passos para repetir com ABC e tempos mensurados. **Não reescrever provas históricas como se valessem para a nova baseline.**
 
-## Application code
+## Exercícios de restauração
 
-Git is the source of truth for application source and migrations, not a substitute for production data backup.
+Ensaiar periodicamente em ambiente isolado, verificando: banco sobe, migrations/schema coerentes, registros legíveis, arquivos e referências íntegros, Auth/configuração recuperáveis e app consegue iniciar.
 
-Releases/deployments should be reproducible from versioned code and configuration definitions.
+Registrar **data, backup, versão, resultado, falhas e ações corretivas**. Não incluir segredos e dados reais em PRs.
 
-## Ensaio sintético documentado (19/10/2026)
+## Migração de sistemas legados
 
-O [relatório de restore da Issue #51](../planning/02_RESTORE_DRILL.md) registra recuperação **a frio** de três volumes em projeto isolado: 8 de 9 critérios DR em PASS e **DR-08 PARCIAL** (sem cronometria rigorosa). A execução histórica usou 17 migrations e não inclui a migration/bucket da Curva ABC incorporada depois à `main`. Isso comprova apenas o cenário sintético, não backup online, WAL/PITR, off-site, perda do host ou metas RPO/RTO.
+Antes do corte: guardar ponto restaurável final do legado, registrar versão da origem, reconciliar contagens/totais, definir janela de rollback e **não destruir o legado logo após o cutover**.
 
-O runbook contém um [diagrama LAB versus PROD](../planning/02_RESTORE_DRILL.md#visão-visual--backup-executado-vs-recuperação-requerida) e os passos para repetir o ensaio com horários mensurados e bucket `abc-source-files`. **Não editar evidência antiga para simular cobertura atual**.
+O **ERP de Contratos** requer auditoria do backup/restore atual antes de considerar sua migração de baixo risco.
 
-## Restore tests
-
-Perform scheduled restore exercises into an isolated environment.
-
-A restore exercise should verify:
-- database starts;
-- schema and migrations are coherent;
-- representative records are readable;
-- file references work;
-- authentication/configuration can be re-established;
-- application can start against restored data.
-
-Record the date, backup used, result, issues and corrective actions.
-
-## Standalone-system migration
-
-Before cutting a standalone system over to Gaúcha Gestão:
-- capture a final verified recovery point of the standalone system;
-- document source data version;
-- validate record counts/totals where applicable;
-- keep a defined rollback window;
-- do not destroy the legacy data immediately after cutover.
-
-## ERP Contracts
-
-Because backup behavior in the current standalone Contracts system requires review, its migration cannot be considered low-risk until the current backup and restore process has been audited.
+**PROD NO-GO** até evidências operacionais e autorização humana.
