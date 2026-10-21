@@ -11,6 +11,8 @@ const DOC_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relations
 const ALLOWED_FIXED = new Set([
   "[Content_Types].xml", "_rels/.rels", "docProps/core.xml", "docProps/app.xml",
   "xl/workbook.xml", "xl/_rels/workbook.xml.rels", "xl/styles.xml", "xl/sharedStrings.xml",
+  // D13: canonical, inert Excel theme; its bytes are never interpreted as business data.
+  "xl/theme/theme1.xml",
 ]);
 const SHEET_PART = /^xl\/worksheets\/sheet[1-9][0-9]*\.xml$/;
 const CELL_REF = /^([A-Z]+)([1-9][0-9]*)$/;
@@ -19,6 +21,7 @@ const RELATIONSHIP_TYPES: Record<string, string> = {
   [`${DOC_REL}/worksheet`]: "worksheet",
   [`${DOC_REL}/sharedStrings`]: "sharedStrings",
   [`${DOC_REL}/styles`]: "styles",
+  [`${DOC_REL}/theme`]: "theme",
   [`${DOC_REL}/extended-properties`]: "extended-properties",
   "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties": "core-properties",
 };
@@ -246,6 +249,7 @@ function validateContentTypes(parts: Map<string, Uint8Array>) {
   const optional: Record<string, string> = {
     "xl/sharedStrings.xml": "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml",
     "xl/styles.xml": "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml",
+    "xl/theme/theme1.xml": "application/vnd.openxmlformats-officedocument.theme+xml",
     "docProps/core.xml": "application/vnd.openxmlformats-package.core-properties+xml",
     "docProps/app.xml": "application/vnd.openxmlformats-officedocument.extended-properties+xml",
   };
@@ -278,9 +282,9 @@ function buildWorkbook(parts: Map<string, Uint8Array>, limits: XlsxLimits): Work
   const workbook = xml(parts, "xl/workbook.xml").documentElement;
   const rels = relationships(parts, "xl/_rels/workbook.xml.rels", "xl/workbook.xml");
   for (const [kind] of rels.values())
-    if (!["worksheet", "sharedStrings", "styles"].includes(kind))
+    if (!["worksheet", "sharedStrings", "styles", "theme"].includes(kind))
       throw new XlsxError("invalid_relationship", "Workbook relationship type is not supported");
-  for (const [kind, partName] of [["sharedStrings", "xl/sharedStrings.xml"], ["styles", "xl/styles.xml"]]) {
+  for (const [kind, partName] of [["sharedStrings", "xl/sharedStrings.xml"], ["styles", "xl/styles.xml"], ["theme", "xl/theme/theme1.xml"]]) {
     const targets = [...rels.values()].filter(([k]) => k === kind).map(([, t]) => t);
     const pointsToPart = targets.length === 1 && targets[0] === partName;
     if (targets.length > 1 || parts.has(partName) !== pointsToPart)
