@@ -18,12 +18,13 @@ export function AbcReports() {
   const loadOverview = useCallback(() => api.overview(unitId!, scope.basis), [unitId, scope.basis]);
   const o = useAbcData(unitId ? loadOverview : null);
   const list = (o.data?.competencies ?? []).map((c) => c.competency);
-  const pick = (key: string, fallback: string) => {
+  const pick = (key: string, allowed: string[]) => {
     const v = scope.params.get(key);
-    return v && list.includes(v) ? v : fallback;
+    return v && allowed.includes(v) ? v : allowed.at(-1) ?? "";
   };
-  const current = pick("atual", list.at(-1) ?? "");
-  const base = pick("base", list.filter((c) => c < current).at(-1) ?? "");
+  const current = pick("atual", list);
+  // Only earlier competencies are offered as the comparison base; a URL value outside them is ignored.
+  const base = pick("base", list.filter((c) => c < current));
   const load = useCallback(async () => {
     const [products, comparison] = await Promise.all([
       api.competencyProducts(unitId!, scope.basis, current),
@@ -56,10 +57,10 @@ export function AbcReports() {
         </>
       )}>
       {o.loading && <LoadingState label="Carregando competências…" />}
-      {o.error && <Notice error>{o.error}</Notice>}
+      {o.error && <Notice error>{o.error} <button type="button" onClick={o.reload}>Tentar novamente</button></Notice>}
       {o.data && !list.length && <EmptyState title="Nenhum relatório publicado">Não há competências publicadas nesta modalidade.</EmptyState>}
       {r.loading && <LoadingState label="Montando relatórios…" />}
-      {r.error && <Notice error>{r.error}</Notice>}
+      {r.error && <Notice error>{r.error} <button type="button" onClick={r.reload}>Tentar novamente</button></Notice>}
       {d && (
         <div className="abc-report">
           <p className="abc-print-only">

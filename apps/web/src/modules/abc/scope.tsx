@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { NavLink, useSearchParams } from "react-router-dom";
 import { EmptyState, LoadingState, Notice, PageTitle } from "../../shared/ui";
 import * as api from "./api";
@@ -28,28 +28,60 @@ export function useAbcData<T>(load: (() => Promise<T>) | null) {
 
 const BASES: CostBasis[] = ["NET_PERIOD", "GROSS_PERIOD"];
 
+// Per-tab convenience only (never authorization): storage can be blocked, so failures are ignored.
+function readRemembered(key: string): string | null {
+  try {
+    return sessionStorage.getItem(`abc.scope.${key}`);
+  } catch {
+    return null;
+  }
+}
+function remember(key: string, value: string) {
+  try {
+    sessionStorage.setItem(`abc.scope.${key}`, value);
+  } catch {
+    // Storage unavailable (private mode, blocked site data): the URL still carries the scope.
+  }
+}
+
 /**
  * Unit and cost basis selected for the analytics areas, kept in the URL (?unidade=&modalidade=)
  * so links between areas preserve them. The list only contains units the database allows;
  * a guessed unit id in the URL is still refused by every RPC.
  */
 export function useScope() {
-  const [params, setParams] = useSearchParams();
+  const [searchParams, setParams] = useSearchParams();
+  // The sidebar links carry no query: fall back to the last scope this viewer chose in this tab.
+  const params = useMemo(() => {
+    if (searchParams.has("unidade")) return searchParams;
+    const remembered = new URLSearchParams(searchParams);
+    for (const key of ["unidade", "modalidade"]) {
+      const value = readRemembered(key);
+      if (value && !remembered.has(key)) remembered.set(key, value);
+    }
+    return remembered;
+  }, [searchParams]);
   const loadUnits = useCallback(() => api.units(), []);
   const units = useAbcData(loadUnits);
   const requested = params.get("unidade");
+  const fromUrl = searchParams.get("unidade");
+  // Only an id typed in the URL is reported as unavailable; a stale remembered one falls back.
   const unit: UnitSummary | null =
-    units.data?.find((u) => u.unit_id === requested) ?? (requested ? null : units.data?.[0] ?? null);
+    units.data?.find((u) => u.unit_id === requested) ?? (fromUrl ? null : units.data?.[0] ?? null);
   const basisParam = params.get("modalidade");
   const basis: CostBasis = BASES.includes(basisParam as CostBasis) ? (basisParam as CostBasis) : "NET_PERIOD";
+  useEffect(() => {
+    if (unit) remember("unidade", unit.unit_id);
+    remember("modalidade", basis);
+  }, [unit, basis]);
   const set = useCallback(
     (next: Record<string, string | null>) =>
-      setParams((prev) => {
-        const out = new URLSearchParams(prev);
+      setParams(() => {
+        const out = new URLSearchParams(params);
         for (const [k, v] of Object.entries(next)) if (v === null) out.delete(k); else out.set(k, v);
         return out;
       }, { replace: true }),
-    [setParams],
+    [setParams, params],
   );
   const query = (extra: Record<string, string> = {}) => {
     const q = new URLSearchParams();
@@ -58,7 +90,7 @@ export function useScope() {
     for (const [k, v] of Object.entries(extra)) q.set(k, v);
     return `?${q}`;
   };
-  return { units, unit, unknownUnit: !!requested && !!units.data && !unit, basis, params, set, query };
+  return { units, unit, unknownUnit: !!fromUrl && !!units.data && !unit, basis, params, set, query };
 }
 export type Scope = ReturnType<typeof useScope>;
 

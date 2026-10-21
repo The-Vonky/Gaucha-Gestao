@@ -59,6 +59,7 @@ const comparison: Comparison = {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  sessionStorage.clear();
 });
 function renderAt(path: string) {
   return render(
@@ -165,5 +166,42 @@ describe("Curva ABC analytics areas", () => {
     expect(screen.getByText("Substituída")).toBeTruthy();
     await userEvent.selectOptions(screen.getByLabelText("Situação"), "superseded");
     expect(screen.queryByText("Vigente")).toBeNull();
+  });
+
+  it("builds reports and ignores a URL base that is not earlier than the competency", async () => {
+    ready();
+    renderAt("/abc/reports?base=2026-07-01&atual=2026-07-01");
+    expect(await screen.findByText("1. Distribuição financeira da Curva ABC")).toBeTruthy();
+    // The only earlier competency (June) is used, never the invalid July→July pair.
+    expect(api.compare).toHaveBeenCalledWith("U1", "NET_PERIOD", "2026-06-01", "2026-07-01");
+    expect(await screen.findByText(/7\. Comparação entre jun\/2026 e jul\/2026/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Imprimir ou salvar em PDF/ })).toBeTruthy();
+  });
+
+  it("keeps the chosen unit when the sidebar link has no query, but never a stale one", async () => {
+    ready();
+    const other = { ...unit, unit_id: "U2", code: "0002", name: "Filial Dois" };
+    api.units.mockResolvedValue([unit, other]);
+    renderAt("/abc/overview?unidade=U2");
+    await waitFor(() => expect(api.overview).toHaveBeenCalledWith("U2", "NET_PERIOD"));
+    cleanup();
+    api.overview.mockClear();
+    renderAt("/abc/categories");
+    await waitFor(() => expect(api.overview).toHaveBeenCalledWith("U2", "NET_PERIOD"));
+    cleanup();
+    api.overview.mockClear();
+    api.units.mockResolvedValue([unit]);
+    renderAt("/abc/categories");
+    await waitFor(() => expect(api.overview).toHaveBeenCalledWith("U1", "NET_PERIOD"));
+    expect(screen.queryByText("Unidade indisponível")).toBeNull();
+  });
+
+  it("offers a retry when an analytics call fails", async () => {
+    ready();
+    api.compare.mockRejectedValueOnce({ code: "PGRST000", message: "rede" });
+    renderAt("/abc/compare");
+    await userEvent.click(await screen.findByRole("button", { name: "Tentar novamente" }));
+    expect(await screen.findByText("De onde vem a diferença")).toBeTruthy();
+    expect(api.compare).toHaveBeenCalledTimes(2);
   });
 });

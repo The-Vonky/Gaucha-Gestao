@@ -33,10 +33,10 @@ export function AbcCategories() {
         ainda não aprovado; nenhum produto é classificado por palavra-chave ou prefixo.
       </Notice>
       {o.loading && <LoadingState label="Carregando competências…" />}
-      {o.error && <Notice error>{o.error}</Notice>}
+      {o.error && <Notice error>{o.error} <button type="button" onClick={o.reload}>Tentar novamente</button></Notice>}
       {o.data && !list.length && <EmptyState title="Nenhum relatório publicado">Não há competências publicadas nesta modalidade.</EmptyState>}
       {p.loading && <LoadingState label="Carregando classes…" />}
-      {p.error && <Notice error>{p.error}</Notice>}
+      {p.error && <Notice error>{p.error} <button type="button" onClick={p.reload}>Tentar novamente</button></Notice>}
       {summary && p.data && (
         <>
           <div className="abc-grid-2">

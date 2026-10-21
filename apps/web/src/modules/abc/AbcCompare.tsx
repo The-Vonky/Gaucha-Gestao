@@ -62,7 +62,7 @@ export function AbcCompare() {
         </>
       )}>
       {o.loading && <LoadingState label="Carregando competências…" />}
-      {o.error && <Notice error>{o.error}</Notice>}
+      {o.error && <Notice error>{o.error} <button type="button" onClick={o.reload}>Tentar novamente</button></Notice>}
       {o.data && list.length < 2 && (
         <EmptyState title="Comparação indisponível">
           É preciso ao menos duas competências publicadas nesta unidade e modalidade. Publicadas: {list.length}.
@@ -70,7 +70,7 @@ export function AbcCompare() {
       )}
       {base && current && base === current && <Notice tone="warning">Escolha duas competências diferentes.</Notice>}
       {c.loading && <LoadingState label="Comparando…" />}
-      {c.error && <Notice error>{c.error}</Notice>}
+      {c.error && <Notice error>{c.error} <button type="button" onClick={c.reload}>Tentar novamente</button></Notice>}
       {c.data && s && (
         <>
           <section className="abc-metrics" aria-label="Resumo da comparação">

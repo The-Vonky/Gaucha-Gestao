@@ -7,6 +7,12 @@ import { competency, money, percent, quantity, unitCost } from "./format";
 import { AreaPage, CompetencySelect, useAbcData, useScope, type Scope } from "./scope";
 
 const PAGE = 100;
+const ALIASES: Record<string, string> = { LT: "L", UND: "UN" };
+/** Mirrors abc_private.unit_key: the database treats LT/L and UND/UN as the same unit. */
+const unitKey = (label: string) => {
+  const k = label.trim().toUpperCase();
+  return ALIASES[k] ?? k;
+};
 
 function ProductHistory({ scope, code }: { scope: Scope; code: string }) {
   const unitId = scope.unit!.unit_id;
@@ -21,11 +27,11 @@ function ProductHistory({ scope, code }: { scope: Scope; code: string }) {
         <button type="button" onClick={() => scope.set({ produto: null })}>Fechar histórico</button>
       </div>
       {r.loading && <LoadingState label="Carregando histórico…" />}
-      {r.error && <Notice error>{r.error}</Notice>}
+      {r.error && <Notice error>{r.error} <button type="button" onClick={r.reload}>Tentar novamente</button></Notice>}
       {r.data && !h.length && <p className="muted">Este código não aparece em competências publicadas nesta modalidade.</p>}
       {h.length > 0 && (
         <>
-          {new Set(h.map((p) => p.unit.trim().toUpperCase())).size > 1 && (
+          {new Set(h.map((p) => unitKey(p.unit))).size > 1 && (
             <Notice tone="warning">A unidade de medida mudou entre competências; compare custos médios com cautela.</Notice>
           )}
           <div className="abc-grid-2">
@@ -93,10 +99,10 @@ export function AbcProducts() {
       )}>
       {product && scope.unit && <ProductHistory scope={scope} code={product} />}
       {o.loading && <LoadingState label="Carregando competências…" />}
-      {o.error && <Notice error>{o.error}</Notice>}
+      {o.error && <Notice error>{o.error} <button type="button" onClick={o.reload}>Tentar novamente</button></Notice>}
       {o.data && !list.length && <EmptyState title="Nenhum relatório publicado">Não há competências publicadas nesta modalidade.</EmptyState>}
       {p.loading && <LoadingState label="Carregando produtos…" />}
-      {p.error && <Notice error>{p.error}</Notice>}
+      {p.error && <Notice error>{p.error} <button type="button" onClick={p.reload}>Tentar novamente</button></Notice>}
       {p.data && (
         <section className="abc-section">
           <h2>{competency(comp)} · revisão {p.data.revision.number}</h2>
