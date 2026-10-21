@@ -1,130 +1,75 @@
-# Audit Checklist Evidence v1
+# Evidências por item de checklist — Auditoria v1
 
-Integrated in `main` by PR #11 at merge commit
-`c3f135f6026899362e1edacda3e97e922528ac8e`. Migration:
-`supabase/migrations/20260930114000_audit_checklist_evidence_v1.sql`.
-This records the implemented contract and verified repository state, not production readiness or full Quality acceptance.
-The completion matrix and foundation gates are maintained separately.
+**Estado histórico:** integrado à `main` na PR #11, commit de merge `c3f135f6026899362e1edacda3e97e922528ac8e`; migration `supabase/migrations/20260930114000_audit_checklist_evidence_v1.sql`. Este contrato registra **o que foi implementado e validado no repositório**, não homologação completa da Qualidade nem prontidão de produção.
 
-## Contract
+Consulte [matriz de conclusão](QUALITY_COMPLETION_V1.md) e [gates](../../architecture/FOUNDATION_GATES.md) para pendências operacionais.
 
-Audit owns `audit.checklist_evidence` and private bucket `audit-checklist-evidence`.
-The immutable composite FK binds each file to an actual `(inspection_id, item_key)`
-answer. The server generates `<inspection_uuid>/<evidence_uuid>` keys with no user name
-or extension. There is no Audit dependency on Action Plans; the neutral Shared file
-validator is concretely used by both modules.
+## Contrato
 
-| RPC | Contract |
+A Auditoria é proprietária de `audit.checklist_evidence` e do bucket privado `audit-checklist-evidence`. FK composta **imutável** vincula arquivo a uma resposta real `(inspection_id, item_key)`. Servidor gera chaves `<inspection_uuid>/<evidence_uuid>`, sem nome do usuário nem extensão. Auditoria **não depende** de Planos de Ação; ambos reutilizam validador neutro de arquivos em Shared.
+
+| RPC | Contrato |
 | --- | --- |
-| `begin_checklist_evidence_upload(p_inspection,p_item_key,p_original_name,p_content_type,p_size)` | Authorizes draft/edit, validates metadata and reserves one pending slot; returns server ID/key |
-| `confirm_checklist_evidence_upload(p_evidence)` | Uploader only, live pending, same lifecycle version, draft/edit; compares Storage owner/size/MIME metadata |
-| `checklist_evidence(p_inspection,p_item_key default null)` | Available rows only, parent read; null item returns the whole inspection |
-| `remove_checklist_evidence(p_evidence)` | Draft/edit logical removal; bytes retained; repeats emit no duplicate event |
-| `checklist_evidence_pending_count(p_inspection)` | Read-authorized aggregate warning; exposes no pending IDs/keys/names |
-| `finalize_inspection(p_id,p_version,p_expected_evidence_ids)` | Requires non-null whole-inspection IDs; sorted/distinct comparison under parent lock; mismatch `40001`; old two-argument overload removed |
+| `begin_checklist_evidence_upload(p_inspection,p_item_key,p_original_name,p_content_type,p_size)` | Autoriza rascunho/edição, valida metadados, reserva slot pendente; retorna ID/chave criados pelo servidor |
+| `confirm_checklist_evidence_upload(p_evidence)` | Apenas uploader, pendência válida, **mesma versão de lifecycle**, em rascunho/edição; compara owner, size e MIME do Storage |
+| `checklist_evidence(p_inspection,p_item_key default null)` | Apenas registros disponíveis, com leitura do pai; item nulo devolve inspeção inteira |
+| `remove_checklist_evidence(p_evidence)` | Remoção lógica em rascunho/edição; bytes permanecem; repetição não duplica evento |
+| `checklist_evidence_pending_count(p_inspection)` | Alerta agregado ao leitor autorizado; não expõe IDs/chaves/nomes pendentes |
+| `finalize_inspection(p_id,p_version,p_expected_evidence_ids)` | IDs obrigatórios para inspeção inteira, normalizados/únicos e comparados com bloqueio do pai; divergência retorna `40001`; overload antigo de dois parâmetros removido |
 
-Empty expected array is valid. Scoring and completeness are unchanged. Every successful
-finalization logs the accepted available IDs. Re-finalization adds a new event and
-preserves prior events. Begin/failure/retry produces no business evidence event;
-successful confirm/remove logs use module `audit`, entity `checklist_evidence`, with
-safe metadata and no bytes, object keys, signed URLs or credentials.
+Array esperado **vazio é válido**. Pontuação e completude não mudam. Finalização bem-sucedida registra IDs disponíveis aceitos; nova finalização após reabertura adiciona evento, mantendo os anteriores. `begin`, erro e tentativa novamente **não** geram evento de evidência de negócio; confirmação e remoção bem-sucedidas geram eventos `module=audit`, `entity=checklist_evidence`, com metadados seguros, **sem bytes, object keys, URLs assinadas ou credenciais**.
 
-## Access and lifecycle
+## Acesso, versão e ciclo de vida
 
-| Caller | List/sign/download | Begin/upload/confirm/remove |
+| Chamador | Listar/assinar/download | Iniciar/enviar/confirmar/remover |
 | --- | --- | --- |
-| Active global grant | Read required; draft or finalized | Edit required; draft only |
-| Active correct-unit grant | Same | Same |
-| Wrong-unit or sector-only grant | Denied | Denied |
-| Anon, inactive profile, no grant | Denied | Denied |
+| Grant global ativo | Permissão de leitura; rascunho/finalizada | Permissão de edição; somente rascunho |
+| Grant ativo da unidade correta | Igual | Igual |
+| Unidade errada ou grant somente setorial | Negado | Negado |
+| Anônimo, perfil inativo ou sem grant | Negado | Negado |
 
-Confirm additionally requires original uploader ownership; any authorized editor may
-remove available evidence. Inaccessible/nonexistent IDs grant nothing and expose no
-existence distinction. Mutation lock order is inspection `FOR UPDATE`, deterministic
-Core authorization locks, then evidence row. Evidence never explicitly locks/updates
-an answer; the composite FK takes only its compatible implicit key-share lock.
+Confirmação exige também ser **o uploader original**. Qualquer editor autorizado pode remover evidência disponível. ID inexistente e inacessível não dão direito nem revelam existência.
 
-Reopen preserves available and removed records and grants no new capabilities.
-Edit holders may change the current set again. A pending attempt from before a
-finalize/reopen is invalid; begin a new attempt. Pending expires after one hour.
-Quota: 10 active/criterion and 100/inspection; available plus live pending count,
-removed/expired do not. Size 1–10,485,760 bytes. JPG/JPEG, PNG, PDF, XLSX and DOCX only;
-canonical MIME and NFC basename contract are enforced in SQL.
+**Ordem de locks para mutação:** inspeção `FOR UPDATE` → locks determinísticos de autorização Core → linha de evidência. Evidência não trava nem atualiza explicitamente uma resposta; FK composta aplica somente seu lock `KEY SHARE` implícito e compatível.
 
-## Storage and client
+Reabertura preserva evidências disponíveis/removidas e não concede novas capacidades. Editores podem mudar o conjunto atual. Upload pendente iniciado antes de finalizar/reabrir **perde validade**: iniciar nova tentativa. Pendência expira em uma hora.
 
-The browser uses the user's JWT and Storage API, `upsert:false`, `cacheControl:'0'`.
-INSERT requires a live owned reservation, draft, matching lifecycle, edit permission
-and Storage upload operation; COPY into another pending key is denied. No client
-UPDATE/DELETE/upsert/move/copy. SELECT requires available/read.
+**Cotas:** até 10 ativos por critério e 100 por inspeção; disponíveis + pendentes válidos contam; removidos/expirados não. Tamanho entre 1 e **10.485.760 bytes**. Tipos JPG/JPEG, PNG, PDF, XLSX, DOCX; MIME canônico e basename em Unicode NFC impostos pelo SQL.
 
-Downloads sign for 60 seconds, check the actual bytes endpoint, then use an attachment
-anchor without a popup or persisted URL. Missing files produce visible feedback.
-Previously issued signed links can remain usable until their short expiry.
+## Storage e cliente
 
-Audit UI lists filename/type/size/uploader/time per criterion, one-file upload,
-sending/confirming/error/retry, application removal dialog and finalized read-only
-state. Original bytes are preserved; there is no inline preview. Long names wrap.
-Finalization fetches and displays a frozen full-inspection snapshot, warns about
-pending transfers, binds the snapshot to parent/version, and requires reload/review
-after an evidence conflict.
+Browser usa JWT da pessoa com `upsert:false` e `cacheControl:'0'`. INSERT exige reserva pendente válida do próprio uploader, rascunho, lifecycle atual, permissão de edição e operação Storage correta. Copiar para chave pendente alheia é negado. Cliente não tem UPDATE/DELETE, upsert, move ou copy. SELECT requer evidência disponível e leitura autorizada.
 
-## E3 remains exactly the approved residual risk
+Download cria URL assinada por **60 segundos**, confere endpoint real de bytes e usa âncora `download`, sem popup ou persistir URL. Objeto ausente produz feedback explícito. Links já emitidos podem continuar utilizáveis até expirar o TTL.
 
-Client magic-byte checks are bypassable. A ZIP signature cannot distinguish
-XLSX/DOCX/macros/arbitrary ZIP content. SQL, bucket and confirmation validate metadata;
-there is no trusted server byte parser, antivirus or sanitization. Files remain
-untrusted. Original EXIF/GPS is preserved, never extracted; UI warns about it.
-No HEIC conversion, quarantine service or malware infrastructure was added.
+Na UI de Auditoria, cada critério mostra nome original/tipo/tamanho/uploader/hora, envio unitário, estado enviando/confirmando/erro/tentativa novamente, diálogo de remoção e modo somente leitura quando finalizada. **Os bytes originais são preservados, sem preview inline.** Nomes longos quebram linha.
 
-The approved acceptance still requires authenticated/scoped/audited uploaders,
-attachment-only download, isolated API origin, canonical non-active MIME, no preview,
-production nosniff/no-cache gates and endpoint protection. Repository tests do not
-establish production header/cache guarantees.
+Ao finalizar, a UI carrega snapshot congelado da inspeção completa, avisa uploads pendentes, vincula revisão ao pai/versão e exige recarregar/conferir em caso de conflito de evidências.
 
-## Reconciliation and recovery
+## Risco residual E3 — exatamente como aprovado
 
-Operator-only `audit_private.checklist_evidence_reconciliation()` reports expired
-pending with/without an object, available rows missing Storage metadata and orphan
-objects. App roles cannot invoke it. Operators must independently check actual bytes
-through Storage API: matching SQL metadata cannot prove backend file existence.
+Verificação de *magic bytes* no cliente é contornável. Assinatura ZIP não distingue XLSX, DOCX, macros ou arquivos ZIP arbitrários. SQL/bucket/confirmação validam **metadados**, mas **não** existe parser confiável dos bytes no servidor, antivírus ou sanitização. Tratar anexos como não confiáveis.
 
-Back up evidence rows, Core audit history, Storage metadata and independent object
-copies. Restore DB to T and objects from a copy at/after T, reconcile in isolation,
-then verify actual authorized downloads and wrong-unit denial. Object copies must
-retain files physically purged after T throughout the DB recovery window.
-The integration fixture exercises file loss/restoration, not a full production backup.
+EXIF/GPS original é preservado (não extraído); UI alerta para isso. Não foi adicionada conversão HEIC, quarentena nem infraestrutura antimalware.
 
-No automatic purge, retention interval or reconciliation schedule exists. Any future
-physical purge requires recorded human authorization, Storage API deletion and a safe
-operator audit event. Never delete Storage rows through SQL. Operational owner must
-define backup access separation, retention, measured RPO/RTO, monitoring, restore and
-purge procedures before release.
+O aceite aprovado exige uploader autenticado, escopo e auditoria, download por anexo, origem API isolada, MIME canônico não ativo, ausência de preview, cabeçalhos `nosniff`/`no-cache` produtivos e proteção no endpoint. **Testes de repo não provam cabeçalhos/cache em produção.**
 
-## Validation evidence and pending acceptance
+## Reconciliação e recuperação
 
-`tests/audit-evidence-database.test.ts` covers SQL/PGlite; client/UI tests cover
-file rules, transport and complete-set review. `tests/integration/audit-evidence.mjs`
-is wired into the existing disposable Supabase/Chromium workflow, preserving all
-Action Plans, Evidence, Reporting, Audit and Admin suites. It includes real JWT,
-Storage bytes, bypass attempts, two-session PostgreSQL races, reconciliation/file
-restore, desktop and 375px upload/download/retry/keyboard/overflow checks.
+Somente operador (sem permissão concedida a papéis app) acessa `audit_private.checklist_evidence_reconciliation()`, que aponta pendências expiradas com/sem objeto, linhas disponíveis sem metadados Storage e objetos órfãos. Operador também deve verificar **bytes físicos** via Storage API: linhas SQL correspondentes não provam arquivo existente.
 
-Initial development used only the authenticated GitHub connector. An independent
-review later ran typecheck, lint, unit tests, build, verify:build, `npm audit --omit=dev`
-and all six integration suites in workflow order against a freshly reset disposable
-local Supabase (127.0.0.1) with Chromium; no linked project or production execution
-occurred.
+Backup exige linhas de evidência, log Core, metadados Storage e **cópias independentes dos objetos**. Restaurar DB ao instante T e objetos de cópia em T ou **posterior**, reconciliar em isolamento e testar downloads autorizados reais e negação cross-unit. A cópia dos objetos precisa preservar arquivos fisicamente removidos depois de T durante a janela de recuperação do banco.
 
-Repository CI evidence is recorded. PR #11 head `132771d54b0eae3781d72fb11746b12f28a84f0e`
-passed the full pull-request workflow in run `36720376966`, attempt 2, before merge.
-The post-merge `main` execution `36728754202` passed on
-`c3f135f6026899362e1edacda3e97e922528ac8e`:
-typecheck, lint, 18 test files / 215 tests, build, verify:build, `npm audit --omit=dev`
-with 0 vulnerabilities, and all six integration suites including real Checklist
-Evidence Storage/Chromium coverage. This CI is repository validation only; no linked
-project or production execution occurred.
+A fixture de integração testa perda/restauração de arquivo, **não** backup produtivo completo.
 
-Physical iOS Safari and Android Chrome camera/gallery/file/download acceptance has
-not occurred. Quality is not declared 100%; production and physical/mobile gates
-remain open.
+**Sem expurgo automático, prazo de retenção ou agendamento de reconciliação.** Remoção física futura depende de autorização humana registrada, exclusão via Storage API e evento seguro de operação. **Nunca** excluir linhas de `storage.objects` diretamente por SQL. Responsável deve definir separação de acesso ao backup, retenção, RPO/RTO medidos, monitoramento, restore e expurgo antes do release.
+
+## Evidências de validação e aceite pendente
+
+`tests/audit-evidence-database.test.ts` (SQL/PGlite); testes cliente/UI (regras de arquivo, transporte e revisão integral do conjunto); `tests/integration/audit-evidence.mjs` (Supabase/Chromium descartável com JWT real, bytes Storage, bypass, concorrência de duas sessões, reconciliação/restauração, desktop e 375px, upload/download/retry/teclado/overflow).
+
+Desenvolvimento inicial usou somente conector autenticado do GitHub. Revisão independente posterior rodou typecheck, lint, testes unitários, build, verify:build, `npm audit --omit=dev` e seis suítes de integração em Supabase descartável com Chromium; sem projeto remoto vinculado ou produção.
+
+**CI histórica:** PR #11 HEAD `132771d54b0eae3781d72fb11746b12f28a84f0e` aprovado no run `36720376966`, tentativa 2. Após merge, run `36728754202` aprovado em `c3f135f6026899362e1edacda3e97e922528ac8e`: typecheck, lint, **18 arquivos / 215 testes**, build, verify:build, audit sem vulnerabilidades e seis integrações, inclusive Checklist Evidence Storage/Chromium.
+
+Essa contagem é **histórica**, não a suíte atual. Nenhum teste em projeto remoto/produção foi executado. Homologação em aparelhos físicos **iOS Safari e Android Chrome**, incluindo câmera/galeria/arquivos/download, ainda não foi registrada. **Qualidade não é declarada 100%; PROD permanece NO-GO**.
