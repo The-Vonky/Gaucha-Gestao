@@ -15,7 +15,7 @@ Autoridades: [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md), [ADR-008](..
 | Curva ABC | Módulo + schema/bucket privados versionados | Homologar XLSX ERP, integridade, download, históricos, RLS e backup de bytes e metadata | Merge de código não é deploy nem aplicação de migrations |
 | Evidências | Buckets privados testados; uploads e signed URLs | Objetos R2, política/headers, reconciliação e restore consistente | Metadados e bytes podem divergir |
 | Observabilidade | Logs de aplicação e testes de CI | Alertas host, contêineres, DB, Storage, Tunnel, backup e segurança | Ferramentas/limiares não aprovados |
-| Continuidade | Restore sintético em andamento/documentação Draft (#51/#62) | Backup independente e PITR/teste real de recuperação | Laboratório não comprova RPO/RTO de PROD |
+| Continuidade | Restore sintético a frio com DB/Auth/bytes/RLS PASS histórico; DR-08 parcial (#51/#62) | Backup independente e PITR/teste real de recuperação | Laboratório não comprova RPO/RTO de PROD |
 
 ## 2. Ambientes e isolamento
 
@@ -76,7 +76,7 @@ Etapas obrigatórias antes de declarar operação:
 4. **Medir o ensaio:** início/fim, tempos separados, perda de dados relativa ao último ponto, RPO/RTO observados, falhas, responsáveis, data, SHA, aprovação e plano corretivo.
 5. **Repetir periodicamente:** agenda, alerta em falha, teste de substituição de host, controle da retenção e documentação de incidentes.
 
-**Evidência disponível nesta data:** a issue #51 registra ensaio **sintético a frio** com resultados positivos parciais; PR #62 em Draft. Isto **não** prova backup contínuo, WAL/PITR, restauração remota, replicação de objetos em R2 ou prontidão de produção. Ver [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md).
+**Evidência disponível nesta data:** a issue #51 registra ensaio **sintético a frio** com resultados positivos parciais; PR #62 em Draft. Isto **não** prova backup contínuo, WAL/PITR, restauração remota, replicação de objetos em R2 ou prontidão de produção. Ver [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md) e o [relatório verificável de restauração sintética](../planning/02_RESTORE_DRILL.md). O ensaio foi em snapshot de **17 migrations**, enquanto a main atual inclui **18**, com bucket ABC não abrangido pela prova histórica.
 
 ## 6. Resposta inicial a incidente — processo de decisão
 

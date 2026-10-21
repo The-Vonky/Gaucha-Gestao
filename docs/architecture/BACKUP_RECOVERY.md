@@ -75,6 +75,12 @@ Git is the source of truth for application source and migrations, not a substitu
 
 Releases/deployments should be reproducible from versioned code and configuration definitions.
 
+## Ensaio sintético documentado (19/10/2026)
+
+O [relatório de restore da Issue #51](../planning/02_RESTORE_DRILL.md) registra recuperação **a frio** de três volumes em projeto isolado: 8 de 9 critérios DR em PASS e **DR-08 PARCIAL** (sem cronometria rigorosa). A execução histórica usou 17 migrations e não inclui a migration/bucket da Curva ABC incorporada depois à `main`. Isso comprova apenas o cenário sintético, não backup online, WAL/PITR, off-site, perda do host ou metas RPO/RTO.
+
+O runbook contém um [diagrama LAB versus PROD](../planning/02_RESTORE_DRILL.md#visão-visual--backup-executado-vs-recuperação-requerida) e os passos para repetir o ensaio com horários mensurados e bucket `abc-source-files`. **Não editar evidência antiga para simular cobertura atual**.
+
 ## Restore tests
 
 Perform scheduled restore exercises into an isolated environment.
