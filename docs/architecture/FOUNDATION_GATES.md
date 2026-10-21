@@ -1,214 +1,80 @@
-# Platform Foundation Gates
+# Gates da fundação da plataforma
 
-Status: active  
-Reviewed: 2026-10-02 against application baseline `22334995b5b239274c5c1adc98495357ec0d7980`
+**Estado: vigente como referência de gates, atualizado editorialmente em 21/10/2026.**  
+**Baseline de revisão original:** 02/10/2026, `22334995b5b239274c5c1adc98495357ec0d7980`. Contagens de testes e status antigos são **fotografias históricas**, não o HEAD atual.
 
-Implementation evidence and remaining Quality work: `docs/modules/audit/QUALITY_COMPLETION_V1.md`; nominal physical/operational closure checklist: `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md`. Production entries below are repository gates, not a live infrastructure assessment. Quality v1 functional software, pre-homologation hardening, Login v3 and the PR #18 final visual/documental polish are integrated; physical P1–P9 acceptance is pending and operational O1–O8 readiness remains pending/partial. PR #16 proves a disposable/reproducible minimal self-hosted stack, not a production environment. **Production ready: NO.**
+Fontes: [conclusão factual da Qualidade](../modules/audit/QUALITY_COMPLETION_V1.md), [aceite P1–P9/O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md), [Plano Diretor](../planning/PLANO_DIRETOR_2026.md). O software Qualidade v1 e Core estão na `main`; Curva ABC v1 foi integrada posteriormente. **Nenhuma CI descartável comprova produção. PROD NO-GO.**
 
-## Purpose
+## Objetivo
 
-Gaúcha Gestão must not begin broad feature implementation before a small set of foundational decisions are explicit.
+Explicitar as decisões mínimas da fundação antes de ampliar os domínios. Não superprojetar: resolver cada gate na profundidade necessária para Auditoria e módulos próximos.
 
-This is not a request to overdesign the platform. Each gate should be resolved only to the level needed for Audit as module #1 and the next few modules.
+## Gate 1 — Runtime e topologia de implantação
 
-## Gate 1 — Runtime and deployment topology
+**DECIDIDO COMO ARQUITETURA:** host único escolhido [ThinkStation C30](../decisions/ADR-008-production-host-thinkstation-c30.md), Ubuntu Server LTS bare metal, Docker Engine/Compose, Cloudflare DNS/WAF/Tunnel, React estático via Workers, deploy controlado e disponibilidade de host único aceita na v1.
 
-Status: **DECIDED (baseline)**
+**PENDENTE:** aceitação física/capacidade C30 sob Ubuntu e perfil ADR-006; topologia definitiva DEV/STAGING/PROD; UPS e failover de rede. Decisão não significa instalação.
 
-Decision:
-- Lenovo ThinkStation C30 as the single physical host (ADR-008; replaces ADR-004's HP ProLiant ML350);
-- Ubuntu Server LTS on bare metal (no VM layer; ADR-008);
-- Docker Engine + Docker Compose;
-- Cloudflare DNS/WAF/Tunnel;
-- React static assets delivered from Cloudflare Workers;
-- controlled production deployment;
-- single-host availability accepted for v1.
+## Gate 2 — Stack da aplicação
 
-Still pending:
-- C30 capacity acceptance on Ubuntu with the ADR-006 profile (ADR-008 acceptance criteria);
-- final DEV/STAGING/PROD topology;
-- UPS/network failover capabilities.
+**DECIDIDO:** React, TypeScript, Vite, monólito modular, Supabase Self-Hosted e GitHub Actions. Referências [ADR-001](../decisions/ADR-001-modular-monolith.md) e [ADR-004](../decisions/ADR-004-platform-stack.md).
 
-Reference:
-- ADR-004;
-- ADR-008.
+## Gate 3 — Banco de dados
 
-## Gate 2 — Application stack
+**DECIDIDO:** PostgreSQL, migrations incrementais, dinheiro com precisão fixa, DB protegido, backup lógico + base físico/WAL/PITR + cópia off-site.
 
-Status: **DECIDED**
+**PENDENTE:** escolha WAL-G/pgBackRest ou equivalente; retenção, RPO/RTO e dimensionamento. **Implementado em repo:** migrations SQL append-only em `supabase/migrations`, aplicadas por CLI local e CI.
 
-Decision:
-- React;
-- TypeScript;
-- Vite;
-- modular monolith;
-- Supabase Self-Hosted for backend/data platform;
-- GitHub Actions for CI/CD.
+## Gate 4 — Autenticação e autorização
 
-Reference:
-- ADR-001;
-- ADR-004.
+**MODELO v1 DECIDIDO:** Supabase Auth; perfil Core ativo; negação padrão; múltiplos papéis por usuário; permissões granulares; escopo **global/unidade/setor em cada atribuição**; navegação filtrada e aplicação confiável no banco/RLS. Papel de administrador é atribuição global privilegiada.
 
-## Gate 3 — Database
+**PENDENTE:** serviço de identidade privilegiada e UX completo de convite/recuperação dependem de novo desenho aprovado; **ADR-007 NO-GO** ([Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49)).
 
-Status: **DECIDED (baseline)**
+## Gate 5 — Core organizacional
 
-Decision:
-- PostgreSQL;
-- Supabase Self-Hosted;
-- incremental migrations;
-- fixed-precision financial values;
-- private database boundary;
-- logical backup + physical/base backup + WAL archiving/PITR;
-- off-site backup destination.
+**MODELO v1 DECIDIDO:** `core.profiles`, `core.units`, `core.sectors`, `core.unit_sectors`, `core.permissions`, `core.roles`, `core.role_permissions`, `core.user_role_assignments`, `core.system_audit_log`; desativar entidades com histórico, IDs técnicos UUID e códigos de negócio estáveis. Brief original: [PLATFORM_FOUNDATION](../briefs/PLATFORM_FOUNDATION_V1.md).
 
-Still pending:
-- exact backup tool (pgBackRest, WAL-G or equivalent);
-- retention/RPO/RTO;
-- database resource sizing.
+## Gate 6 — Arquivos e anexos
 
-Implemented convention: append-only SQL migrations under `supabase/migrations`, applied by local Supabase and integration CI.
+**DECIDIDO:** Supabase Storage privado; Cloudflare R2 preferencial para produção futura; DB guarda metadados/referências, não blobs grandes; backup de arquivos separado do banco.
 
-## Gate 4 — Authentication and authorization
+**Implementado:** `action-plan-evidence` (10 MiB, tipos JPEG/PNG/PDF/XLSX/DOCX, até 20 evidências ativas por plano, download assinado e remoção lógica); `audit-checklist-evidence` (até 10 ativas por critério, 100 por inspeção, 10 MiB, versão de lifecycle/assinatura); `unit-covers` e `abc-source-files` entraram em etapas posteriores. A verificação de assinatura/magic bytes no browser **não** é atestado dos bytes no servidor.
 
-Status: **DECIDED FOR V1**
+**PENDENTE:** retenção/expurgo, cópias produtivas, cabeçalhos, reconciliação e restauração para todos os buckets. Nenhuma tabela universal de anexos está autorizada.
 
-Decision:
-- Supabase Auth;
-- default deny;
-- roles are reusable permission bundles;
-- granular permissions;
-- unit/sector organizational scope;
-- server/database trusted enforcement;
-- permission-driven navigation.
+## Gate 7 — Auditoria sistêmica
 
-Decision:
-- Supabase Auth identity;
-- Core profile activation state;
-- multiple scoped role assignments per user;
-- role -> permission bundles;
-- scope on each role assignment: global/unit/sector;
-- first Audit/Action Plan/Administration permission catalog;
-- Platform Administrator as privileged global role;
-- database/RLS enforcement.
+**MODELO E CÓDIGO IMPLEMENTADOS; OPERAÇÃO PENDENTE.** O ADR-005 e migrations definem `core.system_audit_log`, ator/tempo/módulo/entidade/antes-depois, writes confiáveis e leitura administrativa por escopo. Auditoria de Qualidade, Planos e evidências usam essa capacidade.
 
-Still pending:
-- detailed invitation/account-administration UX.
+Falta política/rotina operacional de retenção, monitoramento e expurgo autorizado. O log sistêmico não é o domínio Auditorias.
 
-## Gate 5 — Organizational Core
+## Gate 8 — Backup e recuperação
 
-Status: **DECIDED FOR V1**
+**ARQUITETURA DECIDIDA; PROVA PRODUTIVA PENDENTE.** Backups automatizados, cópias off-site, logical/base+WAL/PITR, ensaios de restore e Ansible para reconstrução são TO-BE.
 
-Decision:
-- `core.profiles`;
-- `core.units`;
-- `core.sectors`;
-- `core.unit_sectors`;
-- `core.permissions`;
-- `core.roles`;
-- `core.role_permissions`;
-- `core.user_role_assignments`;
-- `core.system_audit_log`;
-- deactivation instead of ordinary hard deletion for referenced Core entities;
-- UUID technical IDs and stable business codes where applicable.
+**Ensaio registrado:** [Issue #51 e DR-01–DR-09](../planning/02_RESTORE_DRILL.md) com 8 PASS/DR-08 PARCIAL no snapshot de 17 migrations, sem ABC. **Não comprova** RPO/RTO, off-site nem host perdido.
 
-Physical migrations are authorized by `docs/briefs/PLATFORM_FOUNDATION_V1.md`.
+Faltam ferramenta/destino, retenção, RPO/RTO quantitativos por janela, frequência de drill e runbook produtivo.
 
-## Gate 6 — Files and attachments
+Responsável de operação/backup: responsável atual do projeto; alertas ao responsável e supervisor; expediente provisório e requisito de preservação em [BACKUP_RECOVERY](BACKUP_RECOVERY.md#decisões-operacionais-de-01102026). **O1 não foi fechado.**
 
-Status: **DECIDED (baseline)**
+## Gate 9 — Observabilidade
 
-Decision:
-- Supabase Storage API;
-- Cloudflare R2 preferred as production S3-compatible backend;
-- database stores metadata/references, not arbitrary file blobs;
-- private authorized access;
-- file restore/retention handled independently from database backup.
+**BASELINE DECIDIDA; SEM PROVA DE OPERAÇÃO.** Observar host, reinícios/saúde Docker, conexões/Storage/backup PostgreSQL, Auth/REST/Storage, Tunnel, falhas WAL/backup, erros frontend com revisão de privacidade, healthchecks e rollback. Ferramenta/limiares ainda dependem de decisão.
 
-Implemented for Action Plans: private `action-plan-evidence` bucket, UUID keys, 10 MiB files, JPEG/PNG/PDF/XLSX/DOCX, 20 active items per plan, logical removal, rounds and signed downloads (Evidence/Storage v1, migration 0008). Implemented for Audit Checklist Evidence in PR #11: private `audit-checklist-evidence` bucket, server UUID keys, 10 MiB files, 10 active/criterion and 100/inspection, logical removal, lifecycle-version binding and signed attachment downloads. Magic-byte checks remain client-side, not server attestation.
+## Gate 10 — Contrato do primeiro módulo
 
-Still pending: retention/purge policy and production Storage/backup/header/reconciliation gates for both evidence domains. No universal attachment table is authorized.
+**SOFTWARE FUNCIONAL E HARDENING PRÉ-HOMOLOGAÇÃO INTEGRADOS; ACEITE PENDENTE.**
 
-## Gate 7 — System audit log
+Fontes: [Audit source](../modules/audit/AUDIT_SOURCE_OF_TRUTH.md), [migração](../modules/audit/MIGRATION_MAP.md), [ADR-003](../decisions/ADR-003-action-plans-transversal-module.md), [briefs](../briefs/). Reabertura está implementada. Planos e evidências estão implementados.
 
-Status: **MODEL AND APPLICATION IMPLEMENTED; OPERATIONS PENDING**
+Três saídas aprovadas em 29/09: XLSX da inspeção, XLSX histórico da unidade e impressão/PDF (PR #9). Anexos por critério (PR #11), paginação de histórico acima de 1.000 linhas (PR #13) e hardening pré-homologação (PR #14). A CI histórica do SHA `664ed5a` foi aprovada, **não** representa versão atual. P1–P9 e O1–O8 seguem pendentes.
 
-ADR-005 and migration 0001 define `core.system_audit_log`, actor/time, entity/module/action, before/after payloads, trusted writes and scoped `admin.audit_log.read`. Audit lifecycle, Action Plan changes and evidence add/remove use that capability.
+## O que não deve bloquear a primeira entrega
 
-Still pending: operational retention, monitoring and authorized purge/runbook procedures. Do not confuse the system log with the Quality Audit business module.
+Não antecipar dashboard executivo completo, permissões de todos os domínios, detalhes do ERP de Contratos, schema Frota, notificações futuras, microsserviços, Kubernetes, multi-host HA, blue/green, engine universal de workflow ou integrações especulativas. A Curva ABC v1 foi antecipada depois e já está no repo; isso não muda a regra de evitar trabalho especulativo.
 
-## Gate 8 — Backup and disaster recovery
+## Condição de evolução
 
-Status: **BASELINE DECIDED; IMPLEMENTATION AND OPERATIONAL EVIDENCE PENDING**
-
-Decision:
-- automated backups;
-- local recovery copy where useful;
-- off-site copies;
-- logical PostgreSQL backups;
-- base backup + WAL/PITR;
-- periodic restore drills;
-- Ansible for reproducible recovery.
-
-Still pending:
-- tool choice;
-- storage destination/account;
-- retention;
-- technical RPO and RTO inside/outside operating hours (definition/measurement);
-- restore-test cadence;
-- final runbook.
-
-Operational owner and backup/restore owner: the current person responsible for the project. Alert recipients: the current person responsible for the project and supervisor. The provisional operating window, 24x7 infrastructure expectation and data-preservation requirement are recorded in [BACKUP_RECOVERY.md](BACKUP_RECOVERY.md#operational-decisions-and-provisions--2026-10-01). They do not close O1; numeric RPO/RTO and retention remain pending.
-
-## Gate 9 — Observability and operations
-
-Status: **BASELINE DECIDED; IMPLEMENTATION AND OPERATIONAL EVIDENCE PENDING**
-
-Minimum:
-- host metrics;
-- container health/restarts;
-- PostgreSQL connections/storage/backup health;
-- Supabase service health;
-- Cloudflare Tunnel health;
-- backup/WAL archive failures;
-- frontend error telemetry with privacy review;
-- health checks and rollback procedure.
-
-Tooling remains intentionally open.
-
-## Gate 10 — First-module contract
-
-Status: **FUNCTIONAL SOFTWARE AND PRE-HOMOLOGATION HARDENING COMPLETE; ACCEPTANCE PENDING**
-
-Already defined:
-- Audit source of truth;
-- Audit migration map;
-- transversal Action Plans ownership;
-- first Audit permission catalog;
-- Core schema required by Audit;
-- platform foundation implementation brief.
-
-Resolved: `AUDIT_DOMAIN_V1.md` defines reopen and its implementation exists in migrations 0004/0009 and Audit UI. Action Plans and their evidence are also implemented.
-
-Product decision approved on 2026-09-29: preserve inspection Excel, unit-history Excel and print/PDF. The implementation under `AUDIT_EXPORT_REPORTING_V1.md` is integrated in `main` (PR #9); physical-device acceptance remains pending. Checklist attachments under `AUDIT_CHECKLIST_EVIDENCE_V1.md` are integrated in `main` by PR #11; the unit-history Data API truncation blocker is fixed by PR #13. Pre-homologation hardening is integrated by PR #14. Current post-merge CI `36854366048` passed on `664ed5a95684b15c8035e78c21a413bdbd057103`; E1–E3 remain the accepted product/security contract. Physical/mobile and operational release gates remain pending.
-
-## What does not need to be designed now
-
-Do not block Audit on:
-- final executive dashboard;
-- full permission catalog for all nine modules;
-- ABC schema;
-- Contracts migration details;
-- Fleet schema;
-- every future notification;
-- microservices;
-- Kubernetes;
-- multi-node HA;
-- blue/green deployment;
-- generic workflow engine;
-- speculative integrations.
-
-## Implementation start condition
-
-Foundation and the first Quality domain slices are implemented. Quality v1 functional software and pre-homologation hardening are complete; remaining physical P1–P9 and operational O1–O8 acceptance is tracked in `QUALITY_ACCEPTANCE_V1.md` and summarized in the completion matrix. Gates 7–9 still have implementation and/or operational evidence pending before production rollout; this document does not authorize infrastructure changes or deploys.
-
+Fundação e código da Qualidade v1 estão integrados. Os gates **físicos P1–P9**, **operacionais O1–O8** e itens 7–9 precisam de evidência real antes do rollout. **Este documento não autoriza deploy, reset, alteração de infra ou PROD.**
