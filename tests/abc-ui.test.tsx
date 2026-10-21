@@ -79,6 +79,43 @@ describe("Curva ABC import", () => {
     expect(screen.getAllByText("Bloqueio").length).toBeGreaterThan(0);
   });
 
+  it("explains that .xls is not accepted, without reading it", async () => {
+    api.units.mockResolvedValue([unit]);
+    api.unitSeries.mockResolvedValue([]);
+    renderAt("/abc/units/U1/import");
+    await choose(new File([new Uint8Array([0xd0, 0xcf])], "relatorio.XLS"));
+    expect(await screen.findByText(/formato .xls .* não é aceito/i)).toBeTruthy();
+  });
+
+  it("reports a technical read failure with its cause instead of blaming the file", async () => {
+    api.units.mockResolvedValue([unit]);
+    api.unitSeries.mockResolvedValue([]);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    renderAt("/abc/units/U1/import");
+    const file = new File([new Uint8Array([1])], "relatorio.xlsx");
+    Object.defineProperty(file, "arrayBuffer", { value: async () => { throw new TypeError("leitura negada"); } });
+    await choose(file);
+    expect(await screen.findByText(/Falha técnica ao ler o arquivo neste navegador \(TypeError: leitura negada\)/)).toBeTruthy();
+  });
+
+  it("previews and publishes in a non-secure context without crypto.subtle", async () => {
+    api.units.mockResolvedValue([unit]);
+    api.unitSeries.mockResolvedValue([]);
+    api.publish.mockResolvedValue("R1");
+    api.revisionDetail.mockReturnValue(new Promise(() => {}));
+    vi.stubGlobal("crypto", {});
+    try {
+      renderAt("/abc/units/U1/import");
+      await choose(xlsxFile("01-08_ate_31-08.xlsx"));
+      expect(await screen.findByText(/Validação concluída/)).toBeTruthy();
+      await userEvent.click(screen.getByRole("button", { name: "Publicar relatório" }));
+      await waitFor(() => expect(api.publish).toHaveBeenCalled());
+      expect(api.publish.mock.calls[0][0].payload.file_sha256).toMatch(/^[0-9a-f]{64}$/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("rejects a branch different from the selected unit", async () => {
     api.units.mockResolvedValue([{ ...unit, code: "0002" }]);
     api.unitSeries.mockResolvedValue([]);

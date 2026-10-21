@@ -257,3 +257,13 @@ Diferenças em relação ao texto acima, todas dentro do módulo, conforme o pri
 - **XML não UTF-8.** É rejeitado como `invalid_xml`, mais restritivo que a origem, que aceitava UTF-16 sem DTD.
 - **Avisos.** O navegador envia apenas os avisos que o banco não consegue derivar (nome do arquivo, percentual de subtotal, linha sem preço analítico). O banco acrescenta os seus e exige um único aceite.
 - **Testes.** `tests/abc-database.test.ts` (PGlite e PostgreSQL real via `ABC_TEST_DATABASE_URL`), `tests/abc-import.test.ts` (leitor e parser traduzidos da origem), `tests/abc-ui.test.tsx` e `tests/integration/abc.mjs` (Supabase local real, no job `action-plans-integration`).
+
+## Correções P0 da importação (21/10/2026)
+
+Branch `fix/abc-import-p0-20261021`. Diagnóstico completo, reprodução e matriz em [MATRIZ_EQUIVALENCIA_LEGADO](../modules/abc/MATRIZ_EQUIVALENCIA_LEGADO.md). Nenhuma mudança de schema, RPC, permissão, regra ABC (`abc-70-90-inicio-v1`) ou `parser_version`; o `content_hash` produzido é o mesmo.
+
+- **SHA-256 sem Web Crypto.** `crypto.subtle` só existe em contexto seguro (HTTPS ou `localhost`). Pelo HTTP de LAN do DEV compartilhado a leitura falhava para qualquer planilha. `import/sha256.ts` (FIPS 180-4, sem dependência) é usado quando `crypto.subtle` não existe; o resultado é idêntico.
+- **Prévia alinhada aos limites da RPC.** Textos com caracteres de controle ou acima dos limites do banco (código 60, nome 500, unidade 40, filial 40, modalidade 200) e mais de 20.000 produtos agora bloqueiam na prévia (`INVALID_TEXT`, `TOO_MANY_PRODUCTS`), com célula.
+- **Avisos do navegador agregados por código.** O banco aceita até 50 avisos de até 200 caracteres; o envio de um aviso por linha impedia publicar relatórios com muitas linhas zero/zero.
+- **Mensagens.** Falha técnica no navegador é exibida com a causa (não mais "verifique se é o relatório"); códigos do leitor recebem orientação (por exemplo, planilha salva no Excel); `.xls` recebe mensagem própria.
+- **Testes.** `tests/abc-import-regression.test.ts`, casos novos em `tests/abc-database.test.ts` (payload real do parser publicado em PGlite/PostgreSQL) e `tests/abc-ui.test.tsx`; fase Chromium em `tests/integration/abc.mjs` (XLSX real → Storage → RPC → "Conferir com o arquivo", com e sem `crypto.subtle`, 1280 e 375 px). Gerador sintético com forma de exportação ERP em `tests/abc-erp-workbook.mjs`.

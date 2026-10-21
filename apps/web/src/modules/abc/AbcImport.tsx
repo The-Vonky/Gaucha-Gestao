@@ -62,8 +62,13 @@ export function AbcImport() {
     setAccepted(false);
     setFile(selected ?? null);
     if (!selected || !unit) return;
-    if (!selected.name.toLowerCase().endsWith(".xlsx")) {
-      setReadError("Selecione o arquivo .xlsx exportado do ERP.");
+    const name = selected.name.toLowerCase();
+    if (!name.endsWith(".xlsx")) {
+      setReadError(
+        name.endsWith(".xls")
+          ? "O formato .xls (Excel 97-2003) não é aceito. Exporte o relatório do ERP em .xlsx."
+          : "Selecione o arquivo .xlsx exportado do ERP.",
+      );
       return;
     }
     if (selected.size > api.MAX_FILE_BYTES) {
@@ -74,8 +79,10 @@ export function AbcImport() {
     try {
       const bytes = new Uint8Array(await selected.arrayBuffer());
       setPreview(await parseReport(bytes, { expectedBranchCode: unit.code, today: today(), filename: selected.name }));
-    } catch {
-      setReadError("Não foi possível ler o arquivo. Verifique se é o relatório exportado do ERP.");
+    } catch (e) {
+      // File problems become blockers in the preview; reaching here is a browser or code failure.
+      console.error("Curva ABC: falha técnica na leitura da planilha", e);
+      setReadError(api.readFailureMessage(e));
     } finally {
       setReading(false);
     }

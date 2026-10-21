@@ -49,7 +49,8 @@ export function AbcRevision() {
     setCheck("running");
     try {
       setCheck((await checkFile(d)) ? "ok" : "mismatch");
-    } catch {
+    } catch (e) {
+      console.error("Curva ABC: falha ao conferir o arquivo original", e);
       setCheck("error");
     }
   }
