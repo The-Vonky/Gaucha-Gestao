@@ -1,162 +1,59 @@
-# Security Baseline
+# Linha de base de segurança
 
-## Principle
+## Princípios
 
-Gaúcha Gestão will contain operational, financial, contractual and quality data. Security controls are part of the architecture and acceptance criteria.
+Dados operacionais, financeiros, contratuais e de Qualidade exigem controles em toda a arquitetura. Postura obrigatória: **menor privilégio e negação por padrão**.
 
-The default posture is least privilege and default deny.
-
-## Security layers
-
-Access should be enforced in multiple layers where applicable:
-
-~~~
-User
--> Authentication
--> Session
--> Permission
--> Organizational scope
--> Domain authorization
--> Database/storage boundary
--> Audit log
+~~~text
+Usuário -> Auth -> sessão -> permissão -> escopo
+        -> autorização do domínio -> banco/Storage -> auditoria
 ~~~
 
-Hiding a menu item or button is not authorization.
+Ocultar um botão ou menu **não é autorização**. Ver [modelo](AUTHORIZATION.md).
 
-## Identity
+## Identidade
 
-- One person should have one identifiable account.
-- Shared accounts should be avoided.
-- Account lifecycle must support activation and deactivation.
-- Privileged access must be distinguishable from ordinary access.
-- Supabase Auth is selected by ADR-004/ADR-005 and integrated with active Core profiles.
-- Password/token/session storage must use established platform mechanisms, never custom cryptography.
+- Cada pessoa deve ter conta identificável. Evitar logins compartilhados.
+- Preservar ativação/inativação e distinguir privilégio de acesso comum.
+- Supabase Auth é a identidade aprovada (ADR-004/005); perfis Core ativos condicionam acesso.
+- Senhas/tokens/sessões usam mecanismos consolidados, **não criptografia própria**.
+- Serviço privilegiado de criação/reset (ADR-007) permanece **NO-GO** até [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) e decisão humana.
 
-## Authorization
+## Autorização
 
-Authorization must consider both capability and scope.
+Avaliar **capacidade + escopo**: `fleet.expense.write` e unidade autorizada. Aplicar grants/RLS/RPC no banco, não apenas visibilidade React.
 
-Example:
+## Segredos
 
-~~~
-fleet.expense.write
-+
-unit in user's allowed scope
-~~~
+Não versionar: senhas de banco, material de assinatura, chaves API secretas, SMTP, credenciais Storage, envs produtivos, certificados e chaves privados. Injetar via runtime ou gerenciamento aprovado. `service_role`/secret jamais no browser.
 
-See AUTHORIZATION.md.
+## Dados sensíveis
 
-## Secrets
-
-Secrets must never be committed to Git.
-
-Examples:
-- database passwords;
-- signing secrets;
-- API secret keys;
-- SMTP credentials;
-- object-storage credentials;
-- production environment files;
-- private certificates/keys.
-
-Secrets must be injected by the runtime/environment or an approved secret-management mechanism.
-
-## Sensitive data
-
-Before each module migration, classify the data it stores.
-
-At minimum evaluate:
-- financial sensitivity;
-- contractual/confidential information;
-- personal data;
-- credentials/tokens;
-- uploaded documents;
-- operational data that should be department-restricted.
-
-Collect only data that has a business purpose.
+Antes de cada migração, classificar dados financeiros, contratuais, pessoais, credenciais, arquivos e dados operacionais restritos. Coletar somente com finalidade de negócio.
 
 ## Uploads
 
-Uploaded content is untrusted.
+Arquivos recebidos são **não confiáveis**. Contratos: [Evidence/Storage](../briefs/EVIDENCE_STORAGE_V1.md), [Checklist Evidence](../modules/audit/CHECKLIST_EVIDENCE_V1.md), [Unit Cover](../modules/core/UNIT_COVER_V1.md) e [Curva ABC](../briefs/ABC_DOMAIN_V1.md).
 
-Evidence/Storage v1 defines these controls for Action Plans; Audit Checklist Evidence is governed by its [implementation contract](../modules/audit/CHECKLIST_EVIDENCE_V1.md) and approved brief. Unit cover photos are governed by the Core [Unit Cover v1 contract](../modules/core/UNIT_COVER_V1.md). Each owning module must define:
-- allowed file types;
-- maximum size;
-- object naming;
-- authorization before download;
-- authorization before deletion;
-- metadata ownership;
-- malware/unsafe-file handling as appropriate;
-- backup behavior.
+Cada módulo define tipos aceitos, tamanho, chaves de objeto, permissão para download/remoção, propriedade de metadata, riscos de malware e backup. No banco ficam preferencialmente referências/metadados, não bytes grandes.
 
-Database rows should normally store file metadata/references rather than arbitrary large binary payloads.
+**Curva ABC:** preview XLSX no browser e validação SQL de payload não significam verificação física de bytes pelo servidor; ver [ameaças](THREAT_MODEL.md).
 
-## System audit trail
+## Auditoria sistêmica
 
-Sensitive mutations should produce an immutable or tamper-resistant application audit trail sufficient to answer:
+Mutações sensíveis devem gerar trilha imutável ou resistente a adulteração, com **autor, horário, entidade, ação, dados antes/depois pertinentes e correlação**, sem senhas/segredos. `core.system_audit_log` é diferente do módulo de Auditoria de Qualidade.
 
-- who performed the action;
-- when;
-- which entity was affected;
-- action type;
-- relevant before/after information where justified;
-- request/correlation context where available.
+## Infraestrutura
 
-Do not store secrets in audit payloads.
+Não aprovar produção apenas porque o sistema inicia. Exigir SO/runtime suportados e atualizados, firewall/exposição revisados, TLS nas fronteiras de confiança, serviço de menor privilégio, Postgres protegido, backup configurado **e restauração testada**, segredos separados e logs de segurança/operação.
 
-Application audit logs are separate from Quality Audit business records.
+SO legado sem suporte depende de risco documentado e controles compensatórios.
 
-## Infrastructure baseline
+## Dependências, erros e incidentes
 
-Production must not be approved solely because the application starts successfully.
+- Minimizar bibliotecas, usar lockfile e tratar vulnerabilidades conhecidas; CI determinística.
+- Mensagens ao usuário não expõem stack trace, segredo, detalhes internos de DB ou caminhos sensíveis. Logs também não armazenam credenciais.
+- Agentes não fazem implicitamente deploy, migration produtiva, alteração de segredo ou exclusão de dados.
+- Antes do rollout: definir responsáveis por bloqueio de conta, revogação, consulta de logs, rotação de segredos, rollback e restore.
 
-Before production:
-- supported operating system/runtime;
-- security updates;
-- firewall/network exposure reviewed;
-- TLS where traffic leaves a trusted termination boundary;
-- least-privilege service accounts;
-- database not unnecessarily exposed;
-- backups configured;
-- restore procedure tested;
-- production secrets separated from development;
-- logging available for operational/security investigation.
-
-Legacy unsupported operating systems must not be accepted as the default production design without a documented risk decision and compensating controls.
-
-## Dependency and supply-chain hygiene
-
-- minimize dependencies;
-- pin/lock dependency versions using the ecosystem's standard lockfile;
-- review high-risk dependencies;
-- address known critical vulnerabilities;
-- CI should run deterministic validation.
-
-## Error handling
-
-User-visible errors must not reveal:
-- stack traces;
-- secrets;
-- internal database details;
-- filesystem paths that create unnecessary exposure.
-
-Operational logs may contain technical detail but must still exclude secrets.
-
-## Production changes
-
-Agents and developers must not:
-- deploy implicitly;
-- run production migrations implicitly;
-- modify production secrets implicitly;
-- delete production data without explicit authorization and recovery planning.
-
-## Incident readiness
-
-Before broad rollout, document:
-- who can disable accounts;
-- how access is revoked;
-- how logs are inspected;
-- how a compromised credential is rotated;
-- how a bad deployment is rolled back;
-- how data is restored from backup.
-
+**Produção permanece NO-GO** até gates operacionais e autorização humana.

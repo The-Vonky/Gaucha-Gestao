@@ -1,221 +1,80 @@
-# Authorization Model
+# Modelo de autorização
 
-Status: accepted v1 model  
-Decision reference: ADR-005
+**Estado:** modelo lógico v1 aceito — [ADR-005](../decisions/ADR-005-core-authorization.md). O catálogo inicial abaixo é histórico; o módulo ABC foi acrescentado depois por migration.
 
-## Goal
+## Princípio e equação
 
-Give each person only the capabilities and organizational data required for their work, without hard-coding job titles into application logic.
+Conceder apenas as capacidades e os dados organizacionais necessários, **sem codificar cargos na lógica**.
 
-## Authorization equation
+~~~text
+ACESSO
+= identidade autenticada
++ perfil Core ativo
++ permissão do papel
++ escopo da atribuição de papel
++ regra da linha e do domínio
+~~~
 
-```text
-ACCESS
-=
-authenticated identity
-+ active Core profile
-+ role permission
-+ role-assignment scope
-+ row/domain rule
-```
+Na ausência de autorização inequívoca, **NEGAR**.
 
-Missing or ambiguous authorization means deny.
+## Identidade, papéis e permissões
 
-## Identity
+Supabase Auth autentica. `auth.users.id` liga-se 1:1 a `core.profiles.id`. Sessão Auth válida **não** dá acesso se o perfil Core está inativo.
 
-Supabase Auth authenticates the user.
+Uma **permissão** descreve capacidade (`domain.resource.action`); um **papel** reúne permissões. Aplicação verifica permissões, **não nomes de papéis**.
 
-`auth.users.id` maps one-to-one to `core.profiles.id`.
+Correto: `can('audit.inspection.finalize')`. Incorreto: `role === 'qualidade'`.
 
-Authentication does not imply business access.
+Cada usuário pode receber múltiplas atribuições com **escopos independentes**:
 
-A valid session with an inactive Core profile receives no application data access.
+~~~text
+Ana: Qualidade @ global
+Bruno: Qualidade @ CMD; Frota @ Matriz
+Carla: Visualizador de Qualidade @ HRAD / setor Nutrição
+~~~
 
-## Roles and permissions
+| `scope_type` | Alcance |
+| --- | --- |
+| `global` | Todos os registros organizacionais pertinentes à permissão |
+| `unit` | Somente registros da unidade da atribuição |
+| `sector` | Somente registros do setor na unidade correspondente |
 
-A Permission describes one capability.
+Atribuição de unidade não cobre outra unidade; atribuição setorial não concede automaticamente acesso a registros gerais da unidade.
 
-Pattern:
+## Primeiro catálogo de permissões (referência v1)
 
-```text
-domain.resource.action
-```
+**Auditoria:** `audit.inspection.read`, `audit.inspection.create`, `audit.inspection.edit`, `audit.inspection.finalize`, `audit.inspection.reopen`, `audit.inspection.export`.
 
-A Role is only a reusable bundle of permissions.
+**Planos de Ação:** `action_plan.read`, `action_plan.create_manual`, `action_plan.write`, `action_plan.verify`.
 
-Application code checks permissions, not role names.
+**Administração:** `admin.user.read`, `admin.user.manage`, `admin.role.read`, `admin.role.manage`, `admin.unit.read`, `admin.unit.manage`, `admin.sector.read`, `admin.sector.manage`, `admin.audit_log.read`.
 
-Correct:
+**Core:** `core.unit_cover.read` permite ler capas de unidades; presente historicamente nos papéis `platform_administrator`, `quality`, `quality_viewer`. Gerenciar capa requer `admin.unit.manage`; ver [Unit Cover](../modules/core/UNIT_COVER_V1.md).
 
-```text
-can('audit.inspection.finalize')
-```
+Não antecipar permissões de módulos **não implementados**. A Curva ABC acrescentou permissões próprias depois; consultar [mapa atual](IMPLEMENTATION_MAP.md).
 
-Incorrect:
+## Navegação e aplicação no banco
 
-```text
-role === 'qualidade'
-```
+O menu deriva das permissões efetivas, mas sua ocultação é apenas **UX**. A autoridade está em grants, **RLS e RPCs** no banco.
 
-## Scoped role assignments
+Toda tabela acessível pela Data API tem **grants explícitos, RLS ativo e políticas baseadas em permissão/escopo**. Schemas expostos no desenho inicial: `core`, `audit`, `action_plans`; atualmente também `abc`. Helpers sensíveis ficam em schemas não expostos como `private`.
 
-Users can have multiple roles and each assignment carries its own scope.
+Helpers conceituais: `is_active_user()`, `has_global_permission(permission)`, `has_unit_permission(permission, unit_id)`, `has_scoped_permission(permission, unit_id, sector_id)`. Centralizá-los, evitando reescrever EXISTS por módulo. `SECURITY DEFINER` exige `search_path` fixo e `EXECUTE` restrito.
 
-Examples:
+Recursos com `unit_id` usam autorização da unidade; com `unit_id`/`sector_id`, autorização do setor; operação administrativa global requer atribuição global quando aplicável. **Autorização não substitui invariantes de negócio.**
 
-```text
-Ana
-└── Quality @ global
+## Exportação, arquivos e Realtime
 
-Bruno
-├── Quality @ CMD
-└── Fleet @ Matriz
+Exportação nunca contorna escopo de leitura. Anexos herdam autorização da entidade de negócio e capacidade pertinente de escrita/remoção. Conhecer um object key/ID não concede acesso.
 
-Carla
-└── Quality Viewer @ HRAD / Nutrition sector
-```
+Realtime, quando usado, deve respeitar RLS/escopo como uma leitura comum; ele **não faz parte do Compose mínimo de cinco serviços**.
 
-This prevents permissions from inheriting unrelated organizational scope.
+## Administração e ciclo de vida
 
-## Scope types
+Concessões/revogações exigem permissão administrativa e trilha de auditoria; esconder UI não basta. Administrador da plataforma é papel privilegiado de atribuição global, não bypasss individuais `if admin`.
 
-### global
+Usuários/unidades com referências históricas devem normalmente ser **desativados** e continuar representáveis no histórico.
 
-Permission applies to all applicable organizational records.
+## Testes de autorização
 
-### unit
-
-Permission applies only to records belonging to the assigned unit.
-
-### sector
-
-Permission applies only to records belonging to the specified sector inside the specified unit.
-
-A global assignment covers unit/sector records. A unit assignment covers resources in that unit but does not automatically cover another unit.
-
-## First permission catalog
-
-Audit:
-- `audit.inspection.read`
-- `audit.inspection.create`
-- `audit.inspection.edit`
-- `audit.inspection.finalize`
-- `audit.inspection.reopen`
-- `audit.inspection.export`
-
-Action Plans:
-- `action_plan.read`
-- `action_plan.create_manual`
-- `action_plan.write`
-- `action_plan.verify`
-
-Administration:
-- `admin.user.read`
-- `admin.user.manage`
-- `admin.role.read`
-- `admin.role.manage`
-- `admin.unit.read`
-- `admin.unit.manage`
-- `admin.sector.read`
-- `admin.sector.manage`
-- `admin.audit_log.read`
-
-Core:
-- `core.unit_cover.read` — view unit cover photos (Unit Cover v1); granted to the `platform_administrator`, `quality` and `quality_viewer` system roles only. Cover management requires `admin.unit.manage`. See `docs/modules/core/UNIT_COVER_V1.md`.
-
-Do not create future module permissions before those modules are implemented.
-
-## Navigation
-
-Navigation is derived from effective permissions.
-
-A navigation group is hidden if the user has no permission that unlocks any child destination.
-
-Navigation filtering is UX only. Database/server enforcement remains authoritative.
-
-## Database enforcement
-
-Every table reachable through the Data API has:
-- explicit grants;
-- RLS enabled;
-- policies based on Core permission/scope helpers.
-
-Initial schemas exposed to the client are expected to include:
-- `core`;
-- `audit`;
-- `action_plans`.
-
-Sensitive internal helper routines should live in a non-exposed schema such as `private`.
-
-## Authorization helpers
-
-Conceptual helpers:
-
-```text
-is_active_user()
-
-has_global_permission(permission)
-
-has_unit_permission(permission, unit_id)
-
-has_scoped_permission(permission, unit_id, sector_id)
-```
-
-Helpers are implemented and tested once rather than rewriting complex EXISTS clauses throughout every module.
-
-If SECURITY DEFINER is necessary, use a fixed search path and narrowly granted execution.
-
-## Resource rules
-
-A table with `unit_id` uses unit-scoped permission checks.
-
-A table with `unit_id` + `sector_id` uses scoped checks.
-
-A truly platform-global administrative operation requires a global administrative assignment where appropriate.
-
-Modules may add domain invariants in addition to Core authorization. Authorization does not replace business validation.
-
-## Exports and attachments
-
-Export never bypasses read scope.
-
-An attachment inherits authorization from its owning business entity plus the relevant write/delete capability.
-
-Knowing an object key or entity ID must not grant access.
-
-## Realtime
-
-Realtime subscriptions must not become an authorization bypass.
-
-Subscriptions and resulting row access must respect the same RLS/data-scope model used by ordinary reads.
-
-## Administration
-
-Role, permission and scope changes:
-- require explicit administrative permission;
-- are audited;
-- cannot rely only on UI hiding;
-- preserve historical actor identifiers.
-
-The Platform Administrator is implemented as a privileged role with a global assignment, not scattered `if admin` bypasses.
-
-## Lifecycle
-
-Users and organizational units are normally deactivated, not deleted, once referenced by history.
-
-Deactivation prevents new operational use while preserving auditability and historical joins.
-
-## Testing requirements
-
-Authorization tests must include:
-- inactive user denied;
-- no role denied;
-- permission absent denied;
-- global grant succeeds;
-- correct unit grant succeeds;
-- different unit denied;
-- sector grant succeeds only for matching unit/sector;
-- role with one module does not unlock another;
-- direct guessed IDs do not bypass scope;
-- export respects scope;
-- administrative mutations are audited.
+Negar: usuário inativo, sem papel, sem permissão, unidade incorreta, setor incorreto, acesso a outro módulo por papel indevido e ID adivinhado. Permitir: grant global ou da unidade/setor corretos. Confirmar exportação com escopo, proteção de anexos e auditoria de mutações administrativas.
