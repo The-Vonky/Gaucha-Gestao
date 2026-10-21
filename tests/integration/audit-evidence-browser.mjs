@@ -81,10 +81,10 @@ export async function runBrowser() {
       checkpoint("first file upload");
       const name = "Relatório_" + "critério_longo_".repeat(9) + ".pdf";
       await input.setInputFiles({ name, mimeType: PDF, buffer: bytes });
-      const file = section.locator(".audit-evidence-list .file-item").filter({ hasText: name });
+      const file = section.locator(".audit-evidence-list .file-item").filter({ hasText: "Evidência 1.pdf" });
       await file.waitFor();
-      const downloadButton = file.getByRole("button", { name: "Baixar " + name, exact: true });
-      const removeButton = file.getByRole("button", { name: "Remover " + name, exact: true });
+      const downloadButton = file.getByRole("button", { name: "Baixar Evidência 1.pdf", exact: true });
+      const removeButton = file.getByRole("button", { name: "Remover Evidência 1.pdf", exact: true });
       await downloadButton.waitFor();
       assert.equal(await downloadButton.isEnabled(), true);
       assert.equal(await removeButton.isEnabled(), true);
@@ -94,7 +94,7 @@ export async function runBrowser() {
       assert.equal(await downloadButton.evaluate((element) => element === document.activeElement), true);
       checkpoint("original file download");
       const [downloaded] = await Promise.all([page.waitForEvent("download"), page.keyboard.press("Enter")]);
-      assert.equal(downloaded.suggestedFilename(), name);
+      assert.equal(downloaded.suggestedFilename(), "Evidência 1.pdf");
       assert.ok(readFileSync(await downloaded.path()).equals(bytes), "Browser download original bytes");
       assert.equal(page.url(), origin + "/audit/inspections/" + uiInspection + "/checklist", "Download retains current route");
       // Overview evidence list: the long name and "Baixar" each keep their own
@@ -157,7 +157,7 @@ export async function runBrowser() {
         [uiInspection, "upload retry.pdf"])).rows;
       assert.equal(uploadRetry.length, 1);
       await section.getByRole("button", { name: "Tentar novamente", exact: true }).click();
-      await section.getByRole("button", { name: "Baixar upload retry.pdf", exact: true }).waitFor();
+      await section.getByRole("button", { name: "Baixar Evidência 1.pdf", exact: true }).waitFor();
       await page.unroute("**/storage/v1/object/audit-checklist-evidence/**");
       assert.equal((await db.query("select count(*)::int n from audit.checklist_evidence where inspection_id=$1 and original_name=$2",
         [uiInspection, "upload retry.pdf"])).rows[0].n, 1);
@@ -180,18 +180,18 @@ export async function runBrowser() {
       assert.equal(confirmRetry.length, 1);
       assert.equal(await countEvents(confirmRetry[0].id, "evidence_add"), 1);
       await section.getByRole("button", { name: "Tentar novamente", exact: true }).click();
-      await section.getByRole("button", { name: "Baixar confirm retry.pdf", exact: true }).waitFor();
+      await section.getByRole("button", { name: "Baixar Evidência 2.pdf", exact: true }).waitFor();
       await page.unroute("**/rest/v1/rpc/confirm_checklist_evidence_upload");
       assert.equal(await countEvents(confirmRetry[0].id, "evidence_add"), 1);
 
       // Missing actual Storage object remains a visible file with an explicit download error.
       checkpoint("missing storage object");
       must(await service.storage.from(BUCKET).remove([uploadRetry[0].object_key]));
-      await section.getByRole("button", { name: "Baixar upload retry.pdf", exact: true }).click();
+      await section.getByRole("button", { name: "Baixar Evidência 1.pdf", exact: true }).click();
       await section.getByText("Arquivo indisponível.", { exact: true }).waitFor();
       must(await service.storage.from(BUCKET).upload(uploadRetry[0].object_key, blob(), { cacheControl: "0" }));
       // Remove retry fixtures through the real application dialog before lifecycle assertions.
-      for (const retryName of ["upload retry.pdf", "confirm retry.pdf"]) {
+      for (const retryName of ["Evidência 2.pdf", "Evidência 1.pdf"]) {
         await section.getByRole("button", { name: "Remover " + retryName, exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "Confirmar", exact: true }).click();
         await section.getByRole("button", { name: "Remover " + retryName, exact: true }).waitFor({ state: "detached" });
@@ -211,19 +211,19 @@ export async function runBrowser() {
       assert.equal((await db.query("select count(*)::int n from audit.checklist_evidence where inspection_id=$1", [uiInspection])).rows[0].n, beforeInvalid);
       checkpoint("valid file after rejected files");
       await input.setInputFiles({ name: "valid.pdf", mimeType: "", buffer: bytes });
-      await section.getByRole("button", { name: "Baixar valid.pdf", exact: true }).waitFor();
+      await section.getByRole("button", { name: "Baixar Evidência 1.pdf", exact: true }).waitFor();
 
       // Client normalizes the basename; v1's ZIP signature intentionally cannot prove OOXML content.
       checkpoint("unicode and document names");
       await input.setInputFiles({ name: "e\u0301.pdf", mimeType: PDF, buffer: bytes });
-      await section.getByRole("button", { name: "Baixar é.pdf", exact: true }).waitFor();
+      await section.getByRole("button", { name: "Baixar Evidência 2.pdf", exact: true }).waitFor();
       await input.setInputFiles({
         name: "limitação.docx",
         mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         buffer: Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00]),
       });
-      await section.getByRole("button", { name: "Baixar limitação.docx", exact: true }).waitFor();
-      for (const normalizedName of ["é.pdf", "limitação.docx"]) {
+      await section.getByRole("button", { name: "Baixar Evidência 3.docx", exact: true }).waitFor();
+      for (const normalizedName of ["Evidência 3.docx", "Evidência 2.pdf"]) {
         await section.getByRole("button", { name: "Remover " + normalizedName, exact: true }).click();
         await page.getByRole("dialog").getByRole("button", { name: "Confirmar", exact: true }).click();
         await section.getByRole("button", { name: "Remover " + normalizedName, exact: true }).waitFor({ state: "detached" });
@@ -261,7 +261,7 @@ export async function runBrowser() {
       checkpoint("review after conflict: wait for reviewed file");
       const openedSection = await page.locator('[aria-label="Evidências do critério 1"]').elementHandle();
       try {
-        await section.getByRole("button", { name: "Baixar valid.pdf", exact: true }).waitFor();
+        await section.getByRole("button", { name: "Baixar Evidência 1.pdf", exact: true }).waitFor();
       } catch (error) {
         // Only fixed DOM predicates: no text, requests, responses or fixture/user values.
         const signals = await page.evaluate((opened) => {
@@ -272,7 +272,7 @@ export async function runBrowser() {
             sectionPresent: !!current,
             sectionHidden: !!current?.closest("[hidden]"),
             toggleExpanded: toggle?.getAttribute("aria-expanded") === "true",
-            reviewedFilePresent: !!current?.querySelector('[aria-label="Baixar valid.pdf"]'),
+            reviewedFilePresent: !!current?.querySelector('[aria-label="Baixar Evidência 1.pdf"]'),
           };
         }, openedSection);
         console.error("DIAG conflict review DOM " + JSON.stringify(signals));
@@ -296,11 +296,11 @@ export async function runBrowser() {
       )).rows[0].ids;
       assert.ok(browserSnapshot.includes(remoteFile.evidence_id), "Finalization includes the reviewed hidden section file");
       assert.ok(await add.count() === 0 || await add.isDisabled(), "Finalized has no enabled upload control");
-      const readOnlyRemove = section.getByRole("button", { name: "Remover valid.pdf", exact: true });
+      const readOnlyRemove = section.getByRole("button", { name: "Remover Evidência 1.pdf", exact: true });
       assert.ok(await readOnlyRemove.count() === 0 || await readOnlyRemove.isDisabled(), "Finalized has no enabled removal");
       checkpoint("read-only download");
       const [finalDownload] = await Promise.all([
-        page.waitForEvent("download"), section.getByRole("button", { name: "Baixar valid.pdf", exact: true }).click(),
+        page.waitForEvent("download"), section.getByRole("button", { name: "Baixar Evidência 1.pdf", exact: true }).click(),
       ]);
       assert.ok(readFileSync(await finalDownload.path()).equals(bytes));
       checkpoint("reopen inspection");
@@ -312,7 +312,7 @@ export async function runBrowser() {
       assert.equal(await add.isEnabled(), true);
       checkpoint("post-reopen file upload");
       await input.setInputFiles({ name: "reopened.pdf", mimeType: PDF, buffer: bytes });
-      await section.getByRole("button", { name: "Baixar reopened.pdf", exact: true }).waitFor();
+      await section.getByRole("button", { name: "Baixar Evidência 2.pdf", exact: true }).waitFor();
       assert.equal((await list("ui", uiInspection)).length, 3);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Reopened evidence fits viewport");
       await context.close();

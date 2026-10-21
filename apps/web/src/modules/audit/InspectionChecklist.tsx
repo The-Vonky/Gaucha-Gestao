@@ -12,6 +12,7 @@ export function InspectionChecklist() {
     editable,
     stale,
     confirming,
+    finalization,
     evidence,
     current,
     index,
@@ -85,13 +86,17 @@ export function InspectionChecklist() {
           >
             Seção anterior
           </button>
-          <button
+          {index === sections.length - 1 ? (finalization.allowed && <div className="audit-finalize-action">
+            <button type="button" className="primary" disabled={!!finalization.reason}
+              aria-describedby={finalization.reason ? "audit-checklist-finalize-reason" : undefined}
+              onClick={finalization.request}>Finalizar auditoria</button>
+            {finalization.reason && <p id="audit-checklist-finalize-reason" role="status">{finalization.reason}</p>}
+          </div>) : <button
             type="button"
-            disabled={index >= sections.length - 1}
             onClick={() => select(sections[index + 1].key)}
           >
             Próxima seção
-          </button>
+          </button>}
         </div>
       </section>
     </div>

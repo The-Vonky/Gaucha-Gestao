@@ -462,7 +462,7 @@ describe("PostgreSQL Core migration and RLS", { concurrent: false }, () => {
       )
     ).rows[0];
     expect(detail.role.version).toBe(1);
-    expect(detail.permission_keys).toHaveLength(20);
+    expect(detail.permission_keys).toHaveLength(22);
     await login(ids.empty);
     expect(
       (await db.query("select * from core.role_detail($1)", [id])).rows,

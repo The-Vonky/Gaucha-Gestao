@@ -42,6 +42,7 @@ const buckets = {
   'action-plan-evidence': [10485760, 'application/pdf'],
   'audit-checklist-evidence': [10485760, 'application/pdf'],
   'unit-covers': [1048576, 'image/jpeg'],
+  'abc-source-files': [10485760, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
 };
 const tag = randomBytes(8).toString('hex');
 const email = `infra-${tag}@example.invalid`;
@@ -77,7 +78,7 @@ try {
   }
   assert.ok(passwordRejected);
   console.log('smoke: postgres authenticates with POSTGRES_PASSWORD and rejects an incorrect password');
-  const appSchemas = ['core','private','audit','action_plans','action_plans_private','audit_private'];
+  const appSchemas = ['core','private','audit','action_plans','action_plans_private','audit_private','abc','abc_private'];
   const schemaNames = appSchemas.map(name=>`'${name}'`).join(',');
   const ownership = JSON.parse(sql(`select json_build_object(
     'schemas', (select json_agg(json_build_object('name',nspname,'owner',pg_get_userbyid(nspowner)))
@@ -95,7 +96,7 @@ try {
   }
 
   step = 'REST exposed schemas';
-  const schemas = ['public','graphql_public','core','audit','action_plans'];
+  const schemas = ['public','graphql_public','core','audit','action_plans','abc'];
   // Reload is asynchronous; bound readiness polling rather than sleeping blindly.
   for (const schema of schemas) {
     let response;
@@ -174,7 +175,7 @@ try {
     assert.equal(sql(`select ${routine}('smoke.pdf','application/pdf',10485760) is null`), 't');
     assert.equal(sql(`select ${routine}('smoke.pdf','application/pdf',10485761) is not null`), 't');
   }
-  console.log('smoke: exactly three private buckets verified (two 10 MiB PDF evidence, one 1 MiB JPEG unit-covers) and evidence 10 MiB boundaries');
+  console.log('smoke: exactly four private buckets verified (two 10 MiB PDF evidence, one 1 MiB JPEG unit-covers, one 10 MiB XLSX abc-source-files) and evidence 10 MiB boundaries');
 
   step = 'Storage file upload/sign/download/delete';
   // A complete one-page PDF, with byte offsets and stream length computed in ASCII.

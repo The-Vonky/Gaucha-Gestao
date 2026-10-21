@@ -37,7 +37,7 @@ export async function removeEvidence(id:string){
  const {error}=await db().rpc("remove_checklist_evidence",{p_evidence:id});
  if(error)throw error;
 }
-export async function downloadUrl(e:ChecklistEvidence){
+export async function downloadUrl(e:ChecklistEvidence,name=e.original_name){
  if(!client)throw new Error("Configuração indisponível.");
  const {data,error}=await client.storage.from(BUCKET).createSignedUrl(e.object_key,60);
  if(error)throw error;
@@ -45,11 +45,11 @@ export async function downloadUrl(e:ChecklistEvidence){
  const url=new URL(data.signedUrl);
  const origin=import.meta.env.VITE_SUPABASE_URL;
  if(origin&&url.origin!==new URL(origin).origin)throw new Error("Arquivo indisponível.");
- url.searchParams.set("download",e.original_name);
+ url.searchParams.set("download",name);
  return url.href;
 }
-export async function downloadEvidence(e:ChecklistEvidence){
- const url=await downloadUrl(e);
+export async function downloadEvidence(e:ChecklistEvidence,name=e.original_name){
+ const url=await downloadUrl(e,name);
  // Check the actual bytes endpoint before starting a same-tab attachment download.
  // A missing backend file must be shown as unavailable even when signing succeeds.
  const response=await fetch(url,{method:"HEAD",cache:"no-store"});

@@ -4,6 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   act,
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -14,6 +15,7 @@ import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router-dom
 import { ChecklistEvidence } from "../apps/web/src/modules/audit/ChecklistEvidence";
 import type { EvidenceController } from "../apps/web/src/modules/audit/useChecklistEvidence";
 import { InspectionPage } from "../apps/web/src/modules/audit/InspectionPage";
+import { Result } from "../apps/web/src/modules/audit/Result";
 import { UnitPage } from "../apps/web/src/modules/audit/UnitPage";
 import { AuditOverview } from "../apps/web/src/modules/audit/AuditOverview";
 import { NewInspection } from "../apps/web/src/modules/audit/NewInspection";
@@ -35,7 +37,7 @@ const api = vi.hoisted(() => ({
   createInspection: vi.fn(),
 }));
 vi.mock("../apps/web/src/modules/audit/api", () => api);
-const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async()=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
+const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async()=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),downloadUrl:vi.fn(async()=>"https://storage.test/image?token=test"),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
 vi.mock("../apps/web/src/modules/audit/evidence",()=>evidenceApi);
 const plansApi = vi.hoisted(() => ({ summaries: vi.fn(async () => [] as unknown[]) }));
 vi.mock("../apps/web/src/modules/action-plans/api", () => plansApi);
@@ -145,6 +147,47 @@ describe("audit navigation", () => {
   });
 });
 describe("inspection page", () => {
+  it.each([[50, "inadequate"], [51, "partial"], [76, "adequate"]] as const)("uses the same band at %s%% while retaining the partial label", (score, band) => {
+    const draft = summary({ total_items: 100, answered: 100, at_count: score, nat_count: 100 - score });
+    const { container, rerender } = render(<Result summary={draft} />);
+    expect(container.querySelector(`.audit-result.${band}`)).toBeTruthy();
+    expect(screen.getByText(/Parcial · em andamento/)).toBeTruthy();
+    rerender(<Result summary={{ ...draft, status: "finalized", final_score: score, final_classification: band }} />);
+    expect(container.querySelector(`.audit-result.${band}`)).toBeTruthy();
+    expect(screen.queryByText(/Parcial · em andamento/)).toBeNull();
+  });
+  it("opens and closes the incomplete warning from either finalization button without finalizing", async () => {
+    const user = userEvent.setup();
+    setup(summary(), items.map(i => answer(i.key, null)));
+    const top = await screen.findByRole("button", { name: "Finalizar" });
+    expect((top as HTMLButtonElement).disabled).toBe(false);
+    expect(top.parentElement?.className).toBe("audit-hero-actions");
+    expect(screen.queryByText(/Responda todos os critérios/)).toBeNull();
+    await user.click(top);
+    const dialog = screen.getByRole("dialog", { name: "Auditoria incompleta" });
+    expect(dialog.textContent).toContain("Ainda restam 3 critérios sem resposta. Responda todos os critérios antes de finalizar a auditoria.");
+    expect(api.finalize).not.toHaveBeenCalled();
+    expect(evidenceApi.pendingCount).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Entendi" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Próxima seção" }));
+    const last = screen.getByRole("button", { name: "Finalizar auditoria" });
+    expect((last as HTMLButtonElement).disabled).toBe(false);
+    await user.click(last);
+    expect(screen.getByRole("dialog", { name: "Auditoria incompleta" })).toBeTruthy();
+    expect(api.finalize).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Próxima seção" })).toBeNull();
+  });
+  it("opens the shared evidence confirmation from the last section", async () => {
+    const user = userEvent.setup();
+    setup(summary({ answered: 3, at_count: 3 }), items.map(i => answer(i.key, "AT")));
+    await user.click(await screen.findByRole("button", { name: "Próxima seção" }));
+    await user.click(screen.getByRole("button", { name: "Finalizar auditoria" }));
+    await screen.findByRole("dialog");
+    expect(api.finalize).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+    await waitFor(() => expect(api.finalize).toHaveBeenCalledWith("i1", 1, []));
+  });
   it("binds hidden-section evidence and warns pending before finalizing",async()=>{
     const user=userEvent.setup();
     evidenceApi.listEvidence.mockResolvedValue([{id:"e9",item_key:"item-003",original_name:"seção9.pdf",content_type:"application/pdf",size_bytes:10,uploaded_by_name:"Ana",uploaded_at:""}] as never);
@@ -280,9 +323,9 @@ describe("inspection page", () => {
     expect(screen.getByText("1/3 respondidos")).toBeTruthy();
     expect(screen.queryByText(/^Adequada/)).toBeNull();
     expect((screen.getByText("Finalizar") as HTMLButtonElement).disabled).toBe(
-      true,
+      false,
     );
-    expect(screen.getByText(/2 restantes/)).toBeTruthy();
+    expect(screen.queryByText(/2 restantes/)).toBeNull();
   });
   it("shows no conformity for a new inspection", async () => {
     setup(
@@ -583,7 +626,7 @@ describe("inspection page", () => {
     await user.click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByRole("button", { name: "Anexar arquivo ao critério 1" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Baixar laudo.pdf" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Baixar Evidência 1.pdf" })).toBeTruthy();
   });
   it("keeps unsaved observation text and the pending gate across a tab switch", async () => {
     const user = userEvent.setup();
@@ -598,6 +641,11 @@ describe("inspection page", () => {
       expect.objectContaining({ observation: "Ralo aberto" }),
     );
     expect((screen.getByText("Exportar Excel") as HTMLButtonElement).disabled).toBe(true);
+    const finalize = screen.getByRole("button", { name: "Finalizar" });
+    expect((finalize as HTMLButtonElement).disabled).toBe(true);
+    await user.click(finalize);
+    expect(screen.queryByRole("dialog", { name: "Auditoria incompleta" })).toBeNull();
+    expect(api.finalize).not.toHaveBeenCalled();
     await user.click(screen.getByRole("link", { name: /Checklist/ }));
     expect((screen.getAllByLabelText("Observação")[0] as HTMLTextAreaElement).value).toBe("Ralo aberto");
   });
@@ -756,6 +804,51 @@ describe("new inspection", () => {
   });
 });
 describe("Checklist evidence removal errors", () => {
+  it("numbers each criterion deterministically and renumbers after removal/new upload", async () => {
+    const row = { id: "b", inspection_id: "i1", item_key: "item-001", object_key: "key",
+      original_name: "original.pdf", content_type: "application/pdf", size_bytes: 10,
+      created_by: "u", uploaded_by_name: "Ana", uploaded_at: "2026-09-30T12:00:00Z" };
+    const controller: EvidenceController = { data: undefined, error: "", loading: false, uploads: {},
+      reload: vi.fn(), send: vi.fn(), retry: vi.fn(), discard: vi.fn(),
+      rows: [row, {...row,id:"a",original_name:"first.docx"}, {...row,id:"other",item_key:"item-002"}] };
+    const {rerender}=render(<ChecklistEvidence item={items[0]} editable controller={controller}/>);
+    expect(screen.getAllByRole("listitem").map(li=>li.querySelector("strong")?.textContent)).toEqual(["Evidência 1.docx","Evidência 2.pdf"]);
+    await userEvent.click(screen.getByRole("button",{name:"Baixar Evidência 2.pdf"}));
+    expect(evidenceApi.downloadEvidence).toHaveBeenCalledWith(row,"Evidência 2.pdf");
+    rerender(<ChecklistEvidence item={items[0]} editable controller={{...controller,rows:[row]}}/>);
+    expect(screen.getByRole("button",{name:"Baixar Evidência 1.pdf"})).toBeTruthy();
+    rerender(<ChecklistEvidence item={items[0]} editable controller={{...controller,rows:[row,{...row,id:"c",original_name:"new.xlsx",uploaded_at:"2026-10-01T12:00:00Z"}]}}/>);
+    expect(screen.getByText("Evidência 2.xlsx")).toBeTruthy();
+    expect(screen.queryByRole("img")).toBeNull();
+  });
+  it("loads images only when visible, refreshes modal URLs and handles errors and all close controls", async () => {
+    const row = { id: "image", inspection_id: "i1", item_key: "item-001", object_key: "image-key",
+      original_name: "photo.jpg", content_type: "image/jpeg", size_bytes: 10,
+      created_by: "u", uploaded_by_name: "Ana", uploaded_at: "2026-09-30T12:00:00Z" };
+    const controller: EvidenceController = { data: undefined, error: "", loading: false, uploads: {},
+      reload: vi.fn(), send: vi.fn(), retry: vi.fn(), discard: vi.fn(), rows:[row] };
+    const {rerender}=render(<ChecklistEvidence item={items[0]} editable={false} controller={controller} visible={false}/>);
+    expect(evidenceApi.downloadUrl).not.toHaveBeenCalled();
+    rerender(<ChecklistEvidence item={items[0]} editable={false} controller={controller}/>);
+    expect(await screen.findByRole("img",{name:"Evidência 1.jpg"})).toBeTruthy();
+    for(const close of ["button","escape","backdrop"]){
+      await userEvent.click(screen.getByRole("button",{name:"Ampliar Evidência 1.jpg"}));
+      const modal=screen.getByRole("dialog");
+      const image=await within(modal).findByRole("img");
+      fireEvent.click(image);
+      expect(screen.getByRole("dialog")).toBeTruthy();
+      if(close==="button")await userEvent.click(within(modal).getByRole("button",{name:"Fechar"}));
+      else if(close==="escape")fireEvent(modal,new Event("cancel",{bubbles:true,cancelable:true}));
+      else fireEvent.click(modal);
+      expect(screen.queryByRole("dialog")).toBeNull();
+    }
+    expect(evidenceApi.downloadUrl).toHaveBeenCalledTimes(4);
+    fireEvent.error(screen.getByRole("img"));
+    expect(screen.getByText("Imagem indisponível.")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button",{name:"Tentar novamente"}));
+    expect(await screen.findByRole("img")).toBeTruthy();
+    expect(screen.queryByRole("button",{name:/Remover/})).toBeNull();
+  });
   it.each([
     ["55000", "Esta operação não é permitida no estado atual do registro."],
     ["42501", "Você não tem permissão para esta operação. Atualize seu acesso."],
@@ -770,7 +863,7 @@ describe("Checklist evidence removal errors", () => {
     };
     evidenceApi.removeEvidence.mockRejectedValueOnce({ code, message: "private SQL detail" });
     render(<ChecklistEvidence item={items[0]} editable controller={controller} />);
-    await user.click(screen.getByRole("button", { name: "Remover laudo.pdf" }));
+    await user.click(screen.getByRole("button", { name: "Remover Evidência 1.pdf" }));
     await user.click(screen.getByRole("button", { name: "Confirmar" }));
     expect(await screen.findByText(expected)).toBeTruthy();
     expect(screen.queryByText(/Verifique sua conexão/i)).toBeNull();

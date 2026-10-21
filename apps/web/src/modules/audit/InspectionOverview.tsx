@@ -7,6 +7,7 @@ import { useInspection } from "./InspectionContext";
 import { formatDate } from "./Result";
 import {
   CLASSIFICATION_LABELS,
+  classify,
   formatScore,
   RESPONSE_LABELS,
   RESPONSES,
@@ -71,7 +72,7 @@ export function InspectionOverview() {
           </div>
           {draft ? (
             <p className="audit-result-line">
-              <strong className="audit-result-value info numeric">
+              <strong className={`audit-result-value ${classify(results.overall.score) ?? ""} numeric`}>
                 {formatScore(results.overall.score)}
               </strong>
               <span>

@@ -64,10 +64,10 @@ export function PrintSurface({ report, onClose }: { report: AuditReport; onClose
           </li>)}</ol>
         </section>)}
       </> : <>
-        <p>Aplicação desde: {date(report.filters.from)} · até: {date(report.filters.to)} (inclusive) · {report.record_count} registros</p>
+        <p className="report-period"><strong>Período de aplicação</strong><br />Desde: {report.filters.from ? date(report.filters.from) : "Sem limite inicial"} · até: {report.filters.to ? date(report.filters.to) : "Sem limite final"} (inclusive) · {report.record_count} registros</p>
         <p>Ordenação: {report.ordering}</p>
         {report.record_count === 0 && <p>Nenhuma auditoria no período selecionado.</p>}
-        <table className="report-history"><thead><tr><th>Aplicação / ID</th><th>Responsável</th><th>Estado / progresso</th><th>Contagens</th><th>Conformidade / delta</th></tr></thead>
+        <table className="report-history"><caption>{report.unit.code} · {report.unit.name} — {report.record_count} auditorias</caption><thead><tr><th scope="col">Aplicação / ID</th><th scope="col">Responsável</th><th scope="col">Estado / progresso</th><th scope="col">Contagens</th><th scope="col">Conformidade / delta</th></tr></thead>
           <tbody>{report.records.map((i) => <tr key={i.id}>
             <td>{date(i.applied_on)}<small>{i.id}</small></td>
             <td>{i.responsible_name}</td><td>{status(i)}<small>{i.counts.answered}/{i.counts.total}</small></td>
