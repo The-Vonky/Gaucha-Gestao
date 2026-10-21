@@ -32,6 +32,13 @@
 | D10 | Qualidade v1 em aparelhos Android/iOS e ambientes válidos | [P1–P9 / O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md) com evidência e sign-off | Proibido classificar v1 como homologada |
 | D11 | Categoria/ownership real do legado chamado Registros ISO/Propostas ISO | Inventário funcional e dono da informação; [MODULE_ROADMAP](../migration/MODULE_ROADMAP.md) | Implementação de migração ISO bloqueada |
 | D12 | Cópia/recuperação de objetos em R2 e política de headers/links | Design testado em staging/infra real | Não assumir que R2, CDN ou signed URL resolvem backup e proteção |
+| D13 | Curva ABC (matriz D1): aceitar partes inertes (tema, `docProps/custom.xml`) de planilha salva no Excel | Amostra real reexportada; nova `parser_version`; recusa de imagens/macros/`calcChain` mantida | Planilha salva no Excel é recusada com orientação de reexportar do ERP |
+| D14 | Curva ABC (D2): suporte a `.xls` | Recomendação: **não aprovar** (sem leitor seguro no navegador) | `.xls` recusado com mensagem própria |
+| D15 | Curva ABC (D3): cadastro de categorias comerciais e associação por código ERP, permissão `abc.category.manage` | Brief com modelo, RLS, auditoria e "Não classificado" explícito | Área Categorias mostra só classes A/B/C; nenhuma inferência por prefixo |
+| D16 | Curva ABC (D4): ajuste manual auditável de itens | Brief; manter revisão imutável (tabela de ajustes, `abc.report.adjust`) | Correção somente por nova revisão (reexportação) |
+| D17 | Curva ABC (D5): exportação em planilha (e se exige `abc.report.export`) | Decisão de governança sobre exportação | Só impressão/PDF pelo navegador nos Relatórios |
+| D18 | Curva ABC (D6): comparação entre unidades | Confirmação de que o código ERP identifica o mesmo produto em todas as filiais; leitura das duas unidades | Comparação somente dentro de uma unidade |
+| D19 | Curva ABC (D7): repetir "período fechado" na RPC de publicação | Aprovação de migration pequena | Regra aplicada só na prévia do navegador |
 
 **Registro de decisão:** cada Dnn exige uma issue/ADR ou ata referenciável contendo autor, data, alternativas, impacto, aprovação, SHA e requisitos de testes. Apenas a existência de exemplo de env, diagrama ou PR Draft **não resolve** o item.
 

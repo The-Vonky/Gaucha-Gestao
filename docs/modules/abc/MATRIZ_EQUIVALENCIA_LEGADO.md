@@ -84,6 +84,8 @@ Uma planilha **salva novamente no Excel** é recusada (`unsupported_part`), conf
 
 ## 4. Decisões que exigem aprovação
 
+Registradas como D13–D19 no [registro de decisões](../../planning/DECISION_REGISTER.md) (D1 → D13 … D7 → D19).
+
 | ID | Decisão | Recomendação | Impacto se aprovada |
 | --- | --- | --- | --- |
 | D1 | Aceitar partes inertes de planilhas salvas no Excel (`xl/theme/*`, `docProps/custom.xml`), sem lê-las | Aprovar somente após uma amostra real reexportada; manter recusa de imagens, macros, `calcChain`, vínculos | Nova `parser_version`, testes de rejeição mantidos |
