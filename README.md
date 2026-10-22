@@ -71,7 +71,7 @@ flowchart LR
 
 **O que o desenho representa:** componentes existentes no **código/stack de laboratório**, não um deploy de produção. Uma sessão JWT estabelece identidade; **RLS, grants e RPCs no banco** aplicam autorização. A interface apenas apresenta opções permitidas — ocultar botão nunca é uma barreira de segurança. Arquivos precisam de **metadados no banco e bytes no Storage** coerentes.
 
-**Produção planejada, ainda não demonstrada:** frontend estático com **Cloudflare Workers Static Assets**, DNS/WAF/Tunnel como entrada, **R2** para objetos e **ThinkStation C30 com Ubuntu Server LTS bare metal** como host do backend. Cloudflare não substitui RLS; R2 não é cópia de segurança independente; Compose num host único não fornece alta disponibilidade. A C30 foi escolhida pelo [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md), **não aprovada como host já operante**.
+**Produção planejada, ainda não demonstrada:** frontend estático com **Cloudflare Workers Static Assets**, DNS/WAF/Tunnel como entrada, **R2** para objetos e **ThinkStation C30 com Ubuntu Server LTS bare metal** como host do backend. Cloudflare não substitui RLS; R2 não é cópia de segurança independente; Compose num host único não fornece alta disponibilidade. A C30 foi escolhida pelo [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md); **já opera STAGING**, mas **não está aprovada como host de produção**.
 
 Para diagramas maiores e arquitetura detalhada: [DIAGRAMS](docs/architecture/DIAGRAMS.md), [WORKFLOWS](docs/architecture/WORKFLOWS.md), [IMPLEMENTATION_MAP](docs/architecture/IMPLEMENTATION_MAP.md) e [THREAT_MODEL](docs/architecture/THREAT_MODEL.md).
 
