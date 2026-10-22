@@ -3,6 +3,10 @@
 **Status: RUNBOOK DE PREPARAÇÃO / PROD NO-GO**, base main após PR #69 (`fed0e0f`, 20/10/2026).
 Autoridades: [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md), [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md), [Plano Diretor](../planning/PLANO_DIRETOR_2026.md), [Aceite O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md). **Não é uma receita de produção executável.**
 
+## Adendo operacional — C30 STAGING real (22/10/2026)
+
+A fotografia principal desta matriz foi produzida antes da instalação real. **Mudança comprovada no STAGING, sem GO de produção:** C30/Ubuntu Server 22.04.5 LTS, cinco serviços Compose `gaucha-staging` com persistência em HDD, 18 migrations `f9f041e`, administrador testado, Caddy ativo/habilitado e HTTPS validado **somente por loopback/SSH**; firewall UFW inativo, nenhuma publicação LAN/internet validada, nem backup off-site ou restore do conjunto atual. A versão `main` avançou e não foi implantada na C30. Ver [inventário](C30_STAGING_AS_BUILT_20261022.md), [runbook](C30_STAGING_RUNBOOK.md), [backups](C30_BACKUP_GAPS.md), [releases](C30_STAGING_RELEASE_GUIDE.md) e [acesso público](STAGING_PUBLIC_ACCESS_PLAN.md). Frases históricas desta matriz indicando STAGING ainda não instalado devem ser lidas como **snapshot de planejamento anterior**, não status atual.
+
 ## 1. Superfícies operacionais
 
 | Superfície | Operação atualmente demonstrável | Operação necessária para PROD | Risco/limite |

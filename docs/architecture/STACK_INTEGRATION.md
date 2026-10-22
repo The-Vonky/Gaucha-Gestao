@@ -2,6 +2,8 @@
 
 **Escopo:** integração lógica atual e implantação futura. **Baseline de código:** main após PR #69 (`fed0e0f`, 20/10/2026). **Não existe produção aprovada neste snapshot.**
 
+> **Atualização operacional 22/10/2026 (não modifica o ADR):** existe STAGING C30 real com Caddy frontend estático e backend Supabase Compose de cinco serviços, com dados/objetos em HDD e TLS interno somente loopback. Ainda **não** é Cloudflare/Workers/R2 produtivo. Código instalado `f9f041e` com 18 migrations, diferente da main mais recente. Detalhes auditáveis no [AS-BUILT](../operations/C30_STAGING_AS_BUILT_20261022.md) e [plano de acesso de testes](../operations/STAGING_PUBLIC_ACCESS_PLAN.md). A matriz histórica abaixo separa implementação no repositório de operações e não é prova de GO.
+
 ## Matriz tecnológica e responsabilidades
 
 | Camada | Stack / fonte real | Função e limite | Estado |

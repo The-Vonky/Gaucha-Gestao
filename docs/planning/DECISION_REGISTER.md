@@ -2,6 +2,8 @@
 
 **Snapshot reconciliado:** 20/10/2026, main após PR #69 (`fed0e0f`). **Não é ata de decisão humana.** Atualizações posteriores de issues/PRs devem ser reconsultadas. Para autoridade, prevalecem ADRs aceitos, [Plano Diretor](PLANO_DIRETOR_2026.md) e evidências de aceite.
 
+> **Adendo de evidência, 22/10/2026:** o STAGING persistente foi instalado na C30 (projeto `gaucha-staging`) e testado por SSH, incluindo HTTPS apenas em loopback. Isso responde **onde o STAGING está operando** para a entrada D06, mas **não** encerra a aprovação formal de isolamento, aceite físico D07, continuidade D02–D04 ou GO D09. Uma URL pública temporária via ngrok é **plano de testes**, não implementação/decisão de produção; ver [AS-BUILT](../operations/C30_STAGING_AS_BUILT_20261022.md), [acesso externo](../operations/STAGING_PUBLIC_ACCESS_PLAN.md) e [lacunas de backup](../operations/C30_BACKUP_GAPS.md).
+
 ## Decisões arquiteturais confirmadas
 
 | ID | Conteúdo | Autoridade | Estado |

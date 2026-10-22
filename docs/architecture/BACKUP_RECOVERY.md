@@ -40,6 +40,12 @@ Evidências, contratos, imagens e XLSX exigem **bytes e metadados** corresponden
 
 Git versiona aplicativo e migrations, **não os dados produtivos**. Deploy deve poder ser reproduzido a partir de versões e definições de configuração.
 
+## Evidência adicional: dumps locais da C30 STAGING (21–22/10/2026)
+
+Com a implantação persistente do baseline `f9f041e` (18 migrations), foram produzidos **quatro dumps manuais locais** e um arquivo de roles/globals em `/var/backups/gaucha-gestao/staging` no SSD da C30, com acesso root. O dump mais recente sucede o bootstrap da conta administrativa. Foram verificadas existência, checksums e lista interna do dump (`pg_restore --list`), **não** o restore funcional dele. Objetos de Storage e segredos/configurações de host **não** estão abrangidos por evidência de recuperação consistente. Não há automação/off-site/cifragem atestadas, retenção, alertas nem PITR. O HDD de dados tem histórico SMART de uso elevado. Portanto os gates O1/O3/O4 seguem **abertos**, mesmo para avanço de STAGING com dados relevantes.
+
+Para lista de artefatos e plano de provas, ver [C30_BACKUP_GAPS](../operations/C30_BACKUP_GAPS.md). O ensaio sintético anterior abaixo é **outra baseline** e não pode ser extrapolado.
+
 ## Ensaio sintético registrado em 19/10/2026
 
 O [relatório da Issue #51](../planning/02_RESTORE_DRILL.md) descreve cópia física **a frio** de três volumes e restore em projeto isolado: **8 DR PASS / DR-08 PARCIAL**, pois os tempos não foram cronometrados adequadamente.

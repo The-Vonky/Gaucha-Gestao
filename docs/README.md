@@ -6,6 +6,10 @@
 
 > **Estado:** código da Fundação Core v2 e Qualidade v1 na main, mas **produção NO-GO**. Este índice organiza e relaciona documentos existentes; não transforma proposta em decisão, não comprova aceite operacional e não autoriza instalação, migração ou deploy.
 
+## C30 STAGING em funcionamento — atualização operacional de 22/10/2026
+
+Os índices e ADRs históricos preservam suas datas originais. Para o estado efetivamente relatado da ThinkStation C30, consultar [inventário AS-IS](operations/C30_STAGING_AS_BUILT_20261022.md), [runbook de diagnóstico](operations/C30_STAGING_RUNBOOK.md), [lacunas de backup](operations/C30_BACKUP_GAPS.md), [release segura](operations/C30_STAGING_RELEASE_GUIDE.md) e [plano de acesso público para testes](operations/STAGING_PUBLIC_ACCESS_PLAN.md). **STAGING ativo e HTTPS somente em loopback não representam PROD GO nem internet publicada.** O servidor está no commit `f9f041e` e não acompanha automaticamente a `main`.
+
 ## Início rápido por objetivo
 
 | Necessidade | Ponto de partida | Aprofundamento |
