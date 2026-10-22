@@ -14,11 +14,11 @@
 | Regras e acesso a dados | PostgreSQL + RLS + funções SQL/RPC + PostgREST | Mutação transacional, escopo, isolamento por unidade/setor, versões/conflitos | **Implementado** conforme migrations e testes |
 | Dados | PostgreSQL 17, schemas auth/core/audit/action_plans/abc; schemas internos privados | Identidade, Core corporativo, auditorias, planos, metadados de evidências | **Implementado**, produção não instalada |
 | Arquivos | Supabase Storage API; buckets privados | Upload de bytes e download assinado; metadata e autorização ficam em contratos de domínio | **Implementado em laboratório/CI** |
-| Armazenamento físico | Filesystem em Compose descartável; R2 preferido para PROD | Persistência dos objetos, distinta do banco | **Local em CI**; **R2 TO-BE** |
+| Armazenamento físico | Filesystem no laboratório e HDD dedicado no STAGING C30; R2 preferido em PROD | Persistência dos objetos distinta do banco; precisa de backup independente | **HDD local em STAGING**; **R2 TO-BE** |
 | Curva ABC v1 | Parser XLSX no navegador, schema abc e bucket abc-source-files | Revisões por unidade/competência, classificação em SQL; conferência posterior do arquivo | **Código na main; homologação pendente** |
-| Gateway self-hosted | Kong + GoTrue + PostgREST + Storage + PostgreSQL | Perfil mínimo de 5 serviços no Compose versionado | **Validado em CI efêmera**, não em host real |
+| Gateway self-hosted | Kong + GoTrue + PostgREST + Storage + PostgreSQL | Perfil mínimo de 5 serviços no Compose | **CI + STAGING persistente real na C30**; **PROD NO-GO** |
 | Distribuição pública | Cloudflare Workers Static Assets, DNS/WAF/Tunnel | Frontend estático e proxy privado controlado | **Decidido TO-BE**, não comprovado |
-| Host | ThinkStation C30 / Ubuntu Server LTS bare metal / Docker Compose | Hospedagem on-premise de instância única | **Host escolhido; aceite operacional e implantação ainda sem evidência suficiente neste repositório** |
+| Host | ThinkStation C30 / Ubuntu Server 22.04.5 LTS / Docker Compose / Caddy | Hospedagem on-premise de STAGING, com 5 serviços e HTTPS loopback confirmados | **STAGING implementado**; **aceite para PROD não comprovado** |
 | Pipeline | GitHub Actions validate e infra-validate | Typecheck, lint, Vitest, build, audit npm, integrações Supabase/Chromium e smoke Compose | **Implementado**, CI não é GO de release |
 | Recuperação | Backups PostgreSQL + WAL/PITR + objetos + cópia off-site + Ansible | Retorno consistente após corrupção/perda do host | **Arquitetura prevista**; ferramenta, retenção e restore operacional pendentes |
 
