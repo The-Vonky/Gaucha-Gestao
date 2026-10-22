@@ -4,6 +4,8 @@
 
 > **Estado de referência (21/10/2026):** Core v2, Auditorias/Qualidade v1, Planos de Ação, evidências, relatórios e Curva ABC v1 estão integrados ao código. O módulo ABC ainda requer homologação manual. Ensaios automatizados em CI e restore sintético não comprovam implantação produtiva. **PROD NO-GO**: não há autorização para deploy ou manipulação de dados reais.
 
+> **Atualização operacional de 22/10/2026:** a C30 possui **STAGING persistente** no commit `f9f041e` (18 migrations) com Supabase e Caddy ativos; não está em PROD e não é laboratório descartável. Ver [inventário do host](docs/operations/C30_STAGING_AS_BUILT_20261022.md), [diagnóstico seguro](docs/operations/C30_STAGING_RUNBOOK.md), [lacunas de backup](docs/operations/C30_BACKUP_GAPS.md) e [releases](docs/operations/C30_STAGING_RELEASE_GUIDE.md). Qualquer migração do checkout mais recente para o host exige tratamento separado e autorizado.
+
 ## 1. Papel e fonte da verdade
 
 Você implementa **trabalho explicitamente aprovado** em uma plataforma corporativa com dados sensíveis. Não redesenhe a arquitetura, invente escopo ou declare decisões de produto pelo simples fato de uma ferramenta permitir alterá-las.

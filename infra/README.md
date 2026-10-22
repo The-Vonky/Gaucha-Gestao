@@ -4,6 +4,8 @@
 
 Referências: [proveniência do upstream](supabase/UPSTREAM.md), [ADR-006 — Proposto](../docs/decisions/ADR-006-infra-v1-reused-hardware.md), [operações](../docs/operations/OPERATIONS_MATRIX.md).
 
+> **Atenção ao STAGING persistente real:** desde 21–22/10/2026 há uma instância **separada** da CI/laboratório na ThinkStation C30, com projeto `gaucha-staging`, HDD persistente, `gaucha-staging.service` e Caddy HTTPS loopback. **Não use o procedimento descartável deste arquivo nesse host/projeto.** Leia [inventário AS-IS](../docs/operations/C30_STAGING_AS_BUILT_20261022.md), [runbook não destrutivo](../docs/operations/C30_STAGING_RUNBOOK.md) e [plano de atualização](../docs/operations/C30_STAGING_RELEASE_GUIDE.md). `scripts/ops/apply-migrations.sh` recusa banco previamente inicializado: não serve para atualizar essa instância.
+
 ## Pré-requisitos e ciclo de vida
 
 Usar **Linux**, Docker Engine, Docker Compose v2 com `up --wait` e `config --format json`, Bash, Node >=22.12, Git, coreutils e ShellCheck. A CI usa runner Ubuntu efêmero. Estes scripts de operação/smoke não precisam de `npm install`.

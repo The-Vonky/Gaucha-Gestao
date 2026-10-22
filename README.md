@@ -7,6 +7,12 @@
 
 **Comece aqui:** [Executar localmente](#primeiros-passos-ambiente-local) · [O que já funciona](#o-que-ja-existe) · [O que falta](#o-que-falta-para-producao) · [Arquitetura](#arquitetura-como-as-pecas-conversam) · [Documentação completa](#onde-encontrar-cada-resposta)
 
+## C30 STAGING operante — fotografia de 22/10/2026
+
+**AS-IS operacional, não PROD:** a ThinkStation C30 já executa Ubuntu Server e um **STAGING persistente** isolado (`gaucha-staging`) com cinco serviços Supabase saudáveis, PostgreSQL/objetos no HDD e administrador autenticado. Frontend estático servido por Caddy; HTTP 4180 e HTTPS 443/4443 **apenas loopback**; HTTPS 443 passou no teste local com certificado validado. Caddy/backend estão habilitados para iniciar com o sistema (reboot de Caddy após habilitação ainda não ensaiado). **Não há acesso público disponível neste snapshot.** Ver [inventário comprovado](docs/operations/C30_STAGING_AS_BUILT_20261022.md) e [runbook seguro](docs/operations/C30_STAGING_RUNBOOK.md).
+
+**Descompasso intencional:** a C30 está no commit **`f9f041e` (18 migrations)**; a `main` do GitHub evoluiu depois disso. Atualizar documentação/merge **não** atualiza o servidor, e upgrades de banco dependem de backup/restore e procedimento separado. Backups locais **manuais** existem, mas off-site, restauração independente do snapshot atual e cópia dos objetos faltam: [lacunas](docs/operations/C30_BACKUP_GAPS.md). Para testes com funcionários fora da empresa, [acesso web temporário com hostname estável está planejado](docs/operations/STAGING_PUBLIC_ACCESS_PLAN.md), **não publicado nem aprovado como produção**.
+
 ## Entenda o projeto em cinco minutos
 
 A empresa mantém vários sistemas separados (auditorias, controles financeiros, agendas, contratos etc.). A Gaúcha Gestão consolida **identidade, unidades, setores, permissões, navegação e auditoria** em um **Core** reutilizável; cada módulo de negócio preserva suas próprias regras e dados. A migração é **incremental**, sem descartar os sistemas antigos antes de validação e plano de retorno.
@@ -65,7 +71,7 @@ flowchart LR
 
 **O que o desenho representa:** componentes existentes no **código/stack de laboratório**, não um deploy de produção. Uma sessão JWT estabelece identidade; **RLS, grants e RPCs no banco** aplicam autorização. A interface apenas apresenta opções permitidas — ocultar botão nunca é uma barreira de segurança. Arquivos precisam de **metadados no banco e bytes no Storage** coerentes.
 
-**Produção planejada, ainda não demonstrada:** frontend estático com **Cloudflare Workers Static Assets**, DNS/WAF/Tunnel como entrada, **R2** para objetos e **ThinkStation C30 com Ubuntu Server LTS bare metal** como host do backend. Cloudflare não substitui RLS; R2 não é cópia de segurança independente; Compose num host único não fornece alta disponibilidade. A C30 foi escolhida pelo [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md), **não aprovada como host já operante**.
+**Produção planejada, ainda não demonstrada:** frontend estático com **Cloudflare Workers Static Assets**, DNS/WAF/Tunnel como entrada, **R2** para objetos e **ThinkStation C30 com Ubuntu Server LTS bare metal** como host do backend. Cloudflare não substitui RLS; R2 não é cópia de segurança independente; Compose num host único não fornece alta disponibilidade. A C30 foi escolhida pelo [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md); **já opera STAGING**, mas **não está aprovada como host de produção**.
 
 Para diagramas maiores e arquitetura detalhada: [DIAGRAMS](docs/architecture/DIAGRAMS.md), [WORKFLOWS](docs/architecture/WORKFLOWS.md), [IMPLEMENTATION_MAP](docs/architecture/IMPLEMENTATION_MAP.md) e [THREAT_MODEL](docs/architecture/THREAT_MODEL.md).
 
