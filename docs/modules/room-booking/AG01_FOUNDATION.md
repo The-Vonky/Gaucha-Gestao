@@ -55,3 +55,22 @@ F2 exige serializar por sala criação de pedido, aprovação, reserva direta e 
 Antes de implantação, basta não aplicar a migration; não existe alteração de ambiente persistente nesta entrega. No laboratório, o descarte do container elimina seu tmpfs. Se futuramente aplicada em ambiente persistente, preservar dados e auditoria e usar forward-fix revisado, sem `DROP ... CASCADE`, edição de migration histórica ou remoção automática de `btree_gist` (pode ter consumidores externos).
 
 Revisão humana deve avaliar ampliação efetiva do administrador, delegação/revogação, privacidade da agenda e futuro contrato transacional. AG-01 não encerra AG-00 humano, AG-04/05 nem gates P1–P9/O1–O8.
+
+## Registro de execução — 23/10/2026
+
+Código validado: `100fc5f2d4bfdc4d7888b7f68b58adc2fd5432d7`; branch preexistente recebida em `2954578` (autorização documental), descendente da main `677a70c`. Escritor da implementação e operador do laboratório: agente Codex desta tarefa. Responsável de produto: solicitante da Issue #87; revisor humano independente ainda não identificado nesta execução.
+
+| Comando | Resultado |
+|---|---|
+| `npm run typecheck` | PASS |
+| `npm run lint` | PASS |
+| `npm test` | PASS: 42 arquivos, 594 testes, sem skips |
+| `npm run build` | PASS; aviso de chunk acima de 500 kB |
+| `npm run verify:build` | PASS |
+| `npm audit --audit-level=moderate` | PASS: zero vulnerabilidades; executado antes do commit sobre as mesmas dependências/lockfile, sem alterações nesses arquivos |
+| `python3 tests/integration/room-booking.py` | PASS no SHA acima: PostgreSQL 17.6, `btree_gist` 1.7, migrations do zero, matriz SQL e duas corridas COMMIT/ROLLBACK |
+| `git diff --check` | PASS |
+
+Container final `gaucha-ag01-fc2e5ed5535c` removido pelo runner; sem volume persistente. A primeira tentativa de inicialização do laboratório falhou por quoting de `listen_addresses`; corrigida no runner, container inicial removido. Testes iniciais apontaram fixture de delegação sem linha visível, contagem histórica de permissões e falta de registro da extensão no backfill; corrigidos antes da execução final verde.
+
+Não executados: integração Auth/PostgREST real, imagem self-host `17.6.1.136`, RPC/UI de AG-02/03, homologação manual, restore/rollback de banco persistente, CI remoto nesta execução local. Nenhum resultado implica autorização de merge ou produção. O commit posterior a `100fc5f` acrescenta somente este registro documental.
