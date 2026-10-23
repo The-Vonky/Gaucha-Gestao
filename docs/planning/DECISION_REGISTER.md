@@ -44,6 +44,27 @@
 
 **Registro de decisão:** cada Dnn exige uma issue/ADR ou ata referenciável contendo autor, data, alternativas, impacto, aprovação, SHA e requisitos de testes. Apenas a existência de exemplo de env, diagrama ou PR Draft **não resolve** o item.
 
+## Agendamento de Salas — adendo de decisões AG-00 (23/10/2026)
+
+**Origem e autoridade:** escolhas relatadas pelo responsável no plano local revisado em 23/10 e na [Issue #83](https://github.com/The-Vonky/Gaucha-Gestao/issues/83), comparadas ao [brief](../briefs/ROOM_BOOKING_V1.md), [aceite](../modules/room-booking/ACCEPTANCE_V1.md) e [roadmap](../migration/MODULE_ROADMAP.md). **Não é ata de aceite assinada**. Os códigos AG-Dn pertencem ao **módulo**, não às decisões D01–D19 de plataforma acima. Sem implementar grants, tabela, RPC ou rota nesta etapa.
+
+| Referência do módulo | Escolha registrada ou situação | Situação do aceite / impacto |
+|---|---|---|
+| **AG-D2** | Pedidos `pending` idênticos podem coexistir; só reservas `confirmed` são mutuamente exclusivas, inclusive sob concorrência. | **Escolha comunicada**, validação operacional da secretária pendente; **F2 é separado**. |
+| **AG-D3** | `booked_for` visível junto de horário e nota da secretária **somente em reservas confirmadas para usuários com `schedule.read`**. `purpose`, `requester_user_id`, fila e decisões privadas. | Escolha comunicada; revisão/aceite de privacidade e secretária pendentes. |
+| **AG-D5-A / C2** | `platform_administrator` com `room_booking.manage` pode delegar gestora **e também tecnicamente operar fila/reservas**. Regra “não opera a fila” é processual. | **Bloqueante de segurança**: revisão humana independente e testes de delegação, revogação e auditoria antes de AG-01. |
+| **AG-D8 — futuro** | `starts_at` estritamente posterior a `now()` do banco/backend, **inclusive horário já transcorrido hoje**; não depender do navegador. | Escolha expressa de 23/10; testes ainda não executados e aceite integral não concedido. |
+| **AG-D8 — fim e limites** | Mesmo dia civil em `America/Sao_Paulo`, `ends_at > starts_at`, fim `<= 23:59`, `timestamptz`; sem expediente, duração mínima/máxima, antecedência máxima ou grade obrigatória de 15 min. | Escolha comunicada; validar borda `23:59`, `[início, fim)`, entrada minuto a minuto, pedido pendente vencido e edição histórica. |
+| **AG-observações** | `secretary_notes` (nome físico **proposto**) livre, editável por `manage` em reserva confirmada/direta, público apenas para `schedule.read`; `purpose` separado e privado. | Escolha comunicada; risco de dado sensível, aviso de privacidade e renderização segura exigem validação. |
+| **AG-C1** | Antecipar **desenvolvimento** do Agendamento em relação à 4ª posição da Fase 2. | Prioridade comunicada; formalizar aceite no PR, preservando gates da Qualidade e PROD NO-GO. |
+| **AG-F2 — ABERTO** | Brief anterior rejeita no envio pedido que cruza reserva **já confirmada**. | **Não decidido:** D2 permite concorrência entre **pendentes**, não decide F2. Não implementar `create_request` antes do aceite. |
+| **AG-D1/D4/D6/D7/D9/D10/D11** | Sala e escopo; papéis e provisionamento; substituta; cancelamento de pedido pendente; avisos internos; rota; reconciliação do legado. | Defaults do brief pendentes de confirmação por responsável/secretária. |
+| **AG-D12** | Homologação antes de qualquer corte e GO global da plataforma. | Restrição obrigatória inalterada; PROD **NO-GO**. |
+
+**Fechamento AG-00:** pendem validação do legado real sem dados pessoais, decisões F2/bordas D8, revisão D5-A independente, aceite de exposição de `booked_for`/notas, D1/D4/D6/D7/D9/D10/D11, prioridade C1 formal, assinaturas e revisão/integração da PR documental. **AG-01 permanece bloqueado.**
+
+**Etapas futuras, numeração canônica:** AG-03 = interface **incluindo fila/editor da secretária**; AG-04 = revisão/QA; AG-05 = homologação. O plano de 19/10 chamava AG-04 a interface e AG-05 o QA; manter o parecer de 21/10 como registro histórico, sem transportar a divergência para o roadmap.
+
 ## Evidência recente que muda a leitura de documentos antigos
 
 - [Issue #51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51) relata **ensaio sintético a frio v2 com restore funcional PASS parcial em 19/10**, com [relatório técnico](02_RESTORE_DRILL.md) preparado na [PR #62](https://github.com/The-Vonky/Gaucha-Gestao/pull/62); a **issue permanece aberta**, pois DR-08 não foi concluído. Trata-se de laboratório, não demonstra backups on-line, WAL/PITR, destino off-site ou restauração de PROD.
