@@ -1,6 +1,6 @@
 # Implementation Brief — Agendamento de Salas v1 (AG-00)
 
-Status: PROPOSTO — produto aprovado pelo responsável; validação da secretária **relatada pelo responsável** (sem ata direta anexada); parecer humano independente de segurança D5-A e aceite formal AG-00 ainda exigidos. **Não autoriza implementação.**  
+Status: **AG-00 documentado na main via PR #85**. O responsável liberou em 23/10/2026 a **elaboração de código AG-01 e testes apenas em branch/laboratório isolados**. Não autoriza ativar/integrar grants privilegiados D5-A sem parecer humano independente, nem rodar migrations em bancos compartilhados, C30/STAGING/PROD.
 Elaboração: 2026-10-20 · Revisão documental: 2026-10-23 (Issue #83)  
 Baseline desta revisão: `main` em `338cd4adb8eab00ff85312833f29919a6294893d`  
 Critérios de aceite: `docs/modules/room-booking/ACCEPTANCE_V1.md`
@@ -86,7 +86,7 @@ A [Issue #83](https://github.com/The-Vonky/Gaucha-Gestao/issues/83) e o plano lo
 | D2 | Pedidos `pending` sobrepostos coexistem; apenas reservas `confirmed` são mutuamente exclusivas sob concorrência. O segundo pedido continua pendente após conflito na aprovação. | Escolha do responsável, **validada com secretária conforme relato de 23/10**; F2 proíbe criar pedidos sobre confirmadas. Testes futuros. |
 | D3 | Na agenda somente de confirmadas, todo usuário autenticado, com perfil ativo e `room_booking.schedule.read`, **deve ver** horário, `booked_for` e `secretary_notes`; `purpose`, identidade técnica de solicitante, fila e decisões continuam privados. Sem acesso anônimo. | Visibilidade **confirmada expressamente pelo responsável** e validada com secretária conforme relato. Exigir proteção técnica e testes de privacidade/renderização segura. |
 | D4 | Quatro permissões e papéis do Core descritos abaixo. `room_booking_requester` é atribuído **explicitamente, usuário a usuário, pelo administrador via Core**, a funcionários autorizados; não há inclusão automática, nem para contas novas. | **Aprovada pelo responsável em 23/10**; conferir autorização da atribuição e dependência de grants da D5-A (revisão de segurança pendente). |
-| D5 (C2) | **Opção A aprovada expressamente pelo responsável, que será administrador geral:** `platform_administrator` recebe `room_booking.manage` para delegar `room_booking_manager` e **também pode operar** fila e reservas (aprovar/recusar/criar/editar/cancelar). A orientação operacional não reduz poder técnico. | **Aceite de produto/risco pelo responsável**, porém **revisão humana independente de segurança antes de AG-01** ainda exigida (delegação, grants, revogação, auditoria). Não afirmar que titular aprovou em nome do revisor. |
+| D5 (C2) | **Opção A aprovada pelo responsável:** `platform_administrator` receberá `room_booking.manage` pleno, podendo delegar e operar a agenda; concessões e revogações auditadas. | **Parecer humano independente de segurança ainda pendente para integração/ativação dos privilégios**. Autorizada apenas elaboração e ensaios de código em branch + banco descartável exclusivo; nenhuma aplicação remota. |
 | D6 | Responsável designa a substituta; administrador atribui **temporariamente** `room_booking_manager` no Core e revoga expressamente no retorno, com auditoria de ambas as ações. | **Aprovada pelo responsável em 23/10**; definir a substituta/autoridade operacional com a secretária. Concessão efetiva depende da revisão de segurança D5-A. |
 | D7 | Solicitante pode cancelar **somente seu próprio pedido `pending` e antes do início previsto** (`starts_at` estritamente futuro aferido pelo banco); não pode cancelar pedido vencido ainda pendente nem reserva confirmada. Pedido vencido aguarda recusa manual (D8). | **Aprovada pelo responsável em 23/10**; validar UX e autorização negativa com a secretária. |
 | D8 | Sem expediente fixo, duração mínima/máxima de negócio, antecedência máxima ou grade obrigatória de 15 minutos. Entrada com horas/minutos livres (`HH:mm`), incluindo faixas como 14:07–14:23. Exigir `ends_at > starts_at`; armazenar `timestamptz` e apresentar hora em `America/Sao_Paulo`. | Escolha expressa do responsável; verificar em testes futuros. |
@@ -214,7 +214,7 @@ A implementação será **totalmente nova**, baseada somente nos contratos da pl
 3. **D5-A:** administrador geral pode delegar e gerir reservas, conforme aprovação expressa do responsável. **Parecer humano independente de segurança ainda pendente**, incluindo avaliação dos grants, segregação funcional, revogação e auditoria.
 4. **D8/F2:** produto decidido; executar testes negativos e de concorrência nas etapas AG-01–AG-05, não antes de existir código.
 5. **D11:** **sem inventário/comparação/importação/reconciliação do legado** como gate; não tocar no ambiente antigo. Transição operacional futura só com GO separado.
-6. **C1/AG-00:** ratificar a prioridade e os aceites na revisão documental rastreável, obter revisão independente da PR, verificar CI no SHA final e realizar merge **somente com autorização humana**. Até então, AG-01 permanece bloqueado.
+6. **C1/AG-00:** a PR #85 já foi integrada à main, e a elaboração de código AG-01 em branch própria foi liberada pelo responsável em 23/10/2026. Parecer independente D5-A, CI/revisão do novo código e autorização de merge/ativação continuam pendentes. Não alterar bancos persistentes.
 
 ## Sequência AG-00 a AG-06 e conciliação histórica
 
@@ -234,4 +234,4 @@ As operações ficam no banco com permissão atual e checagem de perfil ativo; e
 
 ## Próximo passo
 
-Consolidar o relato de validação com a secretária como registro rastreável; documentar aceite da prioridade C1 e do AG-00; obter **parecer humano independente de segurança D5-A**, revisão da PR e checks no SHA final. **Não** exigir inspeção do ZIP, cópia de dados ou reconciliação do legado para AG-01. Só iniciar AG-01 após integração documental autorizada, sem qualquer mudança na C30, DEV compartilhado, STAGING ou PROD.
+**Codificar AG-01 agora, exclusivamente na branch da Issue #87:** elaborar migration incremental, constraints, catálogo e RLS default-deny com testes sintéticos em banco local/descartável exclusivo. O parecer independente D5-A permanece obrigatório **antes de integrar/ativar grants privilegiados**; nada de `db push`, migration vinculada, C30, DEV compartilhado, STAGING ou PROD. Criar PR Draft e submeter à revisão técnica/CI, sem merge automático.

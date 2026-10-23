@@ -1,6 +1,6 @@
 # Agendamento de Salas v1 — Critérios de aceite e matriz de testes
 
-Status: PROPOSTO (AG-00; revisão documental de 23/10/2026, Issue #83) — **sem aceite humano integral**  
+Status: **AG-00 documental integrado pela PR #85**. O responsável autorizou elaborar AG-01 em branch e runtime exclusivos. Revisão independente D5-A segue como gate para integrar/ativar grants; **sem deploy/migration persistente**.
 Brief: `docs/briefs/ROOM_BOOKING_V1.md`
 
 Cada critério indica a etapa que o comprova. Uma etapa só é concluída com evidência executada (comando, SHA e resultado) e não com a afirmação de quem implementou. Itens que dependem de decisões ainda pendentes estão marcados com **[Dn]**.
@@ -13,13 +13,14 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 - [x] **D8 — escolhas expressas do responsável:** aprovação tardia bloqueada com pedido mantido `pending` até recusa manual; impedir edição de horário de reunião iniciada/histórica, permitir correção textual auditada; horas e minutos livres, fim até 23:59.
 - [x] **D8 — campos de correção histórica aprovados pelo responsável:** apenas `booked_for` e `secretary_notes`; `purpose`, horários e demais campos não são editáveis na exceção histórica.
 - [ ] **D8 — validação de bordas:** conferir com a secretária e executar futuramente testes de autorização, versão, precisão, relógio do backend, 23:59 e passagem de tempo em AG-02/04.
-- [ ] **Revisão humana independente de segurança D5-A**, apesar de aprovação do responsável para administrador geral com `room_booking.manage` completo; avaliar grants, delegação, revogação e auditoria **antes de AG-01**.
+- [ ] **Revisão humana independente D5-A para integrar/ativar privilégios**: verificar delegação plena do administrador, grant/revogação/auditoria e RLS. O código pode ser elaborado e testado apenas em isolamento, sem migrations compartilhadas e sem presumir parecer de segurança emitido.
 - [x] **Decisões de produto D1/D4/D6/D7/D9/D10/D11 confirmadas pelo responsável em 23/10/2026**, incluindo atribuição individual explícita de `room_booking_requester` no Core, substituta temporária, cancelamento próprio só antes do início, avisos internos, rota `/rooms` e preservação do legado.
 - [x] **Validação operacional da secretária relatada pelo responsável** para as decisões atuais (D1/D2/D3/D4/D6/D7/D8/D9/D10/D11/F2/observações); sem contato direto nesta sessão.
 - [ ] **Evidência humana rastreável da validação**, com papel, data, escopo e aprovação/revisão documental, sem expor nomes ou dados de reuniões.
 - [x] **D11 substituída:** nova implementação totalmente independente do legado; **não** conferir ZIP/agenda, importar/reconciliar reservas ou modificar instalação antiga como gate de AG-00/AG-01.
 - [ ] Prioridade C1 ratificada formalmente, sem afastar Qualidade P1–P9/O1–O8 e PROD NO-GO.
-- [ ] Registrar relato de validação da secretária e aceite final AG-00 de modo rastreável; concluir revisão independente D5-A e PR documental revisada/integrada; **não iniciar AG-01** antes de fechar todo o gate.
+- [x] PR #85 integrada à main, com decisões do responsável e relato da secretária documentados. Código AG-01 em branch autorizado pelo responsável em 23/10.
+- [ ] Revisão independente D5-A e registro de CI/revisores do novo código **antes de integrar/ativar permissões**, além dos gates operacionais antes de implantação.
 
 ## Critérios funcionais
 
