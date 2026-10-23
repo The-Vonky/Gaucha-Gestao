@@ -1,5 +1,7 @@
 # Agendamento de Salas v1 — Critérios de aceite e matriz de testes
 
+**Adendo de fluxo solo — 23/10/2026:** somente um desenvolvedor humano disponível: o responsável do projeto, que já aprovou D5-A e assumiu explicitamente o risco de não haver segunda revisão humana. O parecer independente listado nos registros históricos **não existe e não deve ser inventado nem exigido como bloqueio do AG-01 ou do merge de sua PR**. Agente implementa, abre PR com testes/CI, riscos e checklist de segurança; titular confere e faz merge. Manter RLS default deny, auditoria, testes negativos e isolamento; deploy/bancos compartilhados continuam NO-GO sem autorização separada.
+
 Status: **AG-00 documental integrado pela PR #85**. O responsável autorizou elaborar AG-01 em branch e runtime exclusivos. Revisão independente D5-A segue como gate para integrar/ativar grants; **sem deploy/migration persistente**.
 Brief: `docs/briefs/ROOM_BOOKING_V1.md`
 

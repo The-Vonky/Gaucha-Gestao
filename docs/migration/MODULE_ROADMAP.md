@@ -1,5 +1,7 @@
 # Roteiro de migração dos módulos
 
+**Adendo operacional — 23/10/2026:** equipe atual formada por **um único desenvolvedor/aprovador humano**. D5-A aprovada pelo titular, e a falta de revisor humano independente é exceção de governança documentada nas Issues #83/#87, não impedimento para preparar e submeter a PR AG-01. CI, testes de autorização e revisão do próprio titular antes do merge permanecem obrigatórios. Implantação e bancos persistentes não estão autorizados.
+
 **Estado revisado em 23/10/2026 (AG-00 / Issue #83):** este documento organiza a **sequência candidata de desenvolvimento**, sem prometer prazos nem autorizar implantação. A fonte de gates é o [Plano Diretor](../planning/PLANO_DIRETOR_2026.md). Curva ABC **v1 integrada na PR #69**; Agendamento de Salas **antecipado como prioridade comunicada pelo responsável**, porém seu AG-00 permanece **PROPOSTO, sem aceite humano integral**. **PROD NO-GO.**
 
 ## Finalidade e critérios de sequenciamento
