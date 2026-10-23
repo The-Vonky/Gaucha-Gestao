@@ -76,7 +76,7 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 | T2 | Exibição correta com o fuso do navegador/processo de teste diferente (por exemplo, `TZ=UTC` e `TZ=Asia/Tokyo`) | AG-03/04 |
 | T3 | Formatos pt-BR em datas e horas | AG-03/04 |
 | T4 | Criação por RPC de pedido ou reserva com **data civil anterior a hoje em São Paulo** é recusada no banco, independentemente de relógio/locale do cliente | AG-01/02/04 |
-| T5 | Criação **hoje** com `starts_at <= now()` do backend/banco (hora passada **ou exatamente agora**) é recusada por RPC; navegador com relógio adiantado/atrasado não contorna a regra | AG-01/02/04 |
+| T5 | Criação **hoje** com `starts_at` menor ou igual ao instante corrente aferido no backend/banco durante a validação (hora passada **ou exatamente agora**) é recusada por RPC; navegador com relógio adiantado/atrasado não contorna a regra | AG-01/02/04 |
 | T6 | Pedido e reserva direta que passam da meia-noite são recusados; término exatamente **23:59** no mesmo dia é permitido se os demais invariantes forem válidos; não converter para 00:00 | AG-01/02/04 |
 | T7 | Durações positivas arbitrárias, sem expediente, antecedência máxima ou grade fixa de 15 minutos, e horários adjacentes com intervalo `[início, fim)` são válidos, observado o limite do dia | AG-01/02/04 |
 | T8 | Backend revalida o instante na gravação após o formulário ficar aberto/relógio avançar; início que deixou de ser futuro é recusado na criação. Resultado de **aprovação de pedido já vencido fica pendente de decisão D8** | AG-00/02/04 |
