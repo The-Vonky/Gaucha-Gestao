@@ -1,3 +1,4 @@
+import { createTestDatabase } from "./pglite";
 import { Postgres } from "./integration/postgres.mjs";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
@@ -83,7 +84,7 @@ async function answerAll(
 beforeAll(async () => {
   db = process.env.AUDIT_TEST_DATABASE_URL
     ? (new Postgres(process.env.AUDIT_TEST_DATABASE_URL) as unknown as PGlite)
-    : new PGlite();
+    : createTestDatabase();
   // Minimal Supabase Auth contract; real PostgreSQL roles, grants, triggers and RLS.
   await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
  create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}', last_sign_in_at timestamptz);

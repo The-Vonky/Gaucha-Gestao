@@ -1,3 +1,4 @@
+import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
 // Representative maximum-size benchmark for audit.unit_history_export (not part of `npm test`).
 // Builds exactly 5,000 inspections for one unit, each with the full answer set of the pinned
 // template (5,000 x 158 inspection_answers), mostly finalized with persisted results, then
@@ -27,7 +28,7 @@ if (url) {
   db = { exec: (sql) => client.query(sql), query: (sql, params) => client.query(sql, params), close: () => client.end() };
   engine = `PostgreSQL ${(await client.query("show server_version")).rows[0].server_version}`;
 } else {
-  db = new PGlite();
+  db = new PGlite({ extensions: { btree_gist } });
   engine = "PGlite";
 }
 const as = (user) => db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub','${user}',false);`);

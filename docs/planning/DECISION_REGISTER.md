@@ -105,3 +105,7 @@
 5. Atualizar este registro, roadmap, diagramas e operação, preservando histórico.
 
 **Proibição:** nenhum item deste arquivo constitui GO implícito, autorização para formatar, resetar banco, provisionar produção, mover dados pessoais ou expor a API.
+
+## Adendo AG-01 — 23/10/2026
+
+O responsável instruiu expressamente iniciar codificação de migration, grants, RLS e testes isolados na branch reservada e abrir PR. Essa autorização atual substitui o bloqueio de início de codificação registrado em AG-00. Não equivale a parecer independente D5-A ou autorização de integração/produção. Ver [contrato implementado para revisão](../modules/room-booking/AG01_FOUNDATION.md); registrar parecer humano antes de merge.

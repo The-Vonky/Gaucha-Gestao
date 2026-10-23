@@ -88,3 +88,7 @@ Usuários/unidades com referências históricas devem normalmente ser **desativa
 ## Testes de autorização
 
 Negar: usuário inativo, sem papel, sem permissão, unidade incorreta, setor incorreto, acesso a outro módulo por papel indevido e ID adivinhado. Permitir: grant global ou da unidade/setor corretos. Confirmar exportação com escopo, proteção de anexos e auditoria de mutações administrativas.
+
+## Agendamento de Salas — fundação AG-01
+
+Catálogo `room_booking.schedule.read`, `room_booking.request.create`, `room_booking.request.read_own` e `room_booking.manage`; solicitante recebe as três primeiras, gestor e administrador recebem as quatro (D5-A). Papéis novos `global_only`, sem atribuição automática. Schema privado e tabelas sem acesso direto, RLS restritiva; RPCs autorizadas e leitura saneada somente em AG-02. Ver [contrato AG-01](../modules/room-booking/AG01_FOUNDATION.md). Implementação autorizada para revisão em 23/10; parecer independente e merge continuam pendentes.

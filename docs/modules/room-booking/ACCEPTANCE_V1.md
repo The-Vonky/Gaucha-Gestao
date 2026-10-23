@@ -132,3 +132,7 @@ A numeração **canônica** é **AG-03: interface completa (inclusive secretaria
 - [ ] **Não importar/reconciliar reservas antigas** no novo módulo. Definir de modo independente se, quando e como ocorrerá qualquer transição/desativação da solução legada, sem acessar dados reais nesta etapa.
 - [ ] Preservar a solução antiga enquanto vigente; qualquer desativação/corte e início de uso oficial do novo módulo dependem de GO operacional separado, sem presumir duas agendas oficiais em paralelo.
 - [ ] Plano de continuidade, backup e rollback de eventual transição aprovado em AG-06; **sem reconciliação/importação de dados antigos** por padrão.
+
+## Evidência AG-01 em revisão
+
+Implementação autorizada expressamente pelo responsável em 23/10/2026, após a PR #85. Ver [fundação e roteiro reproduzível](AG01_FOUNDATION.md). Testes da fundação não encerram critérios que dependem de RPC/UI, Auth/REST reais ou homologação. Parecer independente ainda pendente; nenhum gate humano marcado como concluído.
