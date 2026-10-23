@@ -2,7 +2,7 @@
 
 **Atualização de autoridade AG-01, 23/10/2026 — mantenedor único:** o responsável confirmou que é o único desenvolvedor e aprovador do projeto. A decisão de produto D5-A está aprovada. Não existe parecer humano independente, e a exigência histórica de segundo revisor é registrada como **exceção de governança com risco residual assumido pelo titular**, conforme Issues #83/#87. **O agente deve codificar schema, RLS e grants propostos e abrir PR normalmente; o próprio titular decide o merge após diff, CI e testes.** Não apresentar uma revisão independente inexistente. Continuam proibidas migrations em DEV compartilhado, C30/STAGING/PROD, uso de dados reais e ativação em ambiente persistente sem autorização operacional explícita.
 
-Status: **AG-00 documentado na main via PR #85**. O responsável liberou em 23/10/2026 a **elaboração de código AG-01 e testes apenas em branch/laboratório isolados**. Não autoriza ativar/integrar grants privilegiados D5-A sem parecer humano independente, nem rodar migrations em bancos compartilhados, C30/STAGING/PROD.
+Status: **AG-00 integrado na main via PR #85; AG-01 implementado para revisão na PR #88.** O responsável único aprovou D5-A e a revisão final pelo próprio mantenedor com CI/testes (exceção de governança documentada). O desenvolvimento e o teste manual utilizam o **Supabase/Docker local existente**, sem criar nova infraestrutura; migrations incrementais locais devem preservar dados e ter destino verificado. Não há autorização para deploy, reset ou mudanças em STAGING/PROD.
 Elaboração: 2026-10-20 · Revisão documental: 2026-10-23 (Issue #83)  
 Baseline desta revisão: `main` em `338cd4adb8eab00ff85312833f29919a6294893d`  
 Critérios de aceite: `docs/modules/room-booking/ACCEPTANCE_V1.md`

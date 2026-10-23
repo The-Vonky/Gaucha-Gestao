@@ -6,6 +6,14 @@
 
 > **Atualização operacional de 22/10/2026:** a C30 possui **STAGING persistente** no commit `f9f041e` (18 migrations) com Supabase e Caddy ativos; não está em PROD e não é laboratório descartável. Ver [inventário do host](docs/operations/C30_STAGING_AS_BUILT_20261022.md), [diagnóstico seguro](docs/operations/C30_STAGING_RUNBOOK.md), [lacunas de backup](docs/operations/C30_BACKUP_GAPS.md) e [releases](docs/operations/C30_STAGING_RELEASE_GUIDE.md). Qualquer migração do checkout mais recente para o host exige tratamento separado e autorizado.
 
+## Regra operacional vigente — mantenedor único e desenvolvimento local (23/10/2026)
+
+**A equipe atual possui um único desenvolvedor/mantenedor humano, que também decide o merge.** O agente pode implementar código, abrir PR, executar testes e recomendar correções. A decisão final de integração é do titular; **não exigir segundo desenvolvedor, revisão humana independente ou parecer D5-A como condição inexistente** para desenvolver e revisar a PR de Agendamento. D5-A já foi aprovada em produto, com risco de ampliação de `room_booking.manage` assumido pelo mantenedor (Issues #83/#87). Não afirmar que uma revisão independente inexistente aconteceu. Registrar na PR: CI, testes negativos de RLS/permissões, diff revisado, riscos e aceite do titular. **Não eliminar controles de segurança só por existir um mantenedor.**
+
+**Ambiente padrão para desenvolvimento e validação manual:** reutilizar o projeto Supabase/Docker local do próprio mantenedor, atualmente identificado como `gaucha-gestao-local`. **Não criar novo container, PostgreSQL, banco, volume, porta, Compose, projeto Supabase ou worktree por rotina.** Primeiro inspecionar `git status`, `docker ps`, serviços e schema atuais; confirmar que o destino é o ambiente local pretendido. O agente pode propor/aplicar migrations **incrementais não destrutivas ao desenvolvimento local existente, após verificar estado, dependências e preservar dados**; manter resultados/reversão registrados. Não executar `supabase db reset`, `docker compose down -v`, `prune`, sobrescrita de dados, reset/seed destrutivo ou migrations em DEV de terceiros, C30/STAGING/PROD sem autorização específica. Testes unitários em memória não criam infraestrutura Docker. Se precisar de ensaio destrutivo separado, justificar antes e obter autorização em vez de provisionar automaticamente.
+
+O restante dos trechos sobre Dev A/Dev B e dois desenvolvedores descreve **período histórico**; esta seção é a instrução atual. Processo: **agente codifica → PR com evidências → mantenedor revisa → mantenedor decide merge → teste local contínuo**.
+
 ## 1. Papel e fonte da verdade
 
 Você implementa **trabalho explicitamente aprovado** em uma plataforma corporativa com dados sensíveis. Não redesenhe a arquitetura, invente escopo ou declare decisões de produto pelo simples fato de uma ferramenta permitir alterá-las.
@@ -37,7 +45,7 @@ Fontes de navegação: [README](README.md), [índice documental](docs/README.md)
 - Nunca publicar em commits, PRs, logs ou prompts: senhas, JWTs, chaves administrativas, dados pessoais, dumps, objetos empresariais, URLs assinadas ou `.env` reais.
 - Nunca usar credenciais **service_role/secret** no frontend; chave de cliente somente `publishable`/anon autorizada.
 - **Sem alterações destrutivas sem autorização específica:** `supabase db reset`, `db push`, `--linked`, `docker compose down -v`, `docker volume prune`, formatação, seed em banco persistente ou migração remota.
-- Worktree/checkout distinto **não** significa banco Docker isolado. Cada teste destrutível requer projeto Compose/CLI, volume, porta, env e dono **exclusivos e identificados**.
+- Worktree/checkout distinto não isola banco Docker. **Testes não destrutivos e execução manual utilizam por padrão o Supabase/Docker local existente**; somente um teste que demande isolamento destrutivo precisa de runtime exclusivo, com justificativa e autorização, sem criar infraestrutura por padrão.
 - DEV compartilhado ([Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68)), ERP de Contratos, servidor legado e C30 **não são sandboxes**. Não parar, copiar dados, modificar ou limpar sem inventário e GO operacional específico.
 - Migrations: **append-only**. Nunca editar migração já aplicada em ambiente compartilhado; mudanças destrutivas exigem estratégia explícita de preservação, restauração e rollback/forward-fix.
 
@@ -63,10 +71,10 @@ Documentos obrigatórios conforme o escopo:
 ## 5. Colaboração, revisão e entrega
 
 Seguir [PARALLEL_AGENT_WORKFLOW](docs/development/PARALLEL_AGENT_WORKFLOW.md) e [AI_WORKFLOW](docs/development/AI_WORKFLOW.md):
-- Uma **área de escrita, branch e runtime exclusivos** por agente, com proprietário nomeado na issue. Core/migrations/CI em conflito têm um único escritor coordenado.
+- Uma **área de escrita e branch identificadas** por tarefa. O runtime local existente é **reutilizado por padrão**, em execução sequencial e sem operações destrutivas; apenas agentes concorrentes com testes incompatíveis exigem isolamento específico. Core/migrations/CI têm escritor único coordenado.
 - Usar brief + Git + issue/PR como passagem entre agentes; não reproduzir chat inteiro como fonte da verdade.
 - Não dar push direto na `main`, executar force-push, apagar branch com trabalho não integrado, fazer release ou mudar configuração de produção autonomamente.
-- **Merge requer autorização e revisão humana apropriadas ao risco**. Aprovação verbal comunicada pelo responsável deve ser registrada como verbal; **não se transforma** em review formal `APPROVED` nem é autorização genérica para novas PRs. O ruleset da `main` foi **adiado** no Plano Diretor; a ausência de proteção automática não elimina a disciplina de PR/CI/revisão.
+- **Merge requer decisão explícita do mantenedor humano**, com diff e CI/testes pertinentes avaliados. No cenário atual, o mantenedor único realiza essa revisão, registrando a ausência de segunda revisão e o risco residual. Aprovação verbal não equivale a review formal `APPROVED`; não inventar um revisor. O ruleset da `main` foi adiado, mas PR/CI/testes continuam necessários.
 - Quando uma condição essencial estiver indefinida (segurança privilegiada, escopo de dados, ambiente, autoridade, operação destrutiva), **interromper a ação de risco e perguntar somente o necessário**.
 
 **Relatório de conclusão em pt-BR:** resumo objetivo, arquivos/commits, checks com resultado real, o que não foi provado, riscos e próximas dependências. **Não** declarar PROD pronta nem fechar um gate humano por inferência.

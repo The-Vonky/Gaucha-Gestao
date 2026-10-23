@@ -16,7 +16,7 @@ A sequência leva em conta: prioridade atual do negócio; validação da fundaç
 | Registros ISO / Propostas ISO | Legado concluído | Médio | A origem é funcionalmente de propostas/clientes comerciais apesar do nome histórico ISO; resolver ownership/menu por gate de migração |
 | Vendas / Maquininhas | Legado concluído | Baixo | Dashboard e importação |
 | Pesquisa de Satisfação | Legado concluído | Baixo | Boa candidata à integração por unidade/período |
-| Agendamento de Salas | Implementação independente do legado; AG-00 integrado na PR #85 | Médio: autorização D5-A por revisar | **Elaboração AG-01 em branch/laboratório isolados liberada em 23/10**; parecer independente D5-A obrigatório para integrar/ativar privilégios. Sem banco persistente, deploy ou PROD. Ver [brief](../briefs/ROOM_BOOKING_V1.md) e [matriz](../modules/room-booking/ACCEPTANCE_V1.md) |
+| Agendamento de Salas | Nova implementação independente; AG-00 integrado, AG-01 na PR #88 | Médio: RLS/grants e concorrência requerem teste | Desenvolvimento local com `gaucha-gestao-local` existente, sem criar banco/container extra. Revisão/merge pelo mantenedor único, PR e CI; próximas etapas AG-02 (RPCs) e AG-03 (UI). Sem deploy PROD. Ver [brief](../briefs/ROOM_BOOKING_V1.md) e [matriz](../modules/room-booking/ACCEPTANCE_V1.md). |
 | Frota | Legado não concluído | Médio | Prosseguir na plataforma quando a fundação permitir |
 | Planejado × Realizado | Legado concluído | Médio | Preservar regras de importação/cálculo comprovadas |
 | Curva ABC | **Plataforma v1 integrada à main** | Alto | Importação, consulta e revisões presentes; validar ERP, dados sensíveis e duas identidades ([Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70)); nenhum histórico desktop foi migrado |
