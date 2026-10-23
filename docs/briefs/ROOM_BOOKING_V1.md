@@ -240,4 +240,4 @@ As operações ficam no banco com permissão atual e checagem de perfil ativo; e
 
 ## Adendo AG-01 — autorização de codificação em 23/10/2026
 
-Após integração da PR #85, o responsável autorizou expressamente codificação de AG-01 e PR para revisão nesta conversa. O bloqueio histórico de início acima foi substituído para essa execução; não foi emitido parecer independente pelo agente. Fundação e limites em [AG01_FOUNDATION](../modules/room-booking/AG01_FOUNDATION.md); sem RPC, UI ou implantação. Revisão independente segue pendente antes da integração.
+Após integração da PR #85, o responsável autorizou expressamente codificação de AG-01 e PR para revisão nesta conversa. O bloqueio histórico de início acima foi substituído para essa execução; não foi emitido parecer independente pelo agente. Fundação e limites em [AG01_FOUNDATION](../modules/room-booking/AG01_FOUNDATION.md); sem RPC, UI ou implantação. Revisão final pelo titular conforme exceção de mantenedor único registrada em `9e20199`; parecer independente não existe.

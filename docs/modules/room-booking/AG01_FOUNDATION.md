@@ -1,6 +1,6 @@
 # AG-01 — Fundação do Agendamento de Salas
 
-Estado: implementação para revisão na Issue #87, base `677a70c`. Autorização expressa do responsável nesta conversa em 23/10/2026 para codificar migration, grants, RLS e testes isolados e abrir PR. Essa instrução substitui o bloqueio anterior de **início da codificação**; não representa parecer humano independente, review `APPROVED`, autorização de merge ou deploy. D5-A aprovado pelo responsável; parecer independente ainda deve ser registrado na revisão. PROD NO-GO.
+Estado: implementação para revisão na Issue #87, base `677a70c`. Autorização expressa do responsável nesta conversa em 23/10/2026 para codificar migration, grants, RLS e testes isolados e abrir PR. Essa instrução substitui o bloqueio anterior de **início da codificação**; não representa parecer humano independente, review `APPROVED`, autorização de merge ou deploy. D5-A aprovado pelo responsável. O commit remoto `9e20199`, integrado sem sobrescrita, registra exceção de mantenedor único: parecer independente não existe; o titular assume o risco residual e revisa a PR antes de decidir o merge. PROD NO-GO.
 
 ## Modelo e fronteiras
 
@@ -54,11 +54,11 @@ F2 exige serializar por sala criação de pedido, aprovação, reserva direta e 
 
 Antes de implantação, basta não aplicar a migration; não existe alteração de ambiente persistente nesta entrega. No laboratório, o descarte do container elimina seu tmpfs. Se futuramente aplicada em ambiente persistente, preservar dados e auditoria e usar forward-fix revisado, sem `DROP ... CASCADE`, edição de migration histórica ou remoção automática de `btree_gist` (pode ter consumidores externos).
 
-Revisão humana deve avaliar ampliação efetiva do administrador, delegação/revogação, privacidade da agenda e futuro contrato transacional. AG-01 não encerra AG-00 humano, AG-04/05 nem gates P1–P9/O1–O8.
+A revisão do titular deve avaliar ampliação efetiva do administrador, delegação/revogação, privacidade da agenda e futuro contrato transacional. AG-01 não encerra AG-00 humano, AG-04/05 nem gates P1–P9/O1–O8.
 
 ## Registro de execução — 23/10/2026
 
-Código validado: `100fc5f2d4bfdc4d7888b7f68b58adc2fd5432d7`; branch preexistente recebida em `2954578` (autorização documental), descendente da main `677a70c`. Escritor da implementação e operador do laboratório: agente Codex desta tarefa. Responsável de produto: solicitante da Issue #87; revisor humano independente ainda não identificado nesta execução.
+Código validado: `100fc5f2d4bfdc4d7888b7f68b58adc2fd5432d7`; branch preexistente recebida em `2954578` (autorização documental), descendente da main `677a70c`. Escritor da implementação e operador do laboratório: agente Codex desta tarefa. Responsável de produto: solicitante da Issue #87; revisão final pelo titular conforme exceção de mantenedor único registrada no commit `9e20199`; não há parecer independente.
 
 | Comando | Resultado |
 |---|---|
@@ -73,4 +73,4 @@ Código validado: `100fc5f2d4bfdc4d7888b7f68b58adc2fd5432d7`; branch preexistent
 
 Container final `gaucha-ag01-fc2e5ed5535c` removido pelo runner; sem volume persistente. A primeira tentativa de inicialização do laboratório falhou por quoting de `listen_addresses`; corrigida no runner, container inicial removido. Testes iniciais apontaram fixture de delegação sem linha visível, contagem histórica de permissões e falta de registro da extensão no backfill; corrigidos antes da execução final verde.
 
-Não executados: integração Auth/PostgREST real, imagem self-host `17.6.1.136`, RPC/UI de AG-02/03, homologação manual, restore/rollback de banco persistente, CI remoto nesta execução local. Nenhum resultado implica autorização de merge ou produção. O commit posterior a `100fc5f` acrescenta somente este registro documental.
+Não executados: integração Auth/PostgREST real, imagem self-host `17.6.1.136`, RPC/UI de AG-02/03, homologação manual, restore/rollback de banco persistente, CI remoto nesta execução local. Nenhum resultado implica autorização de merge ou produção. Os commits posteriores a `100fc5f` alteram somente documentação, incluindo incorporação da exceção de governança publicada remotamente; código/testes permanecem idênticos ao SHA validado.

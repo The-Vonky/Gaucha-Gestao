@@ -90,4 +90,4 @@ Não apagar nem sobrescrever o repositório standalone durante a migração. Ap�
 
 ## Agendamento — AG-01 em revisão (23/10/2026)
 
-Responsável autorizou expressamente implementar fundação e abrir PR após AG-00 documental integrado (#85). Schema, catálogo Core e RLS preparados; [contrato e limites](../modules/room-booking/AG01_FOUNDATION.md). AG-02/03 não implementados por esta entrega; parecer independente, merge, QA, homologação e implantação continuam pendentes.
+Responsável autorizou expressamente implementar fundação e abrir PR após AG-00 documental integrado (#85). Schema, catálogo Core e RLS preparados; [contrato e limites](../modules/room-booking/AG01_FOUNDATION.md). AG-02/03 não implementados por esta entrega; revisão final do titular (exceção de mantenedor único `9e20199`), merge, QA, homologação e implantação continuam pendentes.

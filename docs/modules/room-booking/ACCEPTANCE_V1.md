@@ -137,4 +137,4 @@ A numeração **canônica** é **AG-03: interface completa (inclusive secretaria
 
 ## Evidência AG-01 em revisão
 
-Implementação autorizada expressamente pelo responsável em 23/10/2026, após a PR #85. Ver [fundação e roteiro reproduzível](AG01_FOUNDATION.md). Testes da fundação não encerram critérios que dependem de RPC/UI, Auth/REST reais ou homologação. Parecer independente ainda pendente; nenhum gate humano marcado como concluído.
+Implementação autorizada expressamente pelo responsável em 23/10/2026, após a PR #85. Ver [fundação e roteiro reproduzível](AG01_FOUNDATION.md). Testes da fundação não encerram critérios que dependem de RPC/UI, Auth/REST reais ou homologação. Revisão final do titular ainda pendente, conforme exceção de mantenedor único `9e20199`; nenhum parecer independente ou gate humano foi declarado concluído.
