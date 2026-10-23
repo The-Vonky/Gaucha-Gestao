@@ -7,18 +7,19 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 
 ## Gate AG-00 — decisões, evidências e aceite humano
 
-- [ ] Fluxos, máquinas de estado, visibilidade de `booked_for`/**observações públicas** e matriz de acesso validados pela secretária e dono do produto, com privacidade revisada.
-- [ ] Registrar como **escolhas comunicadas**, não como aprovações: D2 (pedidos pendentes concorrentes), D3 (leitura de `booked_for`), D5-A (administrador pode delegar **e gerenciar**), D8 (início estritamente futuro inclusive hoje; até 23:59 no mesmo dia; sem limites fixos) e C1 (antecipação do desenvolvimento).
+- [x] **Decisões atuais dos fluxos, matriz e exposição de `booked_for`/`secretary_notes` validadas com a secretária conforme relato do responsável (23/10)**. Relato não equivale a ata/review assinados; formalizar no aceite documental.
+- [x] **Decisões de produto D2/D3/D5-A/D8/C1 registradas**; D5-A aprovou ampliação de capacidade do administrador apenas na esfera do responsável, **não** substitui parecer independente de segurança.
 - [x] **F2 — escolha expressa do responsável:** pedido que conflita com reserva confirmada é rejeitado no envio sem criar registro; validar com a secretária e testar via RPC em AG-02/04. D2 permanece distinta.
 - [x] **D8 — escolhas expressas do responsável:** aprovação tardia bloqueada com pedido mantido `pending` até recusa manual; impedir edição de horário de reunião iniciada/histórica, permitir correção textual auditada; horas e minutos livres, fim até 23:59.
 - [x] **D8 — campos de correção histórica aprovados pelo responsável:** apenas `booked_for` e `secretary_notes`; `purpose`, horários e demais campos não são editáveis na exceção histórica.
 - [ ] **D8 — validação de bordas:** conferir com a secretária e executar futuramente testes de autorização, versão, precisão, relógio do backend, 23:59 e passagem de tempo em AG-02/04.
-- [ ] Revisão humana **independente de segurança** da D5-A, incluindo grant real de `manage`, delegação, revogação e auditoria; orientação operacional não é proteção técnica.
+- [ ] **Revisão humana independente de segurança D5-A**, apesar de aprovação do responsável para administrador geral com `room_booking.manage` completo; avaliar grants, delegação, revogação e auditoria **antes de AG-01**.
 - [x] **Decisões de produto D1/D4/D6/D7/D9/D10/D11 confirmadas pelo responsável em 23/10/2026**, incluindo atribuição individual explícita de `room_booking_requester` no Core, substituta temporária, cancelamento próprio só antes do início, avisos internos, rota `/rooms` e preservação do legado.
-- [ ] **Validação operacional da secretária** para D1/D2/D3/D6/D7/D8/F2/observações; revisar privacidade, delegação (D5-A), campos necessários e autoridade para nomeação de substituta. O corte detalhado do legado é gate separado AG-06.
-- [ ] Inventário real do legado e agenda atual conferidos por pessoa autorizada, sem importar ou publicar dados privados.
+- [x] **Validação operacional da secretária relatada pelo responsável** para as decisões atuais (D1/D2/D3/D4/D6/D7/D8/D9/D10/D11/F2/observações); sem contato direto nesta sessão.
+- [ ] **Evidência humana rastreável da validação**, com papel, data, escopo e aprovação/revisão documental, sem expor nomes ou dados de reuniões.
+- [x] **D11 substituída:** nova implementação totalmente independente do legado; **não** conferir ZIP/agenda, importar/reconciliar reservas ou modificar instalação antiga como gate de AG-00/AG-01.
 - [ ] Prioridade C1 ratificada formalmente, sem afastar Qualidade P1–P9/O1–O8 e PROD NO-GO.
-- [ ] Aceite rastreável do responsável/secretária, PR **somente documental** com revisão humana e integração; **não iniciar AG-01** antes de fechar todo o gate.
+- [ ] Registrar relato de validação da secretária e aceite final AG-00 de modo rastreável; concluir revisão independente D5-A e PR documental revisada/integrada; **não iniciar AG-01** antes de fechar todo o gate.
 
 ## Critérios funcionais
 
@@ -50,15 +51,15 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 | S3 | Revogação do papel durante a sessão: a próxima chamada é negada, sem esperar o JWT expirar | AG-01/02 |
 | S4 | Solicitante não aprova, recusa, cria reserva direta, edita nem cancela reserva — inclusive por RPC direta | AG-01/02 |
 | S5 | Solicitante não lê pedidos alheios por ID adivinhado, por REST nem por RPC | AG-01/02 |
-| S6 | Agenda autorizada (`schedule.read` + perfil ativo) retorna **apenas confirmadas** com identificador/sala/início/fim, **`booked_for` e `secretary_notes`**; não retorna `purpose`, `requester_user_id`, `decided_by`, decisões internas nem pedidos pendentes **[D3: privacidade a validar]** | AG-02/03/04 |
+| S6 | Agenda com `schedule.read` e perfil ativo **deve exibir** apenas reservas confirmadas com horário/sala, `booked_for` e `secretary_notes` para todos os leitores autorizados. Sem `purpose`, identidade técnica de solicitante, decisões privadas, pedidos pendentes ou exposição anônima **[D3 confirmada em produto]** | AG-02/03/04 |
 | S7 | `requester_user_id` enviado pelo cliente é ignorado ou rejeitado; vale `auth.uid()` | AG-02 |
 | S8 | Sem `insert/update/delete` direto nas tabelas para `authenticated`/`anon`; RLS habilitada em todas | AG-01 |
 | S9 | RPCs `SECURITY DEFINER` com `search_path=''` e `execute` revogado de `public`/`anon` | AG-01/02 |
-| S10 | Sob **D5-A escolhida mas ainda sem parecer de segurança**, `platform_administrator` com `manage` pode **tecnicamente** delegar e aprovar/recusar/criar/editar/cancelar via RPC; validar alcance real, revisão independente e auditoria, sem alegar bloqueio apenas por UI | AG-00/01/02/04 |
+| S10 | **D5-A aprovada pelo responsável, mas revisão independente ainda pendente:** administrador com `room_booking.manage` pode delegar e **operar** fila/gestão de reservas via RPC; auditar grants, concessão/revogação e cada mutação, sem alegar bloqueio técnico por regra operacional | AG-00/01/02/04 |
 | S11 | Atribuição de `room_booking_manager` a uma substituta e a revogação no retorno funcionam e ficam auditadas **[D5/D6]** | AG-01/05 |
 | S12 | Auditoria registra ator, ação e entidade de cada mutação, sem `purpose` nem texto integral de `secretary_notes` nos metadados por padrão | AG-02/04 |
 | S13 | `anon` não acessa nada do schema | AG-01 |
-| S14 | Usuário autorizado `schedule.read` vê `booked_for` e notas **de confirmadas**; usuário sem papel, perfil inativo, anônimo ou com permissão revogada não acessa esses campos, nem por REST/RPC/ID adivinhado | AG-01/02/04 |
+| S14 | Leitor autenticado autorizado vê `booked_for`/`secretary_notes` de confirmadas, mas sem papel, com perfil inativo, anônimo ou após revogação não recebe tais campos via REST/RPC/ID adivinhado; escopo de exposição confirmado pelo responsável | AG-01/02/04 |
 | S15 | `secretary_notes` com HTML/script é renderizado como **texto inerte** na agenda, não vaza a pedidos alheios, fila pública nem logs; solicitante não pode escrever/editar notas por payload forjado | AG-02/03/04 |
 | S16 | Papel `room_booking_requester` não é recebido automaticamente por qualquer usuário ativo/novo; concessão **individual e auditável** pelo administrador no Core, com revogação imediata e sem ampliação implícita de escopo; viabilidade do grant D5-A sujeita à revisão humana independente | AG-01/02/04 |
 
@@ -125,8 +126,8 @@ A numeração **canônica** é **AG-03: interface completa (inclusive secretaria
 - [ ] Desktop e pelo menos um celular real validados.
 - [ ] Aceite expresso da secretária sobre facilidade de uso, visibilidade e decisões.
 
-## Corte (AG-06) — somente com GO global
+## Transição operacional futura (AG-06) — somente com GO global
 
-- [ ] Reservas futuras conferidas no computador da secretária e reconciliadas no módulo.
-- [ ] Legado congelado durante a janela; nunca duas agendas aceitando reservas ao mesmo tempo.
-- [ ] Backup do legado e do novo, e rollback com reconciliação documentado.
+- [ ] **Não importar/reconciliar reservas antigas** no novo módulo. Definir de modo independente se, quando e como ocorrerá qualquer transição/desativação da solução legada, sem acessar dados reais nesta etapa.
+- [ ] Preservar a solução antiga enquanto vigente; qualquer desativação/corte e início de uso oficial do novo módulo dependem de GO operacional separado, sem presumir duas agendas oficiais em paralelo.
+- [ ] Plano de continuidade, backup e rollback de eventual transição aprovado em AG-06; **sem reconciliação/importação de dados antigos** por padrão.

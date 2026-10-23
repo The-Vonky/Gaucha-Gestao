@@ -1,15 +1,15 @@
 # Implementation Brief — Agendamento de Salas v1 (AG-00)
 
-Status: PROPOSTO — AG-00 em revisão documental; requer aceite humano do dono do produto e da secretária, e parecer de segurança para D5-A. **Não autoriza implementação.**  
+Status: PROPOSTO — produto aprovado pelo responsável; validação da secretária **relatada pelo responsável** (sem ata direta anexada); parecer humano independente de segurança D5-A e aceite formal AG-00 ainda exigidos. **Não autoriza implementação.**  
 Elaboração: 2026-10-20 · Revisão documental: 2026-10-23 (Issue #83)  
 Baseline desta revisão: `main` em `338cd4adb8eab00ff85312833f29919a6294893d`  
 Critérios de aceite: `docs/modules/room-booking/ACCEPTANCE_V1.md`
 
-> Este brief define o módulo **Administrativo > Agendamento de Salas**. Funcionários autenticados consultam horários confirmados e pedem o uso da sala. A secretária aprova ou recusa os pedidos e também pode reservar diretamente. O sistema legado da intranet continua sendo a fonte oficial até o corte (AG-06). Este brief não traz SQL, TypeScript, menu nem infraestrutura.
+> Este brief define o módulo **Administrativo > Agendamento de Salas**. Usuários autenticados autorizados consultam reservas confirmadas e pedem uso da sala; a gestora aprova/recusa ou reserva diretamente. **Implementação nova independente do legado**: sem copiar código, importar reservas ou usar o sistema antigo como fonte de requisitos. O legado existente não será tocado; qualquer transição/desativação exige decisão operacional futura. Este brief não traz SQL, TypeScript, menu nem infraestrutura.
 
 ## Princípio de adaptação
 
-A plataforma prevalece. O sistema legado (`Agendamento_funcional/`: React + servidor Node + `data/bookings.json` no computador da secretária) é **referência de comportamento**, não código a portar. Nada no Core, na stack ou na infraestrutura muda para acomodar o módulo.
+A plataforma prevalece. O sistema legado (`Agendamento_funcional/`, React + Node e `data/bookings.json`) é somente **referência histórica**, não baseline funcional ou de dados. O módulo será criado do zero pelos requisitos AG-00 e contratos do Core, sem importar/reconciliar dados, ler ZIP ou depender do computador da secretária. Nada no Core, stack ou infraestrutura muda para acomodá-lo.
 
 Não entram neste repositório nem em PR/issue: `config/admin.json`, `data/bookings.json`, logs, nomes reais de pessoas ou reuniões e senhas do legado.
 
@@ -17,7 +17,7 @@ Não entram neste repositório nem em PR/issue: `config/admin.json`, `data/booki
 
 | Fonte | Como foi usada |
 |---|---|
-| `Agendamento.zip` | **Não disponível nesta sessão.** O inventário abaixo vem do plano `01_PLANO_IMPLEMENTACAO_AGENDAMENTO.md`, que fez revisão estática do ZIP. É evidência de segunda mão e precisa ser conferida no aceite. |
+| `Agendamento.zip` | **Não disponível nesta sessão**; inventário indireto abaixo permanece apenas como fotografia histórica do planejamento anterior. A decisão D11 dispensa conferência do ZIP/agenda antiga para o AG-00 e para o desenvolvimento independente. |
 | `docs/architecture/PRODUCT_STRUCTURE.md` | Local do menu: Administrativo > Agendamento de Salas (domínio Meetings/Room Booking). |
 | `docs/migration/MODULE_ROADMAP.md` | Legado "finished, weak"; recriar na plataforma. 4º item histórico da Fase 2; antecipação de desenvolvimento comunicada em 23/10 (C1), com registro de aceite da prioridade ainda pendente e gates globais preservados. |
 | `docs/architecture/AUTHORIZATION.md`, `supabase/migrations/202609240001_core_foundation.sql` | Modelo de permissão/escopo, `private.has_global_permission`, `private.can_delegate`, `core.system_audit_log`. |
@@ -25,7 +25,7 @@ Não entram neste repositório nem em PR/issue: `config/admin.json`, `data/booki
 | `supabase/config.toml` | Schemas expostos: `public, graphql_public, core, audit, action_plans, abc`. |
 | `docs/planning/PLANO_DIRETOR_2026.md` | Plataforma em **NO-GO** de produção. |
 
-Nenhum teste operacional foi feito com a secretária ou no computador dela.
+**Validação da secretária:** o responsável relatou em 23/10/2026 que as decisões atuais foram validadas com ela. Não houve contato direto, ata assinada ou teste operacional nesta sessão. O relato é evidência da comunicação, não review formal independente.
 
 ## Conflitos com a documentação existente
 
@@ -35,7 +35,7 @@ Nenhum teste operacional foi feito com a secretária ou no computador dela.
 | C2 | `private.can_delegate` exige que **quem atribui** um papel tenha todas as permissões desse papel. Se só a secretária tiver `room_booking.manage`, nenhum administrador consegue atribuí-la a ela (nem a uma substituta) pela tela de usuários. | Ver decisão D5. | Dono do produto + responsável de segurança |
 | C3 | `AUTHORIZATION.md`: "Do not create future module permissions before those modules are implemented". | O catálogo abaixo é **proposta**. A migration AG-01 o cria junto com as tabelas, e a seção "First permission catalog" é atualizada no mesmo PR. | — |
 
-## Inventário: legado × v1
+## Inventário histórico: legado × v1 (não normativo após D11)
 
 Legenda: **CÓDIGO** = confirmado no legado (via plano); **NOVO** = requisito novo; **REC** = recomendação deste brief.
 
@@ -83,10 +83,10 @@ A [Issue #83](https://github.com/The-Vonky/Gaucha-Gestao/issues/83) e o plano lo
 | # | Regra/revisão de 23/10 | Estado / gate |
 |---|---|---|
 | D1 | Uma sala inicial denominada `Sala de Reunião`, compartilhada por toda a empresa, sem escopo por unidade/filial na v1; sem UI de múltiplas salas. | **Aprovada pelo responsável em 23/10**; secretária deve validar aderência à operação real antes do AG-01. |
-| D2 | Dois ou mais pedidos `pending` podem ocupar a mesma faixa; **pendentes não bloqueiam a agenda**. Apenas uma reserva `confirmed` por sala/faixa, garantida também sob concorrência; conflito na aprovação preserva o segundo pedido pendente. | Escolha do responsável; validar fluxo com a secretária. F2 foi decidida separadamente: não criar pedido sobre reserva já confirmada. |
-| D3 | Na agenda **somente de reservas confirmadas**, usuário autenticado, com perfil ativo e `room_booking.schedule.read`, vê horário, `booked_for` e observação pública da secretária. `purpose`, `requester_user_id`, dados de decisões, fila e pedidos de terceiros não são públicos. | Escolha do responsável; confirmar exposição, privacidade e operação com a secretária. |
+| D2 | Pedidos `pending` sobrepostos coexistem; apenas reservas `confirmed` são mutuamente exclusivas sob concorrência. O segundo pedido continua pendente após conflito na aprovação. | Escolha do responsável, **validada com secretária conforme relato de 23/10**; F2 proíbe criar pedidos sobre confirmadas. Testes futuros. |
+| D3 | Na agenda somente de confirmadas, todo usuário autenticado, com perfil ativo e `room_booking.schedule.read`, **deve ver** horário, `booked_for` e `secretary_notes`; `purpose`, identidade técnica de solicitante, fila e decisões continuam privados. Sem acesso anônimo. | Visibilidade **confirmada expressamente pelo responsável** e validada com secretária conforme relato. Exigir proteção técnica e testes de privacidade/renderização segura. |
 | D4 | Quatro permissões e papéis do Core descritos abaixo. `room_booking_requester` é atribuído **explicitamente, usuário a usuário, pelo administrador via Core**, a funcionários autorizados; não há inclusão automática, nem para contas novas. | **Aprovada pelo responsável em 23/10**; conferir autorização da atribuição e dependência de grants da D5-A (revisão de segurança pendente). |
-| D5 (C2) | **Opção A escolhida:** `platform_administrator` recebe `room_booking.manage` para poder delegar `room_booking_manager`. Isto **também autoriza tecnicamente** aprovar/recusar/criar/editar/cancelar reservas; “admin não opera a fila” é procedimento, não bloqueio de RPC. | Escolha do responsável **sem aprovação de segurança**. Revisão humana independente e testes de concessão/revogação/auditoria obrigatórios antes do AG-01. |
+| D5 (C2) | **Opção A aprovada expressamente pelo responsável, que será administrador geral:** `platform_administrator` recebe `room_booking.manage` para delegar `room_booking_manager` e **também pode operar** fila e reservas (aprovar/recusar/criar/editar/cancelar). A orientação operacional não reduz poder técnico. | **Aceite de produto/risco pelo responsável**, porém **revisão humana independente de segurança antes de AG-01** ainda exigida (delegação, grants, revogação, auditoria). Não afirmar que titular aprovou em nome do revisor. |
 | D6 | Responsável designa a substituta; administrador atribui **temporariamente** `room_booking_manager` no Core e revoga expressamente no retorno, com auditoria de ambas as ações. | **Aprovada pelo responsável em 23/10**; definir a substituta/autoridade operacional com a secretária. Concessão efetiva depende da revisão de segurança D5-A. |
 | D7 | Solicitante pode cancelar **somente seu próprio pedido `pending` e antes do início previsto** (`starts_at` estritamente futuro aferido pelo banco); não pode cancelar pedido vencido ainda pendente nem reserva confirmada. Pedido vencido aguarda recusa manual (D8). | **Aprovada pelo responsável em 23/10**; validar UX e autorização negativa com a secretária. |
 | D8 | Sem expediente fixo, duração mínima/máxima de negócio, antecedência máxima ou grade obrigatória de 15 minutos. Entrada com horas/minutos livres (`HH:mm`), incluindo faixas como 14:07–14:23. Exigir `ends_at > starts_at`; armazenar `timestamptz` e apresentar hora em `America/Sao_Paulo`. | Escolha expressa do responsável; verificar em testes futuros. |
@@ -96,10 +96,10 @@ A [Issue #83](https://github.com/The-Vonky/Gaucha-Gestao/issues/83) e o plano lo
 | D8 — correção histórica | Para reunião já iniciada ou histórica, impedir edição de `starts_at`/`ends_at` e dos demais dados de negócio: **só `booked_for` e `secretary_notes` podem ser corrigidos** pela gestora autorizada, com controle de versão e auditoria. `purpose` privado e horários originais permanecem intocados. | **Campos confirmados pelo responsável em 23/10**; exigir testes negativos de alteração e revisão de privacidade. |
 | D9 | Avisos/estados somente no aplicativo (`Meus pedidos` e fila da gestora); **sem e-mail, WhatsApp ou notificações externas** na v1. | **Aprovada pelo responsável em 23/10**; conferir usabilidade com a secretária. |
 | D10 | Navegação `Administrativo > Agendamento de Salas`, rota `/rooms`, exibida conforme permissão. | **Aprovada pelo responsável em 23/10**; rota/menu somente em AG-03. |
-| D11 | Legado é a agenda oficial até corte **separado e autorizado (AG-06)**; preservá-lo sem alteração, reconciliar apenas reservas futuras da agenda atual, com backup e plano de rollback; impedir duas agendas aceitando reservas ao mesmo tempo. | **Aprovada pelo responsável em 23/10** como diretriz; procedimento, inventário e GO do corte permanecem pendentes e não bloqueiam por si só o desenvolvimento isolado quando AG-00 for aceito. |
+| D11 | **Implementação integralmente independente do legado:** não portar comportamentos/código, não importar reservas, não migrar nem reconciliar agenda antiga. Preservar instalação e dados preexistentes sem acessá-los; qualquer transição, desativação, backup/rollback de operação futura depende de GO separado, sem duas agendas oficiais por inferência. | **Decisão substitutiva do responsável em 23/10**; supera reconciliação de reservas futuras antes proposta. Conferir ZIP/agenda antiga deixa de ser requisito para AG-00/AG-01. |
 | D12 | Homologação em ambiente autorizado; **PROD NO-GO** até AG-06 e GO global P1–P9/O1–O8. | Restrição obrigatória, não uma decisão a presumir resolvida. |
 | C1 | Agendamento antecipado na **fila de desenvolvimento**, não na de implantação/produção. | Escolha comunicada; aceite formal da priorização no PR pendente. |
-| Novo — observações | Texto livre da gestora na **reserva confirmada** (inclusive direta), independente da finalidade `purpose` do pedido; editável somente com `manage`, visível a quem tem `schedule.read`. | Escolha do responsável; privacidade, prevenção de dados sensíveis e homologação pendentes. |
+| Novo — observações | `secretary_notes` de reserva confirmada/direta, separado de `purpose`, editável somente com `manage` e **obrigatoriamente visível a todos os usuários autenticados autorizados com `schedule.read`**. Notas de pedidos pendentes não entram na agenda. | Visibilidade aprovada pelo responsável e validada pela secretária conforme relato; orientar contra dados sensíveis e renderizar como texto seguro. |
 
 **F2 decidida expressamente pelo responsável em 23/10 (independente de D2):** a criação de pedido que se sobrepõe a reserva **já confirmada** deve ser rejeitada sem registrar o pedido, com indicação de horário ocupado. Dois pedidos ainda `pending` podem coexistir. A verificação de colisão precisa ocorrer na execução transacional do backend/banco, inclusive se uma reserva for confirmada enquanto o usuário preenche o formulário. Critério funcional ainda não testado nem homologado pela secretária.
 
@@ -122,7 +122,7 @@ A [Issue #83](https://github.com/The-Vonky/Gaucha-Gestao/issues/83) e o plano lo
 | `room_booking_manager` | as três acima + `manage` |
 | `platform_administrator` | com as quatro permissões **na proposta D5-A**, sujeita à aprovação independente de segurança |
 
-**Provisionamento aprovado de solicitantes (D4):** cada funcionário autorizado, inclusive novas contas, recebe `room_booking_requester` (`global_only`) por **atribuição individual explícita do administrador nos fluxos do Core**, com auditoria e revogação. Não existe acesso implícito para usuários ativos, concessão automática ou provisionamento em lote na v1. A viabilidade de `private.can_delegate`/grants do administrador depende da **revisão independente D5-A**; não afirmar que permissões futuras já existam no banco. Em AG-01 validar a integração com o Core, sem alterá-lo nesta PR.
+**Provisionamento de solicitantes aprovado em produto e validado com secretária conforme relato (D4):** cada funcionário autorizado, inclusive novas contas, recebe `room_booking_requester` (`global_only`) por **atribuição individual explícita do administrador nos fluxos do Core**, com auditoria e revogação. Não existe acesso implícito para usuários ativos, concessão automática ou provisionamento em lote na v1. A viabilidade de `private.can_delegate`/grants do administrador depende da **revisão independente D5-A**; não afirmar que permissões futuras já existam no banco. Em AG-01 validar a integração com o Core, sem alterá-lo nesta PR.
 
 Matriz de capacidades de **produto aprovada em D4**, sujeita à validação operacional e à revisão independente da capacidade administrativa **D5-A** (nenhum grant implementado):
 
@@ -203,23 +203,18 @@ Os códigos exatos de erro seguem o padrão já adotado em `action_plans`/`abc` 
 | Gestão concedida amplamente | D5 decidida explicitamente; papel `global_only`; teste "admin sem manage não aprova" se A não for escolhida |
 | Fuso errado | `timestamptz` + conversão explícita `America/Sao_Paulo` + testes com TZ do processo diferente |
 
-## Operação com o legado
+## Independência do legado (D11)
 
-O legado continua oficial e não é alterado. O desenvolvimento usa apenas dados sintéticos. No pré-corte (AG-06), as reservas futuras são conferidas **diretamente no computador da secretária**: o ZIP é só um retrato e não prova a agenda atual. No corte, o legado é congelado por uma janela curta, as reservas são reconciliadas e o endereço único é comunicado. Duas agendas não podem aceitar reservas ao mesmo tempo. O rollback inclui reconciliar o que foi criado no módulo novo.
+A implementação será **totalmente nova**, baseada somente nos contratos da plataforma e nas decisões AG-00. Não usar ZIP, inventário antigo, dados ou reservas do legado como requisito, dado de teste, ponto de reconciliação ou dependência de AG-01. Não acessar/modificar o computador, agenda ou credenciais do legado. Desenvolver em ambiente isolado com dados sintéticos. Eventual transição/desativação operacional (AG-06) requer um plano e GO próprios, além de preservar o serviço anterior até autorização expressa; nenhum corte, integração ou implantação fica autorizado nesta PR.
 
-## Perguntas e deliberações ainda necessárias (AG-00)
+## Validações e decisões residuais (AG-00)
 
-1. **D1 aprovada:** conferir operacionalmente com a secretária se a única sala `Sala de Reunião` compartilhada, sem unidade/filial, corresponde à realidade.
-2. Validar com a secretária **múltiplos pedidos pendentes** para o mesmo horário e o desempate operacional (D2).
-3. Confirmar que quem tem `schedule.read` verá `booked_for` **e observação livre da secretária** nas confirmadas, mas jamais `purpose`, identidade do solicitante, fila ou decisões de terceiros; aceite de privacidade (D3).
-4. **F2 (escolha registrada):** confirmar com a secretária a mensagem “horário ocupado” e o comportamento quando outra reserva é confirmada durante o envio; pedidos sobre confirmadas são proibidos.
-5. **D5-A:** obter revisão de segurança independente sobre `platform_administrator` poder **delegar e efetivamente gerenciar** reservas; definir auditoria e revogação; não alegar bloqueio técnico de operação.
-6. **D8 aprovada no produto:** validar com a secretária pedido vencido mantido `pending` até recusa, correções históricas **somente** de `booked_for` e `secretary_notes`, minutos livres, fim até `23:59` e intervalos `[início, fim)`. Testes ainda não executados.
-7. **D4/D6/D7/D9 aprovadas:** validar atribuição individual do papel pelo administrador, nomeação e revogação da substituta, cancelamento próprio de `pending` só antes do início e avisos internos, sem presumir a liberação de grants D5-A.
-8. **D10/D11 aprovadas:** validar navegação `/rooms` e operação sem interromper o legado; documentação operacional do corte será exigida somente para AG-06, e conferir se há campos operacionais indispensáveis adicionais.
-9. Conferir, sem copiar nem expor dados reais, a instalação e agenda atual da secretária; o ZIP não foi reavaliado nesta revisão.
-10. Registrar aceite formal da **antecipação do desenvolvimento** C1, sem alterar gates de Qualidade, C30/STAGING ou produção.
-11. Registrar na Issue #83 responsáveis, datas, evidências e decisão final do brief/matriz antes de AG-01.
+1. **Produto/secretária:** D1–D4, D6–D11, F2, observações e campos corrigíveis aprovados pelo responsável; ele **relatou validação da secretária** para as escolhas atuais em 23/10. Falta registrar evidência rastreável de quem validou, quando e em qual escopo; não inferir review assinado da secretária.
+2. **D3/observações:** a visibilidade de `booked_for` e `secretary_notes` para **todos os leitores autorizados** está confirmada; implementar leitura apenas de confirmadas, negação para usuários não autorizados e renderização como texto seguro.
+3. **D5-A:** administrador geral pode delegar e gerir reservas, conforme aprovação expressa do responsável. **Parecer humano independente de segurança ainda pendente**, incluindo avaliação dos grants, segregação funcional, revogação e auditoria.
+4. **D8/F2:** produto decidido; executar testes negativos e de concorrência nas etapas AG-01–AG-05, não antes de existir código.
+5. **D11:** **sem inventário/comparação/importação/reconciliação do legado** como gate; não tocar no ambiente antigo. Transição operacional futura só com GO separado.
+6. **C1/AG-00:** ratificar a prioridade e os aceites na revisão documental rastreável, obter revisão independente da PR, verificar CI no SHA final e realizar merge **somente com autorização humana**. Até então, AG-01 permanece bloqueado.
 
 ## Sequência AG-00 a AG-06 e conciliação histórica
 
@@ -239,4 +234,4 @@ As operações ficam no banco com permissão atual e checagem de perfil ativo; e
 
 ## Próximo passo
 
-Validar com a secretária as decisões de produto **já escolhidas** (D1/D2/D3/D4/D6/D7/D8/D9/D10/D11/F2, observações e os campos textuais `booked_for`/`secretary_notes`), concluir a revisão de privacidade e obter **parecer humano independente de segurança D5-A**; colher aceite humano rastreável deste brief e de `ACCEPTANCE_V1.md`, atualizar o registro e integrar a PR AG-00. Só depois disso o AG-01 (dados/RLS) pode começar. Nenhum agente deve avançar para a implementação de forma autônoma.
+Consolidar o relato de validação com a secretária como registro rastreável; documentar aceite da prioridade C1 e do AG-00; obter **parecer humano independente de segurança D5-A**, revisão da PR e checks no SHA final. **Não** exigir inspeção do ZIP, cópia de dados ou reconciliação do legado para AG-01. Só iniciar AG-01 após integração documental autorizada, sem qualquer mudança na C30, DEV compartilhado, STAGING ou PROD.
