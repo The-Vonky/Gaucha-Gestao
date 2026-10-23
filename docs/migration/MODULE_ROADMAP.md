@@ -14,7 +14,7 @@ A sequência leva em conta: prioridade atual do negócio; validação da fundaç
 | Registros ISO / Propostas ISO | Legado concluído | Médio | A origem é funcionalmente de propostas/clientes comerciais apesar do nome histórico ISO; resolver ownership/menu por gate de migração |
 | Vendas / Maquininhas | Legado concluído | Baixo | Dashboard e importação |
 | Pesquisa de Satisfação | Legado concluído | Baixo | Boa candidata à integração por unidade/período |
-| Agendamento de Salas | Legado funcional, experiência frágil; **AG-00 em revisão documental** | Baixo (risco de autorização/privacidade a revisar) | Desenvolvimento antecipado (C1, escolha comunicada em 23/10); **AG-01 bloqueado** até F2, D5-A/segurança, D8/aceites e integração do [brief](../briefs/ROOM_BOOKING_V1.md) + [matriz](../modules/room-booking/ACCEPTANCE_V1.md) |
+| Agendamento de Salas | Legado funcional, experiência frágil; **AG-00 em revisão documental** | Baixo (risco de autorização/privacidade a revisar) | Desenvolvimento antecipado (C1, escolha comunicada em 23/10); **AG-01 bloqueado** apesar de F2/D8 escolhidas, até D5-A/segurança, demais decisões/aceites, validações e integração do [brief](../briefs/ROOM_BOOKING_V1.md) + [matriz](../modules/room-booking/ACCEPTANCE_V1.md) |
 | Frota | Legado não concluído | Médio | Prosseguir na plataforma quando a fundação permitir |
 | Planejado × Realizado | Legado concluído | Médio | Preservar regras de importação/cálculo comprovadas |
 | Curva ABC | **Plataforma v1 integrada à main** | Alto | Importação, consulta e revisões presentes; validar ERP, dados sensíveis e duas identidades ([Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70)); nenhum histórico desktop foi migrado |
@@ -34,11 +34,11 @@ Não antecipar capacidades genéricas para todos os módulos futuros.
 
 ## Frente antecipada — Agendamento de Salas v1 (priorização C1 de 23/10)
 
-O responsável comunicou a antecipação de **Agendamento de Salas** na fila de **desenvolvimento**, antes da posição histórica de 4º item da Fase 2. Esta PR AG-00 documenta a escolha, **sem fingir que o aceite formal da prioridade, da secretária, F2, privacidade ou D5-A/segurança já ocorreu**. A antecipação não libera deploy, migração em ambiente persistente, C30/STAGING, GO produtivo nem os gates P1–P9/O1–O8 da Qualidade.
+O responsável comunicou a antecipação de **Agendamento de Salas** na fila de **desenvolvimento**, antes da posição histórica de 4º item da Fase 2. Esta PR AG-00 documenta a escolha, **sem confundir F2/D8 já escolhidas com testes/aceite da secretária, nem presumir prioridade formal, privacidade ou D5-A/segurança aprovados**. A antecipação não libera deploy, migração em ambiente persistente, C30/STAGING, GO produtivo nem os gates P1–P9/O1–O8 da Qualidade.
 
 | Etapa | Entrega planejada | Condição de avanço |
 |---|---|---|
-| **AG-00** | Brief, matriz F/S/C/T/U, decisões, roadmap, conferência segura do legado e aceite humano | Issue #83, F2 e bordas D8 resolvidas, revisão D5-A de segurança; PR documental revisada/integrada |
+| **AG-00** | Brief, matriz F/S/C/T/U, decisões, roadmap, conferência segura do legado e aceite humano | Issue #83, F2/D8 registradas (a validar), campos textuais definidos, demais decisões fechadas, revisão D5-A de segurança; PR documental revisada/integrada |
 | **AG-01** | Modelo PostgreSQL, permissões, grants, RLS, datas e exclusividade confirmada | AG-00 integralmente aceito; migration somente em laboratório isolado |
 | **AG-02** | RPCs transacionais, pedido/fila/aprovação/recusa, gestão, observações e auditoria | AG-01 e F2 definidos |
 | **AG-03** | **Interface completa**, incluindo agenda, pedidos, fila **e editor da secretária** | Contratos AG-02 estáveis |

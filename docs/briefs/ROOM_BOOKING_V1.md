@@ -83,15 +83,17 @@ A [Issue #83](https://github.com/The-Vonky/Gaucha-Gestao/issues/83) e o plano lo
 | # | Regra/revisão de 23/10 | Estado / gate |
 |---|---|---|
 | D1 | Uma sala inicial, “Sala de Reunião”, sem escopo por unidade. | Proposta; confirmar nome, quantidade e escopo com a secretária. |
-| D2 | Dois ou mais pedidos `pending` podem ocupar a mesma faixa; **pendentes não bloqueiam a agenda**. Apenas uma reserva `confirmed` por sala/faixa, garantida também sob concorrência; conflito na aprovação preserva o segundo pedido pendente. | Escolha do responsável; validar fluxo com a secretária. **Não resolve F2.** |
+| D2 | Dois ou mais pedidos `pending` podem ocupar a mesma faixa; **pendentes não bloqueiam a agenda**. Apenas uma reserva `confirmed` por sala/faixa, garantida também sob concorrência; conflito na aprovação preserva o segundo pedido pendente. | Escolha do responsável; validar fluxo com a secretária. F2 foi decidida separadamente: não criar pedido sobre reserva já confirmada. |
 | D3 | Na agenda **somente de reservas confirmadas**, usuário autenticado, com perfil ativo e `room_booking.schedule.read`, vê horário, `booked_for` e observação pública da secretária. `purpose`, `requester_user_id`, dados de decisões, fila e pedidos de terceiros não são públicos. | Escolha do responsável; confirmar exposição, privacidade e operação com a secretária. |
 | D4 | Quatro permissões e papéis do Core descritos abaixo, sem concessão implícita a qualquer usuário autenticado. | Aprovação e provisionamento de solicitantes pendentes. |
 | D5 (C2) | **Opção A escolhida:** `platform_administrator` recebe `room_booking.manage` para poder delegar `room_booking_manager`. Isto **também autoriza tecnicamente** aprovar/recusar/criar/editar/cancelar reservas; “admin não opera a fila” é procedimento, não bloqueio de RPC. | Escolha do responsável **sem aprovação de segurança**. Revisão humana independente e testes de concessão/revogação/auditoria obrigatórios antes do AG-01. |
 | D6 | Gestora substituta via papel temporário, com concessão e revogação auditadas. | Confirmar quem autoriza e o fluxo. |
 | D7 | Solicitante pode cancelar **seu** pedido enquanto `pending`, não uma reserva confirmada. | Proposta pendente de aceite. |
-| D8 | Sem expediente fixo, duração mínima/máxima de negócio, antecedência máxima ou grade obrigatória de 15 minutos. Exigir `ends_at > starts_at`; armazenar `timestamptz` e apresentar a hora em `America/Sao_Paulo`. | Escolha do responsável; validar implementação e precisão de entrada. |
-| D8 — futuro | Criação de pedido e reserva direta só com `starts_at` **estritamente maior** que o instante do servidor/banco, **inclusive hoje**. Data civil anterior a hoje em São Paulo é inválida; relógio do navegador não é fonte de autoridade. | Escolha expressa de 23/10, **ainda sem teste e aceite integral**. Tratamento de pedido pendente vencido e edição histórica permanece em aberto. |
+| D8 | Sem expediente fixo, duração mínima/máxima de negócio, antecedência máxima ou grade obrigatória de 15 minutos. Entrada com horas/minutos livres (`HH:mm`), incluindo faixas como 14:07–14:23. Exigir `ends_at > starts_at`; armazenar `timestamptz` e apresentar hora em `America/Sao_Paulo`. | Escolha expressa do responsável; verificar em testes futuros. |
+| D8 — futuro | Criação de pedido e reserva direta só com `starts_at` **estritamente maior** que o instante do servidor/banco, **inclusive hoje**. Data civil anterior a hoje em São Paulo é inválida; relógio do navegador não é fonte de autoridade. | Escolha expressa de 23/10, **ainda sem teste e aceite integral**. Aprovação tardia e edição histórica detalhadas nas linhas seguintes. |
 | D8 — fim do dia | Início e término no **mesmo dia civil de São Paulo**, com término **no máximo 23:59**, sem exigir término exatamente às 23:59. Intervalo técnico `[início, fim)`; não converter silenciosamente `23:59` em `00:00`. | Escolha do responsável; testar borda de 23:59 e adjacência. |
+| D8 — pedido pendente vencido | Se o início do pedido já ocorreu, negar sua aprovação na RPC; manter `pending` sem reserva até que a gestora recuse manualmente. Não introduzir expiração/status automático na v1. | Escolha expressa do responsável em 23/10; testar passagem de tempo, concorrência e recusa manual. |
+| D8 — correção histórica | Para reunião já iniciada ou histórica, impedir edição de `starts_at`/`ends_at`. Permitir somente correção textual autorizada e auditada, com controle de versão, sem reescrever horários históricos. | Escolha expressa do responsável em 23/10; detalhar quais campos textuais podem ser corrigidos e testar autorização/auditoria. |
 | D9 | Avisos apenas na aplicação; sem e-mail/WhatsApp. | Proposta pendente de aceite. |
 | D10 | Rota `/rooms` em `Administrativo`. | Proposta pendente de aceite. |
 | D11 | Legado preservado até corte futuro; reconciliar apenas reservas futuras com agenda oficial atual, mediante autorização. | Procedimento de corte pendente. |
@@ -99,9 +101,9 @@ A [Issue #83](https://github.com/The-Vonky/Gaucha-Gestao/issues/83) e o plano lo
 | C1 | Agendamento antecipado na **fila de desenvolvimento**, não na de implantação/produção. | Escolha comunicada; aceite formal da priorização no PR pendente. |
 | Novo — observações | Texto livre da gestora na **reserva confirmada** (inclusive direta), independente da finalidade `purpose` do pedido; editável somente com `manage`, visível a quem tem `schedule.read`. | Escolha do responsável; privacidade, prevenção de dados sensíveis e homologação pendentes. |
 
-**F2 permanece independente de D2:** o fluxo/critério atual rejeita a criação de pedido que colida com uma reserva **já confirmada**. Manter esta regra **como comportamento proposto histórico**, não como decisão aprovada; confirmar se a rejeição no envio deve ser mantida. Não implementar `create_request` sem fechar F2.
+**F2 decidida expressamente pelo responsável em 23/10 (independente de D2):** a criação de pedido que se sobrepõe a reserva **já confirmada** deve ser rejeitada sem registrar o pedido, com indicação de horário ocupado. Dois pedidos ainda `pending` podem coexistir. A verificação de colisão precisa ocorrer na execução transacional do backend/banco, inclusive se uma reserva for confirmada enquanto o usuário preenche o formulário. Critério funcional ainda não testado nem homologado pela secretária.
 
-**Bordas ainda abertas de D8:** definir como tratar a aprovação de pedido `pending` cujo horário passou e a edição de reservas históricas; confirmar precisão de entrada em minutos e semântica de `23:59`. Validar o instante novamente na transação pertinente, sem deduzir que pedidos antigos possam ser aprovados retroativamente.
+**Complementos de D8 decididos:** aprovação de pedido `pending` cujo início passou é rejeitada sem mudança de status (aguarda recusa manual); reunião já iniciada/histórica não admite edição de horários, mas admite correção textual autorizada com versão e auditoria; entrada aceita horas e minutos livres, até 23:59 no mesmo dia. Validar o instante nas transações pertinentes e testar as bordas de `[início, fim)`. Permanece a definição operacional de quais campos textuais são corrigíveis, sem presumir mudança da finalidade privada `purpose`.
 
 ## Permissões e papéis (D4)
 
@@ -137,13 +139,13 @@ Matriz de capacidades **proposta**, não aprovada (D4/D5-A):
 
 ## Fluxos
 
-**Pedido.** Agenda → escolher data, início, fim, "reservado para" e finalidade (opcional) → validação no cliente **e** no banco → `pending`. **F2 pendente:** o brief anterior prevê rejeitar imediatamente pedido que cruze reserva já confirmada (mensagem “horário ocupado”); manter como proposta não aprovada até decisão explícita. A coexistência de dois pedidos `pending` em D2 não altera F2. O solicitante vem de `auth.uid()` e nunca do cliente.
+**Pedido.** Agenda → escolher data, início, fim, "reservado para" e finalidade (opcional) → validação no cliente **e** no banco → `pending`. **F2 decidida:** se a faixa cruza reserva já confirmada, a criação é rejeitada com “horário ocupado” sem inserir pedido; revalidar no backend/banco no instante efetivo da gravação. Pedidos `pending` concorrentes continuam permitidos pela D2. O solicitante vem de `auth.uid()` e nunca do cliente.
 
-**Decisão.** A fila mostra os pendentes em ordem de início (desempate: criação). *Aprovar* faz numa única transação: trava, revalida status e versão, insere a reserva confirmada com `request_id`, marca o pedido `approved` e registra a auditoria. Se houver colisão, nada é gravado, o pedido continua `pending` e a gestora recebe a mensagem de conflito. Revalidar permissões e horário no backend/banco; caso o início do pedido já tenha transcorrido, o resultado/transição segue **pendente de decisão D8**. *Recusar* leva o pedido a `rejected` com motivo opcional.
+**Decisão.** A fila mostra os pendentes em ordem de início (desempate: criação). *Aprovar* faz numa única transação: trava, revalida status e versão, insere a reserva confirmada com `request_id`, marca o pedido `approved` e registra a auditoria. Se houver colisão, nada é gravado, o pedido continua `pending` e a gestora recebe a mensagem de conflito. Revalidar permissões e horário no backend/banco; se o início do pedido já transcorreu, negar aprovação sem gerar reserva, mantendo `pending` para posterior recusa manual; revalidar no banco. *Recusar* leva o pedido a `rejected` com motivo opcional.
 
 **Reserva direta.** A gestora informa faixa, `booked_for` e observação pública opcional, respeitando início estritamente futuro e fim no mesmo dia até 23:59. Aplica-se a mesma regra de exclusividade e a autoria fica registrada.
 
-**Alterar/cancelar reserva.** Só a gestora (ou quem tenha `manage`, conforme D5-A), inclusive para alterar a observação pública, com controle de versão: uma edição concorrente gera conflito, nunca sobrescreve em silêncio. A política de edição de reserva histórica continua pendente. O cancelamento leva a reserva a `cancelled` e libera a faixa. Se a reserva veio de um pedido, o solicitante vê "Reserva cancelada pela secretaria".
+**Alterar/cancelar reserva.** Só a gestora (ou quem tenha `manage`, conforme D5-A), inclusive para alterar a observação pública, com controle de versão: uma edição concorrente gera conflito, nunca sobrescreve em silêncio. Reuniões já iniciadas ou históricas não permitem alterar horários; apenas correções textuais autorizadas, versionadas e auditadas, com campos a delimitar no aceite. O cancelamento leva a reserva a `cancelled` e libera a faixa. Se a reserva veio de um pedido, o solicitante vê "Reserva cancelada pela secretaria".
 
 **Cancelar o próprio pedido.** `pending → cancelled`, apenas pelo próprio solicitante.
 
@@ -179,12 +181,12 @@ O cancelamento de uma reserva aprovada **não** reabre o pedido: ele continua `a
 | Operação | Quem | Retorno / erros |
 |---|---|---|
 | `list_schedule(from, to)` | `schedule.read` | **somente confirmadas**, visão saneada `{id, sala, starts_at, ends_at, booked_for, secretary_notes}`; sem `purpose`, solicitante/decisões ou fila · período inválido/longo |
-| `create_request(starts_at, ends_at, booked_for, purpose?, idempotency_key)` | `request.create` | pedido pendente · validação de início estritamente futuro/mesmo dia/23:59; regra de colisão com confirmados **F2 pendente**, sem fixar erro/SQLSTATE antes de AG-02 |
+| `create_request(starts_at, ends_at, booked_for, purpose?, idempotency_key)` | `request.create` | pedido pendente · validação de início estritamente futuro/mesmo dia/23:59; rejeição obrigatória de conflito com reserva confirmada (F2 escolhida); código técnico de erro/SQLSTATE a detalhar em AG-02 |
 | `list_my_requests(limit, cursor)` | `read_own` | próprios pedidos + estado da reserva vinculada |
 | `cancel_my_request(id, version)` | `read_own` + dono | `409` versão/estado |
 | `list_queue(status, limit, cursor)` | `manage` | pedidos com dados completos |
-| `approve_request(id, version)` / `reject_request(id, version, reason?)` | `manage` | reserva/pedido · conflito de faixa · estado terminal |
-| `create_booking(...)`, `update_booking(id, version, ...)`, `cancel_booking(id, version, reason?)` | `manage` | reserva · conflito · versão; `secretary_notes` opcional/editável e visível na consulta saneada; política de edição histórica ainda pendente |
+| `approve_request(id, version)` / `reject_request(id, version, reason?)` | `manage` | reserva/pedido · conflito de faixa · estado terminal · aprovação com início transcorrido rejeitada, mantendo `pending` até recusa manual |
+| `create_booking(...)`, `update_booking(id, version, ...)`, `cancel_booking(id, version, reason?)` | `manage` | reserva · conflito · versão; `secretary_notes` opcional/editável e visível na consulta saneada; sem edição de horários em reservas iniciadas/históricas; correção textual autorizada com auditoria |
 
 Os códigos exatos de erro seguem o padrão já adotado em `action_plans`/`abc` e são definidos no AG-01/02.
 
@@ -210,9 +212,9 @@ O legado continua oficial e não é alterado. O desenvolvimento usa apenas dados
 1. Confirmar quantidade/nome da sala e se existe escopo de unidade (D1).
 2. Validar com a secretária **múltiplos pedidos pendentes** para o mesmo horário e o desempate operacional (D2).
 3. Confirmar que quem tem `schedule.read` verá `booked_for` **e observação livre da secretária** nas confirmadas, mas jamais `purpose`, identidade do solicitante, fila ou decisões de terceiros; aceite de privacidade (D3).
-4. **F2:** pedido novo que cruza reserva **já confirmada** deve ser recusado no envio (regra histórica) ou aceito como pendente? Não confundir com D2.
+4. **F2 (escolha registrada):** confirmar com a secretária a mensagem “horário ocupado” e o comportamento quando outra reserva é confirmada durante o envio; pedidos sobre confirmadas são proibidos.
 5. **D5-A:** obter revisão de segurança independente sobre `platform_administrator` poder **delegar e efetivamente gerenciar** reservas; definir auditoria e revogação; não alegar bloqueio técnico de operação.
-6. **D8:** apesar do início estritamente futuro ter sido escolhido, definir pedido pendente cuja hora passou, aprovação tardia e edição de reserva histórica; validar `23:59`, precisão em minutos e intervalos `[início, fim)`.
+6. **D8 (escolhas registradas):** validar com a secretária pedido vencido mantido `pending` até recusa, edição somente textual em reserva iniciada/histórica, minutos livres, fim até `23:59` e intervalos `[início, fim)`. Especificar quais campos textuais admitem correção.
 7. Aprovar D4 e o provisionamento não implícito de `room_booking_requester`; confirmar responsável por substituta D6, cancelamento D7 e avisos D9.
 8. Confirmar rota D10, procedimento de preservação/corte D11 e campos operacionais indispensáveis.
 9. Conferir, sem copiar nem expor dados reais, a instalação e agenda atual da secretária; o ZIP não foi reavaliado nesta revisão.
@@ -237,4 +239,4 @@ As operações ficam no banco com permissão atual e checagem de perfil ativo; e
 
 ## Próximo passo
 
-Fechar F2, as bordas de D8, D4/D6/D7/D9/D10/D11, privacidade e a revisão de segurança D5-A; obter aceite humano rastreável deste brief e de `ACCEPTANCE_V1.md`, atualizar o registro e integrar a PR AG-00. Só depois disso o AG-01 (dados/RLS) pode começar. Nenhum agente deve avançar para a implementação de forma autônoma.
+Formalizar com a secretária F2 e D8 já escolhidas, detalhar campos textuais corrigíveis, decidir D1/D4/D6/D7/D9/D10/D11, privacidade e obter revisão de segurança D5-A; colher aceite humano rastreável deste brief e de `ACCEPTANCE_V1.md`, atualizar o registro e integrar a PR AG-00. Só depois disso o AG-01 (dados/RLS) pode começar. Nenhum agente deve avançar para a implementação de forma autônoma.

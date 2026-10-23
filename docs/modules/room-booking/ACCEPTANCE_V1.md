@@ -9,8 +9,9 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 
 - [ ] Fluxos, máquinas de estado, visibilidade de `booked_for`/**observações públicas** e matriz de acesso validados pela secretária e dono do produto, com privacidade revisada.
 - [ ] Registrar como **escolhas comunicadas**, não como aprovações: D2 (pedidos pendentes concorrentes), D3 (leitura de `booked_for`), D5-A (administrador pode delegar **e gerenciar**), D8 (início estritamente futuro inclusive hoje; até 23:59 no mesmo dia; sem limites fixos) e C1 (antecipação do desenvolvimento).
-- [ ] **F2:** decidir se pedido sobre reserva já confirmada deve ser rejeitado no envio (comportamento atual do brief); D2 não responde F2.
-- [ ] **D8:** aceitar tratamento de pedido pendente vencido e edição histórica; validar semântica de `23:59`, precisão de entrada e relógio do backend.
+- [x] **F2 — escolha expressa do responsável:** pedido que conflita com reserva confirmada é rejeitado no envio sem criar registro; validar com a secretária e testar via RPC em AG-02/04. D2 permanece distinta.
+- [x] **D8 — escolhas expressas do responsável:** aprovação tardia bloqueada com pedido mantido `pending` até recusa manual; impedir edição de horário de reunião iniciada/histórica, permitir correção textual auditada; horas e minutos livres, fim até 23:59.
+- [ ] **D8 — validação de bordas e detalhe:** delimitar campos textuais corrigíveis e executar testes de autorização, precisão, relógio do backend, 23:59 e passagem de tempo em AG-02/04.
 - [ ] Revisão humana **independente de segurança** da D5-A, incluindo grant real de `manage`, delegação, revogação e auditoria; orientação operacional não é proteção técnica.
 - [ ] Confirmar D1/D4/D6/D7/D9/D10/D11, provisionamento de solicitantes e preservação do legado.
 - [ ] Inventário real do legado e agenda atual conferidos por pessoa autorizada, sem importar ou publicar dados privados.
@@ -22,7 +23,7 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 | ID | Critério | Etapa |
 |---|---|---|
 | F1 | Pedido válido fica `pending` e **não** aparece na agenda de confirmados | AG-02/03 |
-| F2 | **PENDENTE DE DECISÃO:** regra do brief atual rejeita pedido sobre reserva **já confirmada** no envio com “horário ocupado”; D2 sobre pedidos pendentes não autoriza alterá-la. Testar o resultado **após aprovação humana de F2** | AG-00/02/03 |
+| F2 | Novo pedido que se sobreponha a reserva **já confirmada** é rejeitado sem inserção, retornando “horário ocupado”, inclusive quando a confirmação ocorrer entre a abertura do formulário e o envio; verificar via UI e RPC/banco. Pedidos apenas `pending` não bloqueiam (D2) | AG-02/03/04 |
 | F3 | Faixas adjacentes (fim A = início B) são aceitas | AG-01/02 |
 | F4 | Dois pedidos pendentes idênticos coexistem; aprovar o primeiro funciona; aprovar o segundo retorna conflito e ele continua `pending` **[D2]** | AG-02/04 |
 | F5 | Aprovação cria exatamente uma reserva vinculada ao pedido, com `decided_by = auth.uid()` | AG-02 |
@@ -33,7 +34,7 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 | F10 | Cancelamento leva a `cancelled`, libera a faixa e mantém o registro; não há exclusão física | AG-02/04 |
 | F11 | Solicitante cancela o próprio pedido `pending`, mas não o de outro nem um já aprovado **[D7]** | AG-02/03 |
 | F12 | Clique duplo / reenvio do mesmo pedido cria um único registro (idempotência) | AG-02/03 |
-| F13 | Banco/RPC: `ends_at > starts_at`, mesmo dia civil em São Paulo, término `<= 23:59`, início estritamente no futuro inclusive hoje. **Sem** limite de expediente, duração mínima/máxima, antecedência máxima ou grade compulsória de 15 min; verificações em T4–T9 **[D8: bordas pendentes]** | AG-01/02/04 |
+| F13 | Banco/RPC: `ends_at > starts_at`, mesmo dia civil em São Paulo, término `<= 23:59`, início estritamente no futuro inclusive hoje. **Sem** limite de expediente, duração mínima/máxima, antecedência máxima ou grade compulsória de 15 min; verificações em T4–T11 (decisões de produto D8 registradas; testes e detalhe textual pendentes) | AG-01/02/04 |
 | F14 | Consulta da agenda limitada por período; não carrega o histórico inteiro | AG-02/03 |
 | F15 | Gestora cria/edita `secretary_notes` opcional de reserva confirmada/direta, sem alterar `purpose` privado do pedido; preservar versão/auditoria | AG-02/03/04 |
 | F16 | Pedidos `pending` sobrepostos coexistem sem ocupar agenda; somente reserva `confirmed` bloqueia horário, inclusive na corrida (F4/C1/C2) | AG-02/04 |
@@ -78,9 +79,11 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 | T4 | Criação por RPC de pedido ou reserva com **data civil anterior a hoje em São Paulo** é recusada no banco, independentemente de relógio/locale do cliente | AG-01/02/04 |
 | T5 | Criação **hoje** com `starts_at` menor ou igual ao instante corrente aferido no backend/banco durante a validação (hora passada **ou exatamente agora**) é recusada por RPC; navegador com relógio adiantado/atrasado não contorna a regra | AG-01/02/04 |
 | T6 | Pedido e reserva direta que passam da meia-noite são recusados; término exatamente **23:59** no mesmo dia é permitido se os demais invariantes forem válidos; não converter para 00:00 | AG-01/02/04 |
-| T7 | Durações positivas arbitrárias, sem expediente, antecedência máxima ou grade fixa de 15 minutos, e horários adjacentes com intervalo `[início, fim)` são válidos, observado o limite do dia | AG-01/02/04 |
-| T8 | Backend revalida o instante na gravação após o formulário ficar aberto/relógio avançar; início que deixou de ser futuro é recusado na criação. Resultado de **aprovação de pedido já vencido fica pendente de decisão D8** | AG-00/02/04 |
+| T7 | Durações positivas arbitrárias, sem expediente, antecedência máxima ou grade fixa de 15 minutos (ex.: 14:07–14:23), e horários adjacentes com intervalo `[início, fim)` são válidos, observado o limite do dia | AG-01/02/04 |
+| T8 | Backend revalida o instante na gravação após o formulário ficar aberto/relógio avançar; início que deixou de ser futuro é recusado na criação. pedido já vencido não pode ser aprovado e permanece `pending` até recusa manual pela gestora (T10) | AG-00/02/04 |
 | T9 | Mesmo dia civil e instante efetivo `timestamptz` são avaliados em `America/Sao_Paulo` com processo/navegador em `TZ=UTC` e `TZ=Asia/Tokyo` | AG-02/03/04 |
+| T10 | Pedido `pending` cujo `starts_at` já transcorreu: `approve_request` é negado no banco, nenhuma reserva/auditoria de aprovação é criada, status permanece `pending`; recusa manual posterior funciona e é auditada, inclusive sob corrida temporal | AG-02/04/05 |
+| T11 | Reunião iniciada/histórica: alteração de `starts_at` ou `ends_at` negada em RPC/banco, inclusive via payload forjado; correção textual permitida somente para `manage`, com versão/auditoria, sem sobrescrever horários, e sem inserir conteúdo privado na agenda | AG-02/04/05 |
 
 ## Interface
 
@@ -113,7 +116,7 @@ A numeração **canônica** é **AG-03: interface completa (inclusive secretaria
 - [ ] Roteiro de 15–20 min executado pela secretária com dados sintéticos: fila, aprovar, recusar, reserva direta, editar, cancelar.
 - [ ] Dois usuários comuns enviam pedidos conflitantes, e o resultado é o esperado em F4.
 - [ ] Validar `booked_for` e observações públicas com solicitantes autorizados e negação a não autorizados; testar texto potencialmente sensível e política de exposição.
-- [ ] Confirmar comportamento de hoje, futuro, `23:59` e mensagens nas bordas já decididas, com pendências D8/F2 fechadas antes da homologação.
+- [ ] Confirmar comportamento de hoje, futuro, `23:59` e mensagens nas bordas já decididas, com escolhas F2/D8 registradas e detalhes/validações pendentes concluídos antes da homologação.
 - [ ] Desktop e pelo menos um celular real validados.
 - [ ] Aceite expresso da secretária sobre facilidade de uso, visibilidade e decisões.
 
