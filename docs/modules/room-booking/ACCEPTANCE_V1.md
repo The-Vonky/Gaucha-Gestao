@@ -11,9 +11,11 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 - [ ] Registrar como **escolhas comunicadas**, não como aprovações: D2 (pedidos pendentes concorrentes), D3 (leitura de `booked_for`), D5-A (administrador pode delegar **e gerenciar**), D8 (início estritamente futuro inclusive hoje; até 23:59 no mesmo dia; sem limites fixos) e C1 (antecipação do desenvolvimento).
 - [x] **F2 — escolha expressa do responsável:** pedido que conflita com reserva confirmada é rejeitado no envio sem criar registro; validar com a secretária e testar via RPC em AG-02/04. D2 permanece distinta.
 - [x] **D8 — escolhas expressas do responsável:** aprovação tardia bloqueada com pedido mantido `pending` até recusa manual; impedir edição de horário de reunião iniciada/histórica, permitir correção textual auditada; horas e minutos livres, fim até 23:59.
-- [ ] **D8 — validação de bordas e detalhe:** delimitar campos textuais corrigíveis e executar testes de autorização, precisão, relógio do backend, 23:59 e passagem de tempo em AG-02/04.
+- [x] **D8 — campos de correção histórica aprovados pelo responsável:** apenas `booked_for` e `secretary_notes`; `purpose`, horários e demais campos não são editáveis na exceção histórica.
+- [ ] **D8 — validação de bordas:** conferir com a secretária e executar futuramente testes de autorização, versão, precisão, relógio do backend, 23:59 e passagem de tempo em AG-02/04.
 - [ ] Revisão humana **independente de segurança** da D5-A, incluindo grant real de `manage`, delegação, revogação e auditoria; orientação operacional não é proteção técnica.
-- [ ] Confirmar D1/D4/D6/D7/D9/D10/D11, provisionamento de solicitantes e preservação do legado.
+- [x] **Decisões de produto D1/D4/D6/D7/D9/D10/D11 confirmadas pelo responsável em 23/10/2026**, incluindo atribuição individual explícita de `room_booking_requester` no Core, substituta temporária, cancelamento próprio só antes do início, avisos internos, rota `/rooms` e preservação do legado.
+- [ ] **Validação operacional da secretária** para D1/D2/D3/D6/D7/D8/F2/observações; revisar privacidade, delegação (D5-A), campos necessários e autoridade para nomeação de substituta. O corte detalhado do legado é gate separado AG-06.
 - [ ] Inventário real do legado e agenda atual conferidos por pessoa autorizada, sem importar ou publicar dados privados.
 - [ ] Prioridade C1 ratificada formalmente, sem afastar Qualidade P1–P9/O1–O8 e PROD NO-GO.
 - [ ] Aceite rastreável do responsável/secretária, PR **somente documental** com revisão humana e integração; **não iniciar AG-01** antes de fechar todo o gate.
@@ -32,7 +34,7 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 | F8 | Reserva direta respeita a mesma exclusividade e registra a autoria | AG-02/04 |
 | F9 | Edição com versão desatualizada retorna conflito e não sobrescreve | AG-02/04 |
 | F10 | Cancelamento leva a `cancelled`, libera a faixa e mantém o registro; não há exclusão física | AG-02/04 |
-| F11 | Solicitante cancela o próprio pedido `pending`, mas não o de outro nem um já aprovado **[D7]** | AG-02/03 |
+| F11 | Solicitante cancela somente **seu** pedido `pending` com início ainda estritamente futuro no banco; nega pedido de terceiros, já aprovado ou `pending` vencido (este segue para recusa manual pela gestora) **[D7 aprovado]** | AG-02/03/04 |
 | F12 | Clique duplo / reenvio do mesmo pedido cria um único registro (idempotência) | AG-02/03 |
 | F13 | Banco/RPC: `ends_at > starts_at`, mesmo dia civil em São Paulo, término `<= 23:59`, início estritamente no futuro inclusive hoje. **Sem** limite de expediente, duração mínima/máxima, antecedência máxima ou grade compulsória de 15 min; verificações em T4–T11 (decisões de produto D8 registradas; testes e detalhe textual pendentes) | AG-01/02/04 |
 | F14 | Consulta da agenda limitada por período; não carrega o histórico inteiro | AG-02/03 |
@@ -56,6 +58,7 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 | S11 | Atribuição de `room_booking_manager` a uma substituta e a revogação no retorno funcionam e ficam auditadas **[D5/D6]** | AG-01/05 |
 | S12 | Auditoria registra ator, ação e entidade de cada mutação, sem `purpose` nem texto integral de `secretary_notes` nos metadados por padrão | AG-02/04 |
 | S13 | `anon` não acessa nada do schema | AG-01 |
+| S16 | Papel `room_booking_requester` não é recebido automaticamente por qualquer usuário ativo/novo; concessão **individual e auditável** pelo administrador no Core, com revogação imediata e sem ampliação implícita de escopo; viabilidade do grant D5-A sujeita à revisão humana independente | AG-01/02/04 |
 | S14 | Usuário autorizado `schedule.read` vê `booked_for` e notas **de confirmadas**; usuário sem papel, perfil inativo, anônimo ou com permissão revogada não acessa esses campos, nem por REST/RPC/ID adivinhado | AG-01/02/04 |
 | S15 | `secretary_notes` com HTML/script é renderizado como **texto inerte** na agenda, não vaza a pedidos alheios, fila pública nem logs; solicitante não pode escrever/editar notas por payload forjado | AG-02/03/04 |
 
@@ -83,7 +86,8 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 | T8 | Backend revalida o instante na gravação após o formulário ficar aberto/relógio avançar; início que deixou de ser futuro é recusado na criação. pedido já vencido não pode ser aprovado e permanece `pending` até recusa manual pela gestora (T10) | AG-00/02/04 |
 | T9 | Mesmo dia civil e instante efetivo `timestamptz` são avaliados em `America/Sao_Paulo` com processo/navegador em `TZ=UTC` e `TZ=Asia/Tokyo` | AG-02/03/04 |
 | T10 | Pedido `pending` cujo `starts_at` já transcorreu: `approve_request` é negado no banco, nenhuma reserva/auditoria de aprovação é criada, status permanece `pending`; recusa manual posterior funciona e é auditada, inclusive sob corrida temporal | AG-02/04/05 |
-| T11 | Reunião iniciada/histórica: alteração de `starts_at` ou `ends_at` negada em RPC/banco, inclusive via payload forjado; correção textual permitida somente para `manage`, com versão/auditoria, sem sobrescrever horários, e sem inserir conteúdo privado na agenda | AG-02/04/05 |
+| T11 | Reunião iniciada/histórica: alteração de horários, `purpose` e demais campos é negada por RPC/banco, inclusive com payload forjado; **somente `booked_for` e `secretary_notes` corrigíveis** por `manage`, com versão/auditoria e renderização pública segura | AG-02/04/05 |
+| T12 | Pedido `pending` cujo início já chegou/passou: cancelamento pelo solicitante negado, sem mudança de status; recusa pela gestora continua permitida. Testar borda do instante atual pelo relógio do banco e cliente em fuso diferente | AG-02/04 |
 
 ## Interface
 
@@ -98,6 +102,7 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 | U7 | Funciona em viewport de celular (fluxo de pedido e fila) | AG-03/04/05 |
 | U8 | Sem segundo login nem senha própria do módulo | AG-03/04 |
 | U9 | Agenda confirmada apresenta `booked_for` e observação pública como texto seguro, com orientação contra informações sensíveis; finalidade privada e pedidos pendentes não aparecem | AG-03/04/05 |
+| U10 | `Meus pedidos` e fila da secretária exibem estados/avisos internos, sem disparar e-mail, WhatsApp ou notificações externas **[D9 aprovado]** | AG-03/04/05 |
 
 ## Interpretação das etapas
 
@@ -116,7 +121,7 @@ A numeração **canônica** é **AG-03: interface completa (inclusive secretaria
 - [ ] Roteiro de 15–20 min executado pela secretária com dados sintéticos: fila, aprovar, recusar, reserva direta, editar, cancelar.
 - [ ] Dois usuários comuns enviam pedidos conflitantes, e o resultado é o esperado em F4.
 - [ ] Validar `booked_for` e observações públicas com solicitantes autorizados e negação a não autorizados; testar texto potencialmente sensível e política de exposição.
-- [ ] Confirmar comportamento de hoje, futuro, `23:59` e mensagens nas bordas já decididas, com escolhas F2/D8 registradas e detalhes/validações pendentes concluídos antes da homologação.
+- [ ] Confirmar comportamento de hoje, futuro, `23:59`, cancelamento de pedido vencido e mensagens nas bordas, com escolhas F2/D7/D8 registradas e testes previstos executados nas etapas correspondentes antes da homologação.
 - [ ] Desktop e pelo menos um celular real validados.
 - [ ] Aceite expresso da secretária sobre facilidade de uso, visibilidade e decisões.
 
