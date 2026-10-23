@@ -58,9 +58,9 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 | S11 | Atribuição de `room_booking_manager` a uma substituta e a revogação no retorno funcionam e ficam auditadas **[D5/D6]** | AG-01/05 |
 | S12 | Auditoria registra ator, ação e entidade de cada mutação, sem `purpose` nem texto integral de `secretary_notes` nos metadados por padrão | AG-02/04 |
 | S13 | `anon` não acessa nada do schema | AG-01 |
-| S16 | Papel `room_booking_requester` não é recebido automaticamente por qualquer usuário ativo/novo; concessão **individual e auditável** pelo administrador no Core, com revogação imediata e sem ampliação implícita de escopo; viabilidade do grant D5-A sujeita à revisão humana independente | AG-01/02/04 |
 | S14 | Usuário autorizado `schedule.read` vê `booked_for` e notas **de confirmadas**; usuário sem papel, perfil inativo, anônimo ou com permissão revogada não acessa esses campos, nem por REST/RPC/ID adivinhado | AG-01/02/04 |
 | S15 | `secretary_notes` com HTML/script é renderizado como **texto inerte** na agenda, não vaza a pedidos alheios, fila pública nem logs; solicitante não pode escrever/editar notas por payload forjado | AG-02/03/04 |
+| S16 | Papel `room_booking_requester` não é recebido automaticamente por qualquer usuário ativo/novo; concessão **individual e auditável** pelo administrador no Core, com revogação imediata e sem ampliação implícita de escopo; viabilidade do grant D5-A sujeita à revisão humana independente | AG-01/02/04 |
 
 ## Integridade e concorrência (PostgreSQL real, não mock)
 
