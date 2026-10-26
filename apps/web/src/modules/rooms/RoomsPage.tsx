@@ -307,7 +307,7 @@ export function RoomsPage() {
           </p>
         </aside>
       </div>
-      {editor && (
+      {editor && (editor.direct ? manage : create) && (
         <section className="room-panel">
           <h2 id="room-editor-title" tabIndex={-1}>
             {editor.booking

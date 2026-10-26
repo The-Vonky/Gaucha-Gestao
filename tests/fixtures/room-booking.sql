@@ -16,9 +16,13 @@ select public.ag01_assert((select count(*)=0 from core.user_role_assignments a j
 select set_config('ag01.manager',(select id::text from core.roles where key='room_booking_manager'),false);
 set role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
-select public.ag01_assert(private.has_global_permission('room_booking.manage'));
+select public.ag01_assert(not private.has_global_permission('room_booking.manage'));
 insert into core.user_role_assignments(user_id,role_id,scope_type) select '00000000-0000-0000-0000-000000000002',id,'global' from core.roles where key='room_booking_requester';
+select public.ag01_error($q$insert into core.user_role_assignments(user_id,role_id,scope_type) select '00000000-0000-0000-0000-000000000003',id,'global' from core.roles where key='room_booking_manager';$q$,'42501');
+reset role;
+select set_config('request.jwt.claim.sub','',false);
 insert into core.user_role_assignments(user_id,role_id,scope_type) select '00000000-0000-0000-0000-000000000003',id,'global' from core.roles where key='room_booking_manager';
+set role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
 select public.ag01_assert(private.has_global_permission('room_booking.schedule.read') and not private.has_global_permission('room_booking.manage'));
 select public.ag01_error($q$insert into core.user_role_assignments(user_id,role_id,scope_type) values ('00000000-0000-0000-0000-000000000004',current_setting('ag01.manager')::uuid,'global')$q$,'42501');
@@ -48,7 +52,10 @@ revoke all on all tables in schema room_booking from authenticated;
 -- Revogação na mesma sessão e auditoria Core.
 set role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);
+reset role;
+select set_config('request.jwt.claim.sub','',false);
 update core.user_role_assignments set active=false where user_id='00000000-0000-0000-0000-000000000003';
+set role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
 select public.ag01_assert(not private.has_global_permission('room_booking.manage'));
 reset role;

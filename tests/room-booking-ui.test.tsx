@@ -132,3 +132,29 @@ it("converte minutos livres e borda 23:59 no fuso de São Paulo", () => {
   expect(time("2099-01-02T17:07:00Z")).toBe("14:07");
   expect(dateTime("2099-01-03T02:59:00Z")).toContain("02/01/2099");
 });
+it("D5-B: administrador recebe três capacidades, sem fila, contador ou ações de gestão", async () => {
+  state.permissions = ["schedule.read", "request.create", "request.read_own"];
+  state.rpc.mockImplementation(async (name) =>
+    name === "schedule" ? [{ id: "B", booked_for: "Reserva existente", starts_at: "2099-01-02T17:07:00Z", ends_at: "2099-01-02T17:23:00Z", version: 1 }]
+      : name === "summary" ? { name: "Sala de Reunião", server_now: "2026-10-26T12:00:00Z", today_count: 1, pending_count: 99 } : [],
+  );
+  render(<RoomsPage />);
+  await screen.findByText("Reserva existente");
+  expect(screen.getByText("Meus pedidos")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Novo pedido" })).toBeTruthy();
+  for (const name of ["Criar reserva direta", "Editar reserva", "Cancelar reserva", "Aprovar pedido", "Recusar pedido"])
+    expect(screen.queryByRole("button", { name })).toBeNull();
+  expect(screen.queryByText("Solicitações pendentes")).toBeNull();
+  expect(screen.queryByText("99")).toBeNull();
+  expect(state.rpc.mock.calls.some((c) => c[0] === "requests" && c[1]?.p_queue)).toBe(false);
+});
+it("fecha visualmente o editor de gestão quando a permissão efetiva é revogada", async () => {
+  state.permissions = ["schedule.read", "manage"];
+  const view = render(<RoomsPage />);
+  await userEvent.setup().click(await screen.findByRole("button", { name: "Criar reserva direta" }));
+  expect(screen.getByRole("heading", { name: "Reserva direta" })).toBeTruthy();
+  state.permissions = ["schedule.read", "request.create", "request.read_own"];
+  view.rerender(<RoomsPage />);
+  expect(screen.queryByRole("heading", { name: "Reserva direta" })).toBeNull();
+  await waitFor(() => expect(screen.queryByText("Consultando agenda…")).toBeNull());
+});
