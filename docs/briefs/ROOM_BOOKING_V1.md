@@ -1,16 +1,19 @@
 # Implementation Brief — Agendamento de Salas v1 (AG-00)
 
+**Decisão vigente — 26/10/2026:** D5-A revogada pelo responsável em 26/10/2026. D5-B adotada: o administrador geral não administra reservas; a gestão cabe ao papel `room_booking_manager`, com provisionamento administrativo restrito e auditado. Atribuição administrativa ativa conflitante nega gestão mesmo com papel adicional. D1–D4, D6–D11 e F2 permanecem aprovadas. Os registros de 23/10 abaixo são históricos.
+
+
 **Atualização vigente — 26/10/2026:** o responsável ampliou expressamente a PR #88
 para AG-02/AG-03, mantendo a branch existente, e autorizou aplicação incremental
 não destrutiva no `gaucha-gestao-local`. RPCs e interface implementadas; merge cabe
-exclusivamente ao mantenedor. D5-A já aprovada, sem exigência de segundo revisor.
+exclusivamente ao mantenedor. D5-B vigente, sem exigência de segundo revisor.
 Os limites históricos abaixo não revogam essa autorização local. Evidências e
 pendências atuais em [AG-02/AG-03 local](../modules/room-booking/AG02_AG03_LOCAL.md). C30/STAGING/PROD permanecem fora do escopo.
 
 
 **Atualização de autoridade AG-01, 23/10/2026 — mantenedor único:** o responsável confirmou que é o único desenvolvedor e aprovador do projeto. A decisão de produto D5-A está aprovada. Não existe parecer humano independente, e a exigência histórica de segundo revisor é registrada como **exceção de governança com risco residual assumido pelo titular**, conforme Issues #83/#87. **O agente deve codificar schema, RLS e grants propostos e abrir PR normalmente; o próprio titular decide o merge após diff, CI e testes.** Não apresentar uma revisão independente inexistente. Continuam proibidas migrations em DEV compartilhado, C30/STAGING/PROD, uso de dados reais e ativação em ambiente persistente sem autorização operacional explícita.
 
-Status: **AG-00 integrado na main via PR #85; AG-01 implementado para revisão na PR #88.** O responsável único aprovou D5-A e a revisão final pelo próprio mantenedor com CI/testes (exceção de governança documentada). O desenvolvimento e o teste manual utilizam o **Supabase/Docker local existente**, sem criar nova infraestrutura; migrations incrementais locais devem preservar dados e ter destino verificado. Não há autorização para deploy, reset ou mudanças em STAGING/PROD.
+Status: **AG-00 integrado na main via PR #85; AG-01 implementado para revisão na PR #88.** O responsável único adotou D5-B em 26/10 e mantém a revisão final pelo próprio mantenedor com CI/testes (exceção de governança documentada). O desenvolvimento e o teste manual utilizam o **Supabase/Docker local existente**, sem criar nova infraestrutura; migrations incrementais locais devem preservar dados e ter destino verificado. Não há autorização para deploy, reset ou mudanças em STAGING/PROD.
 Elaboração: 2026-10-20 · Revisão documental: 2026-10-23 (Issue #83)  
 Baseline desta revisão: `main` em `338cd4adb8eab00ff85312833f29919a6294893d`  
 Critérios de aceite: `docs/modules/room-booking/ACCEPTANCE_V1.md`
@@ -88,16 +91,16 @@ Recorrência; várias salas operáveis; convites/participantes; Outlook/Google C
 
 ## Decisões AG-00 — escolhas comunicadas versus aceites pendentes
 
-A [Issue #83](https://github.com/The-Vonky/Gaucha-Gestao/issues/83) e o plano local revisado em **23/10/2026** registram as escolhas do responsável. Em complemento, o responsável **aprovou expressamente D1, D4, D6, D7, D9, D10, D11 e os campos de correção histórica** na conversa de AG-00 de 23/10/2026, registrada nesta PR #85 e na Issue #83. **Aprovação das regras de produto não equivale a aceite integral**: validação da secretária, privacidade, revisão independente D5-A, PR/CI e demais gates continuam exigidos. Não se deve inferir aprovação de segurança ou autorização de AG-01.
+A [Issue #83](https://github.com/The-Vonky/Gaucha-Gestao/issues/83) e o plano local revisado em **23/10/2026** registram as escolhas do responsável. Em complemento, o responsável **aprovou expressamente D1, D4, D6, D7, D9, D10, D11 e os campos de correção histórica** na conversa de AG-00 de 23/10/2026, registrada nesta PR #85 e na Issue #83. **Aprovação das regras de produto não equivale a aceite integral**: validação da secretária, privacidade, revisão do mantenedor, PR/CI e demais gates continuam exigidos. A exigência histórica de parecer D5-A foi substituída pelo fluxo de mantenedor único; D5-B é vigente desde 26/10.
 
 | # | Regra/revisão de 23/10 | Estado / gate |
 |---|---|---|
 | D1 | Uma sala inicial denominada `Sala de Reunião`, compartilhada por toda a empresa, sem escopo por unidade/filial na v1; sem UI de múltiplas salas. | **Aprovada pelo responsável em 23/10**; secretária deve validar aderência à operação real antes do AG-01. |
 | D2 | Pedidos `pending` sobrepostos coexistem; apenas reservas `confirmed` são mutuamente exclusivas sob concorrência. O segundo pedido continua pendente após conflito na aprovação. | Escolha do responsável, **validada com secretária conforme relato de 23/10**; F2 proíbe criar pedidos sobre confirmadas. Testes futuros. |
 | D3 | Na agenda somente de confirmadas, todo usuário autenticado, com perfil ativo e `room_booking.schedule.read`, **deve ver** horário, `booked_for` e `secretary_notes`; `purpose`, identidade técnica de solicitante, fila e decisões continuam privados. Sem acesso anônimo. | Visibilidade **confirmada expressamente pelo responsável** e validada com secretária conforme relato. Exigir proteção técnica e testes de privacidade/renderização segura. |
-| D4 | Quatro permissões e papéis do Core descritos abaixo. `room_booking_requester` é atribuído **explicitamente, usuário a usuário, pelo administrador via Core**, a funcionários autorizados; não há inclusão automática, nem para contas novas. | **Aprovada pelo responsável em 23/10**; conferir autorização da atribuição e dependência de grants da D5-A (revisão de segurança pendente). |
-| D5 (C2) | **Opção A aprovada pelo responsável:** `platform_administrator` receberá `room_booking.manage` pleno, podendo delegar e operar a agenda; concessões e revogações auditadas. | **Parecer humano independente de segurança ainda pendente para integração/ativação dos privilégios**. Autorizada apenas elaboração e ensaios de código em branch + banco descartável exclusivo; nenhuma aplicação remota. |
-| D6 | Responsável designa a substituta; administrador atribui **temporariamente** `room_booking_manager` no Core e revoga expressamente no retorno, com auditoria de ambas as ações. | **Aprovada pelo responsável em 23/10**; definir a substituta/autoridade operacional com a secretária. Concessão efetiva depende da revisão de segurança D5-A. |
+| D4 | Quatro permissões e papéis do Core descritos abaixo. `room_booking_requester` é atribuído **explicitamente, usuário a usuário, pelo administrador via Core**, a funcionários autorizados; não há inclusão automática, nem para contas novas. | **Aprovada pelo responsável em 23/10**; conferir autorização da atribuição e três permissões de solicitante preservadas em D5-B. |
+| D5 (C2) | **D5-B vigente:** administrador sem `manage`; somente gestor efetivo sem conflito administrativo opera reservas. Provisionamento técnico restrito e auditado. | **Aprovada pelo responsável em 26/10/2026**, revogando D5-A aprovada em 23/10. Histórico preservado no registro de decisões. |
+| D6 | Responsável designa a substituta; operador técnico autorizado concede temporariamente `room_booking_manager` e revoga no retorno, com auditoria de ambas as ações (mecanismo D5-B). | **Decisão de substituição preservada**, aprovada em 23/10; concessão técnica conforme D5-B de 26/10. |
 | D7 | Solicitante pode cancelar **somente seu próprio pedido `pending` e antes do início previsto** (`starts_at` estritamente futuro aferido pelo banco); não pode cancelar pedido vencido ainda pendente nem reserva confirmada. Pedido vencido aguarda recusa manual (D8). | **Aprovada pelo responsável em 23/10**; validar UX e autorização negativa com a secretária. |
 | D8 | Sem expediente fixo, duração mínima/máxima de negócio, antecedência máxima ou grade obrigatória de 15 minutos. Entrada com horas/minutos livres (`HH:mm`), incluindo faixas como 14:07–14:23. Exigir `ends_at > starts_at`; armazenar `timestamptz` e apresentar hora em `America/Sao_Paulo`. | Escolha expressa do responsável; verificar em testes futuros. |
 | D8 — futuro | Criação de pedido e reserva direta só com `starts_at` **estritamente maior** que o instante do servidor/banco, **inclusive hoje**. Data civil anterior a hoje em São Paulo é inválida; relógio do navegador não é fonte de autoridade. | Escolha expressa de 23/10, **ainda sem teste e aceite integral**. Aprovação tardia e edição histórica detalhadas nas linhas seguintes. |
@@ -130,22 +133,22 @@ A [Issue #83](https://github.com/The-Vonky/Gaucha-Gestao/issues/83) e o plano lo
 |---|---|
 | `room_booking_requester` | `schedule.read`, `request.create`, `request.read_own` |
 | `room_booking_manager` | as três acima + `manage` |
-| `platform_administrator` | com as quatro permissões **na proposta D5-A**, sujeita à aprovação independente de segurança |
+| `platform_administrator` | `schedule.read`, `request.create`, `request.read_own`; **sem `manage`** |
 
-**Provisionamento de solicitantes aprovado em produto e validado com secretária conforme relato (D4):** cada funcionário autorizado, inclusive novas contas, recebe `room_booking_requester` (`global_only`) por **atribuição individual explícita do administrador nos fluxos do Core**, com auditoria e revogação. Não existe acesso implícito para usuários ativos, concessão automática ou provisionamento em lote na v1. A viabilidade de `private.can_delegate`/grants do administrador depende da **revisão independente D5-A**; não afirmar que permissões futuras já existam no banco. Em AG-01 validar a integração com o Core, sem alterá-lo nesta PR.
+**Provisionamento de solicitantes aprovado em produto e validado com secretária conforme relato (D4):** cada funcionário autorizado, inclusive novas contas, recebe `room_booking_requester` (`global_only`) por **atribuição individual explícita do administrador nos fluxos do Core**, com auditoria e revogação. Não existe acesso implícito para usuários ativos, concessão automática ou provisionamento em lote na v1. A delegação continua pelo Core com as três permissões preservadas; gestor segue o [procedimento D5-B](../modules/room-booking/D5B_ACCESS.md).
 
-Matriz de capacidades de **produto aprovada em D4**, sujeita à validação operacional e à revisão independente da capacidade administrativa **D5-A** (nenhum grant implementado):
+Matriz vigente de capacidades, com separação D5-B aprovada em 26/10/2026:
 
-| Ação | Solicitante autorizado | Gestora | `platform_administrator` (D5-A) | Sem papel / inativo / anônimo |
+| Ação | Solicitante autorizado | Gestora | `platform_administrator` (D5-B) | Sem papel / inativo / anônimo |
 |---|:-:|:-:|:-:|:-:|
-| Ver confirmados: horário, `booked_for`, observação pública | ✔ | ✔ | ✔* | ✘ |
-| Criar pedido próprio e consultar seus pedidos | ✔ | ✔ | conforme grants* | ✘ |
-| Ver `purpose`, autoria e fila de pedidos de terceiros | ✘ | ✔ | ✔* | ✘ |
-| Aprovar/recusar, reserva direta, alterar/cancelar | ✘ | ✔ | **✔*** | ✘ |
-| Criar/editar observação pública da reserva | ✘ | ✔ | **✔*** | ✘ |
-| Delegar/revogar `room_booking_manager` pelo Core | ✘ | não por este módulo | **✔*** | ✘ |
+| Ver confirmados: horário, `booked_for`, observação pública | ✔ | ✔ | ✔ | ✘ |
+| Criar pedido próprio e consultar seus pedidos | ✔ | ✔ | ✔ | ✘ |
+| Ver `purpose`, autoria e fila de pedidos de terceiros | ✘ | ✔ | ✘ | ✘ |
+| Aprovar/recusar, reserva direta, alterar/cancelar | ✘ | ✔ | ✘ | ✘ |
+| Criar/editar observação pública da reserva | ✘ | ✔ | ✘ | ✘ |
+| Delegar/revogar `room_booking_manager` pelo Core | ✘ | não por este módulo | ✘ | ✘ |
 
-*D5-A requer revisão de segurança; não representa um privilégio já implementado. Quem pode ver uma agenda não recebe acesso à fila, finalidade privada ou identidades técnicas de terceiros. O administrador **poderia operar a fila via RPC** com `manage` — uma orientação operacional em contrário não o impede.
+Gestão exige permissão efetiva e separação de funções, inclusive nas RPCs. Quem vê a agenda não recebe a fila nem a finalidade privada de terceiros. A concessão/revogação técnica do gestor exige operador autorizado e evidência; não é realizada pela tela de usuários.
 
 ## Fluxos
 
@@ -155,7 +158,7 @@ Matriz de capacidades de **produto aprovada em D4**, sujeita à validação oper
 
 **Reserva direta.** A gestora informa faixa, `booked_for` e observação pública opcional, respeitando início estritamente futuro e fim no mesmo dia até 23:59. Aplica-se a mesma regra de exclusividade e a autoria fica registrada.
 
-**Alterar/cancelar reserva.** Só a gestora (ou quem tenha `manage`, conforme D5-A), inclusive para alterar a observação pública, com controle de versão: uma edição concorrente gera conflito, nunca sobrescreve em silêncio. Reuniões já iniciadas ou históricas não permitem alterar horários ou outros campos de negócio: apenas `booked_for` e `secretary_notes` são corrigíveis por `manage`, com controle de versão e auditoria; não alterar `purpose` privado. O cancelamento leva a reserva a `cancelled` e libera a faixa. Se a reserva veio de um pedido, o solicitante vê "Reserva cancelada pela secretaria".
+**Alterar/cancelar reserva.** Só o gestor com `manage` efetivo e sem conflito administrativo, conforme D5-B, inclusive para alterar a observação pública, com controle de versão: uma edição concorrente gera conflito, nunca sobrescreve em silêncio. Reuniões já iniciadas ou históricas não permitem alterar horários ou outros campos de negócio: apenas `booked_for` e `secretary_notes` são corrigíveis por `manage`, com controle de versão e auditoria; não alterar `purpose` privado. O cancelamento leva a reserva a `cancelled` e libera a faixa. Se a reserva veio de um pedido, o solicitante vê "Reserva cancelada pela secretaria".
 
 **Cancelar o próprio pedido (D7).** `pending → cancelled` só pelo titular e enquanto `starts_at` ainda for estritamente futuro no relógio do backend/banco. Pedido `pending` vencido não pode ser cancelado pelo solicitante: é mantido `pending` até recusa manual pela gestora, conforme D8. Reserva `confirmed` nunca é cancelada pelo solicitante.
 
@@ -221,10 +224,10 @@ A implementação será **totalmente nova**, baseada somente nos contratos da pl
 
 1. **Produto/secretária:** D1–D4, D6–D11, F2, observações e campos corrigíveis aprovados pelo responsável; ele **relatou validação da secretária** para as escolhas atuais em 23/10. Falta registrar evidência rastreável de quem validou, quando e em qual escopo; não inferir review assinado da secretária.
 2. **D3/observações:** a visibilidade de `booked_for` e `secretary_notes` para **todos os leitores autorizados** está confirmada; implementar leitura apenas de confirmadas, negação para usuários não autorizados e renderização como texto seguro.
-3. **D5-A:** administrador geral pode delegar e gerir reservas, conforme aprovação expressa do responsável. **Parecer humano independente de segurança ainda pendente**, incluindo avaliação dos grants, segregação funcional, revogação e auditoria.
+3. **D5-B:** administrador geral não gere reservas nem delega gestor pelo fluxo normal. Procedimento técnico restrito e auditado conforme [runbook](../modules/room-booking/D5B_ACCESS.md); revisão final cabe ao mantenedor.
 4. **D8/F2:** produto decidido; executar testes negativos e de concorrência nas etapas AG-01–AG-05, não antes de existir código.
 5. **D11:** **sem inventário/comparação/importação/reconciliação do legado** como gate; não tocar no ambiente antigo. Transição operacional futura só com GO separado.
-6. **C1/AG-00:** a PR #85 já foi integrada à main, e a elaboração de código AG-01 em branch própria foi liberada pelo responsável em 23/10/2026. Parecer independente D5-A, CI/revisão do novo código e autorização de merge/ativação continuam pendentes. Não alterar bancos persistentes.
+6. **C1/AG-00:** a PR #85 já foi integrada à main, e a elaboração de código AG-01 em branch própria foi liberada pelo responsável em 23/10/2026. CI/revisão do novo código e decisão de merge continuam pendentes. Aplicação incremental autorizada somente no `gaucha-gestao-local`, preservando dados.
 
 ## Sequência AG-00 a AG-06 e conciliação histórica
 
@@ -232,11 +235,11 @@ O plano inicial de 19/10 chamava **AG-04** a interface da secretária e **AG-05*
 
 | Etapa | Conteúdo | Gate |
 |---|---|---|
-| AG-00 | Documentação, decisões D1–D12/C1/F2, privacidade e aceites humanos | PR documental revisada **e integrada**, decisões fechadas, revisão de segurança D5-A |
+| AG-00 | Documentação, decisões D1–D12/C1/F2, privacidade e aceites humanos | PR documental revisada **e integrada**, decisões fechadas, D5-B e revisão do mantenedor |
 | AG-01 | Modelo, catálogo Core, RLS/grants e invariantes em migration **nova** | AG-00 aceito |
 | AG-02 | RPCs de consulta e mutação, idempotência, concorrência e auditoria | AG-01 + F2 resolvido |
 | AG-03 | **Toda** interface, inclusive fila/editor da secretária e observações públicas | AG-02 estável |
-| AG-04 | QA, matriz F/S/C/T/U e revisão independente em banco real isolado | AG-01/02/03 |
+| AG-04 | QA, matriz F/S/C/T/U e revisão do mantenedor com testes no banco local existente | AG-01/02/03 |
 | AG-05 | Homologação funcional com contas sintéticas e aceite humano | AG-04 |
 | AG-06 | Corte e reconciliação do legado em ocasião posterior | GO global P1–P9/O1–O8, backups e autorização formal |
 
@@ -244,8 +247,8 @@ As operações ficam no banco com permissão atual e checagem de perfil ativo; e
 
 ## Próximo passo
 
-**Codificar AG-01 agora, exclusivamente na branch da Issue #87:** elaborar migration incremental, constraints, catálogo e RLS default-deny com testes sintéticos em banco local/descartável exclusivo. O parecer independente D5-A permanece obrigatório **antes de integrar/ativar grants privilegiados**; nada de `db push`, migration vinculada, C30, DEV compartilhado, STAGING ou PROD. Criar PR Draft e submeter à revisão técnica/CI, sem merge automático.
+**Revisar e homologar a PR #88 existente:** AG-01/02/03 e correção incremental D5-B estão implementadas. Conferir diff, CI, testes negativos e procedimento técnico antes da decisão de merge pelo mantenedor. Reutilizar somente o ambiente local existente; não aplicar migrations em C30, DEV compartilhado, STAGING ou PROD.
 
 ## Adendo AG-01 — autorização de codificação em 23/10/2026
 
-Após integração da PR #85, o responsável autorizou expressamente codificação de AG-01 e PR para revisão nesta conversa. O bloqueio histórico de início acima foi substituído para essa execução; não foi emitido parecer independente pelo agente. Fundação e limites em [AG01_FOUNDATION](../modules/room-booking/AG01_FOUNDATION.md); sem RPC, UI ou implantação. Revisão final pelo titular conforme exceção de mantenedor único registrada em `9e20199`; parecer independente não existe.
+Após integração da PR #85, o responsável autorizou expressamente codificação de AG-01 e PR para revisão nesta conversa. O bloqueio histórico de início foi substituído para essa execução; não foi emitido parecer independente pelo agente. Fundação e limites em [AG01_FOUNDATION](../modules/room-booking/AG01_FOUNDATION.md); sem RPC, UI ou implantação. Revisão final pelo titular conforme exceção de mantenedor único registrada em `9e20199`; parecer independente não existe.

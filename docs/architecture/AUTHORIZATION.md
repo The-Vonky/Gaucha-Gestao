@@ -91,7 +91,7 @@ Negar: usuário inativo, sem papel, sem permissão, unidade incorreta, setor inc
 
 ## Agendamento de Salas — fundação AG-01
 
-Catálogo `room_booking.schedule.read`, `room_booking.request.create`, `room_booking.request.read_own` e `room_booking.manage`; solicitante recebe as três primeiras, gestor e administrador recebem as quatro (D5-A). Papéis novos `global_only`, sem atribuição automática. Schema privado e tabelas sem acesso direto, RLS restritiva; RPCs autorizadas e leitura saneada somente em AG-02. Ver [contrato AG-01](../modules/room-booking/AG01_FOUNDATION.md). Implementação autorizada para revisão em 23/10; revisão do titular e merge continuam pendentes, conforme exceção de mantenedor único registrada em `9e20199` (sem parecer independente).
+Catálogo `room_booking.schedule.read`, `room_booking.request.create`, `room_booking.request.read_own` e `room_booking.manage`; solicitante e administrador recebem as três primeiras; gestor recebe as quatro, condicionado à ausência de atribuição administrativa ativa conflitante (D5-B, 26/10/2026). Papéis novos `global_only`, sem atribuição automática. Schema privado e tabelas sem acesso direto, RLS restritiva; RPCs autorizadas e leitura saneada somente em AG-02. Ver [contrato AG-01](../modules/room-booking/AG01_FOUNDATION.md). Implementação autorizada para revisão em 23/10; revisão do titular e merge continuam pendentes, conforme exceção de mantenedor único registrada em `9e20199` (sem parecer independente).
 
 
 ## Agendamento — API AG-02 e interface AG-03 (PR #88)
@@ -107,3 +107,5 @@ sala e mantêm versão, exclusão GiST e auditoria sem textos livres.
 A rota `/rooms` espelha as quatro permissões, sem substituir a proteção no banco.
 Aplicação incremental autorizada somente no `gaucha-gestao-local`; ver
 [contrato e evidências](../modules/room-booking/AG02_AG03_LOCAL.md).
+
+D5-B acrescenta `private.permission_assignment_allowed`, usado por `private.has_scoped_permission` e `core.my_access`: restrição explícita de separação de funções para `room_booking.manage`, exigindo atribuição global ativa de `room_booking_manager` e ausência de `platform_administrator` ativo. Essa exceção aprovada em 26/10 não cria bypass positivo por papel nem dependência do Core em tabelas do módulo. Demais permissões seguem o contrato anterior. `validate_assignment` trava o perfil com `FOR UPDATE` ao ativar/conceder atribuições, serializando com as autorizações que mantêm `FOR SHARE`. [Procedimento técnico e limites](../modules/room-booking/D5B_ACCESS.md).

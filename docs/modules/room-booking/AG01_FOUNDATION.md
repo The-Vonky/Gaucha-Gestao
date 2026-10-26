@@ -1,5 +1,8 @@
 # AG-01 — Fundação do Agendamento de Salas
 
+**Decisão vigente — 26/10/2026:** D5-A revogada pelo responsável em 26/10/2026. D5-B adotada: o administrador geral não administra reservas; a gestão cabe ao papel `room_booking_manager`, com provisionamento administrativo restrito e auditado. Atribuição administrativa ativa conflitante nega gestão mesmo com papel adicional. D1–D4, D6–D11 e F2 permanecem aprovadas. Os registros de 23/10 abaixo são históricos.
+
+
 Estado: implementação para revisão na Issue #87, base `677a70c`. Autorização expressa do responsável nesta conversa em 23/10/2026 para codificar migration, grants, RLS e testes isolados e abrir PR. Essa instrução substitui o bloqueio anterior de **início da codificação**; não representa parecer humano independente, review `APPROVED`, autorização de merge ou deploy. D5-A aprovado pelo responsável. O commit remoto `9e20199`, integrado sem sobrescrita, registra exceção de mantenedor único: parecer independente não existe; o titular assume o risco residual e revisa a PR antes de decidir o merge. PROD NO-GO.
 
 ## Modelo e fronteiras
@@ -27,9 +30,9 @@ erDiagram
 |---|---|---|---|---|
 | `room_booking_requester` | sim | sim | sim | não |
 | `room_booking_manager` | sim | sim | sim | sim |
-| `platform_administrator` | sim | sim | sim | sim |
+| `platform_administrator` | sim | sim | sim | não |
 
-Prefixo de todas as permissões: `room_booking.`. Novos papéis de sistema são `global_only`. Nenhuma atribuição automática a usuários. O administrador delega pelo Core existente (`private.can_delegate`), com auditoria de concessão/revogação. Não há bypass pelo nome do papel.
+Prefixo de todas as permissões: `room_booking.`. Novos papéis de sistema são `global_only`. Nenhuma atribuição automática a usuários. O administrador delega apenas solicitantes pelo Core existente (`private.can_delegate`). Gestores exigem [procedimento técnico D5-B](D5B_ACCESS.md). A separação D5-B é uma restrição explícita do Core: exige papel gestor e ausência de atribuição ativa ao administrador; nunca concede acesso só pelo nome. Nenhuma atribuição legada é apagada. Os nomes atuais são `Room Booking Manager` e `Room Booking Requester`, mantendo descrições em português.
 
 RLS habilitada nas três tabelas, políticas restritivas de negação para clientes, sem grants de schema/tabelas/funções a `anon`/`authenticated`/`PUBLIC`. Mesmo gestores não consultam tabelas brutas. Permissões de negócio não equivalem a privilégios SQL de tabela. O schema não é adicionado ao PostgREST nesta etapa.
 
@@ -54,7 +57,7 @@ F2 exige serializar por sala criação de pedido, aprovação, reserva direta e 
 
 Antes de implantação, basta não aplicar a migration; não existe alteração de ambiente persistente nesta entrega. No laboratório, o descarte do container elimina seu tmpfs. Se futuramente aplicada em ambiente persistente, preservar dados e auditoria e usar forward-fix revisado, sem `DROP ... CASCADE`, edição de migration histórica ou remoção automática de `btree_gist` (pode ter consumidores externos).
 
-A revisão do titular deve avaliar ampliação efetiva do administrador, delegação/revogação, privacidade da agenda e futuro contrato transacional. AG-01 não encerra AG-00 humano, AG-04/05 nem gates P1–P9/O1–O8.
+A revisão do titular deve avaliar a separação D5-B do administrador, delegação/revogação, privacidade da agenda e futuro contrato transacional. AG-01 não encerra AG-00 humano, AG-04/05 nem gates P1–P9/O1–O8.
 
 ## Registro de execução — 23/10/2026
 

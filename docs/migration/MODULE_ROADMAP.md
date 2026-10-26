@@ -1,9 +1,11 @@
 # Roteiro de migração dos módulos
 
+**Agendamento — atualização de 26/10/2026:** PR #88 mantém AG-01/02/03 e adota D5-B (D5-A revogada): administrador sem gestão; provisionamento do gestor técnico e auditado. [Contrato e evidências](../modules/room-booking/D5B_ACCESS.md). Merge e homologação humanos pendentes; demais decisões e prioridades preservadas.
+
 **Atualização vigente — 26/10/2026:** o responsável ampliou expressamente a PR #88
 para AG-02/AG-03, mantendo a branch existente, e autorizou aplicação incremental
 não destrutiva no `gaucha-gestao-local`. RPCs e interface implementadas; merge cabe
-exclusivamente ao mantenedor. D5-A já aprovada, sem exigência de segundo revisor.
+exclusivamente ao mantenedor. D5-B vigente, sem exigência de segundo revisor.
 Os limites históricos abaixo não revogam essa autorização local. Evidências e
 pendências atuais em [AG-02/AG-03 local](../modules/room-booking/AG02_AG03_LOCAL.md). C30/STAGING/PROD permanecem fora do escopo.
 
@@ -44,12 +46,12 @@ Não antecipar capacidades genéricas para todos os módulos futuros.
 
 ## Frente antecipada — Agendamento de Salas v1 (priorização C1 de 23/10)
 
-O responsável comunicou a antecipação de **Agendamento de Salas** na fila de **desenvolvimento**, antes da posição histórica de 4º item da Fase 2. Esta PR AG-00 documenta a escolha, **com D1–D4, D5-A no escopo do responsável, D6–D11, F2/D8 e observações confirmadas pelo responsável; a validação da secretária foi relatada por ele (ainda sem ata formal), e continuam pendentes o parecer independente D5-A, aceite documental/PR e checks**. A antecipação não libera deploy, migração em ambiente persistente, C30/STAGING, GO produtivo nem os gates P1–P9/O1–O8 da Qualidade.
+O responsável comunicou a antecipação de **Agendamento de Salas** na fila de **desenvolvimento**, antes da posição histórica de 4º item da Fase 2. Esta PR AG-00 documenta a escolha, **com D1–D4, D5-B adotada em 26/10, D6–D11, F2/D8 e observações confirmadas pelo responsável; a validação da secretária foi relatada por ele (ainda sem ata formal), e continuam pendentes a revisão do mantenedor, aceite documental/PR e checks**. A antecipação não libera deploy, migração em ambiente persistente, C30/STAGING, GO produtivo nem os gates P1–P9/O1–O8 da Qualidade.
 
 | Etapa | Entrega planejada | Condição de avanço |
 |---|---|---|
-| **AG-00** | Brief, matriz F/S/C/T/U, decisões, prioridade, validação relatada da secretária e aceite humano rastreável; sem depender do legado | Parecer humano independente de segurança D5-A, ratificação documental de C1, revisão/CI da PR #85 e integração autorizada |
-| **AG-01** | Modelo PostgreSQL, permissões, grants, RLS, datas e exclusividade confirmada | AG-00 integralmente aceito; migration somente em laboratório isolado |
+| **AG-00** | Brief, matriz F/S/C/T/U, decisões, prioridade, validação relatada da secretária e aceite humano rastreável; sem depender do legado | Revisão do mantenedor sobre D5-B, ratificação documental de C1 e integração autorizada |
+| **AG-01** | Modelo PostgreSQL, permissões, grants, RLS, datas e exclusividade confirmada | AG-00 e revisão do mantenedor; migration incremental autorizada no local existente, preservando dados |
 | **AG-02** | RPCs transacionais, pedido/fila/aprovação/recusa, gestão, observações e auditoria | AG-01 e F2 definidos |
 | **AG-03** | **Interface completa**, incluindo agenda, pedidos, fila **e editor da secretária** | Contratos AG-02 estáveis |
 | **AG-04** | Revisão/QA com testes negativos, concorrência PG real e matriz F/S/C/T/U | AG-01/02/03 entregues e CI no SHA |
