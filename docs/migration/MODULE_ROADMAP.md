@@ -1,5 +1,13 @@
 # Roteiro de migração dos módulos
 
+**Atualização vigente — 26/10/2026:** o responsável ampliou expressamente a PR #88
+para AG-02/AG-03, mantendo a branch existente, e autorizou aplicação incremental
+não destrutiva no `gaucha-gestao-local`. RPCs e interface implementadas; merge cabe
+exclusivamente ao mantenedor. D5-A já aprovada, sem exigência de segundo revisor.
+Os limites históricos abaixo não revogam essa autorização local. Evidências e
+pendências atuais em [AG-02/AG-03 local](../modules/room-booking/AG02_AG03_LOCAL.md). C30/STAGING/PROD permanecem fora do escopo.
+
+
 **Adendo operacional — 23/10/2026:** equipe atual formada por **um único desenvolvedor/aprovador humano**. D5-A aprovada pelo titular, e a falta de revisor humano independente é exceção de governança documentada nas Issues #83/#87, não impedimento para preparar e submeter a PR AG-01. CI, testes de autorização e revisão do próprio titular antes do merge permanecem obrigatórios. Implantação e bancos persistentes não estão autorizados.
 
 **Estado revisado em 23/10/2026 (AG-00 / Issue #83):** este documento organiza a **sequência candidata de desenvolvimento**, sem prometer prazos nem autorizar implantação. A fonte de gates é o [Plano Diretor](../planning/PLANO_DIRETOR_2026.md). Curva ABC **v1 integrada na PR #69**; Agendamento de Salas **antecipado como prioridade comunicada pelo responsável**, porém seu AG-00 permanece **PROPOSTO, sem aceite humano integral**. **PROD NO-GO.**

@@ -1,0 +1,234 @@
+.rooms-page {
+  display: grid;
+  gap: 1.5rem;
+}
+.room-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 3rem;
+  align-items: center;
+  color: white;
+  background:
+    linear-gradient(100deg, #123c33ee, #123c33aa),
+    var(
+      --room-cover-image,
+      linear-gradient(135deg, #163d35 15%, #628273 50%, #c3aa6f)
+    );
+}
+/* Substituir --room-cover-image por url de fotografia institucional local autorizada. */
+.room-hero::before {
+  content: "";
+  position: absolute;
+  width: 36rem;
+  height: 36rem;
+  right: 12%;
+  top: -22rem;
+  border: 1px solid #d0b56c55;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 70px #d0b56c09,
+    0 0 0 140px #d0b56c09;
+  pointer-events: none;
+}
+.room-hero-copy,
+.room-hero-card {
+  position: relative;
+}
+.room-eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: #8a7137;
+  margin: 0 0 0.7rem;
+}
+.room-hero .room-eyebrow {
+  color: #e2c980;
+}
+.room-hero h1 {
+  color: white;
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  margin: 0 0 1rem;
+  line-height: 1.12;
+}
+.room-hero-copy > p:not(.room-eyebrow) {
+  color: #e2ece7;
+  max-width: 34rem;
+  line-height: 1.7;
+}
+.room-status {
+  display: inline-block;
+  border: 1px solid #d8c38a70;
+  padding: 0.5rem 0.9rem;
+  border-radius: 30px;
+  font-size: 0.85rem;
+  margin-top: 1rem;
+  background: #ffffff0c;
+}
+.room-hero-card {
+  background: #fff;
+  color: #173e34;
+  padding: 1.5rem;
+  border-radius: 18px;
+  margin: 0;
+  box-shadow: 0 16px 40px #09241e35;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+.room-hero-card dt {
+  font-size: 0.75rem;
+  color: #65776e;
+  margin-bottom: 0.45rem;
+}
+.room-hero-card dd {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1rem;
+}
+.room-toolbar,
+.room-section-head,
+.room-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.room-toolbar {
+  color: #61736a;
+  font-size: 0.8rem;
+}
+.room-columns {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+.room-panel {
+  background: white;
+  border: 1px solid #e0e8e1;
+  border-radius: 18px;
+  padding: 1.5rem;
+  min-width: 0;
+}
+.room-panel h2 {
+  margin: 0 0 1rem;
+  font-size: 1.2rem;
+}
+.room-panel p {
+  line-height: 1.6;
+}
+.room-request-callout {
+  background: linear-gradient(145deg, #fafbf7, #eff5ef);
+}
+.room-request-callout .muted {
+  margin-top: 1.5rem;
+  font-size: 0.8rem;
+}
+.room-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+.room-list > li {
+  border-top: 1px solid #e6ece7;
+  padding: 1.2rem 0;
+  overflow-wrap: anywhere;
+}
+.room-booking {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  gap: 1rem;
+}
+.room-time {
+  border-left: 3px solid #b69a52;
+  padding-left: 0.8rem;
+  color: #235444;
+  font-weight: 700;
+}
+.room-time small {
+  display: block;
+  margin-top: 0.4rem;
+  font-weight: 400;
+  font-size: 0.7rem;
+}
+.room-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.room-pill {
+  border-radius: 24px;
+  padding: 0.4rem 0.8rem;
+  background: #eef3ef;
+  color: #345544;
+  font-size: 0.8rem;
+}
+.room-empty {
+  padding: 2rem 0;
+  color: #61736a;
+  text-align: center;
+}
+.room-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.room-form-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.room-wide {
+  grid-column: 1 / -1;
+}
+.room-decision {
+  margin-top: 1rem;
+  background: #f5f8f4;
+  padding: 1rem;
+  border-radius: 12px;
+}
+.rooms-page label {
+  display: grid;
+  gap: 0.4rem;
+}
+.rooms-page textarea {
+  min-height: 90px;
+}
+.rooms-page .actions {
+  flex-wrap: wrap;
+}
+@media (max-width: 850px) {
+  .room-hero,
+  .room-columns {
+    grid-template-columns: 1fr;
+  }
+  .room-hero {
+    gap: 1.5rem;
+  }
+}
+@media (max-width: 480px) {
+  .room-hero,
+  .room-panel {
+    padding: 1.2rem;
+    border-radius: 16px;
+  }
+  .room-hero-card {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  .room-booking {
+    grid-template-columns: 1fr;
+  }
+  .room-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .room-form-grid > label:first-child {
+    grid-column: 1 / -1;
+  }
+}

@@ -17,6 +17,7 @@ import { PermissionsPage } from "../core/admin/PermissionsPage";
 import { LogsPage } from "../core/admin/LogsPage";
 import { AuditModule } from "../modules/audit/AuditModule";
 import { ActionPlansModule } from "../modules/action-plans/ActionPlansModule";
+import { RoomsPage } from "../modules/rooms/RoomsPage";
 import { AbcModule } from "../modules/abc/AbcModule";
 import { BrandMark, Loader } from "../shared/brand";
 import { Icon } from "../shared/icons";
@@ -501,6 +502,7 @@ function Shell() {
     "/audit": <AuditModule />,
     "/action-plans": <ActionPlansModule />,
     "/abc": <AbcModule />,
+    "/rooms": <RoomsPage />,
     "/admin/users": <UsersPage />,
     "/admin/roles": <RolesPage />,
     "/admin/permissions": <PermissionsPage />,

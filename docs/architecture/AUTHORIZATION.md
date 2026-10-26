@@ -92,3 +92,18 @@ Negar: usuário inativo, sem papel, sem permissão, unidade incorreta, setor inc
 ## Agendamento de Salas — fundação AG-01
 
 Catálogo `room_booking.schedule.read`, `room_booking.request.create`, `room_booking.request.read_own` e `room_booking.manage`; solicitante recebe as três primeiras, gestor e administrador recebem as quatro (D5-A). Papéis novos `global_only`, sem atribuição automática. Schema privado e tabelas sem acesso direto, RLS restritiva; RPCs autorizadas e leitura saneada somente em AG-02. Ver [contrato AG-01](../modules/room-booking/AG01_FOUNDATION.md). Implementação autorizada para revisão em 23/10; revisão do titular e merge continuam pendentes, conforme exceção de mantenedor único registrada em `9e20199` (sem parecer independente).
+
+
+## Agendamento — API AG-02 e interface AG-03 (PR #88)
+
+As tabelas `room_booking` continuam privadas e sem grants de acesso direto. Seis RPCs
+`public.room_booking_*` expõem somente operações autorizadas, com `search_path=''`,
+EXECUTE restrito a `authenticated` e validação das permissões globais atuais do Core.
+Leitura de agenda retorna apenas confirmadas e campos públicos; finalidade e decisões
+ficam restritas ao solicitante ou gestor. Helpers travam perfil, atribuições, papéis,
+relações de permissões e catálogo antes de revalidar o acesso. Escritas serializam por
+sala e mantêm versão, exclusão GiST e auditoria sem textos livres.
+
+A rota `/rooms` espelha as quatro permissões, sem substituir a proteção no banco.
+Aplicação incremental autorizada somente no `gaucha-gestao-local`; ver
+[contrato e evidências](../modules/room-booking/AG02_AG03_LOCAL.md).

@@ -29,7 +29,7 @@ Os índices e ADRs históricos preservam suas datas originais. Para o estado efe
 | Operar e conferir a Curva ABC | [Guia ABC v1](modules/abc/OPERATOR_GUIDE_V1.md) | [Brief ABC](briefs/ABC_DOMAIN_V1.md), [Testes #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) |
 | Usar o módulo de Qualidade | [Guia do operador (pré-homologação)](modules/audit/OPERATOR_GUIDE_V1.md) | [Aceite da Qualidade](modules/audit/QUALITY_ACCEPTANCE_V1.md) |
 | Aceitar a primeira entrega | [Qualidade P1–P9 / O1–O8](modules/audit/QUALITY_ACCEPTANCE_V1.md) | [Matriz de conclusão](modules/audit/QUALITY_COMPLETION_V1.md) |
-| Entender a proposta de Agendamento de Salas (ainda não aprovada) | [Brief AG-00](briefs/ROOM_BOOKING_V1.md) | [Critérios de aceite](modules/room-booking/ACCEPTANCE_V1.md), [PR #72](https://github.com/The-Vonky/Gaucha-Gestao/pull/72) |
+| Experimentar Agendamento de Salas local (PR #88) | [Contrato e validação AG-02/03](modules/room-booking/AG02_AG03_LOCAL.md) | [Brief](briefs/ROOM_BOOKING_V1.md), [Critérios de aceite](modules/room-booking/ACCEPTANCE_V1.md) |
 | Planejar os módulos futuros | [Blueprint por domínio](planning/MODULE_BLUEPRINTS.md) | [Roadmap canônico](migration/MODULE_ROADMAP.md) |
 | Evoluir módulos legados | [Roadmap de migração](migration/MODULE_ROADMAP.md) | [Mapa de consumidores Core](architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md) |
 | Agentes: regras comuns e instruções específicas | [AGENTS.md](../AGENTS.md) | [CLAUDE.md](../CLAUDE.md), [AI_WORKFLOW](development/AI_WORKFLOW.md) |

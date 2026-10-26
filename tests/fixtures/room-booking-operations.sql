@@ -1,0 +1,80 @@
+-- Este fixture roda em PGlite isolado ou transação PostgreSQL com ROLLBACK.
+insert into auth.users(id,email,email_confirmed_at) select ('a9020000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid,'ag02-'||n||'@example.test',now() from generate_series(1,4) n;
+insert into core.user_role_assignments(user_id,role_id,scope_type)
+select 'a9020000-0000-0000-0000-000000000001',id,'global' from core.roles where key='room_booking_manager';
+insert into core.user_role_assignments(user_id,role_id,scope_type)
+select 'a9020000-0000-0000-0000-000000000002',id,'global' from core.roles where key='room_booking_requester';
+create function pg_temp.check(ok boolean) returns void language plpgsql as $$ begin if ok is distinct from true then raise exception 'AG02 assertion failed'; end if; end $$;
+create function pg_temp.fails(command text,expected text) returns void language plpgsql as $$ begin
+ begin execute command; exception when others then if sqlstate=expected then return; end if; raise exception 'Expected %, got %: %',expected,sqlstate,sqlerrm; end;
+ raise exception 'Expected error %, command succeeded',expected;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub','a9020000-0000-0000-0000-000000000002',false);
+select set_config('ag02.first',public.room_booking_create_request('2099-01-02 14:07-03','2099-01-02 14:23-03','Sintético','Privado','a9020000-0000-0000-0001-000000000001')::text,false);
+select pg_temp.check(public.room_booking_create_request('2099-01-02 14:07-03','2099-01-02 14:23-03','Sintético','Privado','a9020000-0000-0000-0001-000000000001')::text=current_setting('ag02.first'));
+select set_config('ag02.second',public.room_booking_create_request('2099-01-02 14:07-03','2099-01-02 14:23-03','Sobreposto',null,'a9020000-0000-0000-0001-000000000002')::text,false);
+select pg_temp.check(public.room_booking_schedule('2099-01-02','2099-01-02')='[]'::jsonb);
+select pg_temp.fails($q$select public.room_booking_requests(true)$q$,'42501');
+select pg_temp.fails($q$select public.room_booking_decide_request(current_setting('ag02.first')::uuid,1,'approve')$q$,'42501');
+select pg_temp.fails($q$select public.room_booking_save_booking('2099-01-02 15:00-03','2099-01-02 16:00-03','Forjado')$q$,'42501');
+select pg_temp.fails($q$select * from room_booking.requests$q$,'42501');
+select pg_temp.fails($q$select public.room_booking_create_request('2000-01-01 14:07-03','2000-01-01 14:23-03','Passado',null,gen_random_uuid())$q$,'23514');
+select pg_temp.fails($q$select public.room_booking_create_request('2099-01-02 23:59-03','2099-01-03 00:01-03','Meia noite',null,gen_random_uuid())$q$,'23514');
+select pg_temp.fails($q$select public.room_booking_create_request('2099-01-02 14:07:01-03','2099-01-02 14:23-03','Segundos',null,gen_random_uuid())$q$,'23514');
+select set_config('request.jwt.claim.sub','a9020000-0000-0000-0000-000000000001',false);
+-- C5: falha na inserção da reserva não decide o pedido.
+select pg_temp.fails($q$select public.room_booking_decide_request(current_setting('ag02.first')::uuid,1,'approve',null,repeat('x',2001))$q$,'23514');
+select pg_temp.check(exists(select 1 from jsonb_array_elements(public.room_booking_requests(true)) r where r->>'id'=current_setting('ag02.first') and r->>'status'='pending'));
+select pg_temp.check(public.room_booking_schedule('2099-01-02','2099-01-02')='[]'::jsonb);
+select set_config('ag02.booking',public.room_booking_decide_request(current_setting('ag02.first')::uuid,1,'approve',null,'<script>inerte</script>')::text,false);
+select pg_temp.fails($q$select public.room_booking_decide_request(current_setting('ag02.second')::uuid,1,'approve')$q$,'23P01');
+select pg_temp.check(public.room_booking_requests(true)->0->>'status'='pending');
+select pg_temp.fails($q$select public.room_booking_decide_request(current_setting('ag02.first')::uuid,2,'reject')$q$,'55000');
+select pg_temp.check(not (public.room_booking_schedule('2099-01-02','2099-01-02')->0 ? 'purpose'));
+select pg_temp.check(not (public.room_booking_schedule('2099-01-02','2099-01-02')->0 ? 'requester_user_id'));
+select pg_temp.check(public.room_booking_schedule('2099-01-02','2099-01-02')->0->>'secretary_notes'='<script>inerte</script>');
+select public.room_booking_save_booking('2099-01-02 14:23-03','2099-01-02 23:59-03','Adjacente');
+select pg_temp.fails($q$select public.room_booking_save_booking('2099-01-02 14:07-03','2099-01-02 14:23-03','Versão',null,current_setting('ag02.booking')::uuid,99)$q$,'40001');
+select public.room_booking_save_booking('2099-01-02 14:07-03','2099-01-02 14:23-03','Corrigido','Notas',current_setting('ag02.booking')::uuid,1);
+select set_config('request.jwt.claim.sub','a9020000-0000-0000-0000-000000000002',false);
+select pg_temp.fails($q$select public.room_booking_create_request('2099-01-02 14:10-03','2099-01-02 14:20-03','Ocupado',null,gen_random_uuid())$q$,'23P01');
+select pg_temp.fails($q$select public.room_booking_decide_request(current_setting('ag02.first')::uuid,2,'cancel')$q$,'55000');
+select set_config('ag02.cancel',public.room_booking_create_request('2099-02-02 14:07-03','2099-02-02 14:23-03','Cancelar',null,gen_random_uuid())::text,false);
+select public.room_booking_decide_request(current_setting('ag02.cancel')::uuid,1,'cancel');
+select set_config('request.jwt.claim.sub','a9020000-0000-0000-0000-000000000001',false);
+select public.room_booking_save_booking(null,null,null,null,current_setting('ag02.booking')::uuid,2,true);
+select pg_temp.check(public.room_booking_requests(false)='[]'::jsonb);
+select public.room_booking_decide_request(current_setting('ag02.second')::uuid,1,'reject','Motivo sintético');
+reset role;
+insert into room_booking.bookings(room_id,booked_for,starts_at,ends_at,created_by,updated_by)
+select id,'Histórico','2000-01-02 14:07-03','2000-01-02 14:23-03','a9020000-0000-0000-0000-000000000001','a9020000-0000-0000-0000-000000000001' from room_booking.rooms;
+select set_config('ag02.history',(select id::text from room_booking.bookings where booked_for='Histórico'),false);
+insert into room_booking.requests(room_id,requester_user_id,booked_for,starts_at,ends_at,idempotency_key)
+select id,'a9020000-0000-0000-0000-000000000002','Vencido','2000-01-02 14:07-03','2000-01-02 14:23-03',gen_random_uuid() from room_booking.rooms;
+select set_config('ag02.expired',(select id::text from room_booking.requests where booked_for='Vencido'),false);
+set role authenticated;
+select public.room_booking_save_booking('2000-01-02 14:07-03','2000-01-02 14:23-03','Histórico corrigido','Nota',current_setting('ag02.history')::uuid,1);
+select pg_temp.fails($q$select public.room_booking_save_booking('2099-01-02 14:07-03','2099-01-02 14:23-03','Histórico',null,current_setting('ag02.history')::uuid,2)$q$,'23514');
+select pg_temp.fails($q$select public.room_booking_save_booking(null,null,null,null,current_setting('ag02.history')::uuid,2,true)$q$,'23514');
+select pg_temp.fails($q$select public.room_booking_decide_request(current_setting('ag02.expired')::uuid,1,'approve')$q$,'23514');
+select set_config('request.jwt.claim.sub','a9020000-0000-0000-0000-000000000002',false);
+select pg_temp.fails($q$select public.room_booking_decide_request(current_setting('ag02.expired')::uuid,1,'cancel')$q$,'23514');
+select pg_temp.check(exists(select 1 from jsonb_array_elements(public.room_booking_requests()) r where r->>'booking_status'='cancelled'));
+select set_config('request.jwt.claim.sub','a9020000-0000-0000-0000-000000000001',false);
+select public.room_booking_decide_request(current_setting('ag02.expired')::uuid,1,'reject','Vencido');
+reset role;
+update core.profiles set active=false where id='a9020000-0000-0000-0000-000000000001';
+set role authenticated;
+select pg_temp.fails($q$select public.room_booking_summary()$q$,'42501');
+select set_config('request.jwt.claim.sub','a9020000-0000-0000-0000-000000000003',false);
+select pg_temp.fails($q$select public.room_booking_schedule('2099-01-02','2099-01-02')$q$,'42501');
+reset role;
+update core.user_role_assignments set active=false where user_id='a9020000-0000-0000-0000-000000000002';
+set role authenticated;
+select set_config('request.jwt.claim.sub','a9020000-0000-0000-0000-000000000002',false);
+select pg_temp.fails($q$select public.room_booking_requests()$q$,'42501');
+set role anon;
+select pg_temp.fails($q$select public.room_booking_summary()$q$,'42501');
+reset role;
+select pg_temp.check(not exists(select 1 from core.system_audit_log where module='room_booking' and (after_data ? 'purpose' or after_data ? 'secretary_notes' or before_data ? 'purpose')));

@@ -17,7 +17,8 @@
 | Unidade e imagens de capa | apps/web/src/core/unitCovers.ts, unitCoverImage.ts, apps/web/src/core/admin/UnitCoverEditor.tsx | [UNIT_COVER_V1](../modules/core/UNIT_COVER_V1.md); tests/integration/unit-cover.mjs | AS-IS |
 | Infraestrutura mínima | infra/supabase/docker-compose.yml, scripts/ops/*, .github/workflows/infra-validate.yml | [infra/README](../../infra/README.md), [UPSTREAM](../../infra/supabase/UPSTREAM.md), ADR-006 Proposed | AS-IS **CI/lab**, NÃO PROD |
 | Serviço privilegiado de criação/recuperação Auth | Nenhum runtime aprovado na main | [ACCOUNT_LIFECYCLE_V1](ACCOUNT_LIFECYCLE_V1.md), Issue #49; PR #24 fechado sem merge | **BLOQUEADO / DESIGN ONLY** |
-| ISO, vendas, satisfação, salas, frota, planejado-realizado, contratos | Sem integração desses domínios na main (ABC já integrada) | [roadmap de migração](../migration/MODULE_ROADMAP.md) e mapa de consumidores Core | **FUTURO** |
+| Agendamento de Salas AG-01/02/03 | apps/web/src/modules/rooms/; rota /rooms | migrations room_booking_foundation e room_booking_operations; [contrato e validação local](../modules/room-booking/AG02_AG03_LOCAL.md) | PR #88; funcional em desenvolvimento local, merge/homologação pendentes |
+| ISO, vendas, satisfação, frota, planejado-realizado, contratos | Sem integração desses domínios na main (ABC já integrada) | [roadmap de migração](../migration/MODULE_ROADMAP.md) e mapa de consumidores Core | **FUTURO** |
 
 ## Chamadas RPC representativas, verificadas nos adaptadores
 
@@ -43,6 +44,8 @@ flowchart LR
   AUD --> S["Storage API — checklist-evidence"]
   PLAN --> S2["Storage API — action-plan-evidence"]
   CORE --> S3["Storage API — capas de unidade"]
+  CORE --> ROOMS["room_booking — sala, pedidos e reservas privados"]
+  API["public.room_booking_* — RPCs autorizadas"] --> ROOMS
   CORE --> ABC["abc — séries/revisões/linhas"]
   ABC --> S4["Storage API — abc-source-files"]
 ~~~

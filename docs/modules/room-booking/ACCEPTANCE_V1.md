@@ -1,5 +1,13 @@
 # Agendamento de Salas v1 — Critérios de aceite e matriz de testes
 
+**Atualização vigente — 26/10/2026:** o responsável ampliou expressamente a PR #88
+para AG-02/AG-03, mantendo a branch existente, e autorizou aplicação incremental
+não destrutiva no `gaucha-gestao-local`. RPCs e interface implementadas; merge cabe
+exclusivamente ao mantenedor. D5-A já aprovada, sem exigência de segundo revisor.
+Os limites históricos abaixo não revogam essa autorização local. Evidências e
+pendências atuais em [AG-02/AG-03 local](AG02_AG03_LOCAL.md). C30/STAGING/PROD permanecem fora do escopo.
+
+
 **Adendo de fluxo solo — 23/10/2026:** somente um desenvolvedor humano disponível: o responsável do projeto, que já aprovou D5-A e assumiu explicitamente o risco de não haver segunda revisão humana. O parecer independente listado nos registros históricos **não existe e não deve ser inventado nem exigido como bloqueio do AG-01 ou do merge de sua PR**. Agente implementa, abre PR com testes/CI, riscos e checklist de segurança; titular confere e faz merge. Manter RLS default deny, auditoria, testes negativos e isolamento; deploy/bancos compartilhados continuam NO-GO sem autorização separada.
 
 Status: **AG-00 integrado na main, AG-01 em revisão na PR #88.** D5-A aprovada pelo único mantenedor humano, que revisará a PR com CI/testes. O desenvolvimento/preview do módulo usa **o Supabase/Docker local já existente**; não exigir instância nova. Ambientes C30/STAGING/PROD continuam fora de escopo.
