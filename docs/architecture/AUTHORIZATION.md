@@ -1,5 +1,7 @@
 # Modelo de autorização
 
+**Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).
+
 **Estado:** modelo lógico v1 aceito — [ADR-005](../decisions/ADR-005-core-authorization.md). O catálogo inicial abaixo é histórico; o módulo ABC foi acrescentado depois por migration.
 
 ## Princípio e equação
@@ -88,3 +90,24 @@ Usuários/unidades com referências históricas devem normalmente ser **desativa
 ## Testes de autorização
 
 Negar: usuário inativo, sem papel, sem permissão, unidade incorreta, setor incorreto, acesso a outro módulo por papel indevido e ID adivinhado. Permitir: grant global ou da unidade/setor corretos. Confirmar exportação com escopo, proteção de anexos e auditoria de mutações administrativas.
+
+## Agendamento de Salas — fundação AG-01
+
+Catálogo `room_booking.schedule.read`, `room_booking.request.create`, `room_booking.request.read_own` e `room_booking.manage`; solicitante e administrador recebem as três primeiras; gestor recebe as quatro, condicionado à ausência de atribuição administrativa ativa conflitante (D5-B, 26/10/2026). Papéis novos `global_only`, sem atribuição automática. Schema privado e tabelas sem acesso direto, RLS restritiva; RPCs autorizadas e leitura saneada somente em AG-02. Ver [contrato AG-01](../modules/room-booking/AG01_FOUNDATION.md). Implementação autorizada para revisão em 23/10; revisão do titular e merge continuam pendentes, conforme exceção de mantenedor único registrada em `9e20199` (sem parecer independente).
+
+
+## Agendamento — API AG-02 e interface AG-03 (PR #88)
+
+As tabelas `room_booking` continuam privadas e sem grants de acesso direto. Seis RPCs
+`public.room_booking_*` expõem somente operações autorizadas, com `search_path=''`,
+EXECUTE restrito a `authenticated` e validação das permissões globais atuais do Core.
+Leitura de agenda retorna apenas confirmadas e campos públicos; finalidade e decisões
+ficam restritas ao solicitante ou gestor. Helpers travam perfil, atribuições, papéis,
+relações de permissões e catálogo antes de revalidar o acesso. Escritas serializam por
+sala e mantêm versão, exclusão GiST e auditoria sem textos livres.
+
+A rota `/rooms` espelha as quatro permissões, sem substituir a proteção no banco.
+Aplicação incremental autorizada somente no `gaucha-gestao-local`; ver
+[contrato e evidências](../modules/room-booking/AG02_AG03_LOCAL.md).
+
+D5-B acrescenta `private.permission_assignment_allowed`, usado por `private.has_scoped_permission` e `core.my_access`: restrição explícita de separação de funções para `room_booking.manage`, exigindo atribuição global ativa de `room_booking_manager` e ausência de `platform_administrator` ativo. Essa exceção aprovada em 26/10 não cria bypass positivo por papel nem dependência do Core em tabelas do módulo. Demais permissões seguem o contrato anterior. `validate_assignment` trava o perfil com `FOR UPDATE` ao ativar/conceder atribuições, serializando com as autorizações que mantêm `FOR SHARE`. [Procedimento técnico e limites](../modules/room-booking/D5B_ACCESS.md).

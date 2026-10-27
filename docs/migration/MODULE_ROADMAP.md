@@ -1,5 +1,19 @@
 # Roteiro de migração dos módulos
 
+**Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).
+
+**Agendamento — atualização de 26/10/2026:** PR #88 mantém AG-01/02/03 e adota D5-B (D5-A revogada): administrador sem gestão; provisionamento do gestor técnico e auditado. [Contrato e evidências](../modules/room-booking/D5B_ACCESS.md). Merge e homologação humanos pendentes; demais decisões e prioridades preservadas.
+
+**Atualização vigente — 26/10/2026:** o responsável ampliou expressamente a PR #88
+para AG-02/AG-03, mantendo a branch existente, e autorizou aplicação incremental
+não destrutiva no `gaucha-gestao-local`. RPCs e interface implementadas; merge cabe
+exclusivamente ao mantenedor. D5-B vigente, sem exigência de segundo revisor.
+Os limites históricos abaixo não revogam essa autorização local. Evidências e
+pendências atuais em [AG-02/AG-03 local](../modules/room-booking/AG02_AG03_LOCAL.md). C30/STAGING/PROD permanecem fora do escopo.
+
+
+**Adendo operacional — 23/10/2026:** equipe atual formada por **um único desenvolvedor/aprovador humano**. D5-A aprovada pelo titular, e a falta de revisor humano independente é exceção de governança documentada nas Issues #83/#87, não impedimento para preparar e submeter a PR AG-01. CI, testes de autorização e revisão do próprio titular antes do merge permanecem obrigatórios. Implantação e bancos persistentes não estão autorizados.
+
 **Estado revisado em 23/10/2026 (AG-00 / Issue #83):** este documento organiza a **sequência candidata de desenvolvimento**, sem prometer prazos nem autorizar implantação. A fonte de gates é o [Plano Diretor](../planning/PLANO_DIRETOR_2026.md). Curva ABC **v1 integrada na PR #69**; Agendamento de Salas **antecipado como prioridade comunicada pelo responsável**, porém seu AG-00 permanece **PROPOSTO, sem aceite humano integral**. **PROD NO-GO.**
 
 ## Finalidade e critérios de sequenciamento
@@ -14,7 +28,7 @@ A sequência leva em conta: prioridade atual do negócio; validação da fundaç
 | Registros ISO / Propostas ISO | Legado concluído | Médio | A origem é funcionalmente de propostas/clientes comerciais apesar do nome histórico ISO; resolver ownership/menu por gate de migração |
 | Vendas / Maquininhas | Legado concluído | Baixo | Dashboard e importação |
 | Pesquisa de Satisfação | Legado concluído | Baixo | Boa candidata à integração por unidade/período |
-| Agendamento de Salas | Nova implementação independente do legado; **AG-00 em revisão documental** | Baixo (autorização/privacidade sujeitos a revisão) | Responsável confirmou decisões D1–D11/F2/D8 e relatou validação com secretária; **AG-01 ainda bloqueado** por parecer independente D5-A, aceite documental/PR e CI, mantendo [brief](../briefs/ROOM_BOOKING_V1.md) + [matriz](../modules/room-booking/ACCEPTANCE_V1.md) |
+| Agendamento de Salas | Nova implementação independente; AG-00 integrado, AG-01 na PR #88 | Médio: RLS/grants e concorrência requerem teste | Desenvolvimento local com `gaucha-gestao-local` existente, sem criar banco/container extra. Revisão/merge pelo mantenedor único, PR e CI; próximas etapas AG-02 (RPCs) e AG-03 (UI). Sem deploy PROD. Ver [brief](../briefs/ROOM_BOOKING_V1.md) e [matriz](../modules/room-booking/ACCEPTANCE_V1.md). |
 | Frota | Legado não concluído | Médio | Prosseguir na plataforma quando a fundação permitir |
 | Planejado × Realizado | Legado concluído | Médio | Preservar regras de importação/cálculo comprovadas |
 | Curva ABC | **Plataforma v1 integrada à main** | Alto | Importação, consulta e revisões presentes; validar ERP, dados sensíveis e duas identidades ([Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70)); nenhum histórico desktop foi migrado |
@@ -34,12 +48,12 @@ Não antecipar capacidades genéricas para todos os módulos futuros.
 
 ## Frente antecipada — Agendamento de Salas v1 (priorização C1 de 23/10)
 
-O responsável comunicou a antecipação de **Agendamento de Salas** na fila de **desenvolvimento**, antes da posição histórica de 4º item da Fase 2. Esta PR AG-00 documenta a escolha, **com D1–D4, D5-A no escopo do responsável, D6–D11, F2/D8 e observações confirmadas pelo responsável; a validação da secretária foi relatada por ele (ainda sem ata formal), e continuam pendentes o parecer independente D5-A, aceite documental/PR e checks**. A antecipação não libera deploy, migração em ambiente persistente, C30/STAGING, GO produtivo nem os gates P1–P9/O1–O8 da Qualidade.
+O responsável comunicou a antecipação de **Agendamento de Salas** na fila de **desenvolvimento**, antes da posição histórica de 4º item da Fase 2. Esta PR AG-00 documenta a escolha, **com D1–D4, D5-B adotada em 26/10, D6–D11, F2/D8 e observações confirmadas pelo responsável; a validação da secretária foi relatada por ele (ainda sem ata formal), e continuam pendentes a revisão do mantenedor, aceite documental/PR e checks**. A antecipação não libera deploy, migração em ambiente persistente, C30/STAGING, GO produtivo nem os gates P1–P9/O1–O8 da Qualidade.
 
 | Etapa | Entrega planejada | Condição de avanço |
 |---|---|---|
-| **AG-00** | Brief, matriz F/S/C/T/U, decisões, prioridade, validação relatada da secretária e aceite humano rastreável; sem depender do legado | Parecer humano independente de segurança D5-A, ratificação documental de C1, revisão/CI da PR #85 e integração autorizada |
-| **AG-01** | Modelo PostgreSQL, permissões, grants, RLS, datas e exclusividade confirmada | AG-00 integralmente aceito; migration somente em laboratório isolado |
+| **AG-00** | Brief, matriz F/S/C/T/U, decisões, prioridade, validação relatada da secretária e aceite humano rastreável; sem depender do legado | Revisão do mantenedor sobre D5-B, ratificação documental de C1 e integração autorizada |
+| **AG-01** | Modelo PostgreSQL, permissões, grants, RLS, datas e exclusividade confirmada | AG-00 e revisão do mantenedor; migration incremental autorizada no local existente, preservando dados |
 | **AG-02** | RPCs transacionais, pedido/fila/aprovação/recusa, gestão, observações e auditoria | AG-01 e F2 definidos |
 | **AG-03** | **Interface completa**, incluindo agenda, pedidos, fila **e editor da secretária** | Contratos AG-02 estáveis |
 | **AG-04** | Revisão/QA com testes negativos, concorrência PG real e matriz F/S/C/T/U | AG-01/02/03 entregues e CI no SHA |
@@ -85,3 +99,7 @@ Não apagar nem sobrescrever o repositório standalone durante a migração. Ap�
 **D11 (23/10):** o novo módulo não reutilizará comportamentos, código ou dados do legado, nem exigirá inventário de ZIP/agenda antiga para AG-01. A instalação anterior fica preservada e intocada. Eventual substituição operacional exige GO separado; nenhuma mudança em C30/STAGING/PROD.
 
 **Uma PR documental ou CI verde não equivale à autorização de corte.**
+
+## Agendamento — AG-01 em revisão (23/10/2026)
+
+Responsável autorizou expressamente implementar fundação e abrir PR após AG-00 documental integrado (#85). Schema, catálogo Core e RLS preparados; [contrato e limites](../modules/room-booking/AG01_FOUNDATION.md). AG-02/03 não implementados por esta entrega; revisão final do titular (exceção de mantenedor único `9e20199`), merge, QA, homologação e implantação continuam pendentes.

@@ -10,7 +10,7 @@
 ## Isolamento e riscos
 
 - [ ] Branch/worktree exclusiva; alterações concorrentes nos mesmos arquivos coordenadas
-- [ ] Runtime de testes exclusivo; sem acesso a PROD, DEV compartilhado ou banco persistente não autorizado
+- [ ] Reutilizado o Supabase/Docker local existente quando aplicável, sem provisionamento desnecessário; nenhuma alteração em PROD/STAGING/banco remoto sem autorização
 - [ ] Nenhuma migration já aplicada foi editada; alterações incrementais e plano de reversão analisados
 - [ ] Sem segredos, dados pessoais/financeiros reais, senhas, JWTs, dumps ou URLs assinadas no diff/logs
 - [ ] Impacto em Auth/RLS/Storage, escopos, concorrência e auditoria revisado quando pertinente
@@ -31,7 +31,7 @@
 ## Revisão e integração
 
 - [ ] `validate`, `action-plans-integration` e `infra-validate` aprovados quando exigidos
-- [ ] Revisão humana independente apropriada ao risco registrada
+- [ ] Revisão do mantenedor humano registrada (se único desenvolvedor, indicar que não houve segunda revisão e quais testes/checagens compensam esse risco)
 - [ ] Se houve aprovação **verbal**, foi documentada como tal (não como review formal `APPROVED`)
 - [ ] Comentários e conflitos resolvidos; branch sincronizada com `main`
 - [ ] Limitações, riscos residuais e rollback/forward-fix documentados

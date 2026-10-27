@@ -65,3 +65,8 @@ Mapear cada cenário a testes unitários, RLS e integrações com **JWT real**; 
 - Formalizar política de mudanças de RLS/RPC, revisão independente e testes negativos por papel/unidade/ciclo de vida.
 
 Esses itens exigem brief/ADR/issue, dono, testes e aceite. Não habilitar tecnologia ou superfície privilegiada apenas porque constou da análise.
+
+
+## Foto da Sala de Reunião — 26/10/2026
+
+Bucket privado `room-covers`, independente de `unit-covers`, usa D5-B para mutação e leitura de agenda para assinatura. Arquivos imutáveis, confirmação de metadata, referência/versionamento e auditoria no PostgreSQL. Reconversão JPEG/remoção de EXIF é feita pelo browser reutilizando o codec Core; o servidor não decodifica pixels e não prova essas propriedades em payload forjado. URL já assinada é bearer token até TTL de 300 s, mesmo após revogação. Pendentes/aposentados retidos, sem expurgo automático. Histórico de pedidos e nomes Core restritos à gestão; agenda pública autorizada não ganha identidades nem finalidade privada. [Contrato e limites](../modules/room-booking/EXPERIENCE_V1.md).

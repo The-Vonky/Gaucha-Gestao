@@ -1,3 +1,4 @@
+import { createTestDatabase } from "./pglite";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -31,7 +32,7 @@ async function rows<T = Record<string, unknown>>(sql: string, params: unknown[] 
   return (await db.query<T>(sql, params)).rows;
 }
 beforeAll(async () => {
-  db = new PGlite();
+  db = createTestDatabase();
   await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
  create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}', last_sign_in_at timestamptz);
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;

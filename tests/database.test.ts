@@ -1,3 +1,4 @@
+import { createTestDatabase } from "./pglite";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
@@ -31,7 +32,7 @@ async function check(
   ).rows[0].ok;
 }
 beforeAll(async () => {
-  db = new PGlite();
+  db = createTestDatabase();
   // Minimal Supabase Auth contract; real PostgreSQL roles, grants, triggers and RLS.
   await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
  create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}', last_sign_in_at timestamptz);
@@ -462,7 +463,8 @@ describe("PostgreSQL Core migration and RLS", { concurrent: false }, () => {
       )
     ).rows[0];
     expect(detail.role.version).toBe(1);
-    expect(detail.permission_keys).toHaveLength(22);
+    expect(detail.permission_keys).toHaveLength(25);
+    expect(detail.permission_keys).not.toContain("room_booking.manage");
     await login(ids.empty);
     expect(
       (await db.query("select * from core.role_detail($1)", [id])).rows,

@@ -10,7 +10,7 @@ Usar agentes para implementar trabalho de engenharia **aprovado**, reduzindo lei
 | --- | --- | --- |
 | Planejamento e arquitetura | Responsável humano, com apoio técnico | Requisitos, decisão de produto, ADR/segurança, UX, brief, fora de escopo, aceite |
 | Implementação | Agente/desenvolvedor autorizado | Código, migration nova quando aplicável, testes, documentação canônica, commits focalizados |
-| Revisão | Outro humano, com parecer de agente quando útil | Evidências, riscos, autorização de merge proporcional à criticidade |
+| Revisão | Mantenedor humano único, com análise técnica do agente quando útil | Examina diff, evidências, riscos e CI, registrando decisão de merge; ausência de segundo revisor tratada como risco assumido |
 | Operação persistente / produção | Responsável operacional explicitamente autorizado | Inventário, preservação, validações e registro do GO; nunca inferido de CI verde |
 
 Uma sessão de implementação **não** substitui a aprovação do responsável e não deve redesenhar a plataforma opportunisticamente.

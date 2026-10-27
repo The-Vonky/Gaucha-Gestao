@@ -39,6 +39,15 @@ export type NavChild = {
 };
 export const destinations: Destination[] = [
   {
+    path: "/rooms",
+    label: "Agendamento de Salas",
+    description: "Agenda da sala, solicitações e gestão de reservas.",
+    icon: "units",
+    group: "Administrativo",
+    permissions: ["room_booking.schedule.read", "room_booking.request.create", "room_booking.request.read_own", "room_booking.manage"],
+    scope: "global",
+  },
+  {
     path: "/audit",
     label: "Auditorias",
     description: "Inspeções do checklist geral por unidade.",

@@ -1,3 +1,4 @@
+import { createTestDatabase } from "./pglite";
 import { Postgres } from "./integration/postgres.mjs";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
@@ -107,7 +108,7 @@ const classes = async (revision: string) =>
 beforeAll(async () => {
   db = process.env.ABC_TEST_DATABASE_URL
     ? (new Postgres(process.env.ABC_TEST_DATABASE_URL) as unknown as PGlite)
-    : new PGlite();
+    : createTestDatabase();
   await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
  create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}', last_sign_in_at timestamptz);
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;

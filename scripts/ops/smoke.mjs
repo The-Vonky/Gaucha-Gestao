@@ -42,6 +42,7 @@ const buckets = {
   'action-plan-evidence': [10485760, 'application/pdf'],
   'audit-checklist-evidence': [10485760, 'application/pdf'],
   'unit-covers': [1048576, 'image/jpeg'],
+  'room-covers': [1048576, 'image/jpeg'],
   'abc-source-files': [10485760, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
 };
 const tag = randomBytes(8).toString('hex');
@@ -175,7 +176,7 @@ try {
     assert.equal(sql(`select ${routine}('smoke.pdf','application/pdf',10485760) is null`), 't');
     assert.equal(sql(`select ${routine}('smoke.pdf','application/pdf',10485761) is not null`), 't');
   }
-  console.log('smoke: exactly four private buckets verified (two 10 MiB PDF evidence, one 1 MiB JPEG unit-covers, one 10 MiB XLSX abc-source-files) and evidence 10 MiB boundaries');
+  console.log('smoke: exactly five private buckets verified (two 10 MiB PDF evidence, two 1 MiB JPEG covers, one 10 MiB XLSX abc-source-files) and evidence 10 MiB boundaries');
 
   step = 'Storage file upload/sign/download/delete';
   // A complete one-page PDF, with byte offsets and stream length computed in ASCII.

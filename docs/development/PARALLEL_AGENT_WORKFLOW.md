@@ -2,18 +2,18 @@
 
 **Estado em 21/10/2026:** documento integrado à `main` desde a PR #43. Funciona como **disciplina operacional manual de colaboração**, não como ruleset automático ou autorização para ambiente persistente. O escopo de cinco dias abaixo é histórico e não distribui tarefas futuras por padrão.
 **Idioma de trabalho:** pt-BR para registros, handovers, issues e PRs. Consulte [AGENTS.md](../../AGENTS.md) como regra compartilhada; este documento detalha somente coordenação entre agentes.
-**Objetivo:** dois desenvolvedores, agentes simultâneos, um único fluxo de integração e nenhuma concorrência sobre ambientes persistentes ou produção.
+**Objetivo vigente (23/10/2026):** **um mantenedor/desenvolvedor humano**, com agentes auxiliares e controle sequencial de tarefas, reutilizando o Docker/Supabase local existente; PRs verificadas pelo mantenedor antes de merge. O plano histórico de dois desenvolvedores abaixo não define composição obrigatória atual.
 
-> **Decisão do responsável técnico — 15/10/2026:** a proteção técnica (`ruleset`/branch protection) da `main` será implementada **somente na fase final do projeto**. O risco de push/merge sem bloqueio automático foi conscientemente aceito; **não equivale a mitigação técnica**. Até lá, PR, CI e revisão humana independente são exigências **operacionais manuais**, não gates impostos pelo GitHub. Sem habilitar ou alterar ruleset neste ciclo. Reavaliar a ordem exata e as condições antes de qualquer GO de produção.
+> **Histórico de 15/10/2026:** o adiamento do ruleset da `main` continua registrado. Em **23/10/2026**, o responsável informou que é o único desenvolvedor humano; **não há mais exigência operativa de um segundo desenvolvedor/revisor para a PR AG-01**. O mantenedor aceita o risco residual de revisão individual, decide merge após CI, testes e avaliação de segurança. Não há autorização implícita de produção.
 
 ## 1. Responsabilidade e limites
 
 | Frente | Responsável primário | Escopo padrão |
 | --- | --- | --- |
 | Plataforma e release | Responsável técnico do projeto | `infra/**`, `scripts/ops/**`, workflows CI/CD, backups, observabilidade, redes e deploy |
-| Aplicação e qualidade | Segundo desenvolvedor | `apps/web/src/modules/**`, `tests/**` de domínio/E2E, homologação P1–P9, regressões de UI |
+| Aplicação e qualidade | Mantenedor único, com agente executor quando delegado | `apps/web/src/modules/**`, `tests/**` de domínio/E2E, homologação e regressões de UI |
 | Core/Auth e migrations | Dev A (ou outro responsável expressamente nomeado na issue) | `apps/web/src/core/**`, `supabase/migrations/**`, regras de autorização e Identity Boundary; depende dos gates do ADR-007 |
-| Integração | Responsável técnico, com revisão de outro humano | `main`, resolução de conflitos, release, mudanças operacionais |
+| Integração | Mantenedor único, com PR, checks e auto-revisão rastreada | `main`, resolução de conflitos, release, mudanças operacionais (GO de produção sempre específico) |
 
 **Divisão dos cinco dias (issues #46–#59):** Dev A (`The-Vonky`) cuida de Core, arquitetura, infraestrutura, recovery, decisões e handover; Dev B assume Qualidade v1, setup/testes, matriz P1–P9, bugs e regressões; Matheus apoia o diagnóstico e a montagem física da C30/HD HPE. O login GitHub de Dev B foi confirmado como [@bernardowillian](https://github.com/bernardowillian) na Issue #47 e como colaborador com permissão de escrita na revisão de 20/10/2026. **Isso não atribui autorização de produção, backup, arquitetura ou merge de novas PRs.** Os responsáveis por decisões sensíveis continuam definidos por issue/ADR/ata, não por inferência.
 
@@ -21,12 +21,12 @@ Propriedade é **por tarefa/arquivo**, não propriedade permanente do diretório
 
 A proposta do ADR-007 no [PR #24](https://github.com/The-Vonky/Gaucha-Gestao/pull/24) foi **encerrada sem merge e sem aceite**, e a [Issue #42](https://github.com/The-Vonky/Gaucha-Gestao/issues/42) foi encerrada como não planejada nesta etapa. A revisão arquitetural prossegue na [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49). **ADR-007 permanece NO-GO:** não implementar runtime privilegiado, migrations ou cutover sem nova proposta, revisão independente e GO humano explícito.
 
-## 2. Preparação dos dois desenvolvedores
+## 2. Preparação vigente do mantenedor único (histórico de dois desenvolvedores abaixo)
 
-1. **Verifique** se [@bernardowillian](https://github.com/bernardowillian) ainda possui o acesso mínimo necessário em **Settings → Collaborators** (permissão de escrita verificada em 20/10/2026). Não enviar convite duplicado nem aumentar privilégios sem necessidade; nunca conceder credenciais de deploy ou segredos de produção por esta regra.
+1. **Equipe atual:** somente o mantenedor humano. Convites/acessos de colaboradores mencionados no histórico de 20/10 **não indicam disponibilidade atual de outro desenvolvedor** e não exigem convite nem revisão por terceiro.
 2. **Não configurar proteção/ruleset da `main` nesta fase.** A ativação foi adiada por decisão consciente para a **etapa final do projeto**. Registrar o risco residual e, antes do GO, confirmar a sequência de proteção, aprovação e implantação. Quando a fase final for autorizada e houver revisor elegível, propor checks obrigatórios, aprovação humana de outra pessoa e bloqueio de force-push/deleção como mudança separada, sem antecipá-la agora.
-3. **Disciplina manual até a proteção:** não fazer push direto na `main`, não usar auto-merge/bypass, verificar `validate`, `action-plans-integration` e `infra-validate` quando pertinentes e exigir revisão humana independente antes do merge. Essa disciplina depende das pessoas e não substitui enforcement técnico; se não houver revisor elegível, a mudança crítica aguarda.
-4. Não configurar `CODEOWNERS` com um único usuário e revisão obrigatória: isso poderia bloquear PRs de autoria do próprio dono. Adicionar nomes reais e revisão por CODEOWNERS somente após o segundo colaborador aceitar o convite.
+3. **Disciplina vigente:** usar PR, não fazer push direto na `main` nem auto-merge; verificar checks pertinentes, executar testes e revisar diff, especialmente RLS/grants/concorrência. **O mantenedor humano único aprova ou rejeita o merge**; ausência de outro humano deve ser explicitada como risco residual, nunca como impedimento automático ao desenvolvimento.
+4. Não configurar `CODEOWNERS`/ruleset exigindo aprovação de outra pessoa indisponível. Reavaliar proteção técnica posteriormente, sem bloquear o desenvolvimento atual.
 
 ## 3. Branches e worktrees
 
@@ -60,8 +60,8 @@ Após um PR integrado, limpar worktree **somente depois** de conferir que não h
 
 ## 4. Isolamento de runtime e dados
 
-- Cada agente com teste que usa Docker deve possuir projeto Compose, volumes, portas e arquivo de ambiente **exclusivos**. Worktree isolada não isola PostgreSQL, CLI Supabase nem Storage.
-- Use apenas instâncias descartáveis com identificador inequívoco e credenciais sintéticas; nunca apontar scripts de teste ou seed para produção ou banco compartilhado.
+- **Usar o ambiente Supabase/Docker local existente (`gaucha-gestao-local`)** por padrão para desenvolver e verificar manualmente, com somente um escritor/migração por vez. **Não criar novos projetos, containers, bancos, volumes ou portas por hábito.** Isolamento específico só para ensaio destrutivo/concorrente cuja necessidade seja comprovada e autorizada.
+- Para ensaios de unidade, preferir testes em memória; para teste manual end-to-end, usar o ambiente **local já configurado** e contas/dados de teste. Nunca direcionar reset/destruição para ambiente existente nem apontar comandos a C30/STAGING/PROD. Não expor segredos/credenciais nos relatórios.
 - Scripts existentes em `scripts/ops` aceitam somente `ci`/`staging` descartável e rejeitam `production`. Não reinterpretá-los como mecanismo de deploy produtivo.
 - Nunca executar `supabase db reset`, `db push`, `--linked`, seed ou migração destrutiva em instância compartilhada/remota; migrations incrementais em PR único, com revisão de ownership e rollback/forward-fix.
 - Não copiar arquivos de produção, tokens, URLs assinadas, senhas ou dados pessoais para prompts, artefatos ou logs de agentes.
@@ -70,7 +70,7 @@ Após um PR integrado, limpar worktree **somente depois** de conferir que não h
 
 ## 5. Contrato mínimo de cada issue e de cada agente
 
-Toda issue executável deve declarar: **objetivo**, **fora de escopo**, **dono humano**, **branch**, **arquivos permitidos**, **dependências**, **ambiente exclusivo**, **critérios de aceite** e **testes exigidos**.
+Toda issue executável deve declarar: **objetivo**, **fora de escopo**, **dono humano**, **branch**, **arquivos permitidos**, **dependências**, **ambiente de desenvolvimento local reutilizado ou isolamento excepcional justificado**, **critérios de aceite** e **testes exigidos**.
 
 Sessão de agente:
 1. Ler `AGENTS.md`, brief/issue e somente docs/arquivos relevantes.
@@ -84,7 +84,7 @@ Revisão pode usar outro agente/modelo para parecer técnico, mas a aprovação 
 
 ## 6. Merge, CI e liberação
 
-Pipeline: **Issue → worktree/branch isolada → commits focalizados → PR → checks → revisão humana independente → merge main → homologação → release autorizado**.
+Pipeline vigente: **Issue → branch de tarefa → commits focalizados → PR → CI + testes → revisão do mantenedor único → merge pelo mantenedor → testes manuais locais → eventual release autorizado**. Revisão independente é recomendável quando houver outro revisor disponível, mas **não é requisito para inventar outra pessoa**.
 
 Checks existentes: `validate` (typecheck, lint, Vitest, build, npm audit), `action-plans-integration` (Supabase local/E2E), `infra-validate` (stack reproduzível). Rodar testes de domínio pertinentes mesmo quando a suíte completa for exigida para merge. Se `action-plans-integration` falhar intermitentemente, consultar a [Issue #41](https://github.com/The-Vonky/Gaucha-Gestao/issues/41) (encerrada administrativamente, sem correção comprovada) e registrar nova ocorrência na [Issue #57](https://github.com/The-Vonky/Gaucha-Gestao/issues/57) antes de abrir issue específica; não mascarar o erro apenas repetindo execução.
 
@@ -92,8 +92,8 @@ Checks existentes: `validate` (typecheck, lint, Vitest, build, npm audit), `acti
 
 ## 7. Capacidade e coordenação
 
-Para o plano dos cinco dias, priorizar **uma frente de escrita ativa por desenvolvedor** (Dev A: Core/infra; Dev B: Qualidade/testes); trabalhos paralelos adicionais exigem divisão explícita de arquivos e ambiente na issue. Fora desse ciclo, o limite geral é **dois agentes escritores por pessoa**; revisores somente leitura podem operar paralelamente. Registrar dono, arquivos e estado da tarefa na issue/PR, não em conversa temporária. Quando houver conflitos em arquivos, CI sobrecarregada ou fila de revisão, diminuir paralelismo.
+**Operação atual:** um mantenedor humano, com um agente escritor por tarefa e **o runtime Docker/Supabase local já existente**. Trabalhos paralelos devem ser coordenados somente se efetivamente existirem; não exigir worktrees ou ambientes adicionais por padrão. A antiga divisão Dev A/Dev B foi específica das issues #46–#59 e está encerrada como regra para novas tarefas.
 
-**Cadência proposta (confirmar com Dev B):** alinhamento inicial de 20 minutos, revisão cruzada até 16h nos dias aplicáveis, atualização ao fim de cada dia com responsável, prioridade, gate, SHA, PR, evidência sanitizada, bloqueador e próximo passo. Sem confirmação explícita da equipe, marcar `PENDENTE`, nunca `FEITO`.
+**Cadência atual:** o agente entrega commits, PR, checklist, resultados e instruções de teste local; o mantenedor avalia quando puder. Não depender de reuniões com segundo desenvolvedor. Registros do antigo ciclo Dev A/Dev B permanecem históricos.
 
 Na passagem entre modelos/agentes, usar Git e issue como fonte de continuidade: branch, `git status`, diff, commits, PR, validação e bloqueios. Não reconstruir contexto inteiro por chat.
