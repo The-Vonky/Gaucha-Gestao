@@ -1,5 +1,7 @@
 # Roteiro de migração dos módulos
 
+**Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).
+
 **Agendamento — atualização de 26/10/2026:** PR #88 mantém AG-01/02/03 e adota D5-B (D5-A revogada): administrador sem gestão; provisionamento do gestor técnico e auditado. [Contrato e evidências](../modules/room-booking/D5B_ACCESS.md). Merge e homologação humanos pendentes; demais decisões e prioridades preservadas.
 
 **Atualização vigente — 26/10/2026:** o responsável ampliou expressamente a PR #88

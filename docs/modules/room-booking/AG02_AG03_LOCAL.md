@@ -1,5 +1,7 @@
 # Agendamento de Salas — AG-02/AG-03 local
 
+**Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](EXPERIENCE_V1.md).
+
 **Decisão vigente — 26/10/2026:** D5-A revogada pelo responsável em 26/10/2026. D5-B adotada: o administrador geral não administra reservas; a gestão cabe ao papel `room_booking_manager`, com provisionamento administrativo restrito e auditado. Atribuição administrativa ativa conflitante nega gestão mesmo com papel adicional. D1–D4, D6–D11 e F2 permanecem aprovadas. Os registros de 23/10 abaixo são históricos.
 
 
@@ -162,3 +164,8 @@ A primeira suíte terminou com 602/603: teste Core esperava 26 permissões do ad
 Um Vite adicional iniciou em 5174 porque 5173 já estava ocupada; o processo adicional foi identificado e encerrado, mantendo somente o servidor original da aplicação. Nenhuma nova infraestrutura Supabase/Docker foi criada. `supabase/snippets/` permaneceu fora dos commits. Uma conta e duas atribuições preexistentes foram preservadas; nenhuma concessão real permanente foi realizada. Sessões de teste Auth ficaram em memória, sem credenciais nos artefatos.
 
 **Limitações:** navegador real de gestor sem conflito/solicitante separado não executado nesta correção, pois a única conta local é administrativa e não houve autorização para provisionar outra identidade ou alterar permanentemente seus papéis. Esses comportamentos têm cobertura SQL real com ROLLBACK e UI automatizada. C1/C2/C3/F2 com duas sessões não foram repetidos sob D5-B; as evidências acima anteriores são históricas. O ensaio atual de revogação cobre uma ordem de locks com ROLLBACK, não todas as corridas de concessão/ativação nem revogação com COMMIT entre duas sessões. Homologação humana, celular físico e restore persistente não executados. Mantenedor decide merge, sem segunda revisão humana; PROD NO-GO.
+
+
+## Entrega das quatro melhorias — 27/10/2026
+
+Código `53c5a01`: foto privada, status/contador pelo servidor, visão de gestor sem cards de solicitante e histórico privado por cursor. Migration nº 23 aplicada em 26/10 e reconferida em 27/10 sem reaplicação. Checks finais: 612 testes, typecheck/lint/build/verify:build/audit aprovados. Navegador e Storage reais passaram em 26/10; nova execução de navegador em 27/10 não iniciada por ausência do Chromium temporário. Foto atual preservada. [Relatório e capturas sanitizadas](EXPERIENCE_V1.md#entrega-final--27102026).

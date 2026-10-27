@@ -1,5 +1,7 @@
 # Agendamento de Salas v1 — Critérios de aceite e matriz de testes
 
+**Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](EXPERIENCE_V1.md).
+
 **Decisão vigente — 26/10/2026:** D5-A revogada pelo responsável em 26/10/2026. D5-B adotada: o administrador geral não administra reservas; a gestão cabe ao papel `room_booking_manager`, com provisionamento administrativo restrito e auditado. Atribuição administrativa ativa conflitante nega gestão mesmo com papel adicional. D1–D4, D6–D11 e F2 permanecem aprovadas. Os registros de 23/10 abaixo são históricos.
 
 
@@ -149,3 +151,15 @@ A numeração **canônica** é **AG-03: interface completa (inclusive secretaria
 ## Evidência AG-01 em revisão
 
 Implementação autorizada expressamente pelo responsável em 23/10/2026, após a PR #85. Ver [fundação e roteiro reproduzível](AG01_FOUNDATION.md). Testes da fundação não encerram critérios que dependem de RPC/UI, Auth/REST reais ou homologação. Revisão final do titular ainda pendente, conforme exceção de mantenedor único `9e20199`; nenhum parecer independente ou gate humano foi declarado concluído.
+
+
+## Adendo de aceite — experiência e operação (26/10/2026)
+
+| ID | Critério |
+|---|---|
+| U-FOTO | Gestor adiciona/substitui/enquadra/remove foto com versão/auditoria; administrador/solicitante negados no banco; leitor autorizado vê foto privada ou fallback |
+| U-TEMPO | Disponível verde / Em uso vermelho, texto e ícone; contador por segundo sem RPC por segundo, zero reconsulta, reunião adjacente e retorno de aba corretos |
+| U-GESTOR | Gestor sem cards de solicitante, com agenda ampliada, fila, reserva direta e histórico; solicitante mantém agenda/pedidos próprios |
+| S-HIST | Histórico somente gestão, inclusive passados e estados terminais, nomes Core/decisão/reserva vinculada; filtros e cursor consistente, sem mutações ou pedidos artificiais |
+
+Evidências automatizadas e locais no contrato ligado acima; aceite humano destas melhorias continua a cargo do mantenedor.
