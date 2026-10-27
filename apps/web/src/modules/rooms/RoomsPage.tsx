@@ -8,6 +8,8 @@ import {
 import { useAuth } from "../../core/auth/AuthProvider";
 import { can } from "../../core/auth/permissions";
 import { Notice } from "../../shared/ui";
+import { RequestHistory } from "./RequestHistory";
+import { RoomPhoto } from "./RoomPhoto";
 import { RoomHeroBanner } from "./RoomHeroBanner";
 import {
   dateTime,
@@ -71,6 +73,7 @@ export function RoomsPage() {
   }>();
   const requestKey = useRef(crypto.randomUUID());
   const generation = useRef(0);
+  const [historyRevision, setHistoryRevision] = useState(0);
   const refresh = useCallback(async () => {
     const current = ++generation.current;
     setLoading(true);
@@ -78,8 +81,15 @@ export function RoomsPage() {
     try {
       const [b, s, r, q] = await Promise.all([
         read ? rpc<Booking[]>("schedule", { p_from: date, p_to: date }) : [],
-        read ? rpc<Summary>("summary") : null,
-        own ? rpc<Request[]>("requests", { p_offset: page * 50 }) : [],
+        read
+          ? rpc<Summary>("summary").then((s) => ({
+              ...s,
+              receivedAt: performance.now(),
+            }))
+          : null,
+        own && !manage
+          ? rpc<Request[]>("requests", { p_offset: page * 50 })
+          : [],
         manage
           ? rpc<Request[]>("requests", {
               p_queue: true,
@@ -92,6 +102,7 @@ export function RoomsPage() {
       setSummary(s);
       setRequests(r);
       setQueue(q);
+      setHistoryRevision((r) => r + 1);
     } catch (e) {
       if (current !== generation.current) return;
       setError(roomMessage(e));
@@ -194,7 +205,13 @@ export function RoomsPage() {
     !!editor?.booking && new Date(editor.booking.starts_at).getTime() <= now;
   return (
     <div className="rooms-page">
-      <RoomHeroBanner summary={summary} loading={loading} manager={manage} />
+      <RoomHeroBanner
+        summary={summary}
+        loading={loading}
+        manager={manage}
+        onBoundary={refresh}
+        photo={<RoomPhoto manager={manage} read={read} />}
+      />
       <div className="room-toolbar">
         <span>Horários de Brasília · America/Sao_Paulo</span>
         <button disabled={busy || loading} onClick={() => void refresh()}>
@@ -203,7 +220,7 @@ export function RoomsPage() {
       </div>
       {error && <Notice error>{error}</Notice>}
       {success && <Notice>{success}</Notice>}
-      <div className="room-columns">
+      <div className={`room-columns${manage ? " room-columns-manager" : ""}`}>
         {read && (
           <section className="room-panel">
             <div className="room-section-head">
@@ -283,29 +300,31 @@ export function RoomsPage() {
             )}
           </section>
         )}
-        <aside className="room-panel room-request-callout">
-          <p className="room-eyebrow">ORGANIZE SEU ENCONTRO</p>
-          <h2>Solicitar horário</h2>
-          <p>
-            Envie seu pedido para análise da secretaria. Apenas reservas
-            aprovadas ocupam a agenda.
-          </p>
-          {create ? (
-            <button
-              className="primary"
-              disabled={busy}
-              onClick={() => openEditor(false)}
-            >
-              Novo pedido
-            </button>
-          ) : (
-            <p>Seu acesso não permite enviar solicitações.</p>
-          )}
-          <p className="muted">
-            Nome da reserva e observações da secretaria são visíveis aos
-            leitores autorizados. Evite informações sensíveis.
-          </p>
-        </aside>
+        {!manage && (
+          <aside className="room-panel room-request-callout">
+            <p className="room-eyebrow">ORGANIZE SEU ENCONTRO</p>
+            <h2>Solicitar horário</h2>
+            <p>
+              Envie seu pedido para análise da secretaria. Apenas reservas
+              aprovadas ocupam a agenda.
+            </p>
+            {create ? (
+              <button
+                className="primary"
+                disabled={busy}
+                onClick={() => openEditor(false)}
+              >
+                Novo pedido
+              </button>
+            ) : (
+              <p>Seu acesso não permite enviar solicitações.</p>
+            )}
+            <p className="muted">
+              Nome da reserva e observações da secretaria são visíveis aos
+              leitores autorizados. Evite informações sensíveis.
+            </p>
+          </aside>
+        )}
       </div>
       {editor && (editor.direct ? manage : create) && (
         <section className="room-panel">
@@ -406,7 +425,7 @@ export function RoomsPage() {
           </form>
         </section>
       )}
-      {own && (
+      {own && !manage && (
         <section className="room-panel">
           <h2>Meus pedidos</h2>
           {!requests.length && <p>Nenhum pedido nesta página.</p>}
@@ -578,6 +597,7 @@ export function RoomsPage() {
           />
         </section>
       )}
+      {manage && <RequestHistory revision={historyRevision} />}
     </div>
   );
 }

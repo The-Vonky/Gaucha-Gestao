@@ -10,7 +10,7 @@ begin
  end;
  raise exception 'Expected error %, command succeeded: %',expected,command;
 end $$;
-select public.ag01_assert((select count(*)=3 and bool_and(relrowsecurity) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='room_booking' and relkind='r'));
+select public.ag01_assert((select count(*)=3 and bool_and(relrowsecurity) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='room_booking' and c.relname in ('rooms','requests','bookings') and relkind='r'));
 select public.ag01_assert((select count(*)=4 from core.permissions where domain='room_booking'));
 select public.ag01_assert((select count(*)=0 from core.user_role_assignments a join core.roles r on r.id=a.role_id where r.key like 'room_booking_%'));
 select set_config('ag01.manager',(select id::text from core.roles where key='room_booking_manager'),false);

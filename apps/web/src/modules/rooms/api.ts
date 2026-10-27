@@ -18,7 +18,10 @@ export type Request = Omit<Booking, "secretary_notes"> & {
 export type Summary = {
   name: string;
   server_now: string;
+  /** Instante monotônico de recebimento, somente no cliente. */
+  receivedAt?: number;
   in_use: boolean;
+  in_use_until?: string | null;
   today_count: number;
   next_start: string | null;
   pending_count?: number;

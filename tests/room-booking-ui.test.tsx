@@ -37,7 +37,9 @@ beforeEach(() => {
           today_count: 0,
           next_start: null,
         }
-      : [],
+      : name === "history"
+        ? { items: [], has_more: false }
+        : [],
   );
 });
 afterEach(cleanup);
@@ -95,7 +97,9 @@ it("gestor vê fila; observações com HTML são texto inerte", async () => {
             next_start: null,
             pending_count: 0,
           }
-        : [],
+        : name === "history"
+          ? { items: [], has_more: false }
+          : [],
   );
   const { container } = render(<RoomsPage />);
   await screen.findByText("<script>executar()</script>");
@@ -135,26 +139,144 @@ it("converte minutos livres e borda 23:59 no fuso de São Paulo", () => {
 it("D5-B: administrador recebe três capacidades, sem fila, contador ou ações de gestão", async () => {
   state.permissions = ["schedule.read", "request.create", "request.read_own"];
   state.rpc.mockImplementation(async (name) =>
-    name === "schedule" ? [{ id: "B", booked_for: "Reserva existente", starts_at: "2099-01-02T17:07:00Z", ends_at: "2099-01-02T17:23:00Z", version: 1 }]
-      : name === "summary" ? { name: "Sala de Reunião", server_now: "2026-10-26T12:00:00Z", today_count: 1, pending_count: 99 } : [],
+    name === "schedule"
+      ? [
+          {
+            id: "B",
+            booked_for: "Reserva existente",
+            starts_at: "2099-01-02T17:07:00Z",
+            ends_at: "2099-01-02T17:23:00Z",
+            version: 1,
+          },
+        ]
+      : name === "summary"
+        ? {
+            name: "Sala de Reunião",
+            server_now: "2026-10-26T12:00:00Z",
+            today_count: 1,
+            pending_count: 99,
+          }
+        : name === "history"
+          ? { items: [], has_more: false }
+          : [],
   );
   render(<RoomsPage />);
   await screen.findByText("Reserva existente");
   expect(screen.getByText("Meus pedidos")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Novo pedido" })).toBeTruthy();
-  for (const name of ["Criar reserva direta", "Editar reserva", "Cancelar reserva", "Aprovar pedido", "Recusar pedido"])
+  for (const name of [
+    "Criar reserva direta",
+    "Editar reserva",
+    "Cancelar reserva",
+    "Aprovar pedido",
+    "Recusar pedido",
+  ])
     expect(screen.queryByRole("button", { name })).toBeNull();
   expect(screen.queryByText("Solicitações pendentes")).toBeNull();
   expect(screen.queryByText("99")).toBeNull();
-  expect(state.rpc.mock.calls.some((c) => c[0] === "requests" && c[1]?.p_queue)).toBe(false);
+  expect(
+    state.rpc.mock.calls.some((c) => c[0] === "requests" && c[1]?.p_queue),
+  ).toBe(false);
 });
 it("fecha visualmente o editor de gestão quando a permissão efetiva é revogada", async () => {
   state.permissions = ["schedule.read", "manage"];
   const view = render(<RoomsPage />);
-  await userEvent.setup().click(await screen.findByRole("button", { name: "Criar reserva direta" }));
+  await userEvent
+    .setup()
+    .click(await screen.findByRole("button", { name: "Criar reserva direta" }));
   expect(screen.getByRole("heading", { name: "Reserva direta" })).toBeTruthy();
   state.permissions = ["schedule.read", "request.create", "request.read_own"];
   view.rerender(<RoomsPage />);
   expect(screen.queryByRole("heading", { name: "Reserva direta" })).toBeNull();
-  await waitFor(() => expect(screen.queryByText("Consultando agenda…")).toBeNull());
+  await waitFor(() =>
+    expect(screen.queryByText("Consultando agenda…")).toBeNull(),
+  );
+});
+it("gestor com todas as permissões não vê cards de solicitante e mantém reserva direta e histórico", async () => {
+  state.permissions = [
+    "schedule.read",
+    "request.create",
+    "request.read_own",
+    "manage",
+  ];
+  render(<RoomsPage />);
+  await screen.findByText("Nenhuma reserva confirmada nesta data.");
+  expect(screen.queryByText("ORGANIZE SEU ENCONTRO")).toBeNull();
+  expect(screen.queryByText("Meus pedidos")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Novo pedido" })).toBeNull();
+  expect(
+    screen.getByRole("heading", { name: "Histórico de solicitações" }),
+  ).toBeTruthy();
+  expect(
+    state.rpc.mock.calls.some((c) => c[0] === "requests" && !c[1]?.p_queue),
+  ).toBe(false);
+  await userEvent
+    .setup()
+    .click(screen.getByRole("button", { name: "Criar reserva direta" }));
+  expect(screen.getByRole("heading", { name: "Reserva direta" })).toBeTruthy();
+});
+it("histórico apresenta estados, decisão e reserva cancelada, pagina por cursor e reinicia filtros", async () => {
+  state.permissions = ["schedule.read", "manage"];
+  const entries = ["pending", "approved", "rejected", "cancelled"].map(
+    (status, i) => ({
+      id: `H${i}`,
+      status,
+      booked_for: `Reunião ${i}`,
+      requester_name: "Solicitante sintético",
+      starts_at: "2020-01-02T12:00:00Z",
+      ends_at: "2020-01-02T13:00:00Z",
+      created_at: "2019-12-20T12:00:00Z",
+      decided_at: i === 1 || i === 2 ? "2019-12-21T12:00:00Z" : null,
+      decided_by_name: "Gestor sintético",
+      decision_reason: i === 2 ? "Motivo sintético" : null,
+      booking_status: i === 1 ? "cancelled" : null,
+      booking_cancelled_at: i === 1 ? "2019-12-22T12:00:00Z" : null,
+    }),
+  );
+  state.rpc.mockImplementation(async (name) =>
+    name === "history"
+      ? { items: entries, has_more: true }
+      : name === "summary"
+        ? {
+            name: "Sala",
+            server_now: "2026-10-26T12:00:00Z",
+            in_use: false,
+            next_start: null,
+            today_count: 0,
+          }
+        : [],
+  );
+  render(<RoomsPage />);
+  await screen.findByText("Motivo da recusa: Motivo sintético");
+  expect(screen.getByText(/Cancelada posteriormente/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Aprovar pedido" })).toBeNull();
+  const next = screen
+    .getAllByRole("button", { name: "Próxima" })
+    .find((b) => !(b as HTMLButtonElement).disabled)!;
+  await userEvent.setup().click(next);
+  await waitFor(() =>
+    expect(state.rpc).toHaveBeenCalledWith(
+      "history",
+      expect.objectContaining({
+        p_before_id: "H3",
+        p_before_start: entries[3].starts_at,
+      }),
+    ),
+  );
+  await userEvent
+    .setup()
+    .selectOptions(
+      screen.getByLabelText("Status do pedido", { exact: true }),
+      "rejected",
+    );
+  await waitFor(() =>
+    expect(state.rpc).toHaveBeenCalledWith(
+      "history",
+      expect.objectContaining({
+        p_status: "rejected",
+        p_before_id: null,
+        p_before_start: null,
+      }),
+    ),
+  );
 });
