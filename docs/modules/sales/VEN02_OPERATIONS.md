@@ -1,6 +1,12 @@
 # VEN-02 — Operações de negócio de Vendas / Maquininhas
 
-**Estado:** implementação para revisão em branch própria, sem merge ou homologação.
+**Estado:** INTEGRADA à `main` pela [PR #91](https://github.com/The-Vonky/Gaucha-Gestao/pull/91),
+merge `72ae883ba279069d961b40054d68012d34ed3f8c` em 28/10/2026; não homologada.
+Aplicação incremental no notebook autorizada e realizada separadamente na
+[VEN-03](VEN03_LOCAL_VALIDATION.md). STAGING/PROD não alterados.
+
+O restante deste documento registra o escopo e as restrições da autorização original
+da VEN-02; a nova autorização de VEN-03 não deve ser confundida com aquela execução.
 **Autorização:** pedido expresso do responsável em 28/10/2026 para VEN-02, testes
 sintéticos em memória/CI descartável e abertura de PR. VEN-03–VEN-08 permanecem
 dependentes de suas autorizações. **Notebook, STAGING e PROD não são destinos de teste.**

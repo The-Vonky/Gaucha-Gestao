@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { client } from "../../core/client";
+import { parseSalesDashboard } from "./analytics";
 import { message } from "../../shared/errors";
-import type { EntryFilters, EntryInput, SalesEntry } from "./types";
+import type { DashboardFilters, EntryFilters, EntryInput, SalesDashboard, SalesEntry } from "./types";
 
 /** Validação de transporte; a autorização e as regras definitivas ficam no SQL. */
 function amount(value: unknown): string {
@@ -68,4 +69,12 @@ export function salesMessage(error: unknown): string {
   if (["23514", "22007", "22008", "22P02"].includes(code))
     return "Confira a data, a unidade, a forma de pagamento e o valor decimal com até duas casas.";
   return message(error);
+}
+
+/** Read-model único; limites e escopos são verificados novamente no banco. */
+export async function salesDashboard(filters: DashboardFilters): Promise<SalesDashboard> {
+  return parseSalesDashboard(await rpc("sales_dashboard", {
+    p_from: filters.from, p_to: filters.to, p_units: filters.unit_ids ?? null,
+    p_scope: filters.scope ?? "stone", p_daily_month: filters.daily_month ?? null,
+  }));
 }

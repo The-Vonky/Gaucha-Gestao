@@ -19,13 +19,21 @@ ACESSO
 
 Na ausência de autorização inequívoca, **NEGAR**.
 
-**Vendas VEN-02 (28/10/2026, para revisão):** `sales.entry.read/create/edit/delete`
+**Vendas VEN-02 (integrada na PR #91 em 28/10/2026):** `sales.entry.read/create/edit/delete`
 usam `private.has_unit_permission`, sem atribuição automática a papéis. Cinco RPCs
 `public.sales_*`, tabelas privadas com RLS restritiva, grants somente de EXECUTE.
 Negam escopo setorial e unidade externa; edição exige escopo na origem e no destino,
 sem autoria obrigatória; criação/transferência exigem unidade ativa. Perfil,
 atribuições, papéis e permissões são bloqueados e revalidados na transação;
 consultas históricas incluem unidades inativas. [Contrato completo](../modules/sales/VEN02_OPERATIONS.md).
+
+**Vendas VEN-03 (para revisão, 28/10/2026):** `public.sales_dashboard` exige
+`sales.dashboard.read` com escopo efetivo global/unidade. Agregados, referências,
+ranking e metadados usam somente unidades autorizadas. Snapshot mensal global só
+é visível com permissão global; leitor unitário recebe status histórico indisponível
+sem presumir fechamento, e deriva o mês corrente apenas por suas datas. Métricas
+dependentes ficam nulas quando o status não pode ser confirmado. Nenhum grant
+adicionado a papéis reais. [Contrato e decisão do titular](../modules/sales/VEN03_ANALYTICS.md).
 
 ## Identidade, papéis e permissões
 
