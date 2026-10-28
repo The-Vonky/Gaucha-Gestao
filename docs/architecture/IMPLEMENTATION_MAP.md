@@ -1,5 +1,9 @@
 # Mapa rastreável: funcionalidades, contratos e código
 
+**Vendas — adendo de 28/10/2026:** VEN-01 integrada na PR #90; VEN-02 preparada
+para revisão conforme [contrato](../modules/sales/VEN02_OPERATIONS.md), sem aplicar
+migrations em notebook/STAGING/PROD. O restante mantém sua fotografia histórica.
+
 **Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).
 
 **Fotografia:** main após PR #69 (`fed0e0f`, 20/10/2026). Inventário de arquivos/contratos, **não relatório de aprovação de deploy ou de testes executados agora**.
@@ -20,7 +24,8 @@
 | Infraestrutura mínima | infra/supabase/docker-compose.yml, scripts/ops/*, .github/workflows/infra-validate.yml | [infra/README](../../infra/README.md), [UPSTREAM](../../infra/supabase/UPSTREAM.md), ADR-006 Proposed | AS-IS **CI/lab**, NÃO PROD |
 | Serviço privilegiado de criação/recuperação Auth | Nenhum runtime aprovado na main | [ACCOUNT_LIFECYCLE_V1](ACCOUNT_LIFECYCLE_V1.md), Issue #49; PR #24 fechado sem merge | **BLOQUEADO / DESIGN ONLY** |
 | Agendamento de Salas AG-01/02/03 | apps/web/src/modules/rooms/; rota /rooms | migrations room_booking_foundation, room_booking_operations e room_booking_d5b_access; [separação D5-B e provisionamento](../modules/room-booking/D5B_ACCESS.md); [contrato e validação local](../modules/room-booking/AG02_AG03_LOCAL.md) | PR #88; funcional em desenvolvimento local, merge/homologação pendentes |
-| ISO, vendas, satisfação, frota, planejado-realizado, contratos | Sem integração desses domínios na main (ABC já integrada) | [roadmap de migração](../migration/MODULE_ROADMAP.md) e mapa de consumidores Core | **FUTURO** |
+| Vendas / Maquininhas VEN-01/02 | `sales` privado; `apps/web/src/modules/sales/{api.ts,types.ts}` sem UI | migrations sales_foundation/sales_operations; `public.sales_entries_list`, `sales_entry_detail/create/update/delete`; `tests/sales-*`, job `sales-integration`; [contrato](../modules/sales/VEN02_OPERATIONS.md) | VEN-01 integrada #90; VEN-02 para revisão, sem aplicação persistente/homologação |
+| ISO, satisfação, frota, planejado-realizado, contratos | Sem integração desses domínios na main (ABC já integrada) | [roadmap de migração](../migration/MODULE_ROADMAP.md) e mapa de consumidores Core | **FUTURO** |
 
 ## Chamadas RPC representativas, verificadas nos adaptadores
 
@@ -50,6 +55,8 @@ flowchart LR
   API["public.room_booking_* — RPCs autorizadas"] --> ROOMS
   CORE --> ABC["abc — séries/revisões/linhas"]
   ABC --> S4["Storage API — abc-source-files"]
+  CORE --> SALES["sales — agregados diários privados"]
+  SALES_API["public.sales_* — cinco RPCs VEN-02 para revisão"] --> SALES
 ~~~
 
 Relações representam dependência/autorização, **não ownership compartilhado nem join livre**. Os quatro buckets privados e seus nomes/limites devem ser confirmados pelas migrations aplicáveis. **Audit (domínio de qualidade)** não é a mesma coisa que core.system_audit_log (trilha de segurança).
