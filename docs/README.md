@@ -30,6 +30,7 @@ Os índices e ADRs históricos preservam suas datas originais. Para o estado efe
 | Usar o módulo de Qualidade | [Guia do operador (pré-homologação)](modules/audit/OPERATOR_GUIDE_V1.md) | [Aceite da Qualidade](modules/audit/QUALITY_ACCEPTANCE_V1.md) |
 | Aceitar a primeira entrega | [Qualidade P1–P9 / O1–O8](modules/audit/QUALITY_ACCEPTANCE_V1.md) | [Matriz de conclusão](modules/audit/QUALITY_COMPLETION_V1.md) |
 | Experimentar Agendamento de Salas local (PR #88) | [Contrato e validação AG-02/03](modules/room-booking/AG02_AG03_LOCAL.md) | [Brief](briefs/ROOM_BOOKING_V1.md), [Critérios de aceite](modules/room-booking/ACCEPTANCE_V1.md) |
+| Consultar VEN-00 de Vendas / Maquininhas (aprovada em 28/10/2026) | [VEN-00 consolidada](briefs/VEN-00_consolidada_vendas_maquininhas_2026-10-28.md) | [Roadmap de migração](migration/MODULE_ROADMAP.md) |
 | Planejar os módulos futuros | [Blueprint por domínio](planning/MODULE_BLUEPRINTS.md) | [Roadmap canônico](migration/MODULE_ROADMAP.md) |
 | Evoluir módulos legados | [Roadmap de migração](migration/MODULE_ROADMAP.md) | [Mapa de consumidores Core](architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md) |
 | Agentes: regras comuns e instruções específicas | [AGENTS.md](../AGENTS.md) | [CLAUDE.md](../CLAUDE.md), [AI_WORKFLOW](development/AI_WORKFLOW.md) |
