@@ -221,7 +221,7 @@ describe("VEN-02 — operações no banco", () => {
       has_function_privilege('authenticated',p.oid,'EXECUTE') authenticated
       from pg_proc p join pg_namespace n on n.oid=p.pronamespace
       where n.nspname='public' and p.proname like 'sales_%'`);
-    expect(functions.rows).toHaveLength(5);
+    expect(functions.rows).toHaveLength(6);
     for (const f of functions.rows) {
       expect(f).toMatchObject({ prosecdef: true, anon: false, authenticated: true });
       expect(f.proconfig).toContain('search_path=""');

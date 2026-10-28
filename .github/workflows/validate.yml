@@ -28,6 +28,9 @@ jobs:
       # The PR #35 upgrade eliminated the previous 4 findings; fail on moderate or worse.
       - run: npm audit --audit-level=moderate
   sales-integration:
+    strategy:
+      matrix:
+        suite: [operations, analytics]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -54,9 +57,10 @@ jobs:
           cache: npm
       - run: npm ci
       # Executa a mesma matriz de RPC/grants/RLS no PostgreSQL vazio deste job.
-      - run: npx vitest run tests/sales-operations-database.test.ts
+      - run: npx vitest run tests/sales-${{ matrix.suite }}-database.test.ts
       # Sessões independentes observam pg_blocking_pids, sem mocks de concorrência.
-      - run: node tests/integration/sales-concurrency.mjs
+      - if: matrix.suite == 'operations'
+        run: node tests/integration/sales-concurrency.mjs
   action-plans-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 30

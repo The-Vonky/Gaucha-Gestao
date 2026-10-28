@@ -1,11 +1,11 @@
 # Roteiro de migração dos módulos
 
-**Vendas — atualização de 28/10/2026:** VEN-00 aprovada documentalmente; VEN-01
-integrada pela PR #90 (`cbdbed9`), sem evidência de aplicação persistente.
-VEN-02 autorizada para implementação/PR, com cinco RPCs, adaptadores e testes
-sintéticos em memória/CI; [contrato e limites](../modules/sales/VEN02_OPERATIONS.md).
-Revisão/merge pelo titular pendentes; VEN-03 e posteriores dependem de autorização
-própria. Nenhum acesso aos bancos do notebook/STAGING/PROD ou concessão real.
+**Vendas — atualização de 28/10/2026:** VEN-00 aprovada; VEN-01 integrada pela
+PR #90 e VEN-02 pela PR #91 (`72ae883`). VEN-03 autorizada expressamente para código,
+PR e validação incremental no notebook `gaucha-gestao-local`; [contrato analítico](../modules/sales/VEN03_ANALYTICS.md)
+e [evidências locais](../modules/sales/VEN03_LOCAL_VALIDATION.md). Motor implementado
+para revisão, sem UI/homologação. VEN-04–08 continuam sem autorização de implementação.
+STAGING/PROD não alterados; sem concessões a contas reais ou migração financeira.
 
 **Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).
 
@@ -33,7 +33,7 @@ A sequência leva em conta: prioridade atual do negócio; validação da fundaç
 | --- | --- | --- | --- |
 | Auditoria de Qualidade | **v1 implementada na plataforma** | Médio/alto | P1–P9 físicos e O1–O8 operacionais ainda exigem aceite; não reimplementar funcionalidades concluídas |
 | Registros ISO / Propostas ISO | Legado concluído | Médio | A origem é funcionalmente de propostas/clientes comerciais apesar do nome histórico ISO; resolver ownership/menu por gate de migração |
-| Vendas / Maquininhas | VEN-01 integrada na PR #90; VEN-02 implementada para revisão | Alto: precisão financeira, escopo e concorrência | Revisar [RPCs VEN-02](../modules/sales/VEN02_OPERATIONS.md); dashboard/VEN-03, UI/VEN-04 e importação continuam fases separadas. Sem aplicação persistente ou corte. |
+| Vendas / Maquininhas | VEN-01/02 integradas #90/#91; VEN-03 implementada para revisão | Alto: precisão financeira, escopo e concorrência | Revisar [motor VEN-03](../modules/sales/VEN03_ANALYTICS.md), com validação no notebook. UI/VEN-04 e importação seguem fases separadas. Sem homologação ou corte. |
 | Pesquisa de Satisfação | Legado concluído | Baixo | Boa candidata à integração por unidade/período |
 | Agendamento de Salas | Nova implementação independente; AG-00 integrado, AG-01 na PR #88 | Médio: RLS/grants e concorrência requerem teste | Desenvolvimento local com `gaucha-gestao-local` existente, sem criar banco/container extra. Revisão/merge pelo mantenedor único, PR e CI; próximas etapas AG-02 (RPCs) e AG-03 (UI). Sem deploy PROD. Ver [brief](../briefs/ROOM_BOOKING_V1.md) e [matriz](../modules/room-booking/ACCEPTANCE_V1.md). |
 | Frota | Legado não concluído | Médio | Prosseguir na plataforma quando a fundação permitir |
