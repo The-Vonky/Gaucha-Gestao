@@ -104,6 +104,9 @@ begin
    raise exception 'Exclusao fisica proibida' using errcode='55000';
  end if;
  if tg_op='INSERT' then
+   if new.deleted_at is not null or new.deleted_by is not null then
+     raise exception 'Nao inserir registro ja excluido' using errcode='23514';
+   end if;
    if new.source='manual' then
      if auth.uid() is null or new.created_by is distinct from auth.uid()
         or not exists(select 1 from core.units u where u.id=new.unit_id and u.active) then
@@ -177,11 +180,19 @@ begin
  end if;
  if tg_table_name='entries' then
    v_id:=new.id::text;
-   v_unit:=case when tg_op='UPDATE' and old.unit_id is distinct from new.unit_id
-     then null else new.unit_id end;
-   v_action:=case when tg_op='INSERT' then 'entry.create'
-     when new.deleted_at is not null and old.deleted_at is null then 'entry.delete'
-     else 'entry.edit' end;
+   v_unit:=new.unit_id;
+   if tg_op='INSERT' then
+     v_action:='entry.create';
+   else
+     if old.unit_id is distinct from new.unit_id then
+       v_unit:=null;
+     end if;
+     if new.deleted_at is not null and old.deleted_at is null then
+       v_action:='entry.delete';
+     else
+       v_action:='entry.edit';
+     end if;
+   end if;
  elsif tg_table_name='legacy_monthly_adjustments' then
    v_id:=new.id::text;
    v_unit:=new.unit_id;
