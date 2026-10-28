@@ -3,7 +3,11 @@
 **Data:** 28/10/2026 (America/Sao_Paulo). **Autorização:** pedido expresso VEN-03 e
 complemento do titular sobre indisponibilidade histórica para leitores por unidade.
 **Baseline:** `72ae883ba279069d961b40054d68012d34ed3f8c` (PR #91).
-**Branch:** `codex/ven-03-sales-analytics`. O SHA de código validado é registrado na PR.
+**Branch:** `codex/ven-03-sales-analytics`. **Código validado:**
+`1b2cdc5faf417949210885254098a0df382726e1`.
+**PR:** [#92](https://github.com/The-Vonky/Gaucha-Gestao/pull/92).
+Este registro posterior altera somente documentação; o SHA de código acima permanece
+a referência dos testes, e o HEAD final é registrado na PR/relatório de entrega.
 Nenhum merge, deploy, migração real, STAGING ou PROD.
 
 ## Destino e intervenção incremental

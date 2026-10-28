@@ -26,7 +26,7 @@ explícita não vazia, unidimensional, até **100 UUIDs**, sem nulos. Qualquer U
 sem autorização nega a chamada inteira. Duplicatas são deduplicadas. Se o conjunto
 autorizado exceder 100 unidades, exigir seleção explícita. Não há paginação parcial
 de totais: o envelope inteiro é limitado, até 2.400 células mensais e 6.200 pontos
-diários por unidade (dois meses de até 31 dias × 100). Uma nova janela/foco solicita
+detalhados por dia e unidade (dois meses de até 31 dias × 100). Uma nova janela/foco solicita
 outra leitura. O custo de busca da referência inclui o histórico autorizado anterior.
 
 `p_scope='stone'` é o padrão; `combined` inclui PIX no valor exibido. Ambos os
