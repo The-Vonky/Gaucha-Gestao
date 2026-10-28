@@ -27,6 +27,36 @@ jobs:
       # Security gate covers production and development dependencies (including CI/test tools).
       # The PR #35 upgrade eliminated the previous 4 findings; fail on moderate or worse.
       - run: npm audit --audit-level=moderate
+  sales-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ven02-synthetic-ci
+          POSTGRES_DB: gaucha_sales_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d gaucha_sales_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      SALES_CI_DATABASE_URL: postgresql://postgres:ven02-synthetic-ci@127.0.0.1:5432/gaucha_sales_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Executa a mesma matriz de RPC/grants/RLS no PostgreSQL vazio deste job.
+      - run: npx vitest run tests/sales-operations-database.test.ts
+      # Sessões independentes observam pg_blocking_pids, sem mocks de concorrência.
+      - run: node tests/integration/sales-concurrency.mjs
   action-plans-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 30

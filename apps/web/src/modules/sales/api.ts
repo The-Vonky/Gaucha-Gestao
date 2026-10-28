@@ -1,0 +1,71 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { client } from "../../core/client";
+import { message } from "../../shared/errors";
+import type { EntryFilters, EntryInput, SalesEntry } from "./types";
+
+/** Validação de transporte; a autorização e as regras definitivas ficam no SQL. */
+function amount(value: unknown): string {
+  if (typeof value !== "string" || !/^(0|[1-9][0-9]{0,11})(\.[0-9]{1,2})?$/.test(value)
+    || /^0(\.0{1,2})?$/.test(value)) {
+    throw new Error("Informe valor decimal positivo com até duas casas.");
+  }
+  return value;
+}
+
+async function rpc(name: string, args: Record<string, unknown>): Promise<unknown> {
+  if (!client) throw new Error("Ambiente indisponível.");
+  const { data, error } = await (client as unknown as SupabaseClient)
+    .schema("public").rpc(name, args);
+  if (error) throw error;
+  return data;
+}
+
+function entry(data: unknown): SalesEntry {
+  if (!data || typeof data !== "object" || !("amount" in data)
+    || typeof data.amount !== "string" || !/^(0|[1-9][0-9]{0,11})\.[0-9]{2}$/.test(data.amount)) {
+    throw new Error("Resposta monetária incompatível com o contrato de Vendas.");
+  }
+  return data as SalesEntry;
+}
+
+function inputArgs(input: EntryInput) {
+  return { p_date: input.sale_date, p_unit: input.unit_id,
+    p_method: input.payment_method, p_amount: amount(input.amount) };
+}
+
+export async function listEntries(filters: EntryFilters = {}): Promise<SalesEntry[]> {
+  const data = await rpc("sales_entries_list", {
+    p_from: filters.from ?? null, p_to: filters.to ?? null,
+    p_unit: filters.unit_id ?? null, p_method: filters.payment_method ?? null,
+    p_limit: filters.limit ?? 50, p_offset: filters.offset ?? 0,
+  });
+  if (!Array.isArray(data)) throw new Error("Listagem incompatível com o contrato de Vendas.");
+  return data.map(entry);
+}
+
+export async function entryDetail(id: string): Promise<SalesEntry> {
+  return entry(await rpc("sales_entry_detail", { p_id: id }));
+}
+
+export async function createEntry(input: EntryInput): Promise<SalesEntry> {
+  return entry(await rpc("sales_entry_create", inputArgs(input)));
+}
+
+export async function updateEntry(id: string, expectedVersion: number, input: EntryInput): Promise<SalesEntry> {
+  return entry(await rpc("sales_entry_update", {
+    p_id: id, p_expected_version: expectedVersion, ...inputArgs(input),
+  }));
+}
+
+export async function deleteEntry(id: string, expectedVersion: number): Promise<SalesEntry> {
+  return entry(await rpc("sales_entry_delete", { p_id: id, p_expected_version: expectedVersion }));
+}
+
+export function salesMessage(error: unknown): string {
+  const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
+  if (code === "23505") return "Já existe lançamento ativo para esta data, unidade e forma de pagamento.";
+  if (code === "P0002") return "Lançamento indisponível. Atualize a consulta e confira seu acesso.";
+  if (["23514", "22007", "22008", "22P02"].includes(code))
+    return "Confira a data, a unidade, a forma de pagamento e o valor decimal com até duas casas.";
+  return message(error);
+}

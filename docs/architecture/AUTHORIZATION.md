@@ -19,6 +19,14 @@ ACESSO
 
 Na ausência de autorização inequívoca, **NEGAR**.
 
+**Vendas VEN-02 (28/10/2026, para revisão):** `sales.entry.read/create/edit/delete`
+usam `private.has_unit_permission`, sem atribuição automática a papéis. Cinco RPCs
+`public.sales_*`, tabelas privadas com RLS restritiva, grants somente de EXECUTE.
+Negam escopo setorial e unidade externa; edição exige escopo na origem e no destino,
+sem autoria obrigatória; criação/transferência exigem unidade ativa. Perfil,
+atribuições, papéis e permissões são bloqueados e revalidados na transação;
+consultas históricas incluem unidades inativas. [Contrato completo](../modules/sales/VEN02_OPERATIONS.md).
+
 ## Identidade, papéis e permissões
 
 Supabase Auth autentica. `auth.users.id` liga-se 1:1 a `core.profiles.id`. Sessão Auth válida **não** dá acesso se o perfil Core está inativo.
