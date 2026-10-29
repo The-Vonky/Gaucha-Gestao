@@ -1,0 +1,63 @@
+.sales-dashboard { min-width: 0; }
+.sales-dashboard-filters { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; padding: 1.25rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); margin-bottom: 1.25rem; }
+.sales-dashboard-filters label { min-width: 0; }
+.sales-dashboard-filters input,.sales-dashboard-filters select { min-width: 0; width: 100%; }
+.sales-dashboard-filters .actions { grid-column: 1 / -1; margin: 0; flex-wrap: wrap; }
+.sales-dashboard small { display: block; font-size: .78rem; line-height: 1.5; }
+.sales-direct-unit { align-self: center; font-size: .85rem; }
+.sales-direct-unit summary { cursor: pointer; padding: .5rem 0; }
+.sales-applied { display: flex; flex-wrap: wrap; gap: .35rem 1rem; padding: 1rem 1.25rem; background: var(--color-surface); border-left: 3px solid #276b4e; margin: 1rem 0; font-size: .88rem; }
+.sales-kpis { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: .85rem; margin: 1.25rem 0 1.75rem; }
+.sales-kpis .metric,.sales-kpi-action { min-width: 0; height: 100%; }
+.sales-kpis .metric-value { font-size: clamp(1.15rem,1.65vw,1.85rem); overflow-wrap: anywhere; }
+.sales-kpi-action { display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); overflow: hidden; }
+.sales-kpi-action .metric { border: 0; }
+.sales-kpi-action > button { margin: 0 1rem .8rem; font-size: .8rem; }
+.sales-analysis-grid { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); gap: 1.25rem; align-items: start; }
+.sales-figure { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 1.25rem; margin: 0 0 1.25rem; min-width: 0; }
+.sales-figure figcaption { margin-bottom: 1rem; }
+.sales-figure h2 { margin: 0 0 .35rem; font-size: 1.1rem; }
+.sales-figure figcaption p,.sales-chart-note { margin: .3rem 0; font-size: .85rem; line-height: 1.6; }
+.sales-chart-scroll { max-width: 100%; min-width: 0; overflow-x: auto; overscroll-behavior-inline: contain; }
+.sales-chart-scroll svg { display: block; width: 100%; height: auto; }
+.sales-chart-scroll svg text { font-size: 13px; fill: #39382f; font-variant-numeric: tabular-nums; }
+.sales-axis { stroke: #a09f94; stroke-width: 1; }
+.sales-line { fill: none; stroke: #276b4e; stroke-width: 3; }
+.sales-reference { fill: none; stroke: #676d75; stroke-width: 2.5; stroke-dasharray: 7 5; }
+.sales-projection { fill: none; stroke: #976020; stroke-width: 3; stroke-dasharray: 4 6; }
+.sales-average { stroke: #976020; stroke-width: 1.5; stroke-dasharray: 5 5; }
+.sales-cutoff { stroke: #676d75; stroke-dasharray: 3 4; }
+.sales-point { fill: #fff; stroke: #276b4e; stroke-width: 3; }
+.sales-point.partial { fill: #f7e4b9; stroke: #976020; }
+.sales-chart-scroll g[role=button] { cursor: pointer; }
+.sales-chart-scroll g[role=button]:focus-visible { outline: 3px solid #386aaa; outline-offset: 5px; }
+.sales-ranking { margin: 0; padding: 0; list-style: none; max-height: 32rem; overflow-y: auto; }
+.sales-rank { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .65rem; width: 100%; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; padding: .9rem .25rem; }
+.sales-rank > span { min-width: 0; overflow-wrap: anywhere; }
+.sales-rank .numeric { text-align: right; font-size: .9rem; }
+.sales-rank-track { height: .35rem; background: #eceee9; grid-column: 1 / -1; grid-row: 2; border-radius: 1rem; overflow: hidden; }
+.sales-rank-track span { display: block; height: 100%; background: #276b4e; }
+.sales-legend { display: flex; flex-wrap: wrap; gap: .5rem; max-height: 13rem; overflow-y: auto; margin-bottom: 1rem; }
+.sales-legend button { font-size: .8rem; display: inline-flex; align-items: center; gap: .4rem; }
+.sales-legend button[aria-pressed=false] { text-decoration: line-through; border-style: dashed; }
+.sales-swatch { display: inline-block; width: .65rem; height: .65rem; border-radius: 2px; flex-shrink: 0; }
+.sales-heat-cell { width: 100%; min-width: 10rem; padding: .8rem; border: 1px solid #a5b9aa; color: #17382b; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sales-dashboard table { width: 100%; font-size: .85rem; }
+.sales-dashboard th,.sales-dashboard td { padding: .8rem; text-align: left; font-variant-numeric: tabular-nums; }
+.sales-dashboard td { white-space: nowrap; }
+.sales-dashboard th { min-width: 8rem; }
+.sales-dashboard tfoot { font-weight: 600; background: #f3f5ef; }
+.sales-daily-metrics { display: flex; flex-wrap: wrap; gap: .3rem 2rem; font-size: .9rem; }
+.sales-definition { margin: 0; }
+.sales-definition > div { padding: .8rem 0; border-bottom: 1px solid var(--color-border); }
+.sales-definition dt { font-size: .8rem; margin-bottom: .2rem; }
+.sales-definition dd { margin: 0; line-height: 1.6; font-size: .9rem; overflow-wrap: anywhere; }
+.sales-context { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 1.5rem; margin-bottom: 1rem; }
+.sales-mix-bar { display: flex; height: 1rem; background: #eceee9; border-radius: 1rem; overflow: hidden; }
+.sales-mix-bar > span:first-child { background: #276b4e; }
+.sales-mix-bar > span:last-child { background: #976020; }
+.sales-dashboard details > summary { cursor: pointer; padding: .7rem 0; }
+@media (max-width: 1200px) { .sales-kpis { grid-template-columns: repeat(3,minmax(0,1fr)); } .sales-analysis-grid { grid-template-columns: minmax(0,1fr); gap: 0; } }
+@media (max-width: 800px) { .sales-dashboard-filters,.sales-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 540px) { .sales-dashboard-filters,.sales-kpis,.sales-context { grid-template-columns: minmax(0,1fr); } .sales-figure { padding: 1rem; } .sales-rank { grid-template-columns: minmax(0,1fr); } .sales-rank .numeric { text-align: left; } }
+@media (prefers-reduced-motion: reduce) { .sales-dashboard * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

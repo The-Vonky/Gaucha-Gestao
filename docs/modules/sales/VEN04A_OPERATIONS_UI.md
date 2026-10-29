@@ -1,6 +1,9 @@
 # VEN-04A — Interface operacional de Vendas / Maquininhas
 
-**Estado:** implementada para revisão; merge e homologação dependem do mantenedor.
+**Estado atual:** integrada pela [PR #93](https://github.com/The-Vonky/Gaucha-Gestao/pull/93),
+merge `7ddcd3155da91561ba94f088ff277ee4fc659f90`; homologação global pendente.
+Adendo VEN-04B: [dashboard independente](VEN04B_DASHBOARD_UI.md) em `/sales/dashboard`,
+com navegação entre áreas conforme suas capacidades. O restante registra a entrega VEN-04A.
 **Autorização:** pedido expresso de 29/10/2026 para VEN-04A, PR e testes sintéticos
 no notebook `gaucha-gestao-local`. Baseline `95589f7abdc120f4dddda00084a581b52214fd62`,
 merge da [PR #92](https://github.com/The-Vonky/Gaucha-Gestao/pull/92).

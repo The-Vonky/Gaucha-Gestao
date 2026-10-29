@@ -1,4 +1,4 @@
-import { Component, useEffect, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import {
   BrowserRouter,
   Link,
@@ -31,6 +31,7 @@ import {
   type NavChild,
 } from "./navigation";
 import "./shell.css";
+const SalesDashboardPage = lazy(() => import("../modules/sales/SalesDashboardPage").then(m => ({ default: m.SalesDashboardPage })));
 function Logout({ compact = false }: { compact?: boolean }) {
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -501,6 +502,7 @@ function Shell() {
   }, [location.pathname]);
   const pages: Record<string, ReactNode> = {
     "/sales": <SalesPage />,
+    "/sales/dashboard": <Suspense fallback={<Loader label="Carregando dashboard…" />}><SalesDashboardPage /></Suspense>,
     "/audit": <AuditModule />,
     "/action-plans": <ActionPlansModule />,
     "/abc": <AbcModule />,
@@ -513,7 +515,7 @@ function Shell() {
     "/admin/sectors": <OrganizationPage key="sectors" kind="sectors" />,
     "/admin/logs": <LogsPage />,
   };
-  const current = destinations.find(
+  const current = [...destinations].sort((a, b) => b.path.length - a.path.length).find(
     (d) =>
       location.pathname === d.path ||
       location.pathname.startsWith(`${d.path}/`),

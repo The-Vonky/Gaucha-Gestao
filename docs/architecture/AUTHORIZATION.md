@@ -35,11 +35,19 @@ sem presumir fechamento, e deriva o mês corrente apenas por suas datas. Métric
 dependentes ficam nulas quando o status não pode ser confirmado. Nenhum grant
 adicionado a papéis reais. [Contrato e decisão do titular](../modules/sales/VEN03_ANALYTICS.md).
 
-**Vendas VEN-04A (para revisão, 29/10/2026):** menu/Guard de `/sales` aceitam
+**Vendas VEN-04A (integrada na PR #93, 29/10/2026):** menu/Guard de `/sales` aceitam
 as capacidades operacionais em global/unidade, excluindo setor. Nova RPC
 `public.sales_operation_units(integer,integer)` descobre somente referências Core
 cobertas por read/create/edit/delete e suas flags por unidade; não exige nem amplia
 admin/dashboard. Escrita não concede consulta. [Contrato e uso](../modules/sales/VEN04A_OPERATIONS_UI.md).
+
+**Vendas VEN-04B (para revisão, 29/10/2026):** `/sales/dashboard` exige
+`sales.dashboard.read` global/unitária, independentemente de `sales.entry.*`.
+Menu, Guard, abas e páginas preservam a separação; setor não concede agregado de unidade.
+Foco em unidade/mês/dia consome apenas a RPC analítica; não chama list/detail nem
+catálogo operacional. URL externa é negada, respostas obsoletas são descartadas e
+troca de identidade elimina dados anteriores. Status histórico indisponível permanece
+indeterminado. Sem mudança de grants/RLS/RPCs; [contrato e cobertura](../modules/sales/VEN04B_DASHBOARD_UI.md).
 
 ## Identidade, papéis e permissões
 

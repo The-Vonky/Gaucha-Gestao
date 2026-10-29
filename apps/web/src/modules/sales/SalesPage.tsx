@@ -4,6 +4,7 @@ import { useAuth } from "../../core/auth/AuthProvider";
 import { Confirm, EmptyState, LoadingState, Notice, PageTitle, Table } from "../../shared/ui";
 import { deleteEntry, entryDetail, listEntries, listSalesUnits, salesMessage } from "./api";
 import { EntryEditor } from "./EntryEditor";
+import { SalesNavigation } from "./SalesNavigation";
 import { civilDate, money, validDate } from "./format";
 import type { PaymentMethod, SalesEntry, SalesUnit } from "./types";
 import "./sales.css";
@@ -118,6 +119,7 @@ export function SalesPage() {
     <PageTitle eyebrow="Comercial" title="Vendas / Maquininhas" description="Lançamentos diários agregados por unidade, em Stone e PIX.">
       {canCreate && <button className="primary" onClick={() => { setSuccess(""); setActionError(""); setEditor({}); }}>Novo lançamento</button>}
     </PageTitle>
+    <SalesNavigation />
     {success && <Notice tone="success">{success}</Notice>}
     {actionError && <Notice error>{actionError}</Notice>}
     {read && result?.access === access ? <form className="sales-filters" key={JSON.stringify([from, to, unit, method, units.map(u => u.id)])} onSubmit={event => {

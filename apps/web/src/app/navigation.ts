@@ -15,7 +15,7 @@ export const groupDescriptions: Partial<
   Qualidade:
     "Auditorias do checklist geral e o ciclo das ações corretivas, da execução à verificação de eficácia.",
   Custos: "Consumo valorizado por unidade e competência, com a Curva ABC do ERP e a calculada.",
-  Comercial: "Lançamentos diários de vendas por unidade e forma de pagamento.",
+  Comercial: "Lançamentos e acompanhamento gerencial de vendas por unidade e competência.",
   Administração: "Acessos, estrutura organizacional e registros do sistema.",
 };
 export type Destination = {
@@ -46,6 +46,15 @@ export const destinations: Destination[] = [
     icon: "costs",
     group: "Comercial",
     permissions: ["sales.entry.read", "sales.entry.create", "sales.entry.edit", "sales.entry.delete"],
+    scope: "unit",
+  },
+  {
+    path: "/sales/dashboard",
+    label: "Dashboard de Vendas / Maquininhas",
+    description: "Indicadores, evolução e comparação das vendas Stone e PIX.",
+    icon: "costs",
+    group: "Comercial",
+    permissions: ["sales.dashboard.read"],
     scope: "unit",
   },
   {
