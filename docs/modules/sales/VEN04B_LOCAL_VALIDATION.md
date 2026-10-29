@@ -42,8 +42,8 @@ suítes PostgreSQL locais usam transações revertidas, sem recriar schema/infra
 | --- | --- |
 | `npm run typecheck` | PASS |
 | `npm run lint` | PASS |
-| `npm test -- --maxWorkers=2` | **759 PASS / 59 arquivos**, 99,95 s na rodada final; baseline 701 + 58 novos testes |
-| Novos `sales-dashboard-{format,ui,envelope}.test.*` | **58 casos**; filtros/valores/efeitos reais em componentes, sem apenas snapshot de renderização |
+| `npm test -- --maxWorkers=2` | **759 PASS / 59 arquivos**, 99,95 s na rodada final; baseline 701 + 59 novos testes |
+| Novos `sales-dashboard-{format,ui,envelope}.test.*` | **59 casos**; filtros/valores/efeitos reais em componentes, sem apenas snapshot de renderização |
 | `VEN04A_LOCAL_TEST=gaucha-gestao-local npm test -- tests/sales-operations-database.test.ts tests/sales-units-database.test.ts --maxWorkers=1` | **17 PASS**, PostgreSQL real; rollback |
 | `VEN03_LOCAL_TEST=gaucha-gestao-local npm test -- tests/sales-analytics-database.test.ts --maxWorkers=1` | **14 PASS**, PostgreSQL real; rollback |
 | `node tests/integration/sales-dashboard-local.mjs` com opt-in abaixo | **PASS**, Auth/PostgREST/Chromium reais, manifesto sintético |
@@ -81,6 +81,9 @@ Unidade B tem movimento 300 e fica inativa para validar histórico.
 Valores confrontados na RPC e no painel: durante a janela jul–set o total do período/A
 é 500/550 (inclui julho 200); ao focar setembro/A é 300/350. As projeções da competência
 diária continuam 3750/4500. O acumulado observado da interface não recebe ajuste.
+O caso adicional de insights confirma maior avanço negativo (−12,5%), recuo
+(−20,123456%), concentração 99,123456% e comparação projetada 1775%, sem
+reclassificar o avanço como alta nem arredondar os valores retornados.
 Centavos, soma acima de `MAX_SAFE_INTEGER` e diferença assinada são verificados nos
 componentes/formatação; o SQL mantém o oráculo independente de BigInt da VEN-03.
 

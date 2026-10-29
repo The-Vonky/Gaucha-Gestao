@@ -119,7 +119,7 @@ Evidências executáveis: `tests/sales-dashboard-ui.test.tsx` (**UI**),
 | EQ-07 | Recente/variação/referência disponível: UI referência07/2026 e percentual; LOCAL jul/set2042 |
 | EQ-08 | Corte parcial explícito/valores comparados: DailyAnalysis e comparação; UI/SQL/LOCAL |
 | EQ-09 | Melhor completa com status real, líder/participação: UI três estados is_closed, ranking; LOCAL fechado/parcial |
-| EQ-10 | Insights de avanço/recuo/concentração/ritmo: UI presença/nulos; SQL comparáveis; LOCAL renderização |
+| EQ-10 | Insights de avanço/recuo/concentração/ritmo: UI valores negativos/concentração/projeção/nulos; SQL comparáveis; LOCAL renderização |
 | EQ-11 | Evolução em linha, média, parcial e lacuna: UI marcadores/linhas interrompidas; LOCAL |
 | EQ-12 | Ranking proporcional/posição/desempate/foco: UI empate e histórico; LOCAL ranking |
 | EQ-13 | Empilhadas + legenda visual independente: UI ocultação sem RPC/KPI; ENV2400; LOCAL |

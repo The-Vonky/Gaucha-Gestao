@@ -61,6 +61,19 @@ describe("VEN-04B — painel financeiro completo", () => {
     mount(); await ready(); const ranks = within(figure("Ranking")).getAllByRole("button");
     expect(ranks[0].textContent).toContain("1. A · Unidade Alfa"); expect(ranks[1].textContent).toContain("2. B · Histórica Beta (inativa)");
   });
+  it("insights preservam avanço negativo, recuo, concentração e comparação projetada exatos", async () => {
+    const d = dashboardFixture();
+    const closed = { ...d.months[0], partial: false, is_closed: true, projection: null, projection_is_estimate: false };
+    d.insights.strongest_advance = { ...closed, competency: "2026-07-01", comparison: { ...closed.comparison, reference_month: "2026-05-01", cutoff_day: null, variation_pct: "-12.500000", trend: "down" } };
+    d.insights.largest_decline = { ...closed, comparison: { ...closed.comparison, cutoff_day: null, variation_pct: "-20.123456", trend: "down" } };
+    d.summary.top_two_share_pct = "99.123456";
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    const insights = figure("Insights gerenciais");
+    expect(insights.textContent).toContain("07/2026 · -12,5% · Referência 05/2026");
+    expect(insights.textContent).toContain("09/2026 · -20,123456% · Referência 07/2026");
+    expect(insights.textContent).toContain("99,123456%"); expect(insights.textContent).toContain("1775% · referência 07/2026");
+    expect(insights.textContent).toContain("R$ 3.750,00");
+  });
   it("oculta/exibe séries somente no desenho, sem RPC adicional ou alteração de indicadores", async () => {
     mount(); await ready(); const before = total(), calls = api.salesDashboard.mock.calls.length;
     const series = screen.getByRole("group", { name: "Séries das barras empilhadas" });
