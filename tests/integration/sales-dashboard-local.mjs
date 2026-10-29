@@ -4,8 +4,9 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { chromium, expect } from "playwright/test";
-import { createServer } from "vite";
+import { salesLocalWeb } from "./sales-local-web.mjs";
 import { SalesLocalDatabase } from "./sales-local.mjs";
+import { retireSalesRoles, finishSalesLocal } from "./sales-role-cleanup.mjs";
 
 // Somente notebook autorizado, reutilizando cadastros sintéticos inativos VEN-04A.
 assert.equal(process.env.VEN04B_LOCAL_TEST, "gaucha-gestao-local");
@@ -22,12 +23,17 @@ assert.equal(new URL(config.DB_URL).port, "54322");
 const units = (await db.query("select id,code,active from core.units where code=any($1::text[]) order by code", [[`${reuse}-A`, `${reuse}-B`, `${reuse}-C`]])).rows;
 assert.equal(units.length, 3); assert.equal(units.every(u => !u.active), true, "Reutilizar somente fixtures sintéticas inativas.");
 const [A, B, C] = units.map(u => u.id);
+assert.equal((await db.query("select count(*)::int n from sales.entries where unit_id=any($1::uuid[]) and deleted_at is null", [[A, B, C]])).rows[0].n, 0, "Fixture reutilizada contém lançamento ativo: diagnosticar antes de escrever");
 const sector = (await db.query("select id,active from core.sectors where code=$1", [`${reuse}-S`])).rows[0];
 assert.ok(sector && !sector.active);
 const tag = `VEN04B-${reuse.slice(7)}`, people = {}, roles = [], entries = [];
+const roleReceipts = [], usersProof = [];
 const directory = process.env.VEN04B_ARTIFACT_DIR ?? "/tmp/ven04b-ui";
 mkdirSync(directory, { recursive: true, mode: 0o700 });
 const manifest = { tag, reused: reuse, units: [A, B, C], users: [], roles, entries, checks: [], screenshots: [], timings: [], axe: [], before: local.before, cleanup: "Pendente" };
+const manifestPath = `${directory}/${tag}-${randomUUID()}-manifest.json`;
+const save = () => writeFileSync(manifestPath, JSON.stringify({ ...manifest, roleReceipts, usersProof }, null, 2), { mode: 0o600 });
+save();
 let browser, server, lastPage;
 const base = "http://127.0.0.1:5173", query = "from=2042-07&to=2042-09&baseFrom=2042-07&baseTo=2042-09&daily=2042-09";
 const dashboardPath = `/sales/dashboard?${query}`;
@@ -37,21 +43,22 @@ const dash = (person, unit = null, scope = "stone") => rpc(person, "dashboard", 
 async function identity(name, original, permissions, scope, unit = A) {
   const person = (await db.query("select p.id,p.active,u.email from core.profiles p join auth.users u on u.id=p.id where p.display_name=$1", [`${reuse} ${original}`])).rows[0];
   assert.ok(person && !person.active, "Conta sintética anterior precisa estar inativa.");
+  assert.equal(person.email, `${reuse}-${original}@example.test`.toLowerCase());
   const password = `Synthetic-${randomUUID()}-aA1!`;
   const response = await fetch(`${config.API_URL}/auth/v1/admin/users/${person.id}`, { method: "PUT", headers: { apikey: config.SERVICE_ROLE_KEY, Authorization: `Bearer ${config.SERVICE_ROLE_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
   assert.equal(response.status, 200, "Senha temporária somente de identidade sintética reutilizada");
   // Nunca imprime ou persiste credenciais; o browser recebe apenas chave pública e login sintético.
   const key = `${tag}-${name}`.toLowerCase();
-  let role = (await db.query("select id,active from core.roles where key=$1", [key])).rows[0];
-  if (!role) { role = { id: randomUUID() }; await db.query("insert into core.roles(id,key,name) values($1,$2,$3)", [role.id, key, `${tag} ${name}`]); }
-  else { assert.equal(role.active, false); await db.query("update core.roles set active=true where id=$1", [role.id]); }
-  roles.push(role.id); manifest.users.push(person.id);
+  const role = { id: randomUUID() };
+  roleReceipts.push({ id: role.id, key }); manifest.users.push(person.id);
+  usersProof.push({ id: person.id, email: person.email, displayName: `${reuse} ${original}` }); save();
+  // Não adota um papel encontrado apenas por nome: cada execução possui UUID novo.
+  await db.query("insert into core.roles(id,key,name) values($1,$2,$3)", [role.id, key, `${tag} ${name}`]);
+  roles.push(role.id);
   await db.query("update core.profiles set active=true where id=$1", [person.id]);
   for (const permission of permissions) await db.query("insert into core.role_permissions(role_id,permission_key) values($1,$2) on conflict do nothing", [role.id, permission]);
   if (scope) {
-    const existing = (await db.query("select id from core.user_role_assignments where user_id=$1 and role_id=$2", [person.id, role.id])).rows;
-    if (existing.length) await db.query("update core.user_role_assignments set active=true where user_id=$1 and role_id=$2", [person.id, role.id]);
-    else await db.query("insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id,sector_id) values($1,$2,$3,$4,$5)", [person.id, role.id, scope, scope === "global" ? null : unit, scope === "sector" ? sector.id : null]);
+    await db.query("insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id,sector_id) values($1,$2,$3,$4,$5)", [person.id, role.id, scope, scope === "global" ? null : unit, scope === "sector" ? sector.id : null]);
   }
   const client = createClient(config.API_URL, config.ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
   must(await client.auth.signInWithPassword({ email: person.email, password }));
@@ -86,6 +93,7 @@ async function apply(page, unit, scope = "stone") {
   await expect(page.getByText("Carregando dashboard…", { exact: true })).toHaveCount(0);
 }
 try {
+  server = await salesLocalWeb(config);
   browser = await chromium.launch({ headless: true });
   await db.query("update core.units set active=true where id=any($1::uuid[])", [[A, B]]);
   await db.query("update core.sectors set active=true where id=$1", [sector.id]);
@@ -96,6 +104,7 @@ try {
   await identity("creator", "creator", ["sales.entry.create"], "unit");
   await identity("denied", "denied", [], null);
   await identity("sector", "sector", ["sales.dashboard.read"], "sector");
+  if (process.env.VEN04B_FAIL_AFTER_PREPARE === "1") throw new Error("Falha sintética deliberada após preparação: validar teardown");
   // Históricos imutáveis são inseridos uma única vez, reaproveitados em reexecuções.
   // Não apaga nem reescreve snapshots/ajustes; resíduos identificados no manifesto.
   await db.query("insert into sales.month_statuses(competency,is_closed,last_day_with_data,source) values('2042-07-01',true,31,'ven04b_synthetic'),('2042-09-01',false,2,'ven04b_synthetic') on conflict do nothing");
@@ -124,8 +133,7 @@ try {
   const extra = must(await rpc("operations", "entries_list", { p_unit: B, p_from: "2042-08-01", p_to: "2042-08-01" }))[0];
   must(await rpc("operations", "entry_delete", { p_id: extra.id, p_expected_version: extra.version }));
   manifest.checks.push("Auth/PostgREST real: oráculos 300/350, diário250/300, projeção3750/4500, diferença0; dashboard sem entries; operador/criador/sem papel/setor negados; unidade externa e não interferência integral A/B.");
-  process.env.VITE_SUPABASE_URL = config.API_URL; process.env.VITE_SUPABASE_PUBLISHABLE_KEY = config.ANON_KEY;
-  server = await createServer({ configFile: "apps/web/vite.config.ts", root: "apps/web", server: { host: "127.0.0.1", port: 5173, strictPort: true } }); await server.listen();
+
 
   const manager = await login("global"); const page = manager.page;
   const requests = []; page.on("request", r => { if (/\/rpc\/sales_/.test(r.url())) requests.push(new URL(r.url()).pathname); });
@@ -227,28 +235,51 @@ try {
   await both.page.getByRole("button", { name: "Atualizar", exact: true }).click(); await ready(both.page, "R$ 800,02");
   must(await rpc("operations", "entry_delete", { p_id: updated.id, p_expected_version: updated.version }));
   await both.page.getByRole("button", { name: "Atualizar", exact: true }).click(); await ready(both.page, "R$ 800,00");
-  await both.page.getByRole("button", { name: "Redefinir", exact: true }).click(); await expect(both.page.getByText("Sem movimento no período", { exact: true })).toBeVisible();
+  // Reset não pressupõe banco inteiro vazio. Bloqueia a consulta fora da janela
+  // sintética antes de atingir o PostgreSQL e verifica filtros/URL/estado descartado.
+  await both.page.route("**/rpc/sales_dashboard", route => route.abort());
+  const resetRequest = both.page.waitForRequest(r => r.url().endsWith("/rpc/sales_dashboard"));
+  await both.page.getByRole("button", { name: "Redefinir", exact: true }).click();
+  const resetPayload = (await resetRequest).postDataJSON();
+  assert.equal(resetPayload.p_units, null); assert.equal(resetPayload.p_scope, "stone");
+  assert.equal(new URL(both.page.url()).searchParams.has("unit"), false);
+  await expect(both.page.getByRole("alert")).toBeVisible();
+  await expect(both.page.getByText("Total financeiro do período", { exact: true })).toHaveCount(0);
   await expect(both.page.getByLabel("Escopo financeiro")).toHaveValue("stone"); await both.context.close();
-  manifest.checks.push("375/768/1024/1440 sem overflow; teclado/foco e reduced-motion; axe A/AA; acesso somente dashboard, somente operação, criador, ambas, negado e setor; dois escopos sem vazamento; revogação/inativação com JWT válido; troca de conta; criação UI e atualização pós-edição/exclusão.");
+  manifest.checks.push("375/768/1024/1440 sem overflow; teclado/foco e reduced-motion; acesso somente dashboard, somente operação, criador, ambas, negado e setor; dois escopos sem vazamento; revogação/inativação com JWT válido; troca de conta; criação UI e atualização pós-edição/exclusão.");
+  manifest.outcome = "PASS";
   console.log("VEN-04B Auth/PostgREST + Playwright PASS", { tag, checks: manifest.checks, axe: manifest.axe });
 } catch (error) {
+  manifest.outcome = "FAIL"; manifest.failure = { name: error.name, code: error.code ?? null };
   if (lastPage && !lastPage.isClosed()) await lastPage.screenshot({ path: `${directory}/${tag}-failure.png`, fullPage: true });
   throw error;
 } finally {
-  await browser?.close(); await server?.close();
-  // Nunca apaga histórico; só finaliza lançamentos sintéticos da janela/fixtures.
-  if (people.operations) {
-    const rows = (await db.query("select id,version from sales.entries where unit_id=any($1::uuid[]) and sale_date between '2042-07-01' and '2042-09-30' and deleted_at is null", [[A, B]])).rows;
-    for (const row of rows) { if (!entries.includes(row.id)) entries.push(row.id); must(await rpc("operations", "entry_delete", { p_id: row.id, p_expected_version: row.version })); }
-  }
-  for (const person of Object.values(people)) await person.client.auth.signOut();
-  await db.query("update core.user_role_assignments set active=false where role_id=any($1::uuid[])", [roles]);
-  await db.query("update core.profiles set active=false where id=any($1::uuid[])", [manifest.users]);
-  await db.query("update core.roles set active=false where id=any($1::uuid[])", [roles]);
-  await db.query("update core.units set active=false where id=any($1::uuid[])", [[A, B]]);
-  await db.query("update core.sectors set active=false where id=$1", [sector.id]);
-  manifest.after = (await db.query("select (select count(*)::int from core.units) units,(select count(*)::int from core.profiles) profiles,(select count(*)::int from sales.entries) entries,(select count(*)::int from sales.entries where deleted_at is null) active_entries,(select count(*)::int from supabase_migrations.schema_migrations) migrations")).rows[0];
-  manifest.cleanup = "Unidades/perfis/setor reutilizados voltaram a inativos; papéis/atribuições VEN04B inativos; logout; lançamentos soft-deleted. Permanecem 2 snapshots imutáveis (jul/set2042), ajuste Stone50 em set2042 e auditoria; sem DELETE físico/reset/migration.";
-  writeFileSync(`${directory}/${tag}-manifest.json`, JSON.stringify(manifest, null, 2), { mode: 0o600 });
-  await local.close(); console.log("Manifesto sintético sem credenciais:", `${directory}/${tag}-manifest.json`);
+  const errors = [];
+  await finishSalesLocal([
+    () => browser?.close(),
+    () => server?.close(),
+    async () => {
+      // Somente unidades sintéticas comprovadas; autoria deve pertencer ao recibo.
+      const rows = (await db.query("select id,version,created_by from sales.entries where unit_id=any($1::uuid[]) and deleted_at is null", [[A, B]])).rows;
+      for (const row of rows) {
+        try {
+          assert.ok(manifest.users.includes(row.created_by), "Autoria externa: preservar lançamento");
+          if (!entries.includes(row.id)) entries.push(row.id);
+          must(await rpc("operations", "entry_delete", { p_id: row.id, p_expected_version: row.version }));
+        } catch (error) { errors.push(error); }
+      }
+    },
+    async () => { for (const person of Object.values(people)) await person.client.auth.signOut(); },
+    () => db.query("update core.profiles set active=false where id=any($1::uuid[])", [manifest.users]),
+    () => db.query("update core.units set active=false where id=any($1::uuid[])", [[A, B]]),
+    () => db.query("update core.sectors set active=false where id=$1", [sector.id]),
+    async () => { manifest.roleCleanup = await retireSalesRoles(db, { roles: roleReceipts, users: usersProof, backupPath: `${directory}/${tag}-${randomUUID()}-roles-preserved.json` }); },
+    async () => {
+      manifest.after = (await db.query("select (select count(*)::int from core.roles) roles,(select count(*)::int from sales.entries where deleted_at is null) active_entries")).rows[0];
+      manifest.cleanup = manifest.roleCleanup ? "Papéis e relações sintéticos removidos por UUID após dry-run; perfis/unidades/setor inativos; lançamentos soft-deleted e auditoria preservados." : "Teardown incompleto: preservar resíduos e consultar erros/recibos.";
+      assert.equal(manifest.after.roles, local.before.roles, "Contagem de papéis deve retornar à baseline");
+      manifest.cleanupErrors = errors.length; save();
+    },
+    () => local.close(),
+  ], errors);
 }

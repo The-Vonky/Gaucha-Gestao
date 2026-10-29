@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { SalesLocalDatabase } from "./sales-local.mjs";
+import { retireSalesRoles, finishSalesLocal } from "./sales-role-cleanup.mjs";
 
 // Notebook autorizado, sem importar cenários descartáveis/destrutivos do CI.
 const local = await SalesLocalDatabase.open();
@@ -19,12 +20,18 @@ assert.equal(config.API_URL, "http://127.0.0.1:54321");
 assert.equal(new URL(config.DB_URL).hostname, "127.0.0.1");
 assert.equal(new URL(config.DB_URL).port, "54322");
 const tag = `VEN03-${randomUUID().slice(0, 8)}`;
+const directory = process.env.VEN03_ARTIFACT_DIR ?? "tmp/sales-auth";
+mkdirSync(directory, { recursive: true, mode: 0o700 });
 const A = randomUUID(), B = randomUUID(), operatorRole = randomUUID(), readerRole = randomUUID();
 const identities = [], entries = [];
+const roleReceipts = [{ id: operatorRole, key: `${tag.toLowerCase()}-op` }, { id: readerRole, key: `${tag.toLowerCase()}-read` }], usersProof = [];
 const manifest = { tag, units: [A, B], roles: [operatorRole, readerRole], users: [], entries: [],
-  cleanup: "Lançamentos sintéticos excluídos logicamente via VEN-02; usuários/unidades/papéis desativados; auditoria preservada." };
+  before: local.before, cleanup: "Pendente" };
+const save = () => writeFileSync(`${directory}/${tag}-auth-manifest.json`, JSON.stringify({ ...manifest, roleReceipts, usersProof }, null, 2), { mode: 0o600 });
+save();
 const opts = { auth: { persistSession: false, autoRefreshToken: false } };
 let operator;
+const clients = [];
 function must(result, message) { assert.equal(result.error, null, message); return result.data; }
 async function auth(name) {
   const email = `${tag}-${name}@example.test`, password = `Synthetic-${randomUUID()}-aA1!`;
@@ -34,8 +41,8 @@ async function auth(name) {
   });
   assert.equal(response.status, 200, "Criação de identidade exclusivamente sintética local");
   const { id } = await response.json();
-  identities.push(id); manifest.users.push(id);
-  const client = createClient(config.API_URL, config.ANON_KEY, opts);
+  identities.push(id); manifest.users.push(id); usersProof.push({ id, email: email.toLowerCase(), displayName: `${tag} ${name}` }); save();
+  const client = createClient(config.API_URL, config.ANON_KEY, opts); clients.push(client);
   must(await client.auth.signInWithPassword({ email, password }), "Auth local com senha sintética");
   return { id, client };
 }
@@ -84,13 +91,25 @@ try {
   assert.equal((await dashboard(reader.client)).error?.code, "42501", "Perfil inativo com JWT ainda válido");
   console.log("VEN-03 Auth/PostgREST PASS: login real, Stone/combined, status restrito, isolamento, anonimato, sem capacidade, revogação, perfil inativo e schemas privados.");
 } finally {
-  // Somente UUIDs criados nesta execução. Nenhuma exclusão física ou limpeza geral.
-  for (const e of entries) must(await operator.client.schema("public").rpc("sales_entry_delete", { p_id: e.id, p_expected_version: e.version }), "Exclusão lógica do lançamento sintético");
-  await db.query("update core.profiles set active=false where id=any($1::uuid[])", [identities]);
-  await db.query("update core.units set active=false where id=any($1::uuid[])", [[A, B]]);
-  await db.query("update core.roles set active=false where id=any($1::uuid[])", [[operatorRole, readerRole]]);
-  writeFileSync(`/tmp/${tag}-auth-manifest.json`, JSON.stringify(manifest, null, 2));
-  writeFileSync("/tmp/ven03-auth-manifest.json", JSON.stringify(manifest, null, 2));
-  await local.close();
-  console.log("VEN-03 Auth local: dados sintéticos inativados e lançamentos excluídos logicamente; manifesto sem credenciais em /tmp/ven03-auth-manifest.json.");
+  const errors = [];
+  await finishSalesLocal([
+    async () => {
+      for (const e of entries) {
+        try { must(await operator.client.schema("public").rpc("sales_entry_delete", { p_id: e.id, p_expected_version: e.version }), "Exclusão lógica sintética"); }
+        catch (error) { errors.push(error); }
+      }
+    },
+    async () => { for (const client of clients) await client.auth.signOut(); },
+    () => db.query("update core.profiles set active=false where id=any($1::uuid[])", [identities]),
+    () => db.query("update core.units set active=false where id=any($1::uuid[])", [[A, B]]),
+    async () => { manifest.roleCleanup = await retireSalesRoles(db, { roles: roleReceipts, users: usersProof, backupPath: `${directory}/${tag}-roles-preserved.json` }); },
+    async () => {
+      manifest.cleanup = manifest.roleCleanup ? "Papéis e relações sintéticos removidos por UUID após dry-run; perfis/unidades inativos; lançamentos soft-deleted e auditoria preservados." : "Teardown incompleto: preservar resíduos e consultar erros/recibos.";
+      manifest.after = (await db.query("select count(*)::int roles from core.roles")).rows[0];
+      assert.equal(manifest.after.roles, local.before.roles, "Contagem de papéis deve retornar à baseline");
+      manifest.cleanupErrors = errors.length; save();
+      writeFileSync(`${directory}/latest-manifest.json`, JSON.stringify({ ...manifest, roleReceipts, usersProof }, null, 2), { mode: 0o600 });
+    },
+    () => local.close(),
+  ], errors);
 }

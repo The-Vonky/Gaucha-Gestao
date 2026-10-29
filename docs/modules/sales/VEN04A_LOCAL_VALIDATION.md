@@ -1,5 +1,12 @@
 # VEN-04A — Validação no notebook
 
+**Adendo de 29/10/2026 — correção obrigatória da PR #94:** os resíduos e a
+composição de permissões descritos neste registro são a fotografia da rodada original.
+A limpeza física local autorizada removeu 58 papéis sintéticos e suas relações,
+preservando auditoria/identidades/histórico; a migration institucional concedeu Vendas
+ao administrador e criou Sales Manager/Operator. Os roteiros atuais fazem teardown
+dirigido após dry-run, inclusive em falhas. [Estado vigente e evidências](VEN04B_ACCESS_CORRECTION.md).
+
 **Data:** 29/10/2026, America/Sao_Paulo. Autorização expressa do mantenedor para
 VEN-04A, testes sintéticos no notebook e PR, sem merge/STAGING/PROD.
 **Baseline:** `95589f7abdc120f4dddda00084a581b52214fd62` (merge PR #92).

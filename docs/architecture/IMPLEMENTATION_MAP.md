@@ -4,6 +4,8 @@
 VEN-04A integrada pela PR #93 (`7ddcd31`). VEN-04B implementada para revisão:
 [dashboard gerencial completo](../modules/sales/VEN04B_DASHBOARD_UI.md), com
 [evidências sintéticas locais](../modules/sales/VEN04B_LOCAL_VALIDATION.md).
+Correção pré-merge: administrador com sete capacidades Vendas, Sales Manager/Operator
+protegidos e teardown dirigido; [evidências](../modules/sales/VEN04B_ACCESS_CORRECTION.md).
 Sem homologação VEN-07 ou alterações em STAGING/PROD. O restante mantém sua fotografia histórica.
 
 **Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).
@@ -26,7 +28,7 @@ Sem homologação VEN-07 ou alterações em STAGING/PROD. O restante mantém sua
 | Infraestrutura mínima | infra/supabase/docker-compose.yml, scripts/ops/*, .github/workflows/infra-validate.yml | [infra/README](../../infra/README.md), [UPSTREAM](../../infra/supabase/UPSTREAM.md), ADR-006 Proposed | AS-IS **CI/lab**, NÃO PROD |
 | Serviço privilegiado de criação/recuperação Auth | Nenhum runtime aprovado na main | [ACCOUNT_LIFECYCLE_V1](ACCOUNT_LIFECYCLE_V1.md), Issue #49; PR #24 fechado sem merge | **BLOQUEADO / DESIGN ONLY** |
 | Agendamento de Salas AG-01/02/03 | apps/web/src/modules/rooms/; rota /rooms | migrations room_booking_foundation, room_booking_operations e room_booking_d5b_access; [separação D5-B e provisionamento](../modules/room-booking/D5B_ACCESS.md); [contrato e validação local](../modules/room-booking/AG02_AG03_LOCAL.md) | PR #88; funcional em desenvolvimento local, merge/homologação pendentes |
-| Vendas / Maquininhas VEN-01/02/03/04A/04B | `sales` privado; `apps/web/src/modules/sales/`; `SalesPage`, `EntryEditor`, `SalesDashboardPage`, `DashboardCharts`; `/sales` e `/sales/dashboard` em Comercial | mesmas sete RPCs; nenhuma migration VEN-04B; `tests/sales-*`, job `sales-integration`; [operação](../modules/sales/VEN04A_OPERATIONS_UI.md) e [dashboard/matriz EQ01–22](../modules/sales/VEN04B_DASHBOARD_UI.md) | VEN-01/02/03/04A integradas #90–93; VEN-04B para revisão; não homologada |
+| Vendas / Maquininhas VEN-01/02/03/04A/04B | `sales` privado; `apps/web/src/modules/sales/`; `SalesPage`, `EntryEditor`, `SalesDashboardPage`, `DashboardCharts`; `/sales` e `/sales/dashboard` em Comercial | mesmas sete RPCs; migration institucional `20261029180613`; `tests/sales-*`, job `sales-integration`; [operação](../modules/sales/VEN04A_OPERATIONS_UI.md) e [dashboard/matriz EQ01–22](../modules/sales/VEN04B_DASHBOARD_UI.md) | VEN-01/02/03/04A integradas #90–93; VEN-04B para revisão; não homologada |
 | ISO, satisfação, frota, planejado-realizado, contratos | Sem integração desses domínios na main (ABC já integrada) | [roadmap de migração](../migration/MODULE_ROADMAP.md) e mapa de consumidores Core | **FUTURO** |
 
 ## Chamadas RPC representativas, verificadas nos adaptadores

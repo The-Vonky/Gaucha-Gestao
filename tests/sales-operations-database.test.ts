@@ -44,7 +44,7 @@ beforeAll(async () => {
   for (const file of readdirSync("supabase/migrations").sort())
     await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
   // Conferência anterior a qualquer concessão sintética.
-  expect((await db.query<{ n: number }>("select count(*)::int n from core.role_permissions where permission_key like 'sales.%'")).rows[0].n).toBe(0);
+  expect((await db.query<{ n: number }>("select count(*)::int n from core.role_permissions where permission_key like 'sales.%'")).rows[0].n).toBe(16);
   }
   const fixture = readFileSync("tests/fixtures/sales-operations.sql", "utf8");
   await db.exec(local ? fixture.replace("select private.bootstrap_administrator('00000000-0000-0000-0000-000000000001');", "") : fixture);
@@ -54,8 +54,16 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); });
 
 describe("VEN-02 — operações no banco", () => {
-  it("nega anônimo, sessão sem identidade, sem papel, setor, perfil inativo e administrador sem concessão", async () => {
-    for (const [n, role] of [[null, "anon"], [null, "authenticated"], [1, "authenticated"], [6, "authenticated"], [7, "authenticated"], [8, "authenticated"]] as const) {
+  it("administrador global usa CRUD por permissões Core e preserva D5-B", async () => {
+    await login(1);
+    const e = await create("2022-01-01", A, "0.01");
+    expect(await rpc("entry_detail", [e.id])).toMatchObject({ id: e.id, amount: "0.01" });
+    const edited = await update(e, "0.02");
+    await remove(edited);
+    expect((await db.query<{ allowed: boolean }>("select private.has_global_permission('room_booking.manage') allowed")).rows[0].allowed).toBe(false);
+  });
+  it("nega anônimo, sessão sem identidade, sem papel, setor, perfil inativo", async () => {
+    for (const [n, role] of [[null, "anon"], [null, "authenticated"], [6, "authenticated"], [7, "authenticated"], [8, "authenticated"]] as const) {
       await login(n, role);
       await denied(list(), "42501");
       await denied(create("2026-01-01"), "42501");

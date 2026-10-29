@@ -7,7 +7,10 @@ VEN-04B autorizada expressamente em 29/10 para frontend, PR e testes sintéticos
 notebook `gaucha-gestao-local`; [dashboard e matriz EQ01–22](../modules/sales/VEN04B_DASHBOARD_UI.md)
 e [evidências locais](../modules/sales/VEN04B_LOCAL_VALIDATION.md). Implementada para revisão,
 sem homologação. VEN-05–08 permanecem dependentes de autorizações próprias.
-STAGING/PROD não alterados; sem concessões a contas reais ou migração financeira.
+Correção pré-merge autorizada: composição explícita de sete capacidades de Vendas
+no administrador existente, papéis institucionais Sales Manager/Operator e catálogo
+local limpo, com teardown que não acumula papéis. [Relatório](../modules/sales/VEN04B_ACCESS_CORRECTION.md).
+STAGING/PROD não alterados; nenhuma atribuição automática a funcionários ou migração financeira.
 
 **Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).
 

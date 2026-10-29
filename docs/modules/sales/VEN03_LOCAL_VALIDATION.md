@@ -1,5 +1,12 @@
 # VEN-03 — Evidências de validação no notebook
 
+**Adendo de 29/10/2026 — correção obrigatória da PR #94:** os resíduos e a
+composição de permissões descritos neste registro são a fotografia da rodada original.
+A limpeza física local autorizada removeu 58 papéis sintéticos e suas relações,
+preservando auditoria/identidades/histórico; a migration institucional concedeu Vendas
+ao administrador e criou Sales Manager/Operator. Os roteiros atuais fazem teardown
+dirigido após dry-run, inclusive em falhas. [Estado vigente e evidências](VEN04B_ACCESS_CORRECTION.md).
+
 **Data:** 28/10/2026 (America/Sao_Paulo). **Autorização:** pedido expresso VEN-03 e
 complemento do titular sobre indisponibilidade histórica para leitores por unidade.
 **Baseline:** `72ae883ba279069d961b40054d68012d34ed3f8c` (PR #91).

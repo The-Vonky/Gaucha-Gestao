@@ -1,5 +1,12 @@
 # VEN-04B — Evidências de validação no notebook
 
+**Adendo de 29/10/2026 — correção obrigatória da PR #94:** os resíduos e a
+composição de permissões descritos neste registro são a fotografia da rodada original.
+A limpeza física local autorizada removeu 58 papéis sintéticos e suas relações,
+preservando auditoria/identidades/histórico; a migration institucional concedeu Vendas
+ao administrador e criou Sales Manager/Operator. Os roteiros atuais fazem teardown
+dirigido após dry-run, inclusive em falhas. [Estado vigente e evidências](VEN04B_ACCESS_CORRECTION.md).
+
 **Data:** 29/10/2026, `America/Sao_Paulo`. **Código validado:**
 `62ef60aa632215d6acd5dcfde093449115e7f381` (commit funcional; documentação de resultados
 registrada depois, sem alteração funcional). Baseline `origin/main`

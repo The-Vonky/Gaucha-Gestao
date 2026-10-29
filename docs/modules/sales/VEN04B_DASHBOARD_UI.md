@@ -4,7 +4,11 @@
 Autorização expressa em 29/10/2026 para desenvolvimento, fixtures e testes no
 notebook, branch e PR. Baseline `origin/main` reconferida por fetch:
 `7ddcd3155da91561ba94f088ff277ee4fc659f90`, merge da VEN-04A ([PR #93](https://github.com/The-Vonky/Gaucha-Gestao/pull/93)).
-VEN-00/01/02/03 integradas nas PRs #89/#90/#91/#92. Nenhuma migration nova.
+VEN-00/01/02/03 integradas nas PRs #89/#90/#91/#92. A entrega original de UI não
+continha migration. A correção obrigatória anterior ao merge acrescenta
+`20261029180613_sales_institutional_roles.sql`: sete capacidades para o administrador,
+Sales Manager/Operator protegidos, sem atribuições automáticas nem mudança de RLS/RPC.
+[Composição, limpeza local e validação](VEN04B_ACCESS_CORRECTION.md).
 
 ## Acesso e componentes
 
@@ -24,7 +28,8 @@ Shared e Core não receberam mudanças de contrato. A rota usa importação din�
 
 ```mermaid
 flowchart LR
-  A["Core: identidade + capacidades atuais"] --> O["/sales: sales.entry.*"]
+  P["Core: Platform Administrator / Sales Manager / Sales Operator"] --> A["Identidade ativa + composição explícita + escopo"]
+  A --> O["/sales: sales.entry.*"]
   A --> D["/sales/dashboard: sales.dashboard.read"]
   D --> RPC["sales_dashboard: autorização e snapshot SQL"]
   RPC --> V["Indicadores + séries + ranking + matriz + diário + contexto"]

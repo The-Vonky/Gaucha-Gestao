@@ -47,7 +47,34 @@ Menu, Guard, abas e páginas preservam a separação; setor não concede agregad
 Foco em unidade/mês/dia consome apenas a RPC analítica; não chama list/detail nem
 catálogo operacional. URL externa é negada, respostas obsoletas são descartadas e
 troca de identidade elimina dados anteriores. Status histórico indisponível permanece
-indeterminado. Sem mudança de grants/RLS/RPCs; [contrato e cobertura](../modules/sales/VEN04B_DASHBOARD_UI.md).
+indeterminado. RLS/RPCs preservadas; [contrato e cobertura](../modules/sales/VEN04B_DASHBOARD_UI.md).
+
+## Correção institucional de Vendas — VEN-04B, 29/10/2026
+
+Decisão expressa do mantenedor após revisão visual da PR #94. A ausência das
+relações em `core.role_permissions` na VEN-01 impedia o acesso do administrador,
+mesmo com perfil Core e atribuição global ativos. A migration append-only
+`20261029180613_sales_institutional_roles.sql` provisiona a composição abaixo:
+
+| Papel protegido | Capacidades explícitas | Escopo da atribuição |
+| --- | --- | --- |
+| `platform_administrator` | `sales.entry.read/create/edit/delete`, `sales.dashboard.read`, `sales.export.filtered/full` | Global existente |
+| `sales_manager` — Sales Manager | As mesmas sete capacidades de Vendas | Global ou unidade; setor não concede unidade |
+| `sales_operator` — Sales Operator | `sales.entry.read`, `sales.entry.create` | Global ou unidade; setor não concede unidade |
+
+`system=true`, sem atribuir os novos papéis automaticamente. Nenhuma capacidade de
+outro módulo nos papéis de Vendas. Exportações permanecem **capacidades reservadas**:
+a composição não implementa VEN-05. Colisões personalizadas/divergências falham;
+reexecução válida não duplica papéis/relações. Autorização continua por capacidade,
+perfil ativo e escopo, sem inferência positiva pelo nome do papel.
+
+**D5-B preservada integralmente:** administrador continua sem `room_booking.manage`;
+nenhuma função, política ou provisionamento de Agendamento foi alterado. A limpeza
+física de 58 papéis comprovadamente sintéticos foi autorizada somente no notebook,
+com inventário, preservação privada, dry-run/ROLLBACK e transação por UUID. Não faz
+parte da migration e não altera a visibilidade de papéis inativos legítimos.
+Testes Auth locais retiram seus papéis e relações no teardown, preservando auditoria
+e histórico financeiro. [Relatório e reprodução](../modules/sales/VEN04B_ACCESS_CORRECTION.md).
 
 ## Identidade, papéis e permissões
 

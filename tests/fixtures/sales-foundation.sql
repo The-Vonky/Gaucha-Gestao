@@ -35,8 +35,8 @@ select public.ven01_assert(
  'Catalogo de sete capacidades'
 );
 select public.ven01_assert(
- (select count(*)=0 from core.role_permissions rp where rp.permission_key like 'sales.%'),
- 'Nenhuma permissao de vendas concedida automaticamente'
+ (select count(*)=16 from core.role_permissions rp where rp.permission_key like 'sales.%'),
+ 'Composição institucional: administrador 7, gestor 7 e operador 2; sem atribuição automática'
 );
 select public.ven01_assert(
  (select count(*)=0 from pg_roles r where r.rolname like 'sales_%'),
@@ -169,7 +169,7 @@ select public.ven01_assert(
  'Auditoria guarda antes e depois da exclusao'
 );
 
--- Autorizacao negada por padrao, inclusive ao administrador Core existente.
+-- Autorização negada por padrão ao usuário sem atribuição; tabelas privadas inclusive para administrador.
 set role authenticated;
 select public.ven01_assert(
  not private.has_unit_permission('sales.entry.read','10000000-0000-0000-0000-000000000001'),
