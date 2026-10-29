@@ -206,6 +206,7 @@ export function Confirm({
   onConfirm,
   onClose,
   tone = "danger",
+  confirmDisabled = false,
 }: {
   title: string;
   description: string;
@@ -213,10 +214,14 @@ export function Confirm({
   onConfirm: () => Promise<void>;
   onClose: () => void;
   tone?: "danger" | "primary";
+  confirmDisabled?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const submitting = useRef(false);
   async function submit() {
+    if (submitting.current || confirmDisabled) return;
+    submitting.current = true;
     setBusy(true);
     setError("");
     try {
@@ -225,6 +230,7 @@ export function Confirm({
     } catch (e) {
       setError(message(e));
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
@@ -237,7 +243,7 @@ export function Confirm({
         <button disabled={busy} onClick={onClose}>
           Cancelar
         </button>
-        <button className={tone} disabled={busy} onClick={() => void submit()}>
+        <button className={tone} disabled={busy || confirmDisabled} onClick={() => void submit()}>
           {busy ? "Salvando…" : "Confirmar"}
         </button>
       </div>
@@ -248,16 +254,21 @@ export function Form({
   children,
   onSave,
   onCancel,
+  saveDisabled = false,
 }: {
   children: ReactNode;
   onSave: (data: FormData) => Promise<void>;
   onCancel: () => void;
+  saveDisabled?: boolean;
 }) {
   const setPending = useContext(PendingContext);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const submitting = useRef(false);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (submitting.current || saveDisabled) return;
+    submitting.current = true;
     const data = new FormData(e.currentTarget);
     setBusy(true);
     setPending?.(true);
@@ -267,6 +278,7 @@ export function Form({
     } catch (e) {
       setError(message(e));
     } finally {
+      submitting.current = false;
       setBusy(false);
       setPending?.(false);
     }
@@ -280,7 +292,7 @@ export function Form({
           <button type="button" onClick={onCancel}>
             Cancelar
           </button>
-          <button className="primary" type="submit">
+          <button className="primary" type="submit" disabled={saveDisabled}>
             {busy ? "Salvando…" : "Salvar"}
           </button>
         </div>

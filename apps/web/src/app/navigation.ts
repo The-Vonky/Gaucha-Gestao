@@ -15,6 +15,7 @@ export const groupDescriptions: Partial<
   Qualidade:
     "Auditorias do checklist geral e o ciclo das ações corretivas, da execução à verificação de eficácia.",
   Custos: "Consumo valorizado por unidade e competência, com a Curva ABC do ERP e a calculada.",
+  Comercial: "Lançamentos diários de vendas por unidade e forma de pagamento.",
   Administração: "Acessos, estrutura organizacional e registros do sistema.",
 };
 export type Destination = {
@@ -25,7 +26,7 @@ export type Destination = {
   icon: IconName;
   group: (typeof groups)[number];
   permissions: string[];
-  scope: "global" | "any";
+  scope: "global" | "unit" | "any";
   /** The destination owns sub-routes below its path. */
   nested?: boolean;
   /** Sub-pages shown as a collapsible branch below this item. */
@@ -38,6 +39,15 @@ export type NavChild = {
   children?: NavChild[];
 };
 export const destinations: Destination[] = [
+  {
+    path: "/sales",
+    label: "Vendas / Maquininhas",
+    description: "Consulta e operação dos lançamentos diários Stone e PIX.",
+    icon: "costs",
+    group: "Comercial",
+    permissions: ["sales.entry.read", "sales.entry.create", "sales.entry.edit", "sales.entry.delete"],
+    scope: "unit",
+  },
   {
     path: "/rooms",
     label: "Agendamento de Salas",
@@ -150,7 +160,9 @@ export function visibleNavigation(active: boolean, grants: AccessGrant[]) {
           d.permissions.some((p) =>
             d.scope === "global"
               ? can(active, grants, p)
-              : hasAnyScope(active, grants, p),
+              : d.scope === "unit"
+                ? active && grants.some(g => g.permission === p && (g.scope_type === "global" || g.scope_type === "unit"))
+                : hasAnyScope(active, grants, p),
           ),
       ),
     }))

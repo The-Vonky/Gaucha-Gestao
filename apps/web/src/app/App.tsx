@@ -19,6 +19,7 @@ import { AuditModule } from "../modules/audit/AuditModule";
 import { ActionPlansModule } from "../modules/action-plans/ActionPlansModule";
 import { RoomsPage } from "../modules/rooms/RoomsPage";
 import { AbcModule } from "../modules/abc/AbcModule";
+import { SalesPage } from "../modules/sales/SalesPage";
 import { BrandMark, Loader } from "../shared/brand";
 import { Icon } from "../shared/icons";
 import { Drawer, EmptyState, IconButton, Notice } from "../shared/ui";
@@ -499,6 +500,7 @@ function Shell() {
     document.getElementById("main")?.focus({ preventScroll: true });
   }, [location.pathname]);
   const pages: Record<string, ReactNode> = {
+    "/sales": <SalesPage />,
     "/audit": <AuditModule />,
     "/action-plans": <ActionPlansModule />,
     "/abc": <AbcModule />,

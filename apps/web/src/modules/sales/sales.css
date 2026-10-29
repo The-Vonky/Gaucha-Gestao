@@ -1,0 +1,22 @@
+.sales-page .sales-filters, .sales-form-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.sales-page .sales-filters {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  margin-bottom: 1.5rem;
+}
+.sales-page .sales-filters .actions { grid-column: 1 / -1; margin: 0; }
+.sales-page .sales-filters label, .sales-form-fields label { min-width: 0; }
+.sales-page .sales-filters input, .sales-page .sales-filters select, .sales-form-fields input, .sales-form-fields select { width: 100%; min-width: 0; }
+.sales-page td.sales-money { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sales-page .sales-row-actions { display: flex; gap: .5rem; flex-wrap: nowrap; }
+.sales-page .sales-row-actions button { white-space: nowrap; }
+.sales-page .pager { flex-wrap: wrap; }
+@media (max-width: 1050px) { .sales-page .sales-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 540px) { .sales-page .sales-filters, .sales-form-fields { grid-template-columns: minmax(0, 1fr); } }
