@@ -136,7 +136,7 @@ try {
   const reader = await login("reader");
   await expect(reader.page.getByRole("heading", { name: "Vendas / Maquininhas", exact: true })).toBeVisible();
   await apply(reader.page);
-  await expect(reader.page.getByRole("cell", { name: "R$ 1.250,30", exact: true })).toBeVisible();
+  await expect(reader.page.getByRole("row").filter({ has: reader.page.getByRole("cell", { name: "01/01/2040", exact: true }) }).getByRole("cell", { name: "R$ 1.250,30", exact: true })).toBeVisible();
   assert.equal(await reader.page.getByRole("button", { name: "Novo lançamento", exact: true }).count(), 0);
   assert.equal(await reader.page.getByRole("button", { name: /^Editar / }).count(), 0);
   await apply(reader.page, "PIX", B);
