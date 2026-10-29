@@ -90,6 +90,18 @@ Esses arquivos não contêm credenciais. Não são seed/restauração automátic
 restauração exige análise do estado atual e transação explícita, preservando auditoria.
 Os UUIDs locais não foram incluídos em migration ou script SQL de outros ambientes.
 
+## Patch de dependência exigido pelo CI
+
+O primeiro CI do commit `352391c` aprovou os 768 testes, build e verify:build, mas
+falhou no audit por **GHSA-8g5g-mxqh-grgj**, moderado, em Vite 6.4.4. O advisory foi
+atualizado em 29/10; a consulta local anterior havia retornado zero achados. Aplicado
+somente o patch oficial **6.4.5**, fixado em `apps/web/package.json` e no lockfile,
+sem adicionar biblioteca ou alterar outras versões. [Advisory oficial](https://github.com/advisories/GHSA-8g5g-mxqh-grgj).
+As onze flags `peer` preexistentes no lockfile permanecem no workspace, fora do commit.
+Typecheck, lint, suíte completa, build, verify:build e audit foram repetidos com o patch.
+O Vite do mantenedor já em execução foi preservado; a nova versão é usada na próxima
+inicialização do processo. Nenhuma infraestrutura ou dado foi alterado pelo patch.
+
 ## Ciclo de vida dos ensaios
 
 `sales-local-auth.mjs`, `sales-ui-local.mjs` e `sales-dashboard-local.mjs` registram
@@ -130,7 +142,7 @@ Sua atribuição foi removida, perfil/unidades voltaram a inativos, sem mudar a 
 | Check | Resultado |
 | --- | --- |
 | `npm run typecheck` / `npm run lint` | PASS |
-| `npm test -- --maxWorkers=2` | **768 PASS / 60 arquivos**, rodada final de 118,97 s |
+| `npm test -- --maxWorkers=2` | **768 PASS / 60 arquivos**, rodada final com Vite 6.4.5 de 97,70 s |
 | Matriz PostgreSQL local operations + units | **19 PASS**, ROLLBACK |
 | Matriz PostgreSQL local analytics | **15 PASS**, ROLLBACK |
 | Composição/idempotência/colisão, escopos/perfil, teardown repetido e recusas seguras | **5 PASS** em `sales-institutional-database.test.ts` |
