@@ -42,7 +42,7 @@ suítes PostgreSQL locais usam transações revertidas, sem recriar schema/infra
 | --- | --- |
 | `npm run typecheck` | PASS |
 | `npm run lint` | PASS |
-| `npm test -- --maxWorkers=2` | **759 PASS / 59 arquivos**, 99,95 s na rodada final; baseline 701 + 59 novos testes |
+| `npm test -- --maxWorkers=2` | **760 PASS / 59 arquivos**, 101,21 s na rodada final; baseline 701 + 59 novos testes |
 | Novos `sales-dashboard-{format,ui,envelope}.test.*` | **59 casos**; filtros/valores/efeitos reais em componentes, sem apenas snapshot de renderização |
 | `VEN04A_LOCAL_TEST=gaucha-gestao-local npm test -- tests/sales-operations-database.test.ts tests/sales-units-database.test.ts --maxWorkers=1` | **17 PASS**, PostgreSQL real; rollback |
 | `VEN03_LOCAL_TEST=gaucha-gestao-local npm test -- tests/sales-analytics-database.test.ts --maxWorkers=1` | **14 PASS**, PostgreSQL real; rollback |
