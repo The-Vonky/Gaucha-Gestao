@@ -30,7 +30,7 @@ jobs:
   sales-integration:
     strategy:
       matrix:
-        suite: [operations, analytics]
+        suite: [operations, analytics, units]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:

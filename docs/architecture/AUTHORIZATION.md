@@ -27,13 +27,19 @@ sem autoria obrigatória; criação/transferência exigem unidade ativa. Perfil,
 atribuições, papéis e permissões são bloqueados e revalidados na transação;
 consultas históricas incluem unidades inativas. [Contrato completo](../modules/sales/VEN02_OPERATIONS.md).
 
-**Vendas VEN-03 (para revisão, 28/10/2026):** `public.sales_dashboard` exige
+**Vendas VEN-03 (integrada pela PR #92, 28/10/2026):** `public.sales_dashboard` exige
 `sales.dashboard.read` com escopo efetivo global/unidade. Agregados, referências,
 ranking e metadados usam somente unidades autorizadas. Snapshot mensal global só
 é visível com permissão global; leitor unitário recebe status histórico indisponível
 sem presumir fechamento, e deriva o mês corrente apenas por suas datas. Métricas
 dependentes ficam nulas quando o status não pode ser confirmado. Nenhum grant
 adicionado a papéis reais. [Contrato e decisão do titular](../modules/sales/VEN03_ANALYTICS.md).
+
+**Vendas VEN-04A (para revisão, 29/10/2026):** menu/Guard de `/sales` aceitam
+as capacidades operacionais em global/unidade, excluindo setor. Nova RPC
+`public.sales_operation_units(integer,integer)` descobre somente referências Core
+cobertas por read/create/edit/delete e suas flags por unidade; não exige nem amplia
+admin/dashboard. Escrita não concede consulta. [Contrato e uso](../modules/sales/VEN04A_OPERATIONS_UI.md).
 
 ## Identidade, papéis e permissões
 

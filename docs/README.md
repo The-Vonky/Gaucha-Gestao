@@ -32,6 +32,7 @@ Os índices e ADRs históricos preservam suas datas originais. Para o estado efe
 | Experimentar Agendamento de Salas local (PR #88) | [Contrato e validação AG-02/03](modules/room-booking/AG02_AG03_LOCAL.md) | [Brief](briefs/ROOM_BOOKING_V1.md), [Critérios de aceite](modules/room-booking/ACCEPTANCE_V1.md) |
 | Consultar VEN-00 de Vendas / Maquininhas (aprovada em 28/10/2026) | [VEN-00 consolidada](briefs/VEN-00_consolidada_vendas_maquininhas_2026-10-28.md) | [Roadmap de migração](migration/MODULE_ROADMAP.md) |
 | Revisar operações de Vendas / Maquininhas VEN-02 | [Contrato RPC e segurança](modules/sales/VEN02_OPERATIONS.md) | [VEN-01 integrada na PR #90](modules/sales/VEN01_FOUNDATION.md) |
+| Operar Vendas / Maquininhas VEN-04A | [Guia operacional e RPC auxiliar](modules/sales/VEN04A_OPERATIONS_UI.md) | [Validação no notebook](modules/sales/VEN04A_LOCAL_VALIDATION.md) |
 | Revisar motor analítico VEN-03 | [Contratos e segurança](modules/sales/VEN03_ANALYTICS.md) | [Validação local autorizada](modules/sales/VEN03_LOCAL_VALIDATION.md) |
 | Planejar os módulos futuros | [Blueprint por domínio](planning/MODULE_BLUEPRINTS.md) | [Roadmap canônico](migration/MODULE_ROADMAP.md) |
 | Evoluir módulos legados | [Roadmap de migração](migration/MODULE_ROADMAP.md) | [Mapa de consumidores Core](architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md) |

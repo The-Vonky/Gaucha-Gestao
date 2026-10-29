@@ -1,6 +1,16 @@
 /** Dinheiro atravessa a API como string; nunca converter para Number/parseFloat. */
 export type DecimalAmount = string;
 export type PaymentMethod = "Stone" | "PIX";
+export type SalesUnit = {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+  can_read: boolean;
+  can_create: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+};
 
 export type SalesEntry = {
   id: string;

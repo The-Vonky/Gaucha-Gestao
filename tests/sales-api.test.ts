@@ -3,7 +3,7 @@ const mocks = vi.hoisted(() => ({ rpc: vi.fn(), schema: vi.fn() }));
 vi.mock("../apps/web/src/core/client", () => ({
   client: { schema: mocks.schema },
 }));
-import { createEntry, deleteEntry, entryDetail, listEntries, salesMessage, updateEntry } from "../apps/web/src/modules/sales/api";
+import { createEntry, deleteEntry, entryDetail, listEntries, listSalesUnits, salesMessage, updateEntry } from "../apps/web/src/modules/sales/api";
 
 const row = { id: "synthetic-id", sale_date: "2026-10-28", unit_id: "synthetic-unit",
   payment_method: "Stone" as const, amount: "999999999999.99", version: 2 };
@@ -15,6 +15,14 @@ beforeEach(() => {
 });
 
 describe("VEN-02 — transporte sem perda de centavos", () => {
+  it("VEN-04A pagina referências e rejeita capacidades incompatíveis", async () => {
+    const unit = { id: "u", code: "01", name: "Sintética", active: false, can_read: false, can_create: true, can_edit: false, can_delete: false };
+    mocks.rpc.mockResolvedValueOnce({ data: Array(100).fill(unit), error: null }).mockResolvedValueOnce({ data: [unit], error: null });
+    expect(await listSalesUnits()).toHaveLength(101);
+    expect(mocks.rpc).toHaveBeenLastCalledWith("sales_operation_units", { p_limit: 100, p_offset: 100 });
+    mocks.rpc.mockResolvedValue({ data: [{ ...unit, can_read: "true" }], error: null });
+    await expect(listSalesUnits()).rejects.toThrow("Catálogo operacional incompatível");
+  });
   it("chama as cinco RPCs públicas com versão e decimal textual intactos", async () => {
     expect(await createEntry(input)).toEqual(row);
     expect(mocks.rpc).toHaveBeenLastCalledWith("sales_entry_create", {

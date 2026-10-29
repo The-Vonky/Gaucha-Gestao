@@ -4,7 +4,7 @@ import pg from "pg";
 /** Opt-in exclusivo do notebook autorizado. Nunca descobre um projeto remoto. */
 export class SalesLocalDatabase {
   static async open() {
-    if (process.env.VEN03_LOCAL_TEST !== "gaucha-gestao-local")
+    if ((process.env.VEN03_LOCAL_TEST ?? process.env.VEN04A_LOCAL_TEST) !== "gaucha-gestao-local")
       throw new Error("Validação local exige opt-in explícito gaucha-gestao-local.");
     const name = "supabase_db_gaucha-gestao-local";
     const info = JSON.parse(execFileSync("docker", ["inspect", name], { encoding: "utf8" }))[0];

@@ -1,6 +1,7 @@
 # VEN-03 — Motor analítico de Vendas / Maquininhas
 
-**Estado:** implementada para revisão; merge e homologação pendentes. Autorização
+**Estado:** integrada à `main` pela [PR #92](https://github.com/The-Vonky/Gaucha-Gestao/pull/92),
+merge `95589f7abdc120f4dddda00084a581b52214fd62`; homologação pendente. Autorização
 expressa do mantenedor em 28/10/2026 para código, PR e testes no notebook local.
 **Baseline:** `main` `72ae883ba279069d961b40054d68012d34ed3f8c`, merge da PR #91
 (VEN-02). VEN-01 foi integrada na PR #90. Merge não comprova implantação.

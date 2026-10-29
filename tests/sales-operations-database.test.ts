@@ -5,6 +5,7 @@ import { createTestDatabase } from "./pglite";
 import { STORAGE_STUB } from "./storage-stub";
 import { Postgres } from "./integration/postgres.mjs";
 import { salesCiUrl } from "./integration/sales-ci.mjs";
+import { SalesLocalDatabase } from "./integration/sales-local.mjs";
 import type { SalesEntry } from "../apps/web/src/modules/sales/types";
 
 let db: PGlite;
@@ -34,15 +35,21 @@ async function denied(promise: Promise<unknown>, code: string) {
 }
 
 beforeAll(async () => {
-  db = process.env.SALES_CI_DATABASE_URL
+  const local = !!process.env.VEN04A_LOCAL_TEST;
+  db = local ? await SalesLocalDatabase.open() as unknown as PGlite : process.env.SALES_CI_DATABASE_URL
     ? new Postgres(salesCiUrl()) as unknown as PGlite : createTestDatabase();
+  if (!local) {
   await db.exec(readFileSync("tests/fixtures/room-booking-auth.sql", "utf8"));
   await db.exec(STORAGE_STUB);
   for (const file of readdirSync("supabase/migrations").sort())
     await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
   // Conferência anterior a qualquer concessão sintética.
   expect((await db.query<{ n: number }>("select count(*)::int n from core.role_permissions where permission_key like 'sales.%'")).rows[0].n).toBe(0);
-  await db.exec(readFileSync("tests/fixtures/sales-operations.sql", "utf8"));
+  }
+  const fixture = readFileSync("tests/fixtures/sales-operations.sql", "utf8");
+  await db.exec(local ? fixture.replace("select private.bootstrap_administrator('00000000-0000-0000-0000-000000000001');", "") : fixture);
+  if (local) await owner(`insert into core.user_role_assignments(user_id,role_id,scope_type)
+    select '${uid(1)}',id,'global' from core.roles where key='platform_administrator'`);
 }, 60_000);
 afterAll(async () => { await db?.close(); });
 
@@ -221,7 +228,7 @@ describe("VEN-02 — operações no banco", () => {
       has_function_privilege('authenticated',p.oid,'EXECUTE') authenticated
       from pg_proc p join pg_namespace n on n.oid=p.pronamespace
       where n.nspname='public' and p.proname like 'sales_%'`);
-    expect(functions.rows).toHaveLength(6);
+    expect(functions.rows).toHaveLength(7);
     for (const f of functions.rows) {
       expect(f).toMatchObject({ prosecdef: true, anon: false, authenticated: true });
       expect(f.proconfig).toContain('search_path=""');
