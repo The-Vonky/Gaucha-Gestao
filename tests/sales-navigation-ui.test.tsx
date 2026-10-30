@@ -56,6 +56,14 @@ describe("MEL-05 — módulo e proteção das subpáginas", () => {
     expect(window.location.pathname).toBe("/sales/entries"); expect(window.location.search).toContain("method=Stone");
     expect(api.listEntries).toHaveBeenCalledWith(expect.objectContaining({ payment_method: "Stone", from: "2026-09-02", to: "2026-09-10", offset: 50 }));
   });
+  it("bookmark operacional de gerente puro abre dashboard com recorte compatível autorizado", async () => {
+    auth.grants = [grant("sales.dashboard.read", "unit", A)];
+    mount(`/sales?method=PIX&from=2026-09-02&to=2026-09-10&unit=${B}&page=2`);
+    await screen.findByRole("heading", { name: "Dashboard gerencial" });
+    expect(window.location.pathname).toBe("/sales/dashboard"); expect(window.location.search).toBe("?from=2026-09&to=2026-09&scope=combined");
+    expect(api.listEntries).not.toHaveBeenCalled(); expect(api.listSalesUnits).not.toHaveBeenCalled();
+    expect(api.salesDashboard).toHaveBeenCalledWith({ from: "2026-09-01", to: "2026-09-01", scope: "combined" });
+  });
   it("breadcrumb, cabeçalho limpo e menu por teclado/mobile", async () => {
     const user = userEvent.setup(); const view = mount(); await screen.findByRole("heading", { name: "Dashboard gerencial" });
     expect(screen.getByRole("navigation", { name: "Você está em" }).textContent).toBe("InícioComercialVendas / MaquininhasVisão geral");

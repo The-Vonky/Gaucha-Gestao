@@ -26,7 +26,7 @@ Nenhuma chamada administrativa adicional serve para descobrir unidades fora do e
 | Endereço | Comportamento |
 | --- | --- |
 | `/sales` | Dashboard para quem possui `sales.dashboard.read` global/unitária; Lançamentos para acesso exclusivamente operacional. Sem capacidade válida, acesso negado. |
-| `/sales?…` | Compatibilidade operacional: `replace` para `/sales/entries?…`, preservando query, hash e estado; inclui `?method=Stone`, unidade, datas e página. |
+| `/sales?…` | Compatibilidade operacional: `replace` para `/sales/entries?…`, preservando query, hash e estado; inclui `?method=Stone`, unidade, datas e página. Gerente puro segue ao dashboard com conversão segura do recorte. |
 | `/sales/dashboard` | Visão geral, exclusivamente com `sales.dashboard.read` global/unitária. |
 | `/sales/entries` | Operação, com pelo menos uma de `sales.entry.read/create/edit/delete` global/unitária. Cada ação ainda exige sua própria capacidade. |
 | `/sales/*` desconhecida | Página não encontrada dentro do módulo, sem rota fictícia. |
@@ -55,8 +55,8 @@ URLs diretas continuam passando pelo Guard do módulo e pela proteção específ
 | --- | --- |
 | `npm run typecheck` | PASS |
 | `npm run lint` | PASS |
-| `npm test -- --maxWorkers=2` | **804 PASS / 62 arquivos**, 127,16 s |
-| Suíte focada UI Vendas/dashboard/navegação | **97 PASS / 3 arquivos** |
+| `npm test -- --maxWorkers=2` | **805 PASS / 62 arquivos**, 102,04 s |
+| Suíte focada UI Vendas/dashboard/navegação | **98 PASS / 3 arquivos** |
 | `VEN04A_LOCAL_TEST=gaucha-gestao-local npm test -- tests/sales-operations-database.test.ts tests/sales-units-database.test.ts --maxWorkers=1` | **19 PASS**, PostgreSQL local com ROLLBACK |
 | `VEN03_LOCAL_TEST=gaucha-gestao-local npm test -- tests/sales-analytics-database.test.ts --maxWorkers=1` | **15 PASS**, PostgreSQL local com ROLLBACK |
 | `npm run build` e `npm run verify:build` | PASS; aviso preexistente de chunk >500 kB |
@@ -95,7 +95,7 @@ persistente, criação/recriação de identidade ou limpeza de dados anteriores.
 
 Zero triggers de negócio desabilitados ao final. A unidade atual pertence à baseline
 do mantenedor e foi preservada; o estado zero da MEL-01 é uma evidência histórica.
-Chromium e bibliotecas ausentes foram baixados/extractados em `/tmp`, sem instalar
+Chromium e bibliotecas ausentes foram baixados/extraídos em `/tmp`, sem instalar
 pacotes no sistema ou alterar a infraestrutura Supabase.
 
 ## Screenshots

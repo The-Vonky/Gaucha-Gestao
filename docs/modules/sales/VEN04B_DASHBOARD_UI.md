@@ -20,7 +20,8 @@ Sales Manager/Operator protegidos, sem atribuições automáticas nem mudança d
 com **Visão geral** (`/sales/dashboard`) e **Lançamentos** (`/sales/entries`) filtrados
 por capacidade. `/sales` prioriza o dashboard quando permitido; somente operacional
 segue para Lançamentos. URLs antigas `/sales?…` preservam query, hash e estado por
-redirecionamento `replace` para `/sales/entries?…`, inclusive `?method=Stone`.
+redirecionamento `replace` para `/sales/entries?…`, inclusive `?method=Stone`. Para gerente sem acesso operacional, a entrada converte
+as datas/modalidade compatíveis para o dashboard, retirando unidade sem autorização.
 Não há item/rota Relatórios. `/sales/dashboard` usa **exclusivamente**
 `sales.dashboard.read`, global ou unitária, com perfil/identidade ativos. Menu,
 Guard do módulo e páginas distinguem as duas áreas. Setor não concede agregados de unidade.
