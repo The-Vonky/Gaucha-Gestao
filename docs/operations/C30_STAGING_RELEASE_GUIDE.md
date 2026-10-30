@@ -1,5 +1,7 @@
 # C30 STAGING — mudança de versão e migrations com controle
 
+> **Atualização operacional 30/10/2026:** houve **mudança de hostname, build Vite e configuração de Auth/Storage/Caddy**, **sem** atualização do commit `f9f041e`, migrations nem recriação de DB. Ver [AS-BUILT Cloudflare](C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) e [runbook do Tunnel](C30_STAGING_CLOUDFLARE_RUNBOOK.md). Este guia continua regulando **upgrades de versão/schema**, que exigem backup e aprovação próprios; não confundir a migração de URL concluída com GO para esses upgrades.
+
 **Estado:** roteiro de mudança **a validar**, não script pronto para produção ou permissão para atualizar automaticamente. Baseline implantada `f9f041e`; GitHub main estava 33 commits à frente em 22/10/2026. O STAGING tem 18 migrations aplicadas; a main naquele dia tinha 19. Não assumir compatibilidade de novo código sem prova.
 
 ## Pré-condições
@@ -22,4 +24,4 @@
 
 ## Estado não autorizado
 
-Sem backup restaurável da versão atual, não fazer upgrade persistente/migrations por conveniência. Não instalar ngrok ou expor STAGING como PROD; publicação temporária exige checklist separado de [acesso público](STAGING_PUBLIC_ACCESS_PLAN.md). Não alterar ADRs aceitos como efeito colateral de atualização.
+Sem backup restaurável da versão atual, não fazer upgrade persistente/migrations por conveniência. Não reativar o ngrok antigo por conveniência nem tratar STAGING público como PROD; operação atual usa [Cloudflare Tunnel](C30_STAGING_CLOUDFLARE_RUNBOOK.md) e os gates de acesso permanecem separados. Não alterar ADRs aceitos como efeito colateral de atualização.
