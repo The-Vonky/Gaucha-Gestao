@@ -6,9 +6,11 @@
 
 > **Estado:** código da Fundação Core v2 e Qualidade v1 na main, mas **produção NO-GO**. Este índice organiza e relaciona documentos existentes; não transforma proposta em decisão, não comprova aceite operacional e não autoriza instalação, migração ou deploy.
 
-## C30 STAGING em funcionamento — atualização operacional de 22/10/2026
+## STAGING C30 — atualização operacional de 30/10/2026
 
-Os índices e ADRs históricos preservam suas datas originais. Para o estado efetivamente relatado da ThinkStation C30, consultar [inventário AS-IS](operations/C30_STAGING_AS_BUILT_20261022.md), [runbook de diagnóstico](operations/C30_STAGING_RUNBOOK.md), [lacunas de backup](operations/C30_BACKUP_GAPS.md), [release segura](operations/C30_STAGING_RELEASE_GUIDE.md) e [plano de acesso público para testes](operations/STAGING_PUBLIC_ACCESS_PLAN.md). **STAGING ativo e HTTPS somente em loopback não representam PROD GO nem internet publicada.** O servidor está no commit `f9f041e` e não acompanha automaticamente a `main`.
+O endereço **[https://teste.gauchagestao.online](https://teste.gauchagestao.online)** está operacional em **testes controlados** via Cloudflare Free + Tunnel `gaucha-staging` + Caddy 4181. O operador confirmou login e acesso a auditorias e fotos preservadas, nova auditoria, foto enviada e download em PC/celular. Não equivale a homologação completa, aprovação para dados produtivos ou **PROD GO**. Leia o [AS-BUILT de Cloudflare (30/10)](operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) e o [runbook correspondente](operations/C30_STAGING_CLOUDFLARE_RUNBOOK.md).
+
+O [inventário de 22/10](operations/C30_STAGING_AS_BUILT_20261022.md) é um **snapshot histórico**, assim como o [antigo plano de acesso via ngrok](operations/STAGING_PUBLIC_ACCESS_PLAN.md). Permanecem válidos o [runbook C30 geral](operations/C30_STAGING_RUNBOOK.md), as [lacunas de backup](operations/C30_BACKUP_GAPS.md) e o [guia de release/migrations](operations/C30_STAGING_RELEASE_GUIDE.md). O servidor segue no commit `f9f041e`; merge na `main` não atualiza o host.
 
 ## Início rápido por objetivo
 
