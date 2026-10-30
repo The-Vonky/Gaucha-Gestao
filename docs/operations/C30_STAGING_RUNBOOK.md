@@ -1,5 +1,7 @@
 # Runbook seguro — C30 STAGING (consulta e diagnóstico)
 
+> **Atualização de 30/10/2026:** STAGING agora possui acesso HTTPS de testes via `teste.gauchagestao.online`, Cloudflare Tunnel `gaucha-staging` e Caddy local `127.0.0.1:4181`. Para diagnóstico do túnel, URL externa, proteção de tokens e rollback, usar o [runbook específico Cloudflare](C30_STAGING_CLOUDFLARE_RUNBOOK.md) e o [AS-BUILT atualizado](C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md). As rotas 4180/443/4443 abaixo continuam locais e o snapshot de 22/10 permanece histórico. **PROD NO-GO.**
+
 **Aplicável somente à instância persistente C30 STAGING já existente.** Não substitui procedimento de implantação inicial, restauração ou produção. Estado-base: [AS-BUILT 22/10/2026](C30_STAGING_AS_BUILT_20261022.md). Executar comandos de consulta **na C30**, conferindo o hostname e o projeto antes de qualquer ação de mudança.
 
 ## Verificações não destrutivas
