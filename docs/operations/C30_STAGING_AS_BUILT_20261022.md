@@ -1,5 +1,7 @@
 # C30 — STAGING persistente: inventário AS-IS (22/10/2026)
 
+> **Snapshot de 22/10/2026 — preservar como histórico.** O acesso externo que nesta fotografia aparece como **não publicado** foi implementado posteriormente por **Cloudflare Tunnel em 30/10/2026**. Não reinterpretar as afirmações datadas abaixo como estado de hoje. Ver [novo AS-BUILT](C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) e [runbook Cloudflare](C30_STAGING_CLOUDFLARE_RUNBOOK.md). **PROD NO-GO**.
+
 **Natureza:** fotografia operacional relatada e confirmada por saídas de terminal em 20–22/10/2026; não é inspeção independente nem aprovação de produção. **PROD NO-GO.** O checkout instalado não acompanha automaticamente a main.
 
 ## Identidade e versão
