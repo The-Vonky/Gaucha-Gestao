@@ -40,7 +40,7 @@ describe("VEN-04B — painel financeiro completo", () => {
     expect(daily.textContent).toContain("R$ 250,00"); expect(daily.textContent).toContain("R$ 3.750,00"); expect(daily.textContent).toContain("estimativa");
     const recon = figure("Contexto da base e reconciliação"); expect(recon.textContent).toContain("R$ 50,00"); expect(recon.textContent).toContain("R$ 0,00");
     expect(api.listEntries).not.toHaveBeenCalled(); expect(api.entryDetail).not.toHaveBeenCalled(); expect(api.listSalesUnits).not.toHaveBeenCalled();
-    expect(screen.queryByRole("link", { name: "Lançamentos", exact: true })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Ir para lançamentos", exact: true })).toBeNull();
   });
   it("alternância Stone + PIX atualiza total350 / diário300 / projeção4500 e coluna PIX", async () => {
     mount(); await ready(); fireEvent.change(screen.getByLabelText("Escopo financeiro"), { target: { value: "combined" } }); apply(); await ready();
@@ -182,7 +182,7 @@ describe("VEN-04B — autorização independente e estados seguros", () => {
     expect(visibleNavigation(true, auth.grants).flatMap(g => g.destinations).map(d => d.path)).toEqual(["/sales"]);
   });
   it("somente dashboard vê a rota, mas não acessa operações", async () => {
-    expect(visibleNavigation(true, [grant()]).flatMap(g => g.destinations).map(d => d.path)).toEqual(["/sales/dashboard"]);
+    expect(visibleNavigation(true, [grant()]).flatMap(g => g.destinations).map(d => d.path)).toEqual(["/sales"]);
     render(<MemoryRouter><SalesPage /></MemoryRouter>); await screen.findByText("Acesso não autorizado"); expect(api.listEntries).not.toHaveBeenCalled();
   });
   it.each([{ grants: [] as AccessGrant[] }, { grants: [grant(undefined, "sector")] }])("sem capacidade válida $grants não faz RPC", async ({ grants }) => {
@@ -190,7 +190,7 @@ describe("VEN-04B — autorização independente e estados seguros", () => {
   });
   it("ambas as áreas habilitam alternância com recorte compatível", async () => {
     auth.grants = [grant(), grant("sales.entry.read")]; mount(`from=2026-09&to=2026-09&unit=${A}`); await ready();
-    const link = screen.getByRole("link", { name: "Lançamentos", exact: true }); expect(link.getAttribute("href")).toContain("to=2026-09-30"); expect(link.getAttribute("href")).toContain(`unit=${A}`);
+    const link = screen.getByRole("link", { name: "Ir para lançamentos", exact: true }); expect(link.getAttribute("href")).toContain("to=2026-09-30"); expect(link.getAttribute("href")).toContain(`unit=${A}`);
   });
   it("UUID externo à atribuição é negado antes da consulta", async () => {
     auth.grants = [grant(undefined, "unit", A)]; mount(`from=2026-09&to=2026-09&unit=${C}`);

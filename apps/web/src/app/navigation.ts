@@ -36,26 +36,23 @@ export type Destination = {
 export type NavChild = {
   path: string;
   label: string;
+  permissions?: string[];
   children?: NavChild[];
 };
 export const destinations: Destination[] = [
   {
     path: "/sales",
     label: "Vendas / Maquininhas",
-    description: "Consulta e operação dos lançamentos diários Stone e PIX.",
+    description: "Visão gerencial e lançamentos diários Stone e PIX.",
     icon: "costs",
     group: "Comercial",
-    permissions: ["sales.entry.read", "sales.entry.create", "sales.entry.edit", "sales.entry.delete"],
+    permissions: ["sales.dashboard.read", "sales.entry.read", "sales.entry.create", "sales.entry.edit", "sales.entry.delete"],
     scope: "unit",
-  },
-  {
-    path: "/sales/dashboard",
-    label: "Dashboard de Vendas / Maquininhas",
-    description: "Indicadores, evolução e comparação das vendas Stone e PIX.",
-    icon: "costs",
-    group: "Comercial",
-    permissions: ["sales.dashboard.read"],
-    scope: "unit",
+    nested: true,
+    children: [
+      { path: "/sales/dashboard", label: "Visão geral", permissions: ["sales.dashboard.read"] },
+      { path: "/sales/entries", label: "Lançamentos", permissions: ["sales.entry.read", "sales.entry.create", "sales.entry.edit", "sales.entry.delete"] },
+    ],
   },
   {
     path: "/rooms",
@@ -173,7 +170,8 @@ export function visibleNavigation(active: boolean, grants: AccessGrant[]) {
                 ? active && grants.some(g => g.permission === p && (g.scope_type === "global" || g.scope_type === "unit"))
                 : hasAnyScope(active, grants, p),
           ),
-      ),
+      ).map((d): Destination => ({ ...d, children: d.children?.filter(c => !c.permissions || c.permissions.some(p =>
+        active && grants.some(g => g.permission === p && (g.scope_type === "global" || g.scope_type === "unit")))) })),
     }))
     .filter((g) => g.destinations.length);
 }

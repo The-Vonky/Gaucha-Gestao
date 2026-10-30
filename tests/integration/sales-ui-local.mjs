@@ -139,10 +139,10 @@ try {
   assert.equal(requests.some(url => /sales_entries_list|sales_entry_detail|sales_dashboard/.test(url)), false);
   await creator.context.close();
   const reader = await login("reader");
-  await expect(reader.page.getByRole("heading", { name: "Vendas / Maquininhas", exact: true })).toBeVisible();
+  await expect(reader.page.getByRole("heading", { name: "Lançamentos", exact: true })).toBeVisible();
   await apply(reader.page);
   await expect(reader.page.getByRole("row").filter({ has: reader.page.getByRole("cell", { name: "01/01/2040", exact: true }) }).getByRole("cell", { name: "R$ 1.250,30", exact: true })).toBeVisible();
-  assert.equal(await reader.page.getByRole("button", { name: "Novo lançamento", exact: true }).count(), 0);
+  await expect(reader.page.getByRole("button", { name: "Novo lançamento", exact: true })).toBeDisabled();
   assert.equal(await reader.page.getByRole("button", { name: /^Editar / }).count(), 0);
   await apply(reader.page, "PIX", B);
   await expect(reader.page.getByRole("cell", { name: "R$ 0,01", exact: true })).toBeVisible();
@@ -193,7 +193,7 @@ try {
   await apply(operator.page);
   for (const width of [375, 768, 1024, 1440]) {
     await operator.page.setViewportSize({ width, height: 960 });
-    await expect(operator.page.getByRole("heading", { name: "Vendas / Maquininhas", exact: true })).toBeVisible();
+    await expect(operator.page.getByRole("heading", { name: "Lançamentos", exact: true })).toBeVisible();
     const overflow = await operator.page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     assert.equal(overflow, false, `Sem overflow da página em ${width}px`);
     const table = operator.page.getByRole("region", { name: "Tabela de registros", exact: true });
@@ -202,7 +202,7 @@ try {
     const action = operator.page.getByRole("button", { name: "Excluir 05/01/2040 PIX" });
     await expect(action).toBeInViewport();
     await table.evaluate(el => { el.scrollLeft = 0; });
-    await operator.page.getByRole("heading", { name: "Vendas / Maquininhas", exact: true }).click();
+    await operator.page.getByRole("heading", { name: "Lançamentos", exact: true }).click();
     await operator.page.evaluate(() => window.scrollTo(0, 0));
     const screenshot = `${directory}/${tag}-${width}.png`;
     await operator.page.screenshot({ path: screenshot, fullPage: true }); manifest.screenshots.push(screenshot);
@@ -222,7 +222,7 @@ try {
   await operator.context.close();
   for (const name of ["denied", "sector"]) {
     const denied = await login(name); await expect(denied.page.getByRole("heading", { name: "Acesso não autorizado" })).toBeVisible();
-    assert.equal(await denied.page.getByRole("link", { name: "Vendas / Maquininhas", exact: true }).count(), 0); await denied.context.close();
+    assert.equal(await denied.page.getByRole("button", { name: "Vendas / Maquininhas", exact: true }).count(), 0); await denied.context.close();
   }
   await db.query("update core.user_role_assignments set active=false where user_id=$1", [people.reader.id]);
   assert.equal((await rpc("reader", "entries_list")).error?.code, "42501");

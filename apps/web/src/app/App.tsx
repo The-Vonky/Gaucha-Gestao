@@ -1,4 +1,4 @@
-import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { Component, useEffect, useState, type ReactNode } from "react";
 import {
   BrowserRouter,
   Link,
@@ -19,7 +19,7 @@ import { AuditModule } from "../modules/audit/AuditModule";
 import { ActionPlansModule } from "../modules/action-plans/ActionPlansModule";
 import { RoomsPage } from "../modules/rooms/RoomsPage";
 import { AbcModule } from "../modules/abc/AbcModule";
-import { SalesPage } from "../modules/sales/SalesPage";
+import { SalesModule } from "../modules/sales/SalesModule";
 import { BrandMark, Loader } from "../shared/brand";
 import { Icon } from "../shared/icons";
 import { Drawer, EmptyState, IconButton, Notice } from "../shared/ui";
@@ -31,7 +31,6 @@ import {
   type NavChild,
 } from "./navigation";
 import "./shell.css";
-const SalesDashboardPage = lazy(() => import("../modules/sales/SalesDashboardPage").then(m => ({ default: m.SalesDashboardPage })));
 function Logout({ compact = false }: { compact?: boolean }) {
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -337,6 +336,7 @@ function Avatar({ name }: { name?: string }) {
 }
 function Breadcrumbs({ current }: { current?: Destination }) {
   const { pathname } = useLocation();
+  const salesChild = current?.path === "/sales" ? current.children?.find(c => c.path === pathname) : undefined;
   return (
     <nav className="crumbs" aria-label="Você está em">
       <ol>
@@ -359,6 +359,7 @@ function Breadcrumbs({ current }: { current?: Destination }) {
                 <Link to={current.path}>{current.label}</Link>
               )}
             </li>
+            {salesChild && <li><span aria-current="page">{salesChild.label}</span></li>}
           </>
         )}
       </ol>
@@ -501,8 +502,7 @@ function Shell() {
     document.getElementById("main")?.focus({ preventScroll: true });
   }, [location.pathname]);
   const pages: Record<string, ReactNode> = {
-    "/sales": <SalesPage />,
-    "/sales/dashboard": <Suspense fallback={<Loader label="Carregando dashboard…" />}><SalesDashboardPage /></Suspense>,
+    "/sales": <SalesModule />,
     "/audit": <AuditModule />,
     "/action-plans": <ActionPlansModule />,
     "/abc": <AbcModule />,

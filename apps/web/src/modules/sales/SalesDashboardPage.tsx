@@ -57,8 +57,7 @@ export function SalesDashboardPage() {
   const leader = data?.units.find(u => u.id === summary?.leader?.unit_id);
   const focused = !!selection.unit || selection.from !== selection.baseFrom || selection.to !== selection.baseTo || !!selection.day;
   return <section className="sales-dashboard">
-    <PageTitle eyebrow="Comercial · Vendas / Maquininhas" title="Dashboard gerencial" description="Evolução, participação e ritmo das vendas no recorte autorizado." />
-    <SalesNavigation />
+    <PageTitle title="Dashboard gerencial" description="Evolução, participação e ritmo das vendas no recorte autorizado."><SalesNavigation /></PageTitle>
     <form className="sales-dashboard-filters" key={serialized} onSubmit={event => {
       event.preventDefault(); const form = new FormData(event.currentTarget);
       const from = String(form.get("from")), to = String(form.get("to")), daily = String(form.get("daily"));

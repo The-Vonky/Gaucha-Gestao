@@ -10,7 +10,9 @@ PR #94 continua para revisão; sem merge ou deploy.
 [operação e contrato auxiliar](../modules/sales/VEN04A_OPERATIONS_UI.md).
 VEN-04B autorizada expressamente em 29/10 para frontend, PR e testes sintéticos no
 notebook `gaucha-gestao-local`; [dashboard e matriz EQ01–22](../modules/sales/VEN04B_DASHBOARD_UI.md)
-e [evidências locais](../modules/sales/VEN04B_LOCAL_VALIDATION.md). Implementada para revisão,
+e [evidências locais](../modules/sales/VEN04B_LOCAL_VALIDATION.md). MEL-03–06 acrescentam
+menu agrupado, entrada gerencial, atalhos contextuais e avisos de cadastro;
+[contrato e validação intermediária](../modules/sales/VEN04B_MEL03_06_VALIDATION.md). Implementada para revisão,
 sem homologação. VEN-05–08 permanecem dependentes de autorizações próprias.
 Correção pré-merge autorizada: composição explícita de sete capacidades de Vendas
 no administrador existente, papéis institucionais Sales Manager/Operator e catálogo

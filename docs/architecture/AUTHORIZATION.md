@@ -43,7 +43,10 @@ admin/dashboard. Escrita não concede consulta. [Contrato e uso](../modules/sale
 
 **Vendas VEN-04B (para revisão, 29/10/2026):** `/sales/dashboard` exige
 `sales.dashboard.read` global/unitária, independentemente de `sales.entry.*`.
-Menu, Guard, abas e páginas preservam a separação; setor não concede agregado de unidade.
+Menu agrupado, Guard do módulo, atalhos contextuais e páginas preservam a separação;
+setor não concede agregado de unidade. MEL-03–06: `/sales/entries` é operacional,
+`/sales` escolhe entrada conforme capacidade e mantém queries operacionais antigas;
+retorno revalida escopo da unidade e nunca concede acesso. Nenhuma mudança de RLS/RPC.
 Foco em unidade/mês/dia consome apenas a RPC analítica; não chama list/detail nem
 catálogo operacional. URL externa é negada, respostas obsoletas são descartadas e
 troca de identidade elimina dados anteriores. Status histórico indisponível permanece

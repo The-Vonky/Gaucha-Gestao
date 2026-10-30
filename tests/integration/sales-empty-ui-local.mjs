@@ -55,9 +55,9 @@ try {
   await page.getByLabel("Exibir inativas").check();
   await expect(page.getByText("Ainda não há unidades cadastradas.", { exact: true })).toBeVisible();
   await page.screenshot({ path: `${directory}/units-empty.png`, fullPage: true });
-  await page.goto("http://127.0.0.1:5173/sales");
+  await page.goto("http://127.0.0.1:5173/sales/entries");
   await expect(page.getByText("Nenhum lançamento encontrado", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Novo lançamento", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Novo lançamento", exact: true })).toBeDisabled();
   await page.goto("http://127.0.0.1:5173/sales/dashboard");
   await expect(page.getByText("Sem movimento no período", { exact: true })).toBeVisible();
   await page.goto("http://127.0.0.1:5173/admin/units");

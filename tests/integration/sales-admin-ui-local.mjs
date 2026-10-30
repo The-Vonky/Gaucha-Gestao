@@ -55,7 +55,7 @@ try {
   await page.getByLabel("E-mail", { exact: true }).fill(person.email);
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Vendas / Maquininhas", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lançamentos", exact: true })).toBeVisible();
   await expect(page.getByText("Comercial", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "Novo lançamento", exact: true }).click();
   const fill = async value => {

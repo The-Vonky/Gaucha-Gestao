@@ -192,7 +192,7 @@ try {
     }); manifest.axe.push(accessibility); assert.deepEqual(accessibility.violations, [], "axe WCAG A/AA");
   }
   // Sem autorização operacional mesmo por URL direta.
-  await page.goto(base + "/sales"); await expect(page.getByRole("heading", { name: "Acesso não autorizado" })).toBeVisible();
+  await page.goto(base + "/sales/entries"); await expect(page.getByRole("heading", { name: "Acesso não autorizado" })).toBeVisible();
   await manager.context.close();
 
   for (const name of ["unitA", "unitB"]) {
@@ -222,13 +222,13 @@ try {
   if (bothAssignment) await db.query("update core.user_role_assignments set active=true where id=$1", [bothAssignment.id]);
   else await db.query("insert into core.user_role_assignments(user_id,role_id,scope_type) values($1,$2,'global')", [people.operations.id, people.global.role]);
   const both = await login("operations"); await ready(both.page, "R$ 800,00");
-  await both.page.getByRole("navigation", { name: "Vendas / Maquininhas", exact: true }).getByRole("link", { name: "Lançamentos", exact: true }).click();
-  await expect(both.page.getByRole("heading", { name: "Vendas / Maquininhas", exact: true })).toBeVisible();
+  await both.page.getByRole("link", { name: "Ir para lançamentos", exact: true }).click();
+  await expect(both.page.getByRole("heading", { name: "Lançamentos", exact: true })).toBeVisible();
   await both.page.getByRole("button", { name: "Novo lançamento", exact: true }).click();
   const dialog = both.page.getByRole("dialog"); await dialog.getByLabel("Data", { exact: true }).fill("2042-09-03");
   await dialog.getByLabel("Unidade", { exact: false }).selectOption(A); await dialog.getByLabel("Valor (R$)", { exact: true }).fill("0,01");
   await dialog.getByRole("button", { name: "Salvar", exact: true }).click(); await expect(both.page.getByText("Lançamento cadastrado.", { exact: true })).toBeVisible();
-  await both.page.getByRole("navigation", { name: "Vendas / Maquininhas", exact: true }).getByRole("link", { name: "Dashboard gerencial", exact: true }).click(); await ready(both.page, "R$ 800,01");
+  await both.page.getByRole("link", { name: "Voltar ao dashboard", exact: true }).click(); await ready(both.page, "R$ 800,01");
   const created = must(await rpc("operations", "entries_list", { p_unit: A, p_from: "2042-09-03", p_to: "2042-09-03" }))[0]; entries.push(created.id);
   const updated = must(await rpc("operations", "entry_update", { p_id: created.id, p_expected_version: created.version, p_date: "2042-09-03", p_unit: A, p_method: "Stone", p_amount: "0.02" }));
   await both.page.getByRole("button", { name: "Atualizar", exact: true }).click(); await ready(both.page, "R$ 800,02");

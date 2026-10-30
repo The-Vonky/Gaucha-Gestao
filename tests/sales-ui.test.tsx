@@ -21,7 +21,7 @@ const row: SalesEntry = { id: "entry-test", sale_date: "2026-10-28", unit_id: "A
 function Location() { return <output data-testid="location">{useLocation().search}</output>; }
 function mount(path = "/sales") { return render(<MemoryRouter initialEntries={[path]}><SalesPage /><Location /></MemoryRouter>); }
 function field(name: string) { return within(screen.getByRole("dialog")).getByLabelText(name); }
-async function createForm() { fireEvent.click(await screen.findByRole("button", { name: "Novo lançamento" })); }
+async function createForm() { const button = screen.getByRole("button", { name: "Novo lançamento" }) as HTMLButtonElement; await waitFor(() => expect(button.disabled).toBe(false)); fireEvent.click(button); }
 async function fill(value = "0,01", method = "PIX") {
   fireEvent.change(field("Unidade"), { target: { value: "A" } });
   fireEvent.change(field("Data"), { target: { value: "2026-10-29" } });
@@ -40,11 +40,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("VEN-04A — acesso e consulta", () => {
-  it("zero unidades mantém a consulta vazia e não oferece cadastro de lançamento", async () => {
+  it("zero unidades mantém botão impedido e consulta vazia", async () => {
     auth.grants = [grant("read", "global"), grant("create", "global")];
     api.listSalesUnits.mockResolvedValue([]); api.listEntries.mockResolvedValue([]);
     mount(); await screen.findByText("Nenhum lançamento encontrado");
-    expect(screen.queryByRole("button", { name: "Novo lançamento" })).toBeNull();
+    expect((screen.getByRole("button", { name: "Novo lançamento" }) as HTMLButtonElement).disabled).toBe(true);
     expect(within(screen.getByLabelText("Unidade")).getAllByRole("option")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Atualizar consulta" }));
     await waitFor(() => expect(api.listSalesUnits).toHaveBeenCalledTimes(2));
@@ -70,7 +70,7 @@ describe("VEN-04A — acesso e consulta", () => {
   });
   it("leitor não recebe ações de escrita nem unidade fora da leitura", async () => {
     auth.grants = [grant("read")]; api.listSalesUnits.mockResolvedValue([{ ...A, can_create: false, can_edit: false, can_delete: false }, { ...B, can_read: false }]);
-    mount(); await screen.findByText("R$ 1.250,30"); expect(screen.queryByRole("button", { name: "Novo lançamento" })).toBeNull();
+    mount(); await screen.findByText("R$ 1.250,30"); expect((screen.getByRole("button", { name: "Novo lançamento" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole("button", { name: /Editar/ })).toBeNull(); expect(screen.queryByRole("option", { name: /Histórica B/ })).toBeNull();
   });
   it("filtra datas, unidade inativa e PIX, mantém URL e não inventa total", async () => {
@@ -137,7 +137,7 @@ describe("VEN-04A — cadastro", () => {
     expect(api.createEntry).toHaveBeenCalledTimes(1); expect((field("Valor (R$)") as HTMLInputElement).value).toBe("0,29");
   });
   it("teclado abre e fecha formulário sem mutação", async () => {
-    const user = userEvent.setup(); mount(); const button = await screen.findByRole("button", { name: "Novo lançamento" }); button.focus(); await user.keyboard("{Enter}");
+    const user = userEvent.setup(); mount(); const button = await screen.findByRole("button", { name: "Novo lançamento" }); await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false)); button.focus(); await user.keyboard("{Enter}");
     await screen.findByRole("dialog"); fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: true, cancelable: true }));
     expect(screen.queryByRole("dialog")).toBeNull(); expect(api.createEntry).not.toHaveBeenCalled();
   });
@@ -191,5 +191,41 @@ describe("VEN-04A — correção e exclusão", () => {
   it("conflito de exclusão bloqueia confirmação sem substituir versão automaticamente", async () => {
     api.deleteEntry.mockRejectedValue({ code: "40001" }); mount(); fireEvent.click(await screen.findByRole("button", { name: /Excluir/ })); await screen.findByRole("dialog"); fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
     await screen.findByText(/Cancele esta confirmação/); expect((screen.getByRole("button", { name: "Confirmar" }) as HTMLButtonElement).disabled).toBe(true); expect(api.deleteEntry).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("MEL-03 — impedimentos de cadastro sem esconder a ação", () => {
+  const blocked = () => expect((screen.getByRole("button", { name: "Novo lançamento" }) as HTMLButtonElement).disabled).toBe(true);
+  it("unidade ativa autorizada habilita a ação e não duplica legenda", async () => {
+    const view = mount(); await waitFor(() => expect((screen.getByRole("button", { name: "Novo lançamento" }) as HTMLButtonElement).disabled).toBe(false));
+    expect(screen.getByRole("heading", { name: "Lançamentos" })).toBeTruthy(); expect(view.container.querySelector(".page-title .eyebrow")).toBeNull();
+  });
+  it.each([false, true])("zero unidades e link administrativo somente com manage=%s", async admin => {
+    auth.grants = [grant("read", "global"), grant("create", "global"), ...(admin ? [{ permission: "admin.unit.manage", scope_type: "global" as const, unit_id: null, sector_id: null }] : [])];
+    api.listSalesUnits.mockResolvedValue([]); mount(); await screen.findByText(/ainda não existe nenhuma unidade cadastrada/); blocked();
+    expect(screen.queryByRole("link", { name: "Cadastrar unidade" })?.getAttribute("href") ?? null).toBe(admin ? "/admin/units" : null);
+    fireEvent.click(screen.getByRole("button", { name: "Novo lançamento" })); expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  it("catálogo autorizado apenas inativo orienta ativação", async () => {
+    api.listSalesUnits.mockResolvedValue([{ ...A, active: false }]); mount(); await screen.findByText(/Não há unidades ativas disponíveis/); blocked();
+  });
+  it("leitor recebe explicação de ausência de criação", async () => {
+    auth.grants = [grant("read")]; mount(); await screen.findByText(/Seu acesso permite consultar os lançamentos, mas não cadastrar/); blocked();
+  });
+  it.each([{ units: [] }, { units: [{ ...A, can_create: false }] }])("cadastro sem unidade autorizada não afirma ausência global: $units", async ({ units }) => {
+    api.listSalesUnits.mockResolvedValue(units); mount(); await screen.findByText(/Você possui permissão de cadastro, mas não há nenhuma unidade ativa autorizada/); blocked();
+    expect(screen.queryByText(/ainda não existe nenhuma unidade cadastrada/)).toBeNull();
+  });
+  it("carregamento e falha do catálogo têm feedback próprio e retry", async () => {
+    const slow = deferred<SalesUnit[]>(); api.listSalesUnits.mockReturnValueOnce(slow.promise).mockRejectedValueOnce(new TypeError("network")).mockResolvedValue([A]);
+    mount(); await screen.findByText(/Carregando as unidades autorizadas/); blocked(); expect(screen.queryByText(/ainda não existe nenhuma unidade cadastrada/)).toBeNull();
+    await act(async () => slow.resolve([A])); await waitFor(() => expect((screen.getByRole("button", { name: "Novo lançamento" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "Atualizar consulta" })); await screen.findByText(/Não foi possível carregar as unidades autorizadas/); blocked();
+    fireEvent.click(screen.getByRole("button", { name: "Tentar carregar unidades novamente" })); await waitFor(() => expect((screen.getByRole("button", { name: "Novo lançamento" }) as HTMLButtonElement).disabled).toBe(false));
+  });
+  it("revogação descarta catálogo e fecha formulário imediatamente", async () => {
+    const view = mount(); await createForm(); auth.grants = [grant("read")];
+    view.rerender(<MemoryRouter><SalesPage /></MemoryRouter>); await screen.findByText(/Seu acesso permite consultar/); blocked(); expect(screen.queryByRole("dialog")).toBeNull();
+    auth.profile.active = false; view.rerender(<MemoryRouter><SalesPage /></MemoryRouter>); expect(screen.queryByRole("button", { name: "Novo lançamento" })).toBeNull();
   });
 });

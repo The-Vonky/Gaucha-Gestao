@@ -16,11 +16,32 @@ Sales Manager/Operator protegidos, sem atribuições automáticas nem mudança d
 
 ## Acesso e componentes
 
-`/sales` continua operacional. `/sales/dashboard` usa **exclusivamente**
+**MEL-03–06 (30/10/2026):** menu único e expansível em Comercial → Vendas / Maquininhas,
+com **Visão geral** (`/sales/dashboard`) e **Lançamentos** (`/sales/entries`) filtrados
+por capacidade. `/sales` prioriza o dashboard quando permitido; somente operacional
+segue para Lançamentos. URLs antigas `/sales?…` preservam query, hash e estado por
+redirecionamento `replace` para `/sales/entries?…`, inclusive `?method=Stone`.
+Não há item/rota Relatórios. `/sales/dashboard` usa **exclusivamente**
 `sales.dashboard.read`, global ou unitária, com perfil/identidade ativos. Menu,
-Guard e página distinguem as duas áreas. Setor não concede agregados de unidade.
-`SalesNavigation` permite alternar entre as áreas efetivamente liberadas e preserva
-o recorte de retorno. A transferência de unidade exige capacidade na área de destino.
+Guard do módulo e páginas distinguem as duas áreas. Setor não concede agregados de unidade.
+`SalesNavigation` exibe um único atalho no cabeçalho: **Ir para lançamentos**
+(principal no dashboard) ou **Voltar ao dashboard** (secundário na operação), somente
+com acesso ao destino. Mantém competências/datas e modalidade equivalente: Stone
+permanece Stone; PIX/ambos usam combinado. A volta por estado restaura datas exatas,
+PIX e página; unidade é revalidada inclusive nesse estado, exigindo leitura na área
+de destino. Caminhos de retorno seguem lista fechada interna. Histórico nativo
+preserva Voltar/Avançar. Controles gerenciais Voltar/Comparar tudo/Redefinir/Atualizar
+permanecem. Os cabeçalhos não repetem a legenda Comercial; breadcrumb institucional
+mostra módulo e subpágina, sem alterar PageTitle ou breadcrumbs de outros módulos.
+
+**Novo lançamento** fica visível e desabilitado quando impedido, associado ao aviso
+por `aria-describedby`. Catálogo tem carregamento/erro/retry separados da consulta
+financeira. Distingue ausência de cadastro (somente com catálogo completo por grant
+operacional global), todas as unidades autorizadas inativas, ausência de create e
+ausência de unidade ativa autorizada. Nunca infere ausência global de catálogo
+restrito. **Cadastrar unidade** leva a `/admin/units` somente com
+`admin.unit.manage` global. Sem acesso operacional, não há controle de cadastro.
+[Validação e screenshots MEL-03–06](VEN04B_MEL03_06_VALIDATION.md).
 O dashboard nunca chama listagem, detalhe ou catálogo operacional. Drill-down de
 dia mostra somente agregados; não descobre lançamentos individuais.
 
@@ -33,7 +54,9 @@ Shared e Core não receberam mudanças de contrato. A rota usa importação din�
 ```mermaid
 flowchart LR
   P["Core: Platform Administrator / Sales Manager / Sales Operator"] --> A["Identidade ativa + composição explícita + escopo"]
-  A --> O["/sales: sales.entry.*"]
+  A --> E["/sales: entrada conforme capacidade; query antiga preservada"]
+  E --> O["/sales/entries: sales.entry.*"]
+  E --> D
   A --> D["/sales/dashboard: sales.dashboard.read"]
   D --> RPC["sales_dashboard: autorização e snapshot SQL"]
   RPC --> V["Indicadores + séries + ranking + matriz + diário + contexto"]
