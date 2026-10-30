@@ -1,5 +1,7 @@
 # Registro de decisões, bloqueios e dívida documental
 
+> **Evidência operacional posterior — 30/10/2026:** o STAGING C30 foi disponibilizado em `https://teste.gauchagestao.online` por Cloudflare Tunnel Free, Caddy 4181 e Supabase existente. Login, consulta de auditoria/histórico, fotos, criação de auditoria e download foram relatados em PC e celular; o ngrok anterior esgotara sua cota. Este fato **não altera as decisões D01–D19, ADR-004/ADR-008, o aceite de segurança ou o PROD NO-GO**. A nota de 22/10 sobre ngrok abaixo permanece registro histórico, **não estado atual**. Ver [AS-BUILT](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) e [runbook](../operations/C30_STAGING_CLOUDFLARE_RUNBOOK.md).
+
 **Decisão vigente — 26/10/2026:** D5-A revogada pelo responsável em 26/10/2026. D5-B adotada: o administrador geral não administra reservas; a gestão cabe ao papel `room_booking_manager`, com provisionamento administrativo restrito e auditado. Atribuição administrativa ativa conflitante nega gestão mesmo com papel adicional. D1–D4, D6–D11 e F2 permanecem aprovadas. Os registros de 23/10 abaixo são históricos.
 
 
