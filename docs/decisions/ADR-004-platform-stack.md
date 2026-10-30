@@ -1,5 +1,7 @@
 # ADR-004 — Stack tecnológica da plataforma
 
+> **Nota de implementação STAGING — 30/10/2026 (não altera este ADR):** Cloudflare DNS Free + Tunnel já atende `teste.gauchagestao.online` na C30 para testes, com frontend servido pelo Caddy e Supabase Storage local. **Workers Static Assets e R2 continuam TO-BE de produção**, não instalados nesta migração. Ver [AS-BUILT STAGING](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md). **PROD NO-GO**.
+
 **Status: Aceito — escolha do host físico substituída pelo ADR-008**  
 **Data: 24/09/2026**
 
