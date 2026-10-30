@@ -4,7 +4,7 @@
 **Autoridades:** [ADR-001](../decisions/ADR-001-modular-monolith.md), [ADR-002](../decisions/ADR-002-core-and-module-ownership.md), [ADR-004](../decisions/ADR-004-platform-stack.md), [ADR-005](../decisions/ADR-005-core-authorization.md), [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md).
 Diagramas lógicos, **não diagramas as-built de servidor em produção**. Linhas pontilhadas indicam direção ainda não entregue/validada.
 
-**Diagrama físico de STAGING de 22/10/2026:** ver [C30_STAGING_AS_BUILT](../operations/C30_STAGING_AS_BUILT_20261022.md). É distinta da topologia futura Cloudflare Workers/R2 deste arquivo: Caddy/HTTPS estão ativos apenas no loopback e nenhum túnel público foi implantado.
+**Snapshots de STAGING:** o [AS-BUILT 22/10](../operations/C30_STAGING_AS_BUILT_20261022.md) documenta o estado **anterior** ao túnel público. Em **30/10/2026**, foi implantado o [Cloudflare Tunnel → Caddy HTTP loopback 4181 → Supabase](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md), com URL HTTPS externa de testes. Essa topologia **AS-IS** é distinta da topologia **TO-BE de PROD** com Cloudflare Workers Static Assets/R2 desenhada neste arquivo. **PROD NO-GO**.
 
 ## 1. Contexto da plataforma
 

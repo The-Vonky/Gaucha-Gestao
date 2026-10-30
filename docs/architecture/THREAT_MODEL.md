@@ -1,5 +1,7 @@
 # Modelo de ameaças e requisitos verificáveis — Gaúcha Gestão
 
+> **Revisão de superfície exposta — 30/10/2026:** o STAGING já recebe tráfego HTTPS externo em `teste.gauchagestao.online` via Cloudflare Tunnel e Caddy (ver [AS-BUILT](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md)). A borda Cloudflare **de produção** continua TO-BE e **não** há evidência de Cloudflare Access configurado no teste. A tela de login pública, Auth, REST, Storage, URLs assinadas e dados requerem teste de RLS/grants negativo, política de usuários, WAF/cache e recuperação; sucesso de login/foto não é pentest nem aprovação de segurança. PROD NO-GO.
+
 **Escopo de revisão:** main após PR #69 (`fed0e0f`, 20/10/2026), stacks decididas e TO-BE de produção. **Não é pentest, auditoria de infraestrutura, nem atestado de segurança ou liberação PROD.** Guias canônicos: [SECURITY](SECURITY.md), [AUTHORIZATION](AUTHORIZATION.md), [ADR-005](../decisions/ADR-005-core-authorization.md).
 
 ## 1. Ativos e limites de confiança

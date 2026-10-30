@@ -1,5 +1,7 @@
 # Racional da stack: decisões, alternativas e evolução
 
+> **Distinção operacional — 30/10/2026:** Cloudflare **DNS Free + Tunnel** já foi usado para acesso **STAGING** da C30 em `teste.gauchagestao.online`, com Caddy servindo frontend e Supabase Storage no HDD. A linha de **Workers Static Assets/R2** na tabela abaixo continua sendo a arquitetura **de produção futura**, não foi implantada por esta migração. Referência: [AS-BUILT C30 Cloudflare](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md). PROD NO-GO.
+
 **Estado:** revisão da `main` após a [PR #69](https://github.com/The-Vonky/Gaucha-Gestao/pull/69), em 20/10/2026. **Produção NO-GO.** Este documento explica decisões existentes; não cria ADRs nem aprova serviços ou custos adicionais. Fontes canônicas: [ADR-001](../decisions/ADR-001-modular-monolith.md), [ADR-002](../decisions/ADR-002-core-and-module-ownership.md), [ADR-004](../decisions/ADR-004-platform-stack.md), [ADR-005](../decisions/ADR-005-core-authorization.md), [ADR-006 proposto](../decisions/ADR-006-infra-v1-reused-hardware.md), [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md).
 
 ## Por que este conjunto de tecnologias?

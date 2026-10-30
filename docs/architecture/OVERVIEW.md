@@ -1,5 +1,7 @@
 # Visão geral da arquitetura
 
+> **Situação STAGING, 30/10/2026:** `teste.gauchagestao.online` funciona via Cloudflare DNS/Tunnel → Caddy HTTP 4181 → Supabase autohospedado na C30, com fluxos básicos de login/auditoria/fotos validados pelo operador ([AS-BUILT](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md)). Não confundir com a arquitetura **TO-BE de PROD** abaixo, que inclui Workers Static Assets/R2 e permanece **NO-GO**.
+
 ## Propósito e estilo
 
 Consolidar sistemas corporativos internos da Gaúcha Gestão em uma plataforma com fronteiras de domínio e migração gradual. O objetivo não é reunir arquivos numa pasta gigante, mas compartilhar a fundação sem tornar os módulos inseparáveis.

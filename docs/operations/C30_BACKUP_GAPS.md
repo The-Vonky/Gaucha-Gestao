@@ -1,5 +1,7 @@
 # C30 STAGING — estado de backup, lacunas e prova de recuperação
 
+> **Adendo de risco — 30/10/2026:** o STAGING está acessível em `https://teste.gauchagestao.online` via Cloudflare Tunnel, e o operador comprovou que auditorias/fotos já gravadas permanecem acessíveis. **Isso não é prova de backup ou restauração.** Como agora existe acesso externo de testes, preservar acesso limitado e priorizar cópia independente de banco, roles e bytes de Storage, restauração isolada, alertas e inventário dos dados. Ver [AS-BUILT 30/10](C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md). PROD NO-GO.
+
 **Fotografia em 22/10/2026.** Sem RPO/RTO/SLA assumidos. Backups atuais do host **não** autorizam produção. Ver [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md) e [ensaio sintético histórico](../planning/02_RESTORE_DRILL.md).
 
 ## O que existe

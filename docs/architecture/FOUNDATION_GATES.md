@@ -1,5 +1,7 @@
 # Gates da fundação da plataforma
 
+> **Atualização operacional, 30/10/2026:** já existe acesso HTTPS público **de testes** via Cloudflare Tunnel regular Free à C30; ver [AS-BUILT](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md). Esse avanço de STAGING **não** comprova gates de backup/restore, RLS negativo, segurança externa, carga ou operação PROD. As exigências normativas abaixo continuam aplicáveis; **PROD NO-GO**.
+
 **Estado: vigente como referência de gates, atualizado editorialmente em 21/10/2026.**  
 **Baseline de revisão original:** 02/10/2026, `22334995b5b239274c5c1adc98495357ec0d7980`. Contagens de testes e status antigos são **fotografias históricas**, não o HEAD atual.
 

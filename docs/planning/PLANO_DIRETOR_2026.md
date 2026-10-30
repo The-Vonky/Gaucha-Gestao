@@ -1,5 +1,7 @@
 # Gaúcha Gestão — Plano Diretor 2026
 
+> **Evidência posterior — 30/10/2026, sem revisão dos gates deste Plano Diretor v1.3:** STAGING na C30 passou a ter acesso HTTPS de testes por [Cloudflare Tunnel](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) em `teste.gauchagestao.online`. Operador validou login, auditoria preservada, fotos, nova auditoria e download em PC/celular. **Não** foram demonstrados backup off-site, restauração independente, matriz negativa de permissões, políticas Cloudflare Access, ensaio de carga ou aceite P1–P9/O1–O8. A proposta de **Workers Static Assets + R2 para PROD** continua futura. **PROD NO-GO**.
+
 Plano diretor técnico, financeiro e de implantação · **Versão 1.3** · 15 de outubro de 2026
 
 > Fonte canônica: este arquivo. As versões .docx 1.0 e 1.1, distribuídas fora do repositório, ficam superadas. Mudanças entram por PR, com registro na seção 12.

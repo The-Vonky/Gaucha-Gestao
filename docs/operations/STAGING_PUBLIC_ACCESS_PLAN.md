@@ -1,5 +1,7 @@
 # STAGING — plano de acesso web para funcionários sem domínio próprio
 
+> **HISTÓRICO — substituído operacionalmente em 30/10/2026.** Este arquivo registra a proposta original de 22/10, antes da contratação do domínio e da tentativa com ngrok Free. A migração efetivamente concluída utiliza **Cloudflare Tunnel** e o endereço [`teste.gauchagestao.online`](https://teste.gauchagestao.online), não ngrok. **Não executar** os passos ngrok ou tratar o desenho TO-BE abaixo como topologia atual. Fontes vigentes: [AS-BUILT Cloudflare](C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) e [runbook Cloudflare](C30_STAGING_CLOUDFLARE_RUNBOOK.md). STAGING funcional em testes, **PROD NO-GO**.
+
 **Status em 22/10/2026: proposta de implementação, NÃO publicada.** Objetivo do responsável: abrir um link HTTPS no navegador do celular ou PC, inclusive fora da empresa e em sub-redes diferentes, sem instalar clientes, VPN ou certificados privados nos dispositivos. Continua sendo **STAGING com dados sintéticos**, não produção.
 
 ## Decisão provisória e limites

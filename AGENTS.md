@@ -1,5 +1,7 @@
 # Instruções para agentes de desenvolvimento — Gaúcha Gestão
 
+> **STAGING C30 — fato operacional de 30/10/2026:** acesso HTTPS de testes por [`teste.gauchagestao.online`](https://teste.gauchagestao.online) via Cloudflare Tunnel, Caddy 4181 e frontend `f9f041e-cloudflare`. Auth/Storage receberam configuração de domínio e foram recriados; banco/REST/Kong preservados. O servidor permanece no commit `f9f041e` (não acompanha a main), com dados persistentes e backup/restore independente ainda sem prova. **Não executar migrations, resets, atualizações ou ações de produção no STAGING por inferência.** Consultar [AS-BUILT de 30/10](docs/operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) e [runbook Cloudflare](docs/operations/C30_STAGING_CLOUDFLARE_RUNBOOK.md). O registro de 22/10 abaixo é histórico; **PROD NO-GO**.
+
 **Idioma de trabalho:** português brasileiro (pt-BR) em documentação, PRs, issues, registros de validação, relatórios e explicações. **Não traduzir** nomes de arquivos, diretórios, símbolos de código, schemas, SQL, funções, variáveis, comandos, logs ou identificadores técnicos. Preservar citações e nomes oficiais de serviços.
 
 > **Estado de referência (21/10/2026):** Core v2, Auditorias/Qualidade v1, Planos de Ação, evidências, relatórios e Curva ABC v1 estão integrados ao código. O módulo ABC ainda requer homologação manual. Ensaios automatizados em CI e restore sintético não comprovam implantação produtiva. **PROD NO-GO**: não há autorização para deploy ou manipulação de dados reais.
