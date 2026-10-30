@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { SalesLocalDatabase } from "./sales-local.mjs";
+import { retireSalesUnits } from "./sales-unit-cleanup.mjs";
 import { retireSalesRoles, finishSalesLocal } from "./sales-role-cleanup.mjs";
 
 // Notebook autorizado, sem importar cenários descartáveis/destrutivos do CI.
@@ -103,8 +104,10 @@ try {
     () => db.query("update core.profiles set active=false where id=any($1::uuid[])", [identities]),
     () => db.query("update core.units set active=false where id=any($1::uuid[])", [[A, B]]),
     async () => { manifest.roleCleanup = await retireSalesRoles(db, { roles: roleReceipts, users: usersProof, backupPath: `${directory}/${tag}-roles-preserved.json` }); },
+    async () => { manifest.unitCleanup = await retireSalesUnits(db, { units: [A, B].map((id, i) => ({ id, code: `${tag}-${["A", "B"][i]}`, name: `${tag}-${["A", "B"][i]}`, tag })), users: usersProof, backupPath: `${directory}/${tag}-units-preserved.json` }); },
+    async () => { assert.equal((await db.query("select count(*)::int n from core.units")).rows[0].n, local.before.units, "Unidades devem retornar à baseline"); },
     async () => {
-      manifest.cleanup = manifest.roleCleanup ? "Papéis e relações sintéticos removidos por UUID após dry-run; perfis/unidades inativos; lançamentos soft-deleted e auditoria preservados." : "Teardown incompleto: preservar resíduos e consultar erros/recibos.";
+      manifest.cleanup = manifest.roleCleanup && manifest.unitCleanup ? "Papéis e relações sintéticos removidos por UUID após dry-run; unidades e histórico estritamente sintético removidos após backup/dry-run; perfis inativos e auditoria independente preservados." : "Teardown incompleto: preservar resíduos e consultar erros/recibos.";
       manifest.after = (await db.query("select count(*)::int roles from core.roles")).rows[0];
       assert.equal(manifest.after.roles, local.before.roles, "Contagem de papéis deve retornar à baseline");
       manifest.cleanupErrors = errors.length; save();

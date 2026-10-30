@@ -35,6 +35,7 @@ Os índices e ADRs históricos preservam suas datas originais. Para o estado efe
 | Operar Vendas / Maquininhas VEN-04A | [Guia operacional e RPC auxiliar](modules/sales/VEN04A_OPERATIONS_UI.md) | [Validação no notebook](modules/sales/VEN04A_LOCAL_VALIDATION.md) |
 | Revisar motor analítico VEN-03 | [Contratos e segurança](modules/sales/VEN03_ANALYTICS.md) | [Validação local autorizada](modules/sales/VEN03_LOCAL_VALIDATION.md) |
 | Revisar dashboard e acesso institucional VEN-04B | [Contrato UI](modules/sales/VEN04B_DASHBOARD_UI.md) | [Correção, limpeza local e validação](modules/sales/VEN04B_ACCESS_CORRECTION.md) |
+| Conferir limpeza local de unidades MEL-01 | [Operação autorizada, backup e estado vazio](modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md) | Teardown dirigido e migration funcional sem exclusão de dados |
 | Planejar os módulos futuros | [Blueprint por domínio](planning/MODULE_BLUEPRINTS.md) | [Roadmap canônico](migration/MODULE_ROADMAP.md) |
 | Evoluir módulos legados | [Roadmap de migração](migration/MODULE_ROADMAP.md) | [Mapa de consumidores Core](architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md) |
 | Agentes: regras comuns e instruções específicas | [AGENTS.md](../AGENTS.md) | [CLAUDE.md](../CLAUDE.md), [AI_WORKFLOW](development/AI_WORKFLOW.md) |

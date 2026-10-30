@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { chromium, expect } from "playwright/test";
 import { salesLocalWeb } from "./sales-local-web.mjs";
 import { SalesLocalDatabase } from "./sales-local.mjs";
+import { retireSalesUnits } from "./sales-unit-cleanup.mjs";
 import { retireSalesRoles, finishSalesLocal } from "./sales-role-cleanup.mjs";
 
 // Opt-in e inspeção Docker impedem execução em outros destinos. Sem reset/seed geral.
@@ -258,9 +259,11 @@ try {
     () => db.query("update core.units set active=false where id=any($1::uuid[])", [[A, B, C]]),
     () => db.query("update core.sectors set active=false where id=$1", [sector]),
     async () => { manifest.roleCleanup = await retireSalesRoles(db, { roles: roleReceipts, users: usersProof, backupPath: `${directory}/${tag}-${randomUUID()}-roles-preserved.json` }); },
+    async () => { manifest.unitCleanup = await retireSalesUnits(db, { units: [A, B, C].map((id, i) => ({ id, code: `${tag}-${["A", "B", "C"][i]}`, name: `${tag}-${["A", "B", "C"][i]}`, tag })), users: usersProof, backupPath: `${directory}/${tag}-units-preserved.json` }); },
+    async () => { assert.equal((await db.query("select count(*)::int n from core.units")).rows[0].n, local.before.units, "Unidades devem retornar à baseline"); },
     async () => {
       manifest.after = (await db.query("select (select count(*)::int from core.roles) roles,(select count(*)::int from sales.entries where deleted_at is null) active_entries")).rows[0];
-      manifest.cleanup = manifest.roleCleanup ? "Papéis e relações sintéticos removidos por UUID após dry-run; perfis/unidades/setor inativos; lançamentos soft-deleted e auditoria preservados." : "Teardown incompleto: preservar resíduos e consultar erros/recibos.";
+      manifest.cleanup = manifest.roleCleanup && manifest.unitCleanup ? "Papéis e relações sintéticos removidos por UUID após dry-run; unidades e histórico estritamente sintético removidos após backup/dry-run; perfis/setor inativos e auditoria independente preservados." : "Teardown incompleto: preservar resíduos e consultar erros/recibos.";
       assert.equal(manifest.after.roles, local.before.roles, "Contagem de papéis deve retornar à baseline");
       manifest.cleanupErrors = errors.length; save();
     },

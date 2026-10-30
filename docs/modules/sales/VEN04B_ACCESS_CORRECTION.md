@@ -1,5 +1,9 @@
 # VEN-04B — Correção de acesso e catálogo institucional
 
+**Adendo MEL-01 de 30/10/2026:** unidades e históricos locais foram removidos com
+autorização específica; o catálogo terminou vazio. Roteiros agora retiram suas próprias
+unidades após backup/dry-run. [Estado vigente e evidências](VEN04B_MEL01_LOCAL_CLEANUP.md).
+
 **Data:** 29/10/2026, `America/Sao_Paulo`. Correção expressamente autorizada antes
 do merge da [PR #94](https://github.com/The-Vonky/Gaucha-Gestao/pull/94), na branch
 `codex/ven-04b-sales-dashboard`, sobre `bf2c1aa`. Não constitui VEN-05 ou novo gate.

@@ -1,5 +1,9 @@
 # VEN-04B — Dashboard gerencial de Vendas / Maquininhas
 
+**MEL-01 (30/10/2026):** com zero unidades, capacidades globais existentes permitem
+retornar o estado vazio. Sem criar fixtures permanentes ou conceder novas permissões.
+[Migration incremental e provas locais](VEN04B_MEL01_LOCAL_CLEANUP.md).
+
 **Estado:** implementada para revisão do mantenedor, sem homologação VEN-07.
 Autorização expressa em 29/10/2026 para desenvolvimento, fixtures e testes no
 notebook, branch e PR. Baseline `origin/main` reconferida por fetch:

@@ -16,6 +16,11 @@ aceitam qualquer capacidade `sales.entry.read/create/edit/delete` efetiva global
 ou unitária. Atribuição exclusivamente setorial e perfil inativo não habilitam a área.
 A UI adapta ações; as RPCs continuam sendo a autoridade de autorização.
 
+**Catálogo vazio (MEL-01):** capacidades globais válidas permitem consultar listas
+vazias e dashboard com total zero. A criação financeira continua exigindo uma unidade
+existente, ativa e autorizada. Nenhuma unidade é criada automaticamente; o cadastro
+organizacional permanece em Administração → Unidades. [Correção e validação](VEN04B_MEL01_LOCAL_CLEANUP.md).
+
 - **Consultar:** informe datas inclusivas (opcionais), unidade ou todas as autorizadas,
   Stone/PIX/ambos e selecione **Aplicar filtros**. O histórico inclui unidades inativas.
   Filtros e página ficam na URL, preservados ao navegar/voltar/recarregar.

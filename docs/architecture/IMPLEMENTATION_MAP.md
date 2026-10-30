@@ -1,5 +1,10 @@
 # Mapa rastreável: funcionalidades, contratos e código
 
+**MEL-01 — 30/10/2026:** limpeza autorizada somente no notebook, catálogo de unidades
+vazio, fixtures com teardown físico dirigido e correção de consultas globais sem unidades
+(`20261030145036_sales_empty_units.sql`). [Evidências](../modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md).
+PR #94 continua para revisão; sem merge ou deploy.
+
 **Vendas — adendo de 29/10/2026:** VEN-01/02/03 integradas nas PRs #90/#91/#92.
 VEN-04A integrada pela PR #93 (`7ddcd31`). VEN-04B implementada para revisão:
 [dashboard gerencial completo](../modules/sales/VEN04B_DASHBOARD_UI.md), com

@@ -6,6 +6,7 @@ import { beforeAll, afterAll, expect, it } from "vitest";
 import { createTestDatabase } from "./pglite";
 import { STORAGE_STUB } from "./storage-stub";
 import { retireSalesRoles, finishSalesLocal } from "./integration/sales-role-cleanup.mjs";
+import { retireSalesUnits } from "./integration/sales-unit-cleanup.mjs";
 
 const db = createTestDatabase(), directory = mkdtempSync(join(tmpdir(), "sales-cleanup-"));
 const migration = readFileSync("supabase/migrations/20261029180613_sales_institutional_roles.sql", "utf8");
@@ -15,6 +16,48 @@ beforeAll(async () => {
   for (const f of readdirSync("supabase/migrations").sort()) await db.exec(readFileSync(`supabase/migrations/${f}`, "utf8"));
 }, 60_000);
 afterAll(async () => { await db.close(); rmSync(directory, { recursive: true }); });
+
+it("MEL-01: duas rodadas removem somente unidades e histórico próprios, restaurando proteções", async () => {
+  const user = randomUUID(), independent = randomUUID();
+  await db.query("insert into auth.users(id,email,raw_user_meta_data) values($1,'mel01@example.test','{\"display_name\":\"MEL01 sintético\"}')", [user]);
+  await db.query("insert into core.units(id,code,name) values($1,'INDEPENDENTE','Unidade preservada')", [independent]);
+  const users = [{ id: user, email: "mel01@example.test", displayName: "MEL01 sintético" }];
+  const baseline = (await db.query("select * from core.units order by id")).rows;
+  const audit = (await db.query("select * from core.system_audit_log order by id")).rows;
+  const triggers = (await db.query("select tgrelid::regclass::text relation,tgname,tgenabled from pg_trigger where not tgisinternal order by 1,2")).rows;
+  for (let n = 0; n < 2; n++) {
+    const id = randomUUID(), tag = `VEN04B-${randomUUID().slice(0, 8)}`, code = `${tag}-A`;
+    const units = [{ id, code, name: code, tag }];
+    await db.query("insert into core.units(id,code,name) values($1,$2,$2)", [id, code]);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)", [user]);
+    await db.query("insert into sales.entries(sale_date,unit_id,payment_method,amount) values('2049-09-01',$1,'PIX',1)", [id]);
+    await db.query("update sales.entries set deleted_at=now(),deleted_by=$2 where unit_id=$1", [id, user]);
+    await db.query("insert into sales.legacy_monthly_adjustments(competency,unit_id,payment_method,amount,reason) values('2049-09-01',$1,'Stone',50,$2)", [id, `${tag} sintético`]);
+    await db.exec("select set_config('request.jwt.claim.sub','',false)");
+    await db.exec("insert into sales.month_statuses(competency,is_closed,last_day_with_data,source) values('2049-09-01',false,2,'mel01_synthetic')");
+    const result = await retireSalesUnits(db, { units, users, statuses: [{ competency: "2049-09-01", is_closed: false, last_day_with_data: 2, source: "mel01_synthetic" }], backupPath: join(directory, `units-${n}.json`) });
+    expect(result.dryRun).toBe("ROLLBACK");
+    expect(result.protectionsRestored).toBe(true);
+    expect(result.removed["core.units"]).toBe(1);
+    expect(result.removed["sales.entries"]).toBe(1);
+    expect((await db.query("select * from core.units order by id")).rows).toEqual(baseline);
+    expect((await db.query("select * from core.system_audit_log order by id")).rows).toEqual(audit);
+    expect((await db.query("select tgrelid::regclass::text relation,tgname,tgenabled from pg_trigger where not tgisinternal order by 1,2")).rows).toEqual(triggers);
+  }
+});
+
+it("MEL-01: recusa recibo divergente, ajuste externo e FK desconhecida sem alterar dados", async () => {
+  const id = randomUUID(), tag = `VEN03-${randomUUID().slice(0, 8)}`, code = `${tag}-A`;
+  await db.query("insert into core.units(id,code,name) values($1,$2,$2)", [id, code]);
+  const run = (units = [{ id, code, name: code, tag }]) => retireSalesUnits(db, { units, users: [], backupPath: join(directory, "blocked-units.json") });
+  await expect(run([{ id, code: `${tag}-B`, name: code, tag }])).rejects.toThrow(/UUID\/código/);
+  await db.query("insert into sales.legacy_monthly_adjustments(competency,unit_id,payment_method,amount,reason) values('2050-01-01',$1,'Stone',1,'Histórico externo')", [id]);
+  await expect(run()).rejects.toThrow(/Ajuste externo/);
+  await db.exec("create table public.synthetic_unit_fk(unit_id uuid references core.units(id))");
+  await expect(run()).rejects.toThrow(/FK desconhecida/);
+  expect((await db.query("select id from core.units where id=$1", [id])).rows).toEqual([{ id }]);
+  expect((await db.query("select tgname from pg_trigger where tgenabled='D' and not tgisinternal")).rows).toEqual([]);
+});
 
 it("composição protegida exata, sem atribuição automática, idempotência e D5-B", async () => {
   for (let n = 0; n < 2; n++) {

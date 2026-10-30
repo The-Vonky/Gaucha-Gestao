@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { chromium, expect } from "playwright/test";
 import { salesLocalWeb } from "./sales-local-web.mjs";
 import { SalesLocalDatabase } from "./sales-local.mjs";
+import { retireSalesUnits } from "./sales-unit-cleanup.mjs";
 import { retireSalesRoles, finishSalesLocal } from "./sales-role-cleanup.mjs";
 
 // Somente notebook autorizado, reutilizando cadastros sintéticos inativos VEN-04A.
@@ -20,13 +21,9 @@ const config = JSON.parse(execFileSync(cli, ["status", "-o", "json"], { encoding
 assert.equal(config.API_URL, "http://127.0.0.1:54321");
 assert.equal(new URL(config.DB_URL).hostname, "127.0.0.1");
 assert.equal(new URL(config.DB_URL).port, "54322");
-const units = (await db.query("select id,code,active from core.units where code=any($1::text[]) order by code", [[`${reuse}-A`, `${reuse}-B`, `${reuse}-C`]])).rows;
-assert.equal(units.length, 3); assert.equal(units.every(u => !u.active), true, "Reutilizar somente fixtures sintéticas inativas.");
-const [A, B, C] = units.map(u => u.id);
-assert.equal((await db.query("select count(*)::int n from sales.entries where unit_id=any($1::uuid[]) and deleted_at is null", [[A, B, C]])).rows[0].n, 0, "Fixture reutilizada contém lançamento ativo: diagnosticar antes de escrever");
-const sector = (await db.query("select id,active from core.sectors where code=$1", [`${reuse}-S`])).rows[0];
-assert.ok(sector && !sector.active);
-const tag = `VEN04B-${reuse.slice(7)}`, people = {}, roles = [], entries = [];
+const A = randomUUID(), B = randomUUID(), C = randomUUID(), sector = { id: randomUUID() };
+const tag = `VEN04B-${randomUUID().slice(0, 8)}`, people = {}, roles = [], entries = [];
+const statusesOwned = [], snapshotSource = `ven04b_${tag.slice(7)}`;
 const roleReceipts = [], usersProof = [];
 const directory = process.env.VEN04B_ARTIFACT_DIR ?? "/tmp/ven04b-ui";
 mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -95,7 +92,9 @@ async function apply(page, unit, scope = "stone") {
 try {
   server = await salesLocalWeb(config);
   browser = await chromium.launch({ headless: true });
-  await db.query("update core.units set active=true where id=any($1::uuid[])", [[A, B]]);
+  await db.query("insert into core.units(id,code,name) values($1,$4,$4),($2,$5,$5),($3,$6,$6)", [A, B, C, `${tag}-A`, `${tag}-B`, `${tag}-C`]);
+  await db.query("insert into core.sectors(id,code,name) values($1,$2,$2)", [sector.id, `${tag}-S`]);
+  await db.query("insert into core.unit_sectors(unit_id,sector_id) values($1,$2)", [A, sector.id]);
   await db.query("update core.sectors set active=true where id=$1", [sector.id]);
   await identity("global", "operator", ["sales.dashboard.read"], "global");
   await identity("unitA", "reader", ["sales.dashboard.read"], "unit");
@@ -105,12 +104,12 @@ try {
   await identity("denied", "denied", [], null);
   await identity("sector", "sector", ["sales.dashboard.read"], "sector");
   if (process.env.VEN04B_FAIL_AFTER_PREPARE === "1") throw new Error("Falha sintética deliberada após preparação: validar teardown");
-  // Históricos imutáveis são inseridos uma única vez, reaproveitados em reexecuções.
-  // Não apaga nem reescreve snapshots/ajustes; resíduos identificados no manifesto.
-  await db.query("insert into sales.month_statuses(competency,is_closed,last_day_with_data,source) values('2042-07-01',true,31,'ven04b_synthetic'),('2042-09-01',false,2,'ven04b_synthetic') on conflict do nothing");
+  // Snapshots pertencem somente a esta execução; colisão aborta sem adotar dados existentes.
+  await db.query("insert into sales.month_statuses(competency,is_closed,last_day_with_data,source) values('2042-07-01',true,31,$1),('2042-09-01',false,2,$1)", [snapshotSource]);
+  statusesOwned.push({ competency: "2042-07-01", is_closed: true, last_day_with_data: 31, source: snapshotSource }, { competency: "2042-09-01", is_closed: false, last_day_with_data: 2, source: snapshotSource });
   const statuses = (await db.query("select competency::text,is_closed,last_day_with_data,source from sales.month_statuses where competency in ('2042-07-01','2042-09-01') order by competency")).rows;
-  assert.deepEqual(statuses, [{ competency: "2042-07-01", is_closed: true, last_day_with_data: 31, source: "ven04b_synthetic" }, { competency: "2042-09-01", is_closed: false, last_day_with_data: 2, source: "ven04b_synthetic" }]);
-  await db.query("insert into sales.legacy_monthly_adjustments(competency,unit_id,payment_method,amount,reason) values('2042-09-01',$1,'Stone',50,$2) on conflict do nothing", [A, `${tag} oráculo sintético`]);
+  assert.deepEqual(statuses, [{ competency: "2042-07-01", is_closed: true, last_day_with_data: 31, source: snapshotSource }, { competency: "2042-09-01", is_closed: false, last_day_with_data: 2, source: snapshotSource }]);
+  await db.query("insert into sales.legacy_monthly_adjustments(competency,unit_id,payment_method,amount,reason) values('2042-09-01',$1,'Stone',50,$2)", [A, `${tag} oráculo sintético`]);
   assert.equal((await db.query("select amount::text from sales.legacy_monthly_adjustments where competency='2042-09-01' and unit_id=$1 and reason=$2", [A, `${tag} oráculo sintético`])).rows[0]?.amount, "50");
   for (const [date, method, value] of [["2042-09-01", "Stone", "100.00"], ["2042-09-02", "Stone", "150.00"], ["2042-09-01", "PIX", "20.00"], ["2042-09-02", "PIX", "30.00"], ["2042-07-01", "Stone", "200.00"]]) await create(date, A, method, value);
   await create("2042-09-01", B, "Stone", "300.00");
@@ -274,9 +273,11 @@ try {
     () => db.query("update core.units set active=false where id=any($1::uuid[])", [[A, B]]),
     () => db.query("update core.sectors set active=false where id=$1", [sector.id]),
     async () => { manifest.roleCleanup = await retireSalesRoles(db, { roles: roleReceipts, users: usersProof, backupPath: `${directory}/${tag}-${randomUUID()}-roles-preserved.json` }); },
+    async () => { manifest.unitCleanup = await retireSalesUnits(db, { units: [A, B, C].map((id, i) => ({ id, code: `${tag}-${["A", "B", "C"][i]}`, name: `${tag}-${["A", "B", "C"][i]}`, tag })), users: usersProof, statuses: statusesOwned, backupPath: `${directory}/${tag}-units-preserved.json` }); },
+    async () => { assert.equal((await db.query("select count(*)::int n from core.units")).rows[0].n, local.before.units, "Unidades devem retornar à baseline"); },
     async () => {
       manifest.after = (await db.query("select (select count(*)::int from core.roles) roles,(select count(*)::int from sales.entries where deleted_at is null) active_entries")).rows[0];
-      manifest.cleanup = manifest.roleCleanup ? "Papéis e relações sintéticos removidos por UUID após dry-run; perfis/unidades/setor inativos; lançamentos soft-deleted e auditoria preservados." : "Teardown incompleto: preservar resíduos e consultar erros/recibos.";
+      manifest.cleanup = manifest.roleCleanup && manifest.unitCleanup ? "Papéis e relações sintéticos removidos por UUID após dry-run; unidades e histórico estritamente sintético removidos após backup/dry-run; perfis/setor inativos e auditoria independente preservados." : "Teardown incompleto: preservar resíduos e consultar erros/recibos.";
       assert.equal(manifest.after.roles, local.before.roles, "Contagem de papéis deve retornar à baseline");
       manifest.cleanupErrors = errors.length; save();
     },

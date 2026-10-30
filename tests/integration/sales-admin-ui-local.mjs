@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { chromium, expect } from "playwright/test";
 import { salesLocalWeb } from "./sales-local-web.mjs";
 import { SalesLocalDatabase } from "./sales-local.mjs";
+import { retireSalesUnits } from "./sales-unit-cleanup.mjs";
 import { finishSalesLocal } from "./sales-role-cleanup.mjs";
 
 assert.equal(process.env.VEN04B_LOCAL_TEST, "gaucha-gestao-local");
@@ -22,10 +23,8 @@ const person = (await db.query(`select p.id,p.active,u.email from core.profiles 
   where p.display_name=$1`, [`${reuse} denied`])).rows[0];
 assert.ok(person && !person.active); assert.equal(person.email, `${reuse}-denied@example.test`.toLowerCase());
 assert.equal((await db.query("select 1 from core.user_role_assignments where user_id=$1", [person.id])).rowCount, 0);
-const units = (await db.query("select id,active from core.units where code=any($1::text[]) order by code", [[`${reuse}-A`, `${reuse}-B`]])).rows;
-assert.equal(units.length, 2); assert.ok(units.every(u => !u.active));
-const [A, B] = units.map(u => u.id), assignment = randomUUID(), entries = [];
-assert.equal((await db.query("select count(*)::int n from sales.entries where unit_id=any($1::uuid[]) and deleted_at is null", [[A, B]])).rows[0].n, 0, "Fixture reutilizada contém lançamento ativo: preservar");
+const tag = `VEN04B-${randomUUID().slice(0, 8)}`;
+const A = randomUUID(), B = randomUUID(), assignment = randomUUID(), entries = [];
 const role = (await db.query("select id from core.roles where key='platform_administrator' and system and active")).rows[0];
 const manifest = { user: person.id, assignment, role: role.id, units: [A, B], entries, before: local.before, checks: [], cleanup: "Pendente" };
 const save = () => writeFileSync(`${directory}/admin-ui-${assignment}-manifest.json`, JSON.stringify(manifest, null, 2), { mode: 0o600 });
@@ -41,7 +40,7 @@ try {
   const response = await fetch(`${config.API_URL}/auth/v1/admin/users/${person.id}`, { method: "PUT", headers: { apikey: config.SERVICE_ROLE_KEY, Authorization: `Bearer ${config.SERVICE_ROLE_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
   assert.equal(response.status, 200);
   await db.query("update core.profiles set active=true where id=$1", [person.id]);
-  await db.query("update core.units set active=true where id=any($1::uuid[])", [[A, B]]);
+  await db.query("insert into core.units(id,code,name) values($1,$3,$3),($2,$4,$4)", [A, B, `${tag}-A`, `${tag}-B`]);
   await db.query("insert into core.user_role_assignments(id,user_id,role_id,scope_type) values($1,$2,$3,'global')", [assignment, person.id, role.id]);
   must(await client.auth.signInWithPassword({ email: person.email, password }));
   const access = must(await client.schema("core").rpc("my_access"));
@@ -101,7 +100,9 @@ try {
     // Remove somente a atribuição sintética cujo UUID foi registrado ANTES do INSERT.
     () => db.query("delete from core.user_role_assignments where id=$1 and user_id=$2 and role_id=$3 and granted_by is null", [assignment, person.id, role.id]),
     () => db.query("update core.units set active=false where id=any($1::uuid[])", [[A, B]]),
-    async () => { manifest.cleanup = "Atribuição temporária removida; perfil/unidades sintéticos inativos; histórico e auditoria preservados."; manifest.cleanupErrors = errors.length; save(); },
+    async () => { manifest.unitCleanup = await retireSalesUnits(db, { units: [A, B].map((id, i) => ({ id, code: `${tag}-${["A", "B"][i]}`, name: `${tag}-${["A", "B"][i]}`, tag })), users: [{ id: person.id, email: person.email, displayName: `${reuse} denied` }], backupPath: `${directory}/${tag}-units-preserved.json` }); },
+    async () => { assert.equal((await db.query("select count(*)::int n from core.units")).rows[0].n, local.before.units, "Unidades devem retornar à baseline"); },
+    async () => { manifest.cleanup = "Atribuição temporária, unidades e histórico sintético removidos; perfil inativo e auditoria independente preservados."; manifest.cleanupErrors = errors.length; save(); },
     () => local.close(),
   ], errors);
 }

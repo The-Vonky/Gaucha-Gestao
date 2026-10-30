@@ -217,7 +217,7 @@ describe("VEN-04B — autorização independente e estados seguros", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" })); await ready();
   });
   it("vazio não entra em loop de consultas", async () => {
-    const d = dashboardFixture(); d.months = []; d.ranking = []; d.unit_months = []; d.daily = { competency: null, reference_month: null, cutoff_day: null, totals: [], points: [] };
+    const d = dashboardFixture(); d.units = []; d.months = []; d.ranking = []; d.unit_months = []; d.daily = { competency: null, reference_month: null, cutoff_day: null, totals: [], points: [] };
     d.summary.latest = null; d.summary.leader = null; api.salesDashboard.mockResolvedValue(d); mount(); await screen.findByText("Sem movimento no período");
     expect(api.salesDashboard).toHaveBeenCalledTimes(1);
   });

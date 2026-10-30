@@ -40,6 +40,17 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("VEN-04A — acesso e consulta", () => {
+  it("zero unidades mantém a consulta vazia e não oferece cadastro de lançamento", async () => {
+    auth.grants = [grant("read", "global"), grant("create", "global")];
+    api.listSalesUnits.mockResolvedValue([]); api.listEntries.mockResolvedValue([]);
+    mount(); await screen.findByText("Nenhum lançamento encontrado");
+    expect(screen.queryByRole("button", { name: "Novo lançamento" })).toBeNull();
+    expect(within(screen.getByLabelText("Unidade")).getAllByRole("option")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Atualizar consulta" }));
+    await waitFor(() => expect(api.listSalesUnits).toHaveBeenCalledTimes(2));
+    expect(api.createEntry).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
   it("menu Comercial habilita cada capacidade global/unitária, nega setor e inativo", () => {
     for (const action of ["read", "create", "edit", "delete"]) {
       for (const scope of ["global", "unit"] as const) expect(visibleNavigation(true, [grant(action, scope)])[0].destinations[0].path).toBe("/sales");
