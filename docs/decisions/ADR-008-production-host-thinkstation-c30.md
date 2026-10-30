@@ -1,5 +1,7 @@
 # ADR-008 — Host de produção escolhido: Lenovo ThinkStation C30
 
+> **Evidência STAGING posterior — 30/10/2026:** C30 opera aplicação de testes via Cloudflare Tunnel em `teste.gauchagestao.online`, com login e fluxo de auditoria/fotos relatados. Ver [AS-BUILT](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md). Este uso **não** atende automaticamente aos critérios de aceite físico, recuperação/backup, segurança, capacidade e monitoramento exigidos para produção. **Estado de produção permanece NO-GO; nenhuma decisão deste ADR é substituída.**
+
 **Status: Aceito (decisão de arquitetura, não aceite operacional)**  
 **Data: 15/10/2026**  
 **Substitui:** somente a escolha de host físico do [ADR-004](ADR-004-platform-stack.md) (HP ProLiant ML350 e VM Linux). As demais decisões do ADR-004 permanecem válidas.  
