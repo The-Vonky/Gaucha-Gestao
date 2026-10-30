@@ -1,5 +1,7 @@
 # Supabase mínimo reproduzível — CI e laboratório descartável
 
+> **Atualização de 30/10/2026:** a C30 mantém STAGING persistente `gaucha-staging` e agora possui **entrada HTTPS externa para testes** por Cloudflare Tunnel → Caddy 4181. **Não executar comandos destrutivos de laboratório neste host.** Ver [AS-BUILT de 30/10](../docs/operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) e [runbook seguro](../docs/operations/C30_STAGING_CLOUDFLARE_RUNBOOK.md); o estado de 22/10 abaixo é histórico. PROD NO-GO.
+
 **Status:** infraestrutura de validação, **não** receita de produção. Cinco serviços exatos: PostgreSQL 17 (`db`), Kong (`kong`), GoTrue/Auth (`auth`), PostgREST (`rest`) e Storage API (`storage`). Não operar servidor físico, banco preexistente, deploy nem dados produtivos por este procedimento.
 
 Referências: [proveniência do upstream](supabase/UPSTREAM.md), [ADR-006 — Proposto](../docs/decisions/ADR-006-infra-v1-reused-hardware.md), [operações](../docs/operations/OPERATIONS_MATRIX.md).
