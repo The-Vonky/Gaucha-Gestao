@@ -226,8 +226,30 @@ npm run verify:build
 npm audit --audit-level=moderate
 ```
 
-O registro final de comandos/quantidades, SHA e checks GitHub será atualizado após
-as execuções. Nenhuma execução no banco do notebook, C30, STAGING ou PROD é
+### Resultado local registrado em 03/11/2026
+
+Implementação de referência: `4f82117102ad100f87e3e021cf35776ddbfffc39`.
+
+| Comando | Resultado real |
+| --- | --- |
+| `npm run typecheck` | PASS |
+| `npm run lint` | PASS |
+| `npm test` (primeira execução) | 918 PASS / 4 falhas: expectativa histórica de sete RPCs e três timeouts de Auditoria sob concorrência alta |
+| `npm test -- --maxWorkers=2` | **922 PASS / 67 arquivos**, 145,27s, após ajustar a expectativa para oito RPCs |
+| `npm test -- tests/sales-export-database.test.ts tests/sales-zero-units-database.test.ts tests/sales-operations-database.test.ts --maxWorkers=2` no commit de referência | **37 PASS / 3 arquivos**, 13,86s; inclui correção do catálogo vazio global e negativos/grants |
+| `npm run build` | PASS, valores públicos fictícios de CI; aviso informativo de chunk >500 kB |
+| `npm run verify:build` | PASS, aplicação presente e sem chaves privilegiadas no bundle |
+| `npm audit --audit-level=moderate` | PASS, **0 vulnerabilidades** |
+| `node --check tests/integration/sales-export.mjs` / `git diff --check` | PASS |
+
+Os testes de Auditoria não foram alterados; reduzir concorrência de execução
+resolveu os timeouts locais. O readback do writer real, incluindo 20.000 linhas,
+passou na suíte completa. Não há tolerância de centavos.
+
+**Checks GitHub e evidência de integração:** [PR #98](https://github.com/The-Vonky/Gaucha-Gestao/pull/98/checks).
+Consultar o resultado associado ao HEAD da PR; não confundir aprovação local com
+PostgreSQL/Chromium reais. A descrição da PR registra o resultado final dos jobs.
+Nenhuma execução no banco do notebook, C30, STAGING ou PROD é
 autorizada por este contrato. O CI aplica migrations exclusivamente nos seus
 serviços efêmeros. Não é prova de aplicação persistente nem de login em produção.
 
