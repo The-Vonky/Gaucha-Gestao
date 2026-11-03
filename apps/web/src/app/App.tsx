@@ -19,7 +19,7 @@ import { AuditModule } from "../modules/audit/AuditModule";
 import { ActionPlansModule } from "../modules/action-plans/ActionPlansModule";
 import { RoomsPage } from "../modules/rooms/RoomsPage";
 import { AbcModule } from "../modules/abc/AbcModule";
-import { SalesPage } from "../modules/sales/SalesPage";
+import { SalesModule } from "../modules/sales/SalesModule";
 import { BrandMark, Loader } from "../shared/brand";
 import { Icon } from "../shared/icons";
 import { Drawer, EmptyState, IconButton, Notice } from "../shared/ui";
@@ -336,6 +336,7 @@ function Avatar({ name }: { name?: string }) {
 }
 function Breadcrumbs({ current }: { current?: Destination }) {
   const { pathname } = useLocation();
+  const salesChild = current?.path === "/sales" ? current.children?.find(c => c.path === pathname) : undefined;
   return (
     <nav className="crumbs" aria-label="Você está em">
       <ol>
@@ -358,6 +359,7 @@ function Breadcrumbs({ current }: { current?: Destination }) {
                 <Link to={current.path}>{current.label}</Link>
               )}
             </li>
+            {salesChild && <li><span aria-current="page">{salesChild.label}</span></li>}
           </>
         )}
       </ol>
@@ -500,7 +502,7 @@ function Shell() {
     document.getElementById("main")?.focus({ preventScroll: true });
   }, [location.pathname]);
   const pages: Record<string, ReactNode> = {
-    "/sales": <SalesPage />,
+    "/sales": <SalesModule />,
     "/audit": <AuditModule />,
     "/action-plans": <ActionPlansModule />,
     "/abc": <AbcModule />,
@@ -513,7 +515,7 @@ function Shell() {
     "/admin/sectors": <OrganizationPage key="sectors" kind="sectors" />,
     "/admin/logs": <LogsPage />,
   };
-  const current = destinations.find(
+  const current = [...destinations].sort((a, b) => b.path.length - a.path.length).find(
     (d) =>
       location.pathname === d.path ||
       location.pathname.startsWith(`${d.path}/`),

@@ -4,8 +4,10 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { chromium, expect } from "playwright/test";
-import { createServer } from "vite";
+import { salesLocalWeb } from "./sales-local-web.mjs";
 import { SalesLocalDatabase } from "./sales-local.mjs";
+import { retireSalesUnits } from "./sales-unit-cleanup.mjs";
+import { retireSalesRoles, finishSalesLocal } from "./sales-role-cleanup.mjs";
 
 // Opt-in e inspeção Docker impedem execução em outros destinos. Sem reset/seed geral.
 assert.equal(process.env.VEN04A_LOCAL_TEST, "gaucha-gestao-local");
@@ -22,9 +24,12 @@ assert.ok((await db.query("select to_regprocedure('public.sales_operation_units(
 const tag = `VEN04A-${randomUUID().slice(0, 8)}`;
 const A = randomUUID(), B = randomUUID(), C = randomUUID(), sector = randomUUID();
 const people = {}, roles = [], entries = [];
-const manifest = { tag, units: [A, B, C], sectors: [sector], roles, users: [], entries, checks: [], screenshots: [], cleanup: "Pendente" };
+const roleReceipts = [], usersProof = [];
+const manifest = { tag, units: [A, B, C], sectors: [sector], roles, users: [], entries, checks: [], screenshots: [], before: local.before, cleanup: "Pendente" };
 const directory = process.env.VEN04A_ARTIFACT_DIR ?? "/tmp/ven04a-ui";
 mkdirSync(directory, { recursive: true, mode: 0o700 });
+const save = () => writeFileSync(`${directory}/${tag}-manifest.json`, JSON.stringify({ ...manifest, roleReceipts, usersProof }, null, 2), { mode: 0o600 });
+save();
 let browser, server, lastPage;
 const options = { auth: { persistSession: false, autoRefreshToken: false } };
 function must(response) { assert.equal(response.error, null, "RPC sintética local deve ser aceita."); return response.data; }
@@ -41,6 +46,8 @@ async function identity(name, actions, units, scope = "unit") {
   });
   assert.equal(response.status, 200, "Auth sintético local");
   const { id } = await response.json(); manifest.users.push(id);
+  usersProof.push({ id, email: email.toLowerCase(), displayName: `${tag} ${name}` });
+  roleReceipts.push({ id: role, key: `${tag.toLowerCase()}-${name}` }); save();
   const client = createClient(config.API_URL, config.ANON_KEY, options);
   must(await client.auth.signInWithPassword({ email, password }));
   people[name] = { id, client, email, password };
@@ -83,6 +90,7 @@ async function fill(page, date, value, method = "Stone", unit = A) {
   await dialog.getByRole("button", { name: "Salvar", exact: true }).click();
 }
 try {
+  server = await salesLocalWeb(config);
   browser = await chromium.launch({ headless: true });
   await db.query("insert into core.units(id,code,name) values($1,$4,$4),($2,$5,$5),($3,$6,$6)", [A, B, C, `${tag}-A`, `${tag}-B`, `${tag}-C`]);
   await db.query("insert into core.sectors(id,code,name) values($1,$2,$2)", [sector, `${tag}-S`]);
@@ -112,10 +120,7 @@ try {
   manifest.checks.push("Auth/PostgREST: login, criação isolada, setor/sem papel negados, unidade indevida, duplicidade, inativa, transferência e valores inválidos.");
 
   // Apenas chaves públicas no processo Vite; nenhuma credencial administrativa é injetada.
-  process.env.VITE_SUPABASE_URL = config.API_URL;
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY = config.ANON_KEY;
-  server = await createServer({ configFile: "apps/web/vite.config.ts", root: "apps/web", server: { host: "127.0.0.1", port: 5173, strictPort: true } });
-  await server.listen();
+
   const creator = await login("creator");
   const requests = [];
   creator.page.on("request", request => { if (request.url().includes("/rest/v1/rpc/")) requests.push(new URL(request.url()).pathname); });
@@ -134,10 +139,10 @@ try {
   assert.equal(requests.some(url => /sales_entries_list|sales_entry_detail|sales_dashboard/.test(url)), false);
   await creator.context.close();
   const reader = await login("reader");
-  await expect(reader.page.getByRole("heading", { name: "Vendas / Maquininhas", exact: true })).toBeVisible();
+  await expect(reader.page.getByRole("heading", { name: "Lançamentos", exact: true })).toBeVisible();
   await apply(reader.page);
   await expect(reader.page.getByRole("row").filter({ has: reader.page.getByRole("cell", { name: "01/01/2040", exact: true }) }).getByRole("cell", { name: "R$ 1.250,30", exact: true })).toBeVisible();
-  assert.equal(await reader.page.getByRole("button", { name: "Novo lançamento", exact: true }).count(), 0);
+  await expect(reader.page.getByRole("button", { name: "Novo lançamento", exact: true })).toBeDisabled();
   assert.equal(await reader.page.getByRole("button", { name: /^Editar / }).count(), 0);
   await apply(reader.page, "PIX", B);
   await expect(reader.page.getByRole("cell", { name: "R$ 0,01", exact: true })).toBeVisible();
@@ -188,7 +193,7 @@ try {
   await apply(operator.page);
   for (const width of [375, 768, 1024, 1440]) {
     await operator.page.setViewportSize({ width, height: 960 });
-    await expect(operator.page.getByRole("heading", { name: "Vendas / Maquininhas", exact: true })).toBeVisible();
+    await expect(operator.page.getByRole("heading", { name: "Lançamentos", exact: true })).toBeVisible();
     const overflow = await operator.page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     assert.equal(overflow, false, `Sem overflow da página em ${width}px`);
     const table = operator.page.getByRole("region", { name: "Tabela de registros", exact: true });
@@ -197,7 +202,7 @@ try {
     const action = operator.page.getByRole("button", { name: "Excluir 05/01/2040 PIX" });
     await expect(action).toBeInViewport();
     await table.evaluate(el => { el.scrollLeft = 0; });
-    await operator.page.getByRole("heading", { name: "Vendas / Maquininhas", exact: true }).click();
+    await operator.page.getByRole("heading", { name: "Lançamentos", exact: true }).click();
     await operator.page.evaluate(() => window.scrollTo(0, 0));
     const screenshot = `${directory}/${tag}-${width}.png`;
     await operator.page.screenshot({ path: screenshot, fullPage: true }); manifest.screenshots.push(screenshot);
@@ -217,7 +222,7 @@ try {
   await operator.context.close();
   for (const name of ["denied", "sector"]) {
     const denied = await login(name); await expect(denied.page.getByRole("heading", { name: "Acesso não autorizado" })).toBeVisible();
-    assert.equal(await denied.page.getByRole("link", { name: "Vendas / Maquininhas", exact: true }).count(), 0); await denied.context.close();
+    assert.equal(await denied.page.getByRole("button", { name: "Vendas / Maquininhas", exact: true }).count(), 0); await denied.context.close();
   }
   await db.query("update core.user_role_assignments set active=false where user_id=$1", [people.reader.id]);
   assert.equal((await rpc("reader", "entries_list")).error?.code, "42501");
@@ -234,21 +239,34 @@ try {
   }
   throw error;
 } finally {
-  await browser?.close(); await server?.close();
-  // Somente UUIDs/tag desta execução; consulta inclui os criados pela interface.
-  const rows = (await db.query("select id,version from sales.entries where unit_id=any($1::uuid[]) and deleted_at is null", [[A, B, C]])).rows;
-  for (const e of rows) {
-    if (!entries.includes(e.id)) entries.push(e.id);
-    must(await rpc("operator", "entry_delete", { p_id: e.id, p_expected_version: e.version }));
-  }
-  for (const person of Object.values(people)) await person.client.auth.signOut();
-  await db.query("update core.profiles set active=false where id=any($1::uuid[])", [manifest.users]);
-  await db.query("update core.user_role_assignments set active=false where user_id=any($1::uuid[])", [manifest.users]);
-  await db.query("update core.roles set active=false where id=any($1::uuid[])", [roles]);
-  await db.query("update core.units set active=false where id=any($1::uuid[])", [[A, B, C]]);
-  await db.query("update core.sectors set active=false where id=$1", [sector]);
-  manifest.cleanup = "Lançamentos soft-deleted via VEN-02; logout; perfis/papéis/atribuições/unidades/setor sintéticos inativos; auditoria preservada. Sem exclusão física.";
-  writeFileSync(`${directory}/${tag}-manifest.json`, JSON.stringify(manifest, null, 2), { mode: 0o600 });
-  writeFileSync(`${directory}/latest-manifest.json`, JSON.stringify(manifest, null, 2), { mode: 0o600 });
-  await local.close(); console.log("Resíduos sintéticos inativados; manifesto sem credenciais:", `${directory}/${tag}-manifest.json`);
+  const errors = [];
+  await finishSalesLocal([
+    () => browser?.close(),
+    () => server?.close(),
+    async () => {
+      // Somente unidades sintéticas comprovadas; autoria deve pertencer ao recibo.
+      const rows = (await db.query("select id,version,created_by from sales.entries where unit_id=any($1::uuid[]) and deleted_at is null", [[A, B, C]])).rows;
+      for (const row of rows) {
+        try {
+          assert.ok(manifest.users.includes(row.created_by), "Autoria externa: preservar lançamento");
+          if (!entries.includes(row.id)) entries.push(row.id);
+          must(await rpc("operator", "entry_delete", { p_id: row.id, p_expected_version: row.version }));
+        } catch (error) { errors.push(error); }
+      }
+    },
+    async () => { for (const person of Object.values(people)) await person.client.auth.signOut(); },
+    () => db.query("update core.profiles set active=false where id=any($1::uuid[])", [manifest.users]),
+    () => db.query("update core.units set active=false where id=any($1::uuid[])", [[A, B, C]]),
+    () => db.query("update core.sectors set active=false where id=$1", [sector]),
+    async () => { manifest.roleCleanup = await retireSalesRoles(db, { roles: roleReceipts, users: usersProof, backupPath: `${directory}/${tag}-${randomUUID()}-roles-preserved.json` }); },
+    async () => { manifest.unitCleanup = await retireSalesUnits(db, { units: [A, B, C].map((id, i) => ({ id, code: `${tag}-${["A", "B", "C"][i]}`, name: `${tag}-${["A", "B", "C"][i]}`, tag })), users: usersProof, backupPath: `${directory}/${tag}-units-preserved.json` }); },
+    async () => { assert.equal((await db.query("select count(*)::int n from core.units")).rows[0].n, local.before.units, "Unidades devem retornar à baseline"); },
+    async () => {
+      manifest.after = (await db.query("select (select count(*)::int from core.roles) roles,(select count(*)::int from sales.entries where deleted_at is null) active_entries")).rows[0];
+      manifest.cleanup = manifest.roleCleanup && manifest.unitCleanup ? "Papéis e relações sintéticos removidos por UUID após dry-run; unidades e histórico estritamente sintético removidos após backup/dry-run; perfis/setor inativos e auditoria independente preservados." : "Teardown incompleto: preservar resíduos e consultar erros/recibos.";
+      assert.equal(manifest.after.roles, local.before.roles, "Contagem de papéis deve retornar à baseline");
+      manifest.cleanupErrors = errors.length; save();
+    },
+    () => local.close(),
+  ], errors);
 }
