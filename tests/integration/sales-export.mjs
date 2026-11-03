@@ -116,15 +116,24 @@ try {
   await server.listen(); const address = server.httpServer.address();
   browser = await chromium.launch({ headless: true }); const context = await browser.newContext({ acceptDownloads: true, viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
+  phase = "Chromium — abrir login";
   await page.goto(`http://127.0.0.1:${address.port}/sales/entries?from=2026-09-01&to=2026-09-30&method=Stone`);
+  phase = "Chromium — autenticar identidade sintética";
   await page.getByLabel("E-mail", { exact: true }).fill(users.unit.email); await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  phase = "Chromium — carregar consulta operacional";
   await page.getByRole("button", { name: "Exportar período filtrado", exact: true }).waitFor();
   // Rascunho não confirmado: download ainda deve representar setembro/Stone.
-  await page.getByLabel("Forma de pagamento", { exact: true }).selectOption("PIX");
+  await page.locator('select[name="method"]').selectOption("PIX");
+  phase = "Chromium — gerar e baixar XLSX";
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Exportar período filtrado", exact: true }).click();
-  const download = await downloadPromise;
+  const outcome = await Promise.race([
+    downloadPromise.then(download => ({ download })),
+    page.locator(".sales-export [role=alert]").waitFor().then(async () => ({ error: await page.locator(".sales-export [role=alert]").textContent() })),
+  ]);
+  assert.ok(!outcome.error, outcome.error); // Somente mensagem já sanitizada pela UI.
+  const download = outcome.download;
   assert.match(download.suggestedFilename(), /^vendas-periodo-filtrado-\d{14}\.xlsx$/);
   const bytes = await readFile(await download.path()); const sheets = await readExcelFile(bytes, { trim: false });
   assert.deepEqual(sheets.map(s => s.sheet), ["Lançamentos", "Ajustes mensais", "Resumo"]);

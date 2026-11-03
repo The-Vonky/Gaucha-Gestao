@@ -73,6 +73,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # Aplicação/writer/download reais com transporte interceptado, sem banco.
+      - run: node tests/integration/sales-export-browser.mjs
       # Disposable local services only; no linked project or deployment credentials.
       # Storage API is required by the evidence suite; imgproxy stays excluded.
       - run: npx --yes supabase@2.117.0 start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor

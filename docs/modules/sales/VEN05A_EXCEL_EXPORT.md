@@ -206,6 +206,7 @@ Testes abrem o ZIP/XLSX e rejeitam tags `<f>`, hyperlinks, vínculos externos e 
 | API | `tests/sales-export-api.test.ts`: paginação, contrato/tipos, duplicações/ordem, totais inconsistentes, cancelamento, token alterado, sessão expirada e erros sem detalhes SQL |
 | XLSX real | `tests/sales-export-workbook.test.ts`: writer instalado + `read-excel-file`, XML interno, tipos, limites, injeção nos três campos, Unicode/controles, abas, datas/fuso e 20.000 linhas |
 | UI/download | `tests/sales-export-ui.test.tsx`, `tests/sales-export-download.test.ts`: aplicado vs rascunho, fim de mês, Stone, histórico sem filtros, negações, estados, recuperação, revogação final, troca de identidade e ObjectURL |
+| Chromium com transporte sintético | `tests/integration/sales-export-browser.mjs`: aplicação, writer, download e readback reais, API/Auth inteiramente interceptados, sem acesso a banco; executado localmente com PASS e adicionado antes da inicialização Supabase no CI |
 | PostgreSQL17 real no CI | matriz `sales-integration` acrescenta `export`, roda a mesma suíte de banco em serviço vazio do runner |
 | Auth/PostgREST/Chromium no CI | `tests/integration/sales-export.mjs`, guarda exclusiva de runner hospedado antes de ler configuração; JWTs reais, >1.000 registros, unidades autorizadas, mutação, bloqueio Core observado nas duas ordens e download/readback/XML pelo navegador |
 
@@ -241,6 +242,7 @@ Implementação de referência: `4f82117102ad100f87e3e021cf35776ddbfffc39`.
 | `npm run verify:build` | PASS, aplicação presente e sem chaves privilegiadas no bundle |
 | `npm audit --audit-level=moderate` | PASS, **0 vulnerabilidades** |
 | `node --check tests/integration/sales-export.mjs` / `git diff --check` | PASS |
+| `node tests/integration/sales-export-browser.mjs` (Chromium já instalado no ambiente) | PASS: login sintético, aplicação e writer reais, rascunho PIX sem aplicação não altera arquivo Stone, download/readback e total `0.11`; nenhum banco consultado |
 
 Os testes de Auditoria não foram alterados; reduzir concorrência de execução
 resolveu os timeouts locais. O readback do writer real, incluindo 20.000 linhas,
@@ -282,6 +284,13 @@ contexto antes da preparação pelo owner do CI; os dois participantes da corrid
 e o browser continuam usando seus papéis/identidades restritos. Nenhum helper,
 grant ou contrato de autorização de produção foi relaxado. Diagnóstico de falha
 registra SQLSTATE sem anexar payloads de Auth.
+
+**Correção do seletor Chromium:** a segunda execução ultrapassou as duas ordens
+da corrida e parou ao localizar a forma de pagamento pelo texto exato do label.
+O padrão do formulário inclui o texto das opções no label; o ensaio agora usa
+`select[name="method"]`. A prova local com transporte interceptado reproduziu
+essa falha e passou após a correção, incluindo download/readback. O teste real
+ganhou identificação de cada etapa e captura apenas da mensagem sanitizada da UI.
 
 ## Limpeza Git comprovada
 
