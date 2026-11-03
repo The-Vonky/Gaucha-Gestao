@@ -1,0 +1,218 @@
+{
+  "violations": [],
+  "passes": 27,
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "targets": [
+        [
+          "svg[viewBox=\"0 0 629 310\"] > .sales-grid[aria-hidden=\"true\"] > g:nth-child(1) > text[y=\"262\"][x=\"82\"][text-anchor=\"end\"]"
+        ],
+        [
+          "svg[viewBox=\"0 0 629 310\"] > .sales-grid[aria-hidden=\"true\"] > g:nth-child(2) > text[y=\"205.5\"][x=\"82\"][text-anchor=\"end\"]"
+        ],
+        [
+          "svg[viewBox=\"0 0 629 310\"] > .sales-grid[aria-hidden=\"true\"] > g:nth-child(3) > text[y=\"149\"][x=\"82\"][text-anchor=\"end\"]"
+        ],
+        [
+          "svg[viewBox=\"0 0 629 310\"] > .sales-grid[aria-hidden=\"true\"] > g:nth-child(4) > text[y=\"92.5\"][x=\"82\"][text-anchor=\"end\"]"
+        ],
+        [
+          "svg[viewBox=\"0 0 629 310\"] > .sales-grid[aria-hidden=\"true\"] > g:nth-child(5) > text[y=\"36\"][x=\"82\"][text-anchor=\"end\"]"
+        ],
+        [
+          ".sales-average-label"
+        ],
+        [
+          "text[y=\"141.3\"]"
+        ],
+        [
+          "text[x=\"130\"][y=\"288\"][text-anchor=\"middle\"]"
+        ],
+        [
+          "text[y=\"107.4\"]"
+        ],
+        [
+          "text[x=\"215.8\"][y=\"288\"][text-anchor=\"middle\"]"
+        ],
+        [
+          "text[y=\"124.35\"]"
+        ],
+        [
+          "text[x=\"301.6\"][y=\"288\"][text-anchor=\"middle\"]"
+        ],
+        [
+          "text[y=\"62.19999999999999\"]"
+        ],
+        [
+          "text[x=\"387.4\"][y=\"288\"][text-anchor=\"middle\"]"
+        ],
+        [
+          "text[y=\"84.80000000000001\"]"
+        ],
+        [
+          "text[x=\"473.20000000000005\"][y=\"288\"][text-anchor=\"middle\"]"
+        ],
+        [
+          "text[y=\"158.25\"]"
+        ],
+        [
+          "text[x=\"559\"][y=\"288\"][text-anchor=\"middle\"]"
+        ],
+        [
+          "svg[viewBox=\"0 0 1074 310\"][width=\"1074\"][aria-label=\"Gráfico de barras empilhadas\"] > .sales-grid[aria-hidden=\"true\"] > g:nth-child(1) > text[y=\"262\"][x=\"82\"][text-anchor=\"end\"]"
+        ],
+        [
+          "svg[viewBox=\"0 0 1074 310\"][width=\"1074\"][aria-label=\"Gráfico de barras empilhadas\"] > .sales-grid[aria-hidden=\"true\"] > g:nth-child(2) > text[y=\"205.5\"][x=\"82\"][text-anchor=\"end\"]"
+        ],
+        [
+          "svg[viewBox=\"0 0 1074 310\"][width=\"1074\"][aria-label=\"Gráfico de barras empilhadas\"] > .sales-grid[aria-hidden=\"true\"] > g:nth-child(3) > text[y=\"149\"][x=\"82\"][text-anchor=\"end\"]"
+        ],
+        [
+          "svg[viewBox=\"0 0 1074 310\"][width=\"1074\"][aria-label=\"Gráfico de barras empilhadas\"] > .sales-grid[aria-hidden=\"true\"] > g:nth-child(4) > text[y=\"92.5\"][x=\"82\"][text-anchor=\"end\"]"
+        ],
+        [
+          "svg[viewBox=\"0 0 1074 310\"][width=\"1074\"][aria-label=\"Gráfico de barras empilhadas\"] > .sales-grid[aria-hidden=\"true\"] > g:nth-child(5) > text[y=\"36\"][x=\"82\"][text-anchor=\"end\"]"
+        ],
+        [
+          "text[x=\"170.66666666666669\"]"
+        ],
+        [
+          "text[x=\"328\"]"
+        ],
+        [
+          "text[x=\"485.33333333333337\"]"
+        ],
+        [
+          "text[x=\"642.6666666666667\"]"
+        ],
+        [
+          "text[x=\"800\"]"
+        ],
+        [
+          "text[x=\"957.3333333333334\"]"
+        ],
+        [
+          "tr:nth-child(1) > td:nth-child(8)"
+        ],
+        [
+          "tr:nth-child(1) > td:nth-child(9)"
+        ],
+        [
+          "tr:nth-child(2) > td:nth-child(8)"
+        ],
+        [
+          "tr:nth-child(2) > td:nth-child(9)"
+        ],
+        [
+          "tr:nth-child(2) > td:nth-child(9) > small"
+        ],
+        [
+          "tr:nth-child(3) > td:nth-child(8)"
+        ],
+        [
+          "tr:nth-child(3) > td:nth-child(9)"
+        ],
+        [
+          "tr:nth-child(3) > td:nth-child(9) > small"
+        ],
+        [
+          "tr:nth-child(4) > td:nth-child(8)"
+        ],
+        [
+          "tr:nth-child(4) > td:nth-child(9)"
+        ],
+        [
+          "tr:nth-child(4) > td:nth-child(9) > small"
+        ],
+        [
+          "tr:nth-child(5) > td:nth-child(8)"
+        ],
+        [
+          "tr:nth-child(5) > td:nth-child(9)"
+        ],
+        [
+          "tr:nth-child(5) > td:nth-child(9) > small"
+        ],
+        [
+          "tr:nth-child(6) > td:nth-child(8)"
+        ],
+        [
+          "tr:nth-child(6) > td:nth-child(9)"
+        ],
+        [
+          "tr:nth-child(6) > td:nth-child(9) > small"
+        ],
+        [
+          "svg[viewBox=\"0 0 1074 310\"][width=\"1074\"][aria-label=\"Gráfico de acumulado diário\"] > .sales-grid[aria-hidden=\"true\"] > g:nth-child(1) > text[y=\"262\"][x=\"82\"][text-anchor=\"end\"]"
+        ],
+        [
+          "text[y=\"186.666742\"]"
+        ],
+        [
+          "text[y=\"111.333484\"]"
+        ],
+        [
+          "g:nth-child(4) > text[y=\"36\"][x=\"82\"][text-anchor=\"end\"]"
+        ],
+        [
+          "text[y=\"131\"]"
+        ],
+        [
+          "text[x=\"993.5333333333333\"]"
+        ],
+        [
+          "text[y=\"302\"]"
+        ],
+        [
+          "text[x=\"110\"]"
+        ],
+        [
+          "text[x=\"231.86666666666667\"]"
+        ],
+        [
+          "text[x=\"384.2\"]"
+        ],
+        [
+          "text[x=\"536.5333333333333\"][y=\"280\"][text-anchor=\"middle\"]"
+        ],
+        [
+          "text[x=\"688.8666666666667\"]"
+        ],
+        [
+          "text[x=\"841.2\"]"
+        ],
+        [
+          "text[x=\"1024\"]"
+        ],
+        [
+          ".sales-context > div:nth-child(1) > dt"
+        ],
+        [
+          ".sales-context > div:nth-child(1) > dd"
+        ],
+        [
+          ".sales-context > div:nth-child(3) > dd"
+        ],
+        [
+          "div[aria-label=\"Reconciliação interna\"] > table > tbody > tr:nth-child(1) > td:nth-child(6)"
+        ],
+        [
+          "div[aria-label=\"Reconciliação interna\"] > table > tbody > tr:nth-child(2) > td:nth-child(6)"
+        ],
+        [
+          "div[aria-label=\"Reconciliação interna\"] > table > tbody > tr:nth-child(3) > td:nth-child(6)"
+        ],
+        [
+          "div[aria-label=\"Reconciliação interna\"] > table > tbody > tr:nth-child(4) > td:nth-child(6)"
+        ],
+        [
+          "div[aria-label=\"Reconciliação interna\"] > table > tbody > tr:nth-child(5) > td:nth-child(6)"
+        ],
+        [
+          "div[aria-label=\"Reconciliação interna\"] > table > tbody > tr:nth-child(6) > td:nth-child(6)"
+        ]
+      ]
+    }
+  ]
+}

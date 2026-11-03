@@ -1,0 +1,24 @@
+{
+  "baseline": "worktree",
+  "widths": [
+    1440,
+    1024,
+    768,
+    375
+  ],
+  "checks": [
+    "1440: controles de 44px, legendas com estilos idênticos, cores do mix, diário independente, scroll, reload, Voltar/Avançar",
+    "1440: quatro KPIs, três insights, três gráficos com 310px, reduced-motion e ausência de overflow externo",
+    "1024: controles de 44px, legendas com estilos idênticos, cores do mix, diário independente, scroll, reload, Voltar/Avançar",
+    "1024: quatro KPIs, três insights, três gráficos com 310px, reduced-motion e ausência de overflow externo",
+    "768: controles de 44px, legendas com estilos idênticos, cores do mix, diário independente, scroll, reload, Voltar/Avançar",
+    "768: quatro KPIs, três insights, três gráficos com 310px, reduced-motion e ausência de overflow externo",
+    "375: controles de 44px, legendas com estilos idênticos, cores do mix, diário independente, scroll, reload, Voltar/Avançar",
+    "375: quatro KPIs, três insights, três gráficos com 310px, reduced-motion e ausência de overflow externo",
+    "Tooltip por foco/Escape; legenda sem RPC; combinado exato, URL e reload",
+    "Seletores/radios por teclado; reflow em 720px equivalente a 200% de 1440px sem overflow (zoom nativo não automatizado)",
+    "Nomes extensos e total além de MAX_SAFE_INTEGER em 1440/375 sem overflow externo"
+  ],
+  "errors": [],
+  "transport": "Auth/RPC interceptados, nenhuma escrita no banco"
+}

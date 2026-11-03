@@ -1,0 +1,535 @@
+// @vitest-environment jsdom
+import React from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
+import { can, type AccessGrant } from "../apps/web/src/core/auth/permissions";
+import { visibleNavigation } from "../apps/web/src/app/navigation";
+import { SalesDashboardPage } from "../apps/web/src/modules/sales/SalesDashboardPage";
+import { SalesPage } from "../apps/web/src/modules/sales/SalesPage";
+import type { SalesDashboard } from "../apps/web/src/modules/sales/types";
+import { A, B, C, dashboardFixture } from "./fixtures/sales-dashboard";
+
+const api = vi.hoisted(() => ({ salesDashboard: vi.fn(), listEntries: vi.fn(), entryDetail: vi.fn(), listSalesUnits: vi.fn() }));
+const auth = vi.hoisted(() => ({ profile: { active: true }, session: { user: { id: "dashboard-user" } }, grants: [] as AccessGrant[], loading: false, error: "", refresh: vi.fn() }));
+vi.mock("../apps/web/src/core/auth/AuthProvider", () => ({ useAuth: () => ({ ...auth, can: (p: string, scope = {}) => can(auth.profile.active, auth.grants, p, scope) }) }));
+vi.mock("../apps/web/src/modules/sales/api", async original => ({ ...await original<object>(), ...api }));
+function grant(permission = "sales.dashboard.read", scope_type: AccessGrant["scope_type"] = "global", unit_id = A): AccessGrant {
+  return { permission, scope_type, unit_id: scope_type === "global" ? null : unit_id, sector_id: scope_type === "sector" ? "S" : null };
+}
+function Location() { const location = useLocation(), navigate = useNavigate(); return <><output data-testid="url">{location.pathname}{location.search}</output><button onClick={() => void navigate(-1)}>Navegador anterior</button><button onClick={() => void navigate(1)}>Navegador seguinte</button></>; }
+function mount(search = "from=2026-09&to=2026-09") { return render(<MemoryRouter initialEntries={[`/sales/dashboard?${search}`]}><SalesDashboardPage /><Location /></MemoryRouter>); }
+const figure = (title: string) => screen.getByRole("figure", { name: new RegExp(`^${title}`) });
+const metric = (title: string) => screen.getByText(title, { exact: true }).closest(".metric")!;
+const total = () => metric("Total financeiro do período").textContent;
+async function ready() { await screen.findByText("Total financeiro do período", { exact: true }); }
+function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
+function apply() { fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros", exact: true })); }
+beforeEach(() => {
+  vi.resetAllMocks(); auth.profile.active = true; auth.loading = false; auth.error = ""; auth.session.user.id = "dashboard-user"; auth.grants = [grant()];
+  api.salesDashboard.mockImplementation(async filters => ({ ...dashboardFixture(filters.scope === "combined"), filters: { ...filters, unit_ids: filters.unit_ids ?? [A, B] } }));
+});
+afterEach(cleanup);
+
+describe("VEN-04B — painel financeiro completo", () => {
+  it("Stone padrão, oráculo exato, diário sem ajuste e estimativa explícita", async () => {
+    mount(); await ready(); expect(total()).toContain("R$ 300,00");
+    expect(api.salesDashboard).toHaveBeenCalledWith({ from: "2026-09-01", to: "2026-09-01", scope: "stone" });
+    const daily = figure("Acumulado diário e projeção");
+    expect(daily.textContent).toContain("R$ 250,00"); expect(daily.textContent).toContain("R$ 3.750,00"); expect(daily.textContent).toContain("estimativa");
+    const recon = figure("Contexto da base e reconciliação"); expect(recon.textContent).toContain("R$ 50,00"); expect(recon.textContent).toContain("R$ 0,00");
+    expect(api.listEntries).not.toHaveBeenCalled(); expect(api.entryDetail).not.toHaveBeenCalled(); expect(api.listSalesUnits).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: "Ir para lançamentos", exact: true })).toBeNull();
+  });
+  it("alternância Stone + PIX atualiza total350 / diário300 / projeção4500 e coluna PIX", async () => {
+    mount(); await ready(); fireEvent.click(screen.getByRole("radio", { name: "Stone + PIX", exact: true })); apply(); await ready();
+    expect(total()).toContain("R$ 350,00"); expect(figure("Acumulado diário").textContent).toContain("R$ 300,00"); expect(figure("Acumulado diário").textContent).toContain("R$ 4.500,00");
+    expect(within(figure("Resumo mensal")).getByRole("columnheader", { name: "PIX", exact: true })).toBeTruthy();
+  });
+  it("representa todos os gráficos, média, marcador parcial, intensidade, referência lacunar e insights", async () => {
+    mount(); await ready();
+    for (const title of ["Evolução mensal", "Ranking de unidades", "Composição mensal por unidade", "Heatmap", "Resumo mensal", "Acumulado diário", "Composição Stone", "Panorama Gaúcha", "Contexto da base"]) expect(figure(title)).toBeTruthy();
+    expect(figure("Evolução mensal").querySelector(".sales-average")).toBeTruthy(); expect(figure("Evolução mensal").querySelector(".sales-point.partial")).toBeTruthy();
+    expect(figure("Acumulado diário").querySelector("path.sales-reference")?.getAttribute("d")).toContain("L");
+    expect(figure("Acumulado diário").textContent).toContain("Jul/2026 — referência");
+    expect(figure("Acumulado diário").textContent).toContain("Corte até dia 2");
+    expect(figure("Heatmap").querySelector('[data-intensity="0.500000"]')).toBeTruthy();
+    expect(metric("Variação da competência recente").textContent).toContain("25%");
+  });
+  it("ranking preserva desempate e inclui unidade inativa com histórico", async () => {
+    const data = dashboardFixture(); data.ranking[1].total = data.ranking[0].total; api.salesDashboard.mockResolvedValue(data);
+    mount(); await ready(); const ranks = within(figure("Ranking")).getAllByRole("button");
+    expect(ranks[0].textContent).toContain("1. A · Unidade Alfa"); expect(ranks[1].textContent).toContain("2. B · Histórica Beta (inativa)");
+  });
+  it("insights preservam avanço negativo, recuo, concentração e comparação projetada exatos", async () => {
+    const d = dashboardFixture();
+    const closed = { ...d.months[0], partial: false, is_closed: true, projection: null, projection_is_estimate: false };
+    d.insights.strongest_advance = { ...closed, competency: "2026-07-01", comparison: { ...closed.comparison, reference_month: "2026-05-01", cutoff_day: null, variation_pct: "-12.500000", trend: "down" } };
+    d.insights.largest_decline = { ...closed, comparison: { ...closed.comparison, cutoff_day: null, variation_pct: "-20.123456", trend: "down" } };
+    d.summary.top_two_share_pct = "99.123456";
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    const insights = figure("Panorama Gaúcha");
+    expect(insights.textContent).toContain("07/2026 · -12,5%"); expect(insights.textContent).toContain("Referência 05/2026");
+    expect(insights.textContent).toContain("09/2026 · -20,1%"); expect(within(insights).getByText("Percentual exato: -20,123456%")).toBeTruthy();
+    expect(insights.textContent).toContain("99,123456%"); expect(insights.textContent).toContain("1775% · referência 07/2026");
+    expect(insights.textContent).toContain("R$ 3.750,00");
+  });
+  it("oculta/exibe séries somente no desenho, sem RPC adicional ou alteração de indicadores", async () => {
+    mount(); await ready(); const before = total(), calls = api.salesDashboard.mock.calls.length;
+    const series = screen.getByRole("group", { name: "Séries das barras empilhadas" });
+    fireEvent.click(within(series).getByRole("button", { name: /Unidade Alfa/ }));
+    expect(within(series).getByRole("button", { name: /Unidade Alfa/ }).getAttribute("aria-pressed")).toBe("false");
+    expect(figure("Composição mensal por unidade").querySelectorAll('g[role="button"]')).toHaveLength(1);
+    expect(total()).toBe(before); expect(api.salesDashboard).toHaveBeenCalledTimes(calls);
+    fireEvent.click(within(series).getByRole("button", { name: /Histórica Beta/ })); expect(screen.getByText(/Todas as séries estão ocultas/)).toBeTruthy();
+    fireEvent.click(within(series).getByRole("button", { name: /Unidade Alfa/ })); expect(total()).toBe(before);
+  });
+  it("histórico indeterminado mantém null e não fabrica média/fechamento/projeção", async () => {
+    const data = dashboardFixture(); data.metadata.global_status_visible = false;
+    const m = { ...data.months[0], status_basis: "historical_unavailable" as const, partial: null, is_closed: null, daily_average: null, projection: null, projection_is_estimate: false,
+      comparison: { ...data.months[0].comparison, available: false, variation_pct: null, trend: "unavailable" as const } };
+    data.months = [m]; data.summary = { ...data.summary, latest: m, daily_average: null, best_closed: null }; data.insights.pace = null;
+    api.salesDashboard.mockResolvedValue(data); mount(); await ready();
+    expect(figure("Resumo mensal").textContent).toContain("Status histórico indisponível para este acesso");
+    expect(metric("Média diária do período").textContent).toContain("Indisponível"); expect(metric("Variação da competência recente").textContent).toContain("Sem comparação");
+    expect(figure("Acumulado diário").querySelector(".sales-projection")).toBeNull(); expect(total()).toContain("300,00");
+  });
+  it.each([true, false, null])("status completo is_closed=%s não é presumido pela idade", async closed => {
+    const d = dashboardFixture(); const m = { ...d.months[0], partial: false, is_closed: closed, status_basis: closed === null ? "derived" as const : "snapshot" as const, projection: null, projection_is_estimate: false };
+    d.months = [m]; d.summary.best_closed = m; api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    expect(figure("Resumo mensal").textContent).toContain(closed === true ? "Fechado confirmado" : "Completo sem fechamento confirmado");
+    expect(screen.queryByText("Melhor competência fechada confirmada") !== null).toBe(closed === true);
+  });
+  it("valores elevados/centavos e diferença negativa são exibidos diretamente do contrato", async () => {
+    const d = dashboardFixture(); d.summary.total = "9007199254740993.01"; d.months[0].total = "0.01"; d.months[0].reconciliation_difference = "-0.01";
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready(); expect(total()).toContain("R$ 9.007.199.254.740.993,01");
+    expect(figure("Resumo mensal").textContent).toContain("R$ 0,01"); expect(figure("Contexto da base").textContent).toContain("−R$ 0,01");
+  });
+  it("mix base zero e percentuais nulos permanecem indisponíveis", async () => {
+    const d = dashboardFixture(); d.payment_mix = { stone: "0.00", pix: "0.00", stone_share_pct: null, pix_share_pct: null };
+    d.summary.leader = null; d.summary.top_two_share_pct = null; d.months[0].comparison.available = false; d.months[0].comparison.variation_pct = null;
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready(); expect(figure("Composição Stone").textContent).toContain("Composição indisponível (base zero)");
+    expect(metric("Participação da líder").textContent).toContain("Indisponível"); expect(metric("Variação da competência recente").textContent).toContain("Sem comparação");
+  });
+  it("lacunas são rotuladas e interrompem a linha sem inventar valores", async () => {
+    const d = dashboardFixture(); d.filters.from = "2026-07-01"; d.metadata.missing_months = ["2026-08-01"];
+    d.months.unshift({ ...d.months[0], competency: "2026-07-01", partial: false });
+    d.unit_months.push(...d.unit_months.map(c => ({ ...c, competency: "2026-07-01" })));
+    api.salesDashboard.mockResolvedValue(d); mount("from=2026-07&to=2026-09"); await ready();
+    expect(figure("Evolução mensal").textContent).toContain("08/2026 · lacuna");
+    expect(figure("Evolução mensal").querySelectorAll("path.sales-line")).toHaveLength(2);
+  });
+});
+
+describe("VEN-04B — navegação gerencial e concorrência", () => {
+  it("filtros combinados ficam na URL, competência diária é enviada no dia01", async () => {
+    mount(); await ready(); fireEvent.change(screen.getByLabelText("Unidade", { exact: true }), { target: { value: B } });
+    fireEvent.change(screen.getByLabelText("Competência diária"), { target: { value: "2026-09" } }); apply();
+    await waitFor(() => expect(api.salesDashboard).toHaveBeenLastCalledWith({ from: "2026-09-01", to: "2026-09-01", scope: "stone", unit_ids: [B], daily_month: "2026-09-01" }));
+    expect(screen.getByTestId("url").textContent).toContain(`unit=${B}`);
+  });
+  it("URL válida recarrega filtros sem substituir unidade por todas", async () => {
+    mount(`from=2026-09&to=2026-09&unit=${A}&scope=combined&daily=2026-09&day=2`); await ready();
+    expect(total()).toContain("350,00"); expect(figure("Acumulado diário").textContent).toContain("Foco no dia 2");
+    expect(api.salesDashboard.mock.calls[0][0].unit_ids).toEqual([A]);
+  });
+  it("ranking → célula → Voltar → navegador Avançar preservam os focos", async () => {
+    mount("from=2026-07&to=2026-09&baseFrom=2026-07&baseTo=2026-09"); await ready();
+    fireEvent.click(within(figure("Ranking")).getByRole("button", { name: /Unidade Alfa/ })); await ready();
+    fireEvent.click(within(figure("Heatmap")).getByRole("button", { name: /Focar célula A/ })); await ready();
+    expect(screen.getByTestId("url").textContent).toContain("from=2026-09");
+    fireEvent.click(screen.getByRole("button", { name: "Voltar", exact: true })); await ready(); expect(screen.getByTestId("url").textContent).toContain("from=2026-07");
+    fireEvent.click(screen.getByRole("button", { name: "Navegador seguinte" })); await ready(); expect(screen.getByTestId("url").textContent).toContain("from=2026-09");
+  });
+  it("evolução selecionável por teclado; comparar tudo restaura janela; reset restaura Stone", async () => {
+    const user = userEvent.setup(); mount("from=2026-09&to=2026-09&scope=combined&baseFrom=2026-07&baseTo=2026-09"); await ready();
+    const point = within(figure("Evolução mensal")).getByRole("button", { name: /Focar competência/ }); point.focus(); await user.keyboard("{Enter}");
+    await waitFor(() => expect(screen.getByTestId("url").textContent).toContain("daily=2026-09"));
+    fireEvent.click(screen.getByRole("button", { name: "Comparar tudo" })); await ready(); expect(screen.getByTestId("url").textContent).toContain("from=2026-07");
+    fireEvent.click(screen.getByRole("button", { name: "Redefinir" })); await ready(); expect(api.salesDashboard.mock.calls.at(-1)![0].scope).toBe("stone");
+  });
+  it("heatmap por Espaço e foco diário só exploram agregados, sem novas RPCs ao selecionar dia", async () => {
+    const user = userEvent.setup(); mount(); await ready();
+    const cell = within(figure("Heatmap")).getByRole("button", { name: /Focar célula A/ }); cell.focus(); await user.keyboard(" "); await ready();
+    const calls = api.salesDashboard.mock.calls.length;
+    fireEvent.click(screen.getByText("Valores diários e referência anterior"));
+    fireEvent.click(within(figure("Acumulado diário")).getByRole("button", { name: "02/09/2026" }));
+    expect(figure("Acumulado diário").textContent).toContain("Foco no dia 2"); expect(api.salesDashboard).toHaveBeenCalledTimes(calls);
+    expect(api.entryDetail).not.toHaveBeenCalled(); expect(api.listEntries).not.toHaveBeenCalled();
+  });
+  it("atualiza conservando filtros e descarta a resposta obsoleta em mudanças rápidas", async () => {
+    const slow = deferred<SalesDashboard>(); api.salesDashboard.mockResolvedValueOnce(dashboardFixture()).mockReturnValueOnce(slow.promise).mockResolvedValue(dashboardFixture(true));
+    mount(); await ready(); fireEvent.click(screen.getByRole("button", { name: "Atualizar", exact: true }));
+    await waitFor(() => expect(api.salesDashboard).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByRole("radio", { name: "Stone + PIX", exact: true })); apply(); await ready();
+    expect(total()).toContain("350,00"); await act(async () => slow.resolve(dashboardFixture())); expect(total()).toContain("350,00");
+    expect(auth.refresh).toHaveBeenCalledTimes(1);
+  });
+  it.each(["from=2020-01&to=2026-09", "from=2026-10&to=2026-09", "from=2026-09&to=2026-09&daily=2026-10", "from=2026-09&to=2026-09&unit=estranho"]) ("URL inválida %s não consulta nem vira recorte global", async search => {
+    mount(search); await screen.findByRole("alert"); expect(api.salesDashboard).not.toHaveBeenCalled(); expect(screen.queryByText("Total financeiro do período")).toBeNull();
+  });
+  it("base acima de100 permite escolher UUID e nunca mostra consolidado parcial", async () => {
+    api.salesDashboard.mockRejectedValueOnce({ code: "23514" }).mockResolvedValue(dashboardFixture()); mount();
+    await screen.findByText(/Nenhum total parcial foi exibido/);
+    fireEvent.change(screen.getByLabelText("Unidade por UUID"), { target: { value: A } }); apply(); await ready();
+    expect(api.salesDashboard.mock.calls.at(-1)![0].unit_ids).toEqual([A]);
+  });
+});
+
+describe("VEN-04B — autorização independente e estados seguros", () => {
+  it.each(["sales.entry.read", "sales.entry.create", "sales.entry.edit", "sales.entry.delete"]) ("operador %s não acessa dashboard", async permission => {
+    auth.grants = [grant(permission)]; mount(); expect(await screen.findByText("Acesso não autorizado")).toBeTruthy(); expect(api.salesDashboard).not.toHaveBeenCalled();
+    expect(visibleNavigation(true, auth.grants).flatMap(g => g.destinations).map(d => d.path)).toEqual(["/sales"]);
+  });
+  it("somente dashboard vê a rota, mas não acessa operações", async () => {
+    expect(visibleNavigation(true, [grant()]).flatMap(g => g.destinations).map(d => d.path)).toEqual(["/sales"]);
+    render(<MemoryRouter><SalesPage /></MemoryRouter>); await screen.findByText("Acesso não autorizado"); expect(api.listEntries).not.toHaveBeenCalled();
+  });
+  it.each([{ grants: [] as AccessGrant[] }, { grants: [grant(undefined, "sector")] }])("sem capacidade válida $grants não faz RPC", async ({ grants }) => {
+    auth.grants = grants; mount(); await screen.findByText("Acesso não autorizado"); expect(api.salesDashboard).not.toHaveBeenCalled();
+  });
+  it("ambas as áreas habilitam alternância com recorte compatível", async () => {
+    auth.grants = [grant(), grant("sales.entry.read")]; mount(`from=2026-09&to=2026-09&unit=${A}`); await ready();
+    const link = screen.getByRole("link", { name: "Ir para lançamentos", exact: true }); expect(link.getAttribute("href")).toContain("to=2026-09-30"); expect(link.getAttribute("href")).toContain(`unit=${A}`);
+  });
+  it("UUID externo à atribuição é negado antes da consulta", async () => {
+    auth.grants = [grant(undefined, "unit", A)]; mount(`from=2026-09&to=2026-09&unit=${C}`);
+    await screen.findByText(/Unidade indisponível para este acesso/); expect(api.salesDashboard).not.toHaveBeenCalled();
+  });
+  it("troca de identidade limpa dados anteriores imediatamente e descarta resposta atrasada", async () => {
+    const slow = deferred<SalesDashboard>(); api.salesDashboard.mockResolvedValueOnce(dashboardFixture()).mockReturnValueOnce(slow.promise);
+    const mounted = mount(); await ready(); auth.session.user.id = "other-user"; auth.grants = [grant(undefined, "unit", B)];
+    mounted.rerender(<MemoryRouter initialEntries={["/sales/dashboard?from=2026-09&to=2026-09"]}><SalesDashboardPage /><Location /></MemoryRouter>);
+    expect(screen.queryByText("Total financeiro do período")).toBeNull(); expect(screen.queryByText(/Unidade Alfa/)).toBeNull();
+    auth.profile.active = false; mounted.rerender(<MemoryRouter><SalesDashboardPage /><Location /></MemoryRouter>);
+    await act(async () => slow.resolve(dashboardFixture())); expect(screen.queryByText("Total financeiro do período")).toBeNull(); await screen.findByText("Acesso não autorizado");
+  });
+  it("resposta unitária não revela outra unidade em gráfico, tooltip, ranking ou heatmap", async () => {
+    auth.grants = [grant(undefined, "unit", A)]; const d = dashboardFixture(); d.units = d.units.filter(u => u.id === A); d.ranking = d.ranking.filter(r => r.unit_id === A); d.unit_months = d.unit_months.filter(c => c.unit_id === A);
+    d.metadata.global_status_visible = false; d.months[0].status_basis = "historical_unavailable"; d.months[0].partial = null; d.months[0].is_closed = null;
+    api.salesDashboard.mockResolvedValue(d); const mounted = mount(); await ready();
+    expect(mounted.container.innerHTML).not.toContain("Histórica Beta"); expect(mounted.container.innerHTML).not.toContain(B); expect(mounted.container.innerHTML).not.toContain("Snapshot global quando existente");
+  });
+  it.each([["42501", /permissão/], ["PGRST301", /sessão expirou/], ["XX000", /conexão/]])("falha %s remove dados antigos e permite recuperação", async (code, text) => {
+    api.salesDashboard.mockResolvedValueOnce(dashboardFixture()).mockRejectedValueOnce({ code, message: "SQL segredo" }).mockResolvedValue(dashboardFixture());
+    mount(); await ready(); fireEvent.click(screen.getByRole("button", { name: "Atualizar", exact: true })); await screen.findByText(text);
+    expect(screen.queryByText("Total financeiro do período")).toBeNull(); expect(screen.queryByText("SQL segredo")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" })); await ready();
+  });
+  it("vazio não entra em loop de consultas", async () => {
+    const d = dashboardFixture(); d.units = []; d.months = []; d.ranking = []; d.unit_months = []; d.daily = { competency: null, reference_month: null, cutoff_day: null, totals: [], points: [] };
+    d.summary.latest = null; d.summary.leader = null; api.salesDashboard.mockResolvedValue(d); mount(); await screen.findByText("Sem movimento no período");
+    expect(api.salesDashboard).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("VEN-04B — fidelidade visual e interação acessível", () => {
+  it("coloca quatro KPIs e três insights antes da evolução, preservando os seis complementares", async () => {
+    mount(); await ready();
+    const executive = screen.getByLabelText("Indicadores executivos"), panorama = figure("Panorama Gaúcha");
+    expect(executive.querySelectorAll(".metric")).toHaveLength(4);
+    expect(panorama.querySelectorAll("article")).toHaveLength(3);
+    expect(screen.getByLabelText("Indicadores complementares").querySelectorAll(".metric")).toHaveLength(6);
+    expect(executive.compareDocumentPosition(panorama) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(panorama.compareDocumentPosition(figure("Evolução mensal")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Stone", exact: true }).getAttribute("value")).toBe("stone");
+    expect(screen.getByText("Filtros avançados").closest("details")?.open).toBe(false);
+  });
+  it("gradiente também interrompe em lacunas; tooltip apresenta valor exato por teclado e Escape", async () => {
+    const d = dashboardFixture(); d.filters.from = "2026-07-01"; d.metadata.missing_months = ["2026-08-01"];
+    d.months.unshift({ ...d.months[0], competency: "2026-07-01", total: "9007199254740993.01", partial: false });
+    d.unit_months.push(...d.unit_months.map(c => ({ ...c, competency: "2026-07-01" })));
+    api.salesDashboard.mockResolvedValue(d); mount("from=2026-07&to=2026-09"); await ready();
+    const evolution = figure("Evolução mensal");
+    expect(evolution.querySelectorAll(".sales-area")).toHaveLength(2);
+    expect(evolution.querySelector("linearGradient")).toBeTruthy();
+    expect(evolution.querySelectorAll(".sales-grid line").length).toBeGreaterThan(2);
+    const mark = within(evolution).getByRole("button", { name: /Focar competência 07\/2026/ });
+    fireEvent.focus(mark); expect(screen.getByRole("tooltip").textContent).toContain("R$ 9.007.199.254.740.993,01");
+    fireEvent.keyDown(mark, { key: "Escape" }); expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.keyDown(mark, { key: "Enter" }); await ready(); expect(screen.getByTestId("url").textContent).toContain("from=2026-07");
+  });
+  it("cores acompanham o UUID na legenda, ranking e barras mesmo com ordem diferente", async () => {
+    const d = dashboardFixture(); d.units.reverse(); api.salesDashboard.mockResolvedValue(d);
+    mount(); await ready();
+    const legend = within(screen.getByRole("group", { name: "Séries das barras empilhadas" })).getByRole("button", { name: /Unidade Alfa/ });
+    const swatch = legend.querySelector(".sales-swatch") as HTMLElement;
+    const bar = figure("Composição mensal por unidade").querySelector(`rect[data-unit="${A}"]`)!;
+    const rank = figure("Ranking").querySelector(`[data-unit="${A}"] .sales-swatch`) as HTMLElement;
+    expect(swatch.style.background).toBe(rank.style.background);
+    expect(bar.getAttribute("fill")).toBe(swatch.style.background);
+    expect(figure("Composição mensal por unidade").querySelector("svg")!.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.focus(legend); expect(figure("Composição mensal por unidade").querySelector(`rect[data-unit="${B}"]`)?.getAttribute("opacity")).toBe("0.3");
+  });
+  it("pilhas com sinais opostos permanecem finitas e não alteram o total recebido", async () => {
+    const d = dashboardFixture(); d.unit_months[0].total = "-500.01"; d.unit_months[1].total = "100.00";
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    const bars = figure("Composição mensal por unidade").querySelectorAll("rect");
+    expect(bars).toHaveLength(2);
+    for (const bar of bars) expect(Number(bar.getAttribute("height"))).toBeGreaterThan(0);
+    expect(figure("Composição mensal por unidade").textContent).toContain("−R$");
+    expect(total()).toContain("R$ 300,00");
+  });
+});
+
+// A fixture muda exclusivamente os agregados diários quando daily_month muda.
+function multipleMonths(daily = "2026-09-01", combined = false): SalesDashboard {
+  const d = dashboardFixture(combined);
+  d.filters.from = "2026-07-01";
+  const july = { ...d.months[0], competency: "2026-07-01", days_in_month: 31, partial: false, projection_is_estimate: false, projection: null };
+  d.months.unshift(july); d.metadata.missing_months = ["2026-08-01"];
+  d.unit_months.unshift(...d.unit_months.map(m => ({ ...m, competency: july.competency })));
+  if (daily === "2026-07-01") d.daily = { ...d.daily, competency: daily, reference_month: null, totals: d.daily.totals.filter(p => p.competency === daily), points: d.daily.points.filter(p => p.competency === daily) };
+  return d;
+}
+function dailySelect() { return screen.getByRole("combobox", { name: "Competência do gráfico", exact: true }); }
+function monthSelect(edge = "inicial") { return screen.getByRole("combobox", { name: `Mês da competência ${edge}` }); }
+function yearSelect(edge = "inicial") { return screen.getByRole("combobox", { name: `Ano da competência ${edge}` }); }
+
+describe("VEN-04B — refinamentos de usabilidade", () => {
+  beforeEach(() => { api.salesDashboard.mockImplementation(async f => ({ ...multipleMonths(f.daily_month, f.scope === "combined"), filters: { ...f, unit_ids: f.unit_ids ?? [A, B] } })); });
+  it("oferece só competências disponíveis, indica parcial e reproduz os três traçados decorativos", async () => {
+    mount("from=2026-07&to=2026-09"); await ready();
+    expect(within(dailySelect()).getAllByRole("option").map(o => o.textContent)).toEqual(["Jul/2026", "Set/2026 · parcial"]);
+    const legend = screen.getByRole("list", { name: "Séries do acumulado diário" });
+    expect(legend.textContent).toContain("Set/2026 — observado"); expect(legend.textContent).toContain("Jul/2026 — referência");
+    for (const series of ["sales-line", "sales-reference", "sales-projection"]) expect(legend.querySelector(`svg[aria-hidden=true] line.${series}`)).toBeTruthy();
+    const mix = figure("Composição Stone");
+    expect(mix.querySelector("dt .sales-stone-swatch[aria-hidden=true]")).toBeTruthy(); expect(mix.querySelector("dt .sales-pix-swatch[aria-hidden=true]")).toBeTruthy();
+  });
+  it("troca somente daily, mantém nós e filtros em edição, atualiza tabela e foco do dia correto", async () => {
+    mount(`from=2026-07&to=2026-09&unit=${A}&scope=combined&daily=2026-09&day=2`); await ready();
+    const slow = deferred<SalesDashboard>(); api.salesDashboard.mockReturnValueOnce(slow.promise);
+    const before = total(), evolution = figure("Evolução mensal"), panorama = figure("Panorama Gaúcha"), mix = figure("Composição Stone");
+    const plot = figure("Acumulado diário").querySelector(".sales-plot")!;
+    fireEvent.change(monthSelect(), { target: { value: "06" } });
+    fireEvent.click(screen.getByRole("radio", { name: "Stone", exact: true }));
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    expect(screen.getByText("Carregando competência diária…")).toBeTruthy();
+    expect(total()).toBe(before); expect(figure("Evolução mensal")).toBe(evolution); expect(figure("Panorama Gaúcha")).toBe(panorama); expect(figure("Composição Stone")).toBe(mix);
+    expect(screen.queryByText("Carregando dashboard…")).toBeNull();
+    expect(api.salesDashboard).toHaveBeenLastCalledWith({ from: "2026-07-01", to: "2026-09-01", unit_ids: [A], scope: "combined", daily_month: "2026-07-01" });
+    await act(async () => slow.resolve(multipleMonths("2026-07-01", true)));
+    expect(figure("Acumulado diário").querySelector(".sales-plot")).toBe(plot);
+    expect(figure("Acumulado diário").textContent).toContain("Jul/2026 — observado");
+    expect(screen.getByLabelText("Competência diária").getAttribute("value")).toBe("2026-07");
+    expect((monthSelect() as HTMLSelectElement).value).toBe("06"); expect((screen.getByRole("radio", { name: "Stone", exact: true }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByTestId("url").textContent).not.toContain("day="); expect(total()).toBe(before);
+    fireEvent.click(screen.getByText("Valores diários e referência anterior"));
+    fireEvent.click(within(figure("Acumulado diário")).getByRole("button", { name: "02/07/2026" }));
+    expect(screen.getByTestId("url").textContent).toContain("daily=2026-07&day=2"); expect(api.salesDashboard).toHaveBeenCalledTimes(2);
+  });
+  it("daily explícito sobrevive a reload e ao histórico; ausência volta à última disponível", async () => {
+    const first = mount("from=2026-07&to=2026-09"); await ready();
+    expect((dailySelect() as HTMLSelectElement).value).toBe("2026-09");
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    await waitFor(() => expect(figure("Acumulado diário").textContent).toContain("Jul/2026 — observado"));
+    const search = screen.getByTestId("url").textContent!.split("?")[1];
+    fireEvent.click(screen.getByRole("button", { name: "Navegador anterior" }));
+    await waitFor(() => expect((dailySelect() as HTMLSelectElement).value).toBe("2026-09"));
+    fireEvent.click(screen.getByRole("button", { name: "Navegador seguinte" }));
+    await waitFor(() => expect((dailySelect() as HTMLSelectElement).value).toBe("2026-07"));
+    first.unmount(); mount(search); await ready(); expect((dailySelect() as HTMLSelectElement).value).toBe("2026-07");
+    expect(api.salesDashboard.mock.calls.at(-1)![0].daily_month).toBe("2026-07-01");
+  });
+  it("respostas diárias fora de ordem são descartadas sem sobrescrever o contexto principal", async () => {
+    mount("from=2026-07&to=2026-09"); await ready(); const slow = deferred<SalesDashboard>();
+    api.salesDashboard.mockReturnValueOnce(slow.promise);
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    fireEvent.change(dailySelect(), { target: { value: "2026-09" } });
+    await waitFor(() => expect(figure("Acumulado diário").textContent).toContain("Set/2026 — observado"));
+    await act(async () => slow.resolve(multipleMonths("2026-07-01")));
+    expect(figure("Acumulado diário").textContent).toContain("Set/2026 — observado"); expect(total()).toContain("300,00"); expect(api.salesDashboard).toHaveBeenCalledTimes(3);
+  });
+  it("erro diário e retry ficam no card sem substituir os agregados", async () => {
+    mount("from=2026-07&to=2026-09"); await ready(); const evolution = figure("Evolução mensal");
+    api.salesDashboard.mockRejectedValueOnce(new Error("falha sintética"));
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    await screen.findByRole("alert"); expect(total()).toContain("300,00");
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente no gráfico" }));
+    await waitFor(() => expect(figure("Acumulado diário").textContent).toContain("Jul/2026 — observado"));
+    expect(figure("Evolução mensal")).toBe(evolution); expect(api.salesDashboard).toHaveBeenCalledTimes(3);
+  });
+  it.each(["identidade", "grants", "inativo"])("invalida o diário pendente após mudar %s", async change => {
+    const mounted = mount("from=2026-07&to=2026-09"); await ready(); const slow = deferred<SalesDashboard>();
+    api.salesDashboard.mockReturnValueOnce(slow.promise);
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    if (change === "identidade") auth.session.user.id = "outra-identidade";
+    else if (change === "grants") auth.grants = [grant(undefined, "unit", B)];
+    else auth.profile.active = false;
+    api.salesDashboard.mockReturnValue(new Promise(() => {}));
+    mounted.rerender(<MemoryRouter><SalesDashboardPage /></MemoryRouter>);
+    expect(screen.queryByText("Total financeiro do período", { exact: true })).toBeNull();
+    await act(async () => slow.resolve(multipleMonths("2026-07-01")));
+    expect(screen.queryByText("Total financeiro do período", { exact: true })).toBeNull();
+  });
+  it.each(["42501", "PGRST301"])("recusa %s da API diária invalida também os agregados principais", async code => {
+    mount("from=2026-07&to=2026-09"); await ready();
+    api.salesDashboard.mockRejectedValueOnce({ code });
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    await screen.findByRole("alert");
+    expect(screen.queryByText("Total financeiro do período", { exact: true })).toBeNull();
+    expect(screen.queryByText("Jul/2026 — observado")).toBeNull();
+  });
+  it("referência ausente, status indeterminado e projeção inválida não fabricam séries", async () => {
+    const d = multipleMonths("2026-07-01"); d.months[0].partial = null; d.months[0].status_basis = "historical_unavailable";
+    d.months[0].projection = "999.99"; d.months[0].projection_is_estimate = false;
+    api.salesDashboard.mockResolvedValue(d); mount("from=2026-07&to=2026-09&daily=2026-07"); await ready();
+    const daily = figure("Acumulado diário"); expect(daily.textContent).toContain("Sem referência disponível");
+    expect(daily.querySelector(".sales-projection")).toBeNull(); expect(daily.querySelector(".sales-series-sample .sales-reference")).toBeNull();
+    expect(within(dailySelect()).getByRole("option", { name: /Jul.*status indeterminado/ })).toBeTruthy();
+  });
+  it("URL lacunar sinaliza ausência; período sem competências mantém os demais cards", async () => {
+    const d = multipleMonths(); d.daily = { competency: null, reference_month: null, cutoff_day: null, points: [], totals: [] };
+    api.salesDashboard.mockResolvedValue(d); const mounted = mount("from=2026-07&to=2026-09&daily=2026-08"); await ready();
+    expect(within(dailySelect()).getByRole("option", { name: /Ago.*sem movimento/ })).toBeTruthy();
+    expect(figure("Acumulado diário").textContent).toContain("Sem detalhamento diário observado");
+    mounted.unmount(); d.months = []; d.unit_months = []; api.salesDashboard.mockResolvedValue(d);
+    mount("from=2026-07&to=2026-09"); await ready(); expect((dailySelect() as HTMLSelectElement).disabled).toBe(true);
+    expect(figure("Acumulado diário").textContent).toContain("Sem competências com movimento"); expect(figure("Composição Stone")).toBeTruthy();
+  });
+  it("mês/ano só aplicam no submit, permitem lacunas e revalidam daily fora do novo período", async () => {
+    mount("from=2026-07&to=2026-09&daily=2026-07"); await ready();
+    expect(within(monthSelect()).getAllByRole("option")).toHaveLength(12);
+    expect(within(monthSelect()).getAllByRole("option").map(o => o.textContent)).toEqual(["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]);
+    fireEvent.change(monthSelect(), { target: { value: "08" } }); expect(api.salesDashboard).toHaveBeenCalledTimes(1);
+    apply(); await waitFor(() => expect(api.salesDashboard).toHaveBeenCalledTimes(2));
+    expect(api.salesDashboard.mock.calls.at(-1)![0]).toEqual({ from: "2026-08-01", to: "2026-09-01", scope: "stone" });
+    expect(screen.getByTestId("url").textContent).not.toContain("daily=");
+  });
+  it("navega anos além da carga inicial e preserva datas da URL sem milhares de opções", async () => {
+    mount("from=1986-12&to=1987-01"); await ready();
+    expect((yearSelect() as HTMLSelectElement).value).toBe("1986"); expect((monthSelect() as HTMLSelectElement).value).toBe("12");
+    expect(within(yearSelect()).getAllByRole("option").length).toBeLessThan(30);
+    fireEvent.change(yearSelect(), { target: { value: "previous" } });
+    fireEvent.change(yearSelect(), { target: { value: "1966" } });
+    fireEvent.change(yearSelect("final"), { target: { value: "previous" } });
+    fireEvent.change(yearSelect("final"), { target: { value: "1967" } }); apply();
+    await waitFor(() => expect(api.salesDashboard.mock.calls.at(-1)![0].from).toBe("1966-12-01"));
+    expect(api.salesDashboard.mock.calls.at(-1)![0].to).toBe("1967-01-01");
+  });
+  it.each(["unidade", "modalidade"])("troca de %s invalida o diário pendente e mantém o novo escopo", async change => {
+    mount("from=2026-07&to=2026-09"); await ready(); const slow = deferred<SalesDashboard>();
+    api.salesDashboard.mockReturnValueOnce(slow.promise);
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    if (change === "unidade") fireEvent.change(screen.getByLabelText("Unidade", { exact: true }), { target: { value: B } });
+    else fireEvent.click(screen.getByRole("radio", { name: "Stone + PIX", exact: true }));
+    apply(); await ready();
+    const before = figure("Acumulado diário").textContent;
+    const obsolete = multipleMonths(); obsolete.summary.total = "999999.99";
+    await act(async () => slow.resolve(obsolete));
+    expect(figure("Acumulado diário").textContent).toBe(before);
+    expect(total()).toContain(change === "modalidade" ? "350,00" : "300,00");
+    expect(api.salesDashboard.mock.calls.at(-1)![0]).toMatchObject(change === "unidade" ? { unit_ids: [B] } : { scope: "combined" });
+  });
+  it("Redefinir descarta o rascunho mesmo quando o período aplicado já é o padrão", async () => {
+    mount(); await ready(); fireEvent.click(screen.getByRole("button", { name: "Redefinir", exact: true })); await ready();
+    const before = (monthSelect() as HTMLSelectElement).value;
+    fireEvent.change(monthSelect(), { target: { value: before === "02" ? "03" : "02" } });
+    fireEvent.click(screen.getByRole("button", { name: "Redefinir", exact: true })); await ready();
+    expect((monthSelect() as HTMLSelectElement).value).toBe(before);
+  });
+  it("recusa mais de 24 competências e ordem invertida pela validação existente", async () => {
+    mount("from=2026-07&to=2026-09"); await ready(); fireEvent.change(yearSelect(), { target: { value: "2024" } }); apply();
+    await screen.findByText(/Selecione até 24 competências/); expect(api.salesDashboard).toHaveBeenCalledTimes(1);
+    fireEvent.change(yearSelect(), { target: { value: "2026" } }); fireEvent.change(monthSelect(), { target: { value: "12" } }); apply();
+    await screen.findByText(/janela em ordem crescente/); expect(api.salesDashboard).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("VEN-04B — Leitura do recorte no card Stone × PIX", () => {
+  const reading = () => within(figure("Composição Stone")).getByRole("region", { name: "Leitura do recorte" });
+  const value = (label: string) => within(reading()).getByText(label, { exact: true }).closest("div")!.querySelector("dd")!.textContent;
+
+  it.each([false, true])("escopo combinado=%s usa total exato selecionado e mantém mix dos dois métodos", async combined => {
+    mount(`from=2026-09&to=2026-09${combined ? "&scope=combined" : ""}`); await ready();
+    expect(value("Escopo exibido")).toBe(combined ? "Stone + PIX" : "Stone");
+    expect(value("Total financeiro do recorte")).toBe(combined ? "R$ 350,00" : "R$ 300,00");
+    const mix = figure("Composição Stone").querySelector(".sales-payment-definition")!;
+    expect(mix.textContent).toContain("R$ 300,00"); expect(mix.textContent).toContain("R$ 50,00");
+    expect(value("Última competência disponível")).toBe("09/2026");
+    expect(reading().textContent).not.toMatch(/Último dado|leitura às/);
+  });
+  it("unidade específica resolve código/nome e histórico inativo no payload restrito", async () => {
+    const d = dashboardFixture(); d.units = [d.units[1]]; d.filters.unit_ids = [B];
+    api.salesDashboard.mockResolvedValue(d); mount(`from=2026-09&to=2026-09&unit=${B}`); await ready();
+    expect(value("Unidade")).toBe("B · Histórica Beta (inativa — histórico)");
+    expect(reading().textContent).not.toContain("Todas as unidades");
+    expect(reading().textContent).not.toContain("Unidade Alfa");
+  });
+  it.each([false, true])("todas as autorizadas, incluindo catálogo com uma só unidade=%s", async single => {
+    const d = dashboardFixture(); if (single) { d.units = [d.units[0]]; d.filters.unit_ids = [A]; }
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    expect(value("Unidade")).toBe("Todas as unidades autorizadas");
+  });
+  it("intervalo entre anos e lacunas mantêm os limites efetivos em vez dos meses com dados", async () => {
+    const d = dashboardFixture(); d.filters.from = "2025-12-01"; d.filters.to = "2026-11-01";
+    d.metadata.missing_months = ["2026-08-01", "2026-10-01", "2026-11-01"];
+    api.salesDashboard.mockResolvedValue(d); mount("from=2025-12&to=2026-11"); await ready();
+    expect(value("Período selecionado")).toBe("12/2025 a 11/2026");
+    expect(value("Última competência disponível")).toBe("09/2026");
+    expect(value("Total financeiro do recorte")).toBe("R$ 300,00");
+    expect(figure("Contexto da base").textContent).toContain("08/2026, 10/2026, 11/2026");
+  });
+  it("sem movimentos mantém resumo, zero exato e competência indisponível", async () => {
+    const d = dashboardFixture(); d.months = []; d.unit_months = []; d.ranking = [];
+    d.summary = { ...d.summary, total: "0.00", stone: "0.00", pix: "0.00", latest: null, best_closed: null, leader: null };
+    d.metadata.latest_available_month = null; d.metadata.first_available_month = null; d.metadata.missing_months = ["2026-09-01"];
+    d.daily = { competency: null, reference_month: null, cutoff_day: null, points: [], totals: [] };
+    d.payment_mix = { stone: "0.00", pix: "0.00", stone_share_pct: null, pix_share_pct: null };
+    d.insights = { strongest_advance: null, largest_decline: null, pace: null };
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    expect(screen.getByText("Sem movimento no período")).toBeTruthy();
+    expect(value("Total financeiro do recorte")).toBe("R$ 0,00");
+    expect(value("Última competência disponível")).toBe("Indisponível");
+    expect(value("Período selecionado")).toBe("09/2026 a 09/2026");
+  });
+  it("competência ausente não usa o relógio da consulta nem a última linha mensal", async () => {
+    const d = dashboardFixture(); d.metadata.latest_available_month = null;
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    expect(value("Última competência disponível")).toBe("Indisponível");
+  });
+  it.each([
+    ["9007199254740993.01", "R$ 9.007.199.254.740.993,01"],
+    ["-9007199254740993.99", "−R$ 9.007.199.254.740.993,99"],
+    ["0.01", "R$ 0,01"],
+  ])("total %s preserva centavos da API sem somar o mix", async (amount, expected) => {
+    const d = dashboardFixture(); d.summary.total = amount;
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    expect(value("Total financeiro do recorte")).toBe(expected);
+  });
+  it("rascunhos não alteram resumo; Aplicar, Atualizar, Comparar tudo e histórico usam resposta efetiva", async () => {
+    api.salesDashboard.mockImplementation(async filters => {
+      const d = dashboardFixture(filters.scope === "combined");
+      d.filters = { ...filters, unit_ids: filters.unit_ids ?? [A, B] };
+      if (filters.unit_ids) d.units = d.units.filter(u => filters.unit_ids.includes(u.id));
+      return d;
+    });
+    mount(); await ready();
+    fireEvent.change(screen.getByLabelText("Mês da competência inicial"), { target: { value: "08" } });
+    fireEvent.change(screen.getByLabelText("Unidade", { exact: true }), { target: { value: B } });
+    fireEvent.click(screen.getByRole("radio", { name: "Stone + PIX", exact: true }));
+    expect(value("Período selecionado")).toBe("09/2026 a 09/2026");
+    expect(value("Escopo exibido")).toBe("Stone"); expect(value("Unidade")).toBe("Todas as unidades autorizadas");
+    apply(); await ready();
+    expect(value("Período selecionado")).toBe("08/2026 a 09/2026");
+    expect(value("Escopo exibido")).toBe("Stone + PIX"); expect(value("Unidade")).toContain("Histórica Beta");
+    expect(value("Total financeiro do recorte")).toBe("R$ 350,00");
+    const d = dashboardFixture(true); d.filters.from = "2026-08-01"; d.filters.unit_ids = [B]; d.units = [d.units[1]]; d.summary.total = "350.01";
+    api.salesDashboard.mockResolvedValueOnce(d);
+    fireEvent.click(screen.getByRole("button", { name: "Atualizar", exact: true })); await ready();
+    expect(value("Total financeiro do recorte")).toBe("R$ 350,01");
+    fireEvent.click(screen.getByRole("button", { name: "Comparar tudo", exact: true })); await ready();
+    expect(value("Unidade")).toBe("Todas as unidades autorizadas");
+    fireEvent.click(screen.getByRole("button", { name: "Navegador anterior" })); await ready();
+    expect(value("Unidade")).toContain("Histórica Beta");
+  });
+  it("nome vem somente das unidades do recorte; nenhuma consulta de catálogo extra", async () => {
+    const d = dashboardFixture(); d.filters.unit_ids = [C]; d.units = [];
+    api.salesDashboard.mockResolvedValue(d); mount(`from=2026-09&to=2026-09&unit=${C}`); await ready();
+    expect(value("Unidade")).toBe("Nenhuma unidade autorizada no recorte");
+    expect(reading().textContent).not.toMatch(/Unidade Alfa|Histórica Beta|10000000-/);
+    expect(api.listSalesUnits).not.toHaveBeenCalled(); expect(api.listEntries).not.toHaveBeenCalled();
+  });
+});

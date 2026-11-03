@@ -36,8 +36,14 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); });
 
 describe("VEN-04A — catálogo operacional mínimo", () => {
-  it("nega anon, sem identidade, sem papel, setor, perfil inativo e admin sem sales", async () => {
-    for (const [n, role] of [[null, "anon"], [null, "authenticated"], [1, "authenticated"], [6, "authenticated"], [7, "authenticated"], [8, "authenticated"]] as const) {
+  it("administrador descobre referências por suas permissões globais", async () => {
+    await login(1);
+    const list = (await units()).filter(u => u.code.startsWith("VEN02-"));
+    expect(list).toHaveLength(3);
+    expect(list.every(u => u.can_read && u.can_create && u.can_edit && u.can_delete)).toBe(true);
+  });
+  it("nega anon, sem identidade, sem papel, setor, perfil inativo", async () => {
+    for (const [n, role] of [[null, "anon"], [null, "authenticated"], [6, "authenticated"], [7, "authenticated"], [8, "authenticated"]] as const) {
       await login(n, role);
       await expect(units()).rejects.toMatchObject({ code: "42501" });
     }

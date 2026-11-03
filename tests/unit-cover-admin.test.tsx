@@ -60,6 +60,24 @@ async function open(cover: typeof current | null = null) {
 const imgs = (dialog: HTMLElement) => within(dialog).queryAllByRole("img") as HTMLImageElement[];
 const fileInput = (dialog: HTMLElement) => within(dialog).getByLabelText("Arquivo da foto da unidade") as HTMLInputElement;
 describe("unit cover self-service in Administration", () => {
+  it("zero unidades inclui inativas e mantém Nova unidade e cadastro disponíveis", async () => {
+    api.organizations.mockResolvedValue({ rows: [], count: 0 });
+    const user = userEvent.setup();
+    render(<OrganizationPage kind="units" />);
+    await screen.findByText("Nenhuma unidade encontrada");
+    await user.click(screen.getByLabelText("Exibir inativas"));
+    await screen.findByText("Ainda não há unidades cadastradas.");
+    expect(api.organizations).toHaveBeenLastCalledWith("units", 0, { search: "", inactive: true });
+    await user.click(screen.getByRole("button", { name: "Nova unidade" }));
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Código"), "NOVA");
+    await user.type(within(dialog).getByLabelText("Nome"), "Unidade nova");
+    api.saveOrganization.mockResolvedValue(undefined);
+    api.organizations.mockResolvedValue({ rows: [{ ...UNIT, code: "NOVA", name: "Unidade nova" }], count: 1 });
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    await screen.findByText("Unidade nova");
+    expect(api.saveOrganization).toHaveBeenCalledWith("units", null, { code: "NOVA", name: "Unidade nova", active: true });
+  });
   it("shows the fallback and an add action when the unit has no photo", async () => {
     const { dialog } = await open();
     expect(covers.resolveUnitCovers).toHaveBeenCalledWith(["u1"], true);

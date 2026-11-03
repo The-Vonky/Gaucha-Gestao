@@ -1,6 +1,12 @@
 # VEN-04A — Interface operacional de Vendas / Maquininhas
 
-**Estado:** implementada para revisão; merge e homologação dependem do mantenedor.
+**Estado atual:** integrada pela [PR #93](https://github.com/The-Vonky/Gaucha-Gestao/pull/93),
+merge `7ddcd3155da91561ba94f088ff277ee4fc659f90`; homologação global pendente.
+Adendo VEN-04B: [dashboard independente](VEN04B_DASHBOARD_UI.md) em `/sales/dashboard`,
+com navegação entre áreas conforme suas capacidades. MEL-03–06: Lançamentos usa
+`/sales/entries`, `/sales` é entrada condicional e `/sales?…` mantém os filtros
+operacionais por redirecionamento. **Novo lançamento** permanece visível com
+explicação de bloqueios; [contrato atual e evidências](VEN04B_MEL03_06_VALIDATION.md). O restante registra a entrega VEN-04A.
 **Autorização:** pedido expresso de 29/10/2026 para VEN-04A, PR e testes sintéticos
 no notebook `gaucha-gestao-local`. Baseline `95589f7abdc120f4dddda00084a581b52214fd62`,
 merge da [PR #92](https://github.com/The-Vonky/Gaucha-Gestao/pull/92).
@@ -8,10 +14,15 @@ VEN-01/02/03 integradas nas PRs #90/#91/#92. Nenhum GO de STAGING/PROD.
 
 ## Operação
 
-Acesse **Comercial → Vendas / Maquininhas**, rota `/sales`. O menu e o Guard
+Acesse **Comercial → Vendas / Maquininhas → Lançamentos**, rota `/sales/entries`. O menu e o Guard
 aceitam qualquer capacidade `sales.entry.read/create/edit/delete` efetiva global
 ou unitária. Atribuição exclusivamente setorial e perfil inativo não habilitam a área.
 A UI adapta ações; as RPCs continuam sendo a autoridade de autorização.
+
+**Catálogo vazio (MEL-01):** capacidades globais válidas permitem consultar listas
+vazias e dashboard com total zero. A criação financeira continua exigindo uma unidade
+existente, ativa e autorizada. Nenhuma unidade é criada automaticamente; o cadastro
+organizacional permanece em Administração → Unidades. [Correção e validação](VEN04B_MEL01_LOCAL_CLEANUP.md).
 
 - **Consultar:** informe datas inclusivas (opcionais), unidade ou todas as autorizadas,
   Stone/PIX/ambos e selecione **Aplicar filtros**. O histórico inclui unidades inativas.

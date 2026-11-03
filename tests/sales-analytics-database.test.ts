@@ -44,7 +44,7 @@ beforeAll(async () => {
     for (const file of readdirSync("supabase/migrations").sort())
       await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
   }
-  if (!local) expect((await db.query<{ n: number }>("select count(*)::int n from core.role_permissions where permission_key like 'sales.%'")).rows[0].n).toBe(0);
+  if (!local) expect((await db.query<{ n: number }>("select count(*)::int n from core.role_permissions where permission_key like 'sales.%'")).rows[0].n).toBe(16);
   const fixture = readFileSync("tests/fixtures/sales-operations.sql", "utf8");
   await db.exec(local ? fixture.replace("select private.bootstrap_administrator('00000000-0000-0000-0000-000000000001');", "") : fixture);
   if (local) await owner(`insert into core.user_role_assignments(user_id,role_id,scope_type)
@@ -54,6 +54,13 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); });
 
 describe("VEN-03 — motor analítico", () => {
+  it("administrador possui dashboard global pela composição explícita", async () => {
+    await login(2);
+    const expected = await dashboard();
+    await login(1);
+    expect(await dashboard()).toEqual(expected);
+    expect((await db.query<{ scope_type: string }>("select scope_type from core.my_access() where permission='sales.dashboard.read'")).rows).toEqual([{ scope_type: "global" }]);
+  });
   it("oráculo financeiro independente: 300/350, diário 250/300 e projeções 3750/4500", async () => {
     await login(2);
     for (const scope of ["stone", "combined"]) {
@@ -73,8 +80,8 @@ describe("VEN-03 — motor analítico", () => {
     }
   });
 
-  it("nega anônimo, sem identidade, administrador sem grant, apenas entry.read, setor e inativo", async () => {
-    for (const [n, role] of [[null, "anon"], [null, "authenticated"], [1, "authenticated"], [5, "authenticated"], [6, "authenticated"], [8, "authenticated"]] as const) {
+  it("nega anônimo, sem identidade, apenas entry.read, setor e inativo", async () => {
+    for (const [n, role] of [[null, "anon"], [null, "authenticated"], [5, "authenticated"], [6, "authenticated"], [8, "authenticated"]] as const) {
       await login(n, role);
       await expect(dashboard()).rejects.toMatchObject({ code: "42501" });
     }
