@@ -115,7 +115,15 @@ ou cadastros persistidos. Nenhum projeto, container, volume ou serviço adiciona
 | `sales-dashboard-visual.mjs` | PASS nas quatro larguras; estilos computados equivalentes, teclado/reflow, diário/URL/reload, nomes/valores extensos e zero violações axe automáticas |
 | `sales-navigation-visual.mjs` | PASS; histórico, menu/teclado, escopos, perfil inativo, retry e quatro larguras |
 | `git diff --check` | PASS |
-| CI do commit entregue | A consultar após push; não reutilizar CI de `88b29fd` |
+| CI da implementação `5b85b7b1cfb809cdff9e6f99b8ecb6b3df50f1db` | **6/6 jobs SUCCESS**: `validate`, `sales-integration` (units/operations/analytics), `action-plans-integration` e `infra-validate` |
+
+Evidência do CI do commit de implementação:
+[Validate foundation](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/41682791399)
+e [Validate reproducible infrastructure](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/41682791278).
+Os resultados acima foram consultados após o push e não reaproveitam aprovações da
+baseline. Este registro final é uma alteração exclusivamente documental; os checks
+do HEAD subsequente também são conferidos e registrados na PR #94, sem presumir
+aprovação a partir do SHA anterior.
 
 Testes do resumo cobrem Stone/combinado sem somar mix, unidade específica inativa,
 todas (inclusive uma única autorizada), janela entre anos/lacunas, sem movimentos,
