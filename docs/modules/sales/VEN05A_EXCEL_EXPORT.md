@@ -274,6 +274,15 @@ O mantenedor único revisa diff, CI, negativos de permissão e os riscos antes d
 decidir merge. Não houve segunda revisão humana nem review formal inventado.
 VEN-05B, homologação VEN-07, migração real e cutover têm autorizações separadas.
 
+**Correção do ensaio CI:** na primeira execução de Auth/concorrência, a conexão
+owner da fixture ainda carregava a identidade sintética de leitura/exportação
+usada para autoria dos lançamentos. O Core recusou a restauração administrativa
+de uma concessão por esse ator, como deve ocorrer. O ensaio agora limpa esse
+contexto antes da preparação pelo owner do CI; os dois participantes da corrida
+e o browser continuam usando seus papéis/identidades restritos. Nenhum helper,
+grant ou contrato de autorização de produção foi relaxado. Diagnóstico de falha
+registra SQLSTATE sem anexar payloads de Auth.
+
 ## Limpeza Git comprovada
 
 Após `git fetch origin --prune`, `origin/main` era `91bd16b`. `gh pr list --state

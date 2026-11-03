@@ -98,6 +98,10 @@ try {
   const revoke = b.query("update core.user_role_assignments set active=false where user_id=$1", [users.revoked.id]);
   await blocked(bPid, aPid); await a.query("commit"); await revoke; fails(await full("revoked"));
   phase = "concorrência real — revogação antes da exportação";
+  // A conexão de fixture usava o ator de Vendas para registrar lançamentos.
+  // Restaurar concessão é preparação pelo owner do CI, não ação desse leitor.
+  // validate_assignment deve continuar negando delegação ao usuário de Vendas.
+  await db.query("select set_config('request.jwt.claim.sub','',false)");
   await db.query("update core.user_role_assignments set active=true where user_id=$1", [users.revoked.id]);
   await b.query("begin; set local statement_timeout='12s'");
   await b.query("update core.profiles set active=false where id=$1", [users.revoked.id]);
@@ -135,7 +139,8 @@ try {
   // Não imprimir payloads de Auth, chaves ou respostas financeiras.
   // Não anexar o erro original: pode conter resposta de autenticação com credenciais.
   // eslint-disable-next-line preserve-caught-error
-  throw new Error(error instanceof assert.AssertionError ? error.message : "Falha de integração VEN-05A");
+  throw new Error(error instanceof assert.AssertionError ? error.message
+    : `Falha de integração VEN-05A; SQLSTATE=${/^[A-Z0-9]{5}$/.test(error?.code ?? "") ? error.code : "indisponível"}`);
 } finally {
   await browser?.close(); await server?.close();
   await Promise.allSettled([a.query("rollback"), b.query("rollback")]);
