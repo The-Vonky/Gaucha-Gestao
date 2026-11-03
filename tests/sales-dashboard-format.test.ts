@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { comparisonLabel, dashboardFilters, dashboardMoney, defaultSelection, intensity, monthStatus, percent, readSelection, selectionError, selectionParams, visualMaximum, visualRatio } from "../apps/web/src/modules/sales/dashboard";
+import { chartScale, compactMoney, compactPercent, stackCoordinates, unitColor, comparisonLabel, dashboardFilters, dashboardMoney, defaultSelection, intensity, monthStatus, percent, readSelection, selectionError, selectionParams, visualMaximum, visualRatio } from "../apps/web/src/modules/sales/dashboard";
 import { dashboardFixture, A } from "./fixtures/sales-dashboard";
 
 describe("VEN-04B — apresentação exata e geometria isolada", () => {
@@ -35,5 +35,38 @@ describe("VEN-04B — competências civis, limites e URL", () => {
   it("aceita exatamente 24 competências e datas bissextas", () => {
     expect(selectionError({ ...selection, from: "2024-10", baseFrom: "2024-10" })).toBe("");
     expect(selectionError({ ...selection, from: "2024-02", to: "2024-02", daily: "2024-02", day: "29" })).toBe("");
+  });
+});
+
+describe("VEN-04B — escalas e apresentação compacta", () => {
+  it("arredonda percentuais em string, com sinal, carry e valor exato preservável", () => {
+    expect(compactPercent("116.666667")).toBe("116,7%");
+    expect(compactPercent("-20.123456")).toBe("-20,1%");
+    expect(compactPercent("99.999999")).toBe("100%");
+    expect(compactPercent("0.000001")).toBe("<0,1%");
+    expect(compactPercent("-0.000001")).toBe(">-0,1%");
+    expect(compactPercent(null)).toBe("Sem comparação");
+    expect(percent("116.666667")).toBe("116,666667%");
+    expect(compactPercent("9007199254740993.150000")).toBe("9007199254740993,2%");
+  });
+  it("produz eixos monotônicos para negativos, zero, centavos e strings gigantes", () => {
+    for (const values of [["0.00"], ["-0.01", "0.01"], ["-200.00", "-10.00"], ["0.01"], [`1${"0".repeat(400)}.00`]]) {
+      const scale = chartScale(values);
+      expect(scale.ticks.length).toBeGreaterThan(1);
+      expect(scale.ticks.length).toBeLessThan(12);
+      expect(scale.ticks.map(scale.y).every(Number.isFinite)).toBe(true);
+      expect(scale.y(scale.ticks[0])).toBeGreaterThan(scale.y(scale.ticks.at(-1)!));
+      for (const value of values) expect(scale.y(value)).toBeGreaterThanOrEqual(32);
+    }
+    expect(compactMoney("-1234567.89")).toBe("−R$ 1,2 mi");
+    expect(compactMoney("0.01")).toBe("R$ 0,01");
+  });
+  it("mantém cores por UUID e separa pilhas positivas/negativas em centavos exatos só para geometria", () => {
+    expect(unitColor(A)).toBe(unitColor(A.toUpperCase()));
+    expect(stackCoordinates(["9007199254740993.01", "0.01", "-5.00", "-0.01"])).toEqual([
+      { start: "0.00", end: "9007199254740993.01" },
+      { start: "9007199254740993.01", end: "9007199254740993.02" },
+      { start: "0.00", end: "-5.00" }, { start: "-5.00", end: "-5.01" },
+    ]);
   });
 });

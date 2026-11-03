@@ -1,5 +1,11 @@
 # VEN-04B — Dashboard gerencial de Vendas / Maquininhas
 
+**Correção visual — 03/11/2026:** quatro KPIs executivos, Panorama Gaúcha com três
+insights antes dos gráficos, toolbar compacta, SVGs de altura fixa com escala/grade/
+área, ranking, legenda inferior e cores por UUID. Contratos VEN-03 preservados.
+[Comparação, screenshots, testes e pendências](VEN04B_VISUAL_FIDELITY.md).
+Não representa homologação ou avanço de VEN-05–08.
+
 **MEL-01 (30/10/2026):** com zero unidades, capacidades globais existentes permitem
 retornar o estado vazio. Sem criar fixtures permanentes ou conceder novas permissões.
 [Migration incremental e provas locais](VEN04B_MEL01_LOCAL_CLEANUP.md).
@@ -95,8 +101,11 @@ Mudança de acesso oculta imediatamente o resultado e elimina o estado anterior.
 
 Dinheiro exibido é formatado diretamente da string decimal, inclusive grandes somas
 além de `Number.MAX_SAFE_INTEGER`, centavos e diferenças assinadas. Nulo significa
-Indisponível/Sem comparação. Não há cálculo financeiro nem arredondamento no React.
-Percentuais são os seis decimais da RPC, removendo apenas zeros finais.
+Indisponível/Sem comparação. Não há cálculo de indicadores nem arredondamento de dinheiro no React.
+Percentuais de cards/badges usam apresentação compacta com até uma casa decimal,
+via BigInt; o percentual exato da RPC permanece em texto acessível, título e
+tabelas/detalhes. Rótulos de eixos/pontos podem abreviar dinheiro; tooltip e
+resumo mensal conservam centavos exatos.
 
 `visualRatio` usa BigInt para limitar uma razão de coordenadas a 1 ppm antes de
 convertê-la para Number; suporta inclusive valores maiores que `Number.MAX_VALUE`.

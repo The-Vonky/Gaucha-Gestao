@@ -1,5 +1,10 @@
 # Roteiro de migração dos módulos
 
+**VEN-04B — correção visual de 03/11/2026:** apresentação reconstruída na PR #94,
+com quatro KPIs, Panorama, gráficos e cores por UUID, mantendo VEN-03 e permissões.
+[Antes/depois, validação e audit pendente](../modules/sales/VEN04B_VISUAL_FIDELITY.md).
+Revisão visual/merge pelo titular pendentes; VEN-05–08 e PROD NO-GO preservados.
+
 **MEL-01 — 30/10/2026:** limpeza autorizada somente no notebook, catálogo de unidades
 vazio, fixtures com teardown físico dirigido e correção de consultas globais sem unidades
 (`20261030145036_sales_empty_units.sql`). [Evidências](../modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md).

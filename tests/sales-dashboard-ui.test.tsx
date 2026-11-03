@@ -43,13 +43,13 @@ describe("VEN-04B — painel financeiro completo", () => {
     expect(screen.queryByRole("link", { name: "Ir para lançamentos", exact: true })).toBeNull();
   });
   it("alternância Stone + PIX atualiza total350 / diário300 / projeção4500 e coluna PIX", async () => {
-    mount(); await ready(); fireEvent.change(screen.getByLabelText("Escopo financeiro"), { target: { value: "combined" } }); apply(); await ready();
+    mount(); await ready(); fireEvent.click(screen.getByRole("radio", { name: "Stone + PIX", exact: true })); apply(); await ready();
     expect(total()).toContain("R$ 350,00"); expect(figure("Acumulado diário").textContent).toContain("R$ 300,00"); expect(figure("Acumulado diário").textContent).toContain("R$ 4.500,00");
     expect(within(figure("Resumo mensal")).getByRole("columnheader", { name: "PIX", exact: true })).toBeTruthy();
   });
   it("representa todos os gráficos, média, marcador parcial, intensidade, referência lacunar e insights", async () => {
     mount(); await ready();
-    for (const title of ["Evolução mensal", "Ranking de unidades", "Composição mensal por unidade", "Heatmap", "Resumo mensal", "Acumulado diário", "Composição Stone", "Insights gerenciais", "Contexto da base"]) expect(figure(title)).toBeTruthy();
+    for (const title of ["Evolução mensal", "Ranking de unidades", "Composição mensal por unidade", "Heatmap", "Resumo mensal", "Acumulado diário", "Composição Stone", "Panorama Gaúcha", "Contexto da base"]) expect(figure(title)).toBeTruthy();
     expect(figure("Evolução mensal").querySelector(".sales-average")).toBeTruthy(); expect(figure("Evolução mensal").querySelector(".sales-point.partial")).toBeTruthy();
     expect(figure("Acumulado diário").querySelector(".sales-reference")?.getAttribute("d")).toContain("L");
     expect(figure("Acumulado diário").textContent).toContain("referência 07/2026 · corte até dia 2");
@@ -68,9 +68,9 @@ describe("VEN-04B — painel financeiro completo", () => {
     d.insights.largest_decline = { ...closed, comparison: { ...closed.comparison, cutoff_day: null, variation_pct: "-20.123456", trend: "down" } };
     d.summary.top_two_share_pct = "99.123456";
     api.salesDashboard.mockResolvedValue(d); mount(); await ready();
-    const insights = figure("Insights gerenciais");
-    expect(insights.textContent).toContain("07/2026 · -12,5% · Referência 05/2026");
-    expect(insights.textContent).toContain("09/2026 · -20,123456% · Referência 07/2026");
+    const insights = figure("Panorama Gaúcha");
+    expect(insights.textContent).toContain("07/2026 · -12,5%"); expect(insights.textContent).toContain("Referência 05/2026");
+    expect(insights.textContent).toContain("09/2026 · -20,1%"); expect(within(insights).getByText("Percentual exato: -20,123456%")).toBeTruthy();
     expect(insights.textContent).toContain("99,123456%"); expect(insights.textContent).toContain("1775% · referência 07/2026");
     expect(insights.textContent).toContain("R$ 3.750,00");
   });
@@ -161,7 +161,7 @@ describe("VEN-04B — navegação gerencial e concorrência", () => {
     const slow = deferred<SalesDashboard>(); api.salesDashboard.mockResolvedValueOnce(dashboardFixture()).mockReturnValueOnce(slow.promise).mockResolvedValue(dashboardFixture(true));
     mount(); await ready(); fireEvent.click(screen.getByRole("button", { name: "Atualizar", exact: true }));
     await waitFor(() => expect(api.salesDashboard).toHaveBeenCalledTimes(2));
-    fireEvent.change(screen.getByLabelText("Escopo financeiro"), { target: { value: "combined" } }); apply(); await ready();
+    fireEvent.click(screen.getByRole("radio", { name: "Stone + PIX", exact: true })); apply(); await ready();
     expect(total()).toContain("350,00"); await act(async () => slow.resolve(dashboardFixture())); expect(total()).toContain("350,00");
     expect(auth.refresh).toHaveBeenCalledTimes(1);
   });
@@ -220,5 +220,54 @@ describe("VEN-04B — autorização independente e estados seguros", () => {
     const d = dashboardFixture(); d.units = []; d.months = []; d.ranking = []; d.unit_months = []; d.daily = { competency: null, reference_month: null, cutoff_day: null, totals: [], points: [] };
     d.summary.latest = null; d.summary.leader = null; api.salesDashboard.mockResolvedValue(d); mount(); await screen.findByText("Sem movimento no período");
     expect(api.salesDashboard).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("VEN-04B — fidelidade visual e interação acessível", () => {
+  it("coloca quatro KPIs e três insights antes da evolução, preservando os seis complementares", async () => {
+    mount(); await ready();
+    const executive = screen.getByLabelText("Indicadores executivos"), panorama = figure("Panorama Gaúcha");
+    expect(executive.querySelectorAll(".metric")).toHaveLength(4);
+    expect(panorama.querySelectorAll("article")).toHaveLength(3);
+    expect(screen.getByLabelText("Indicadores complementares").querySelectorAll(".metric")).toHaveLength(6);
+    expect(executive.compareDocumentPosition(panorama) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(panorama.compareDocumentPosition(figure("Evolução mensal")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Stone", exact: true }).getAttribute("value")).toBe("stone");
+    expect(screen.getByText("Filtros avançados").closest("details")?.open).toBe(false);
+  });
+  it("gradiente também interrompe em lacunas; tooltip apresenta valor exato por teclado e Escape", async () => {
+    const d = dashboardFixture(); d.filters.from = "2026-07-01"; d.metadata.missing_months = ["2026-08-01"];
+    d.months.unshift({ ...d.months[0], competency: "2026-07-01", total: "9007199254740993.01", partial: false });
+    d.unit_months.push(...d.unit_months.map(c => ({ ...c, competency: "2026-07-01" })));
+    api.salesDashboard.mockResolvedValue(d); mount("from=2026-07&to=2026-09"); await ready();
+    const evolution = figure("Evolução mensal");
+    expect(evolution.querySelectorAll(".sales-area")).toHaveLength(2);
+    expect(evolution.querySelector("linearGradient")).toBeTruthy();
+    expect(evolution.querySelectorAll(".sales-grid line").length).toBeGreaterThan(2);
+    const mark = within(evolution).getByRole("button", { name: /Focar competência 07\/2026/ });
+    fireEvent.focus(mark); expect(screen.getByRole("tooltip").textContent).toContain("R$ 9.007.199.254.740.993,01");
+    fireEvent.keyDown(mark, { key: "Escape" }); expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.keyDown(mark, { key: "Enter" }); await ready(); expect(screen.getByTestId("url").textContent).toContain("from=2026-07");
+  });
+  it("cores acompanham o UUID na legenda, ranking e barras mesmo com ordem diferente", async () => {
+    const d = dashboardFixture(); d.units.reverse(); api.salesDashboard.mockResolvedValue(d);
+    mount(); await ready();
+    const legend = within(screen.getByRole("group", { name: "Séries das barras empilhadas" })).getByRole("button", { name: /Unidade Alfa/ });
+    const swatch = legend.querySelector(".sales-swatch") as HTMLElement;
+    const bar = figure("Composição mensal por unidade").querySelector(`rect[data-unit="${A}"]`)!;
+    const rank = figure("Ranking").querySelector(`[data-unit="${A}"] .sales-swatch`) as HTMLElement;
+    expect(swatch.style.background).toBe(rank.style.background);
+    expect(bar.getAttribute("fill")).toBe(swatch.style.background);
+    expect(figure("Composição mensal por unidade").querySelector("svg")!.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.focus(legend); expect(figure("Composição mensal por unidade").querySelector(`rect[data-unit="${B}"]`)?.getAttribute("opacity")).toBe("0.3");
+  });
+  it("pilhas com sinais opostos permanecem finitas e não alteram o total recebido", async () => {
+    const d = dashboardFixture(); d.unit_months[0].total = "-500.01"; d.unit_months[1].total = "100.00";
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    const bars = figure("Composição mensal por unidade").querySelectorAll("rect");
+    expect(bars).toHaveLength(2);
+    for (const bar of bars) expect(Number(bar.getAttribute("height"))).toBeGreaterThan(0);
+    expect(figure("Composição mensal por unidade").textContent).toContain("−R$");
+    expect(total()).toContain("R$ 300,00");
   });
 });

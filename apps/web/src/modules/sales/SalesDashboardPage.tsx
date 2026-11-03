@@ -4,7 +4,7 @@ import { useAuth } from "../../core/auth/AuthProvider";
 import { EmptyState, LoadingState, Metric, Notice, PageTitle } from "../../shared/ui";
 import { salesDashboard, salesMessage } from "./api";
 import { comparisonLabel, competency, dashboardFilters, dashboardMoney as money, defaultSelection, monthStatus, percent, readSelection, selectionError, selectionParams, type DashboardSelection } from "./dashboard";
-import { DailyAnalysis, Figure, Heatmap, MonthlyEvolution, PaymentMix, Ranking, Scroll, Stacked } from "./DashboardCharts";
+import { CompactPercent, DailyAnalysis, Figure, Heatmap, MonthlyEvolution, PaymentMix, Ranking, Scroll, Stacked } from "./DashboardCharts";
 import { SalesNavigation } from "./SalesNavigation";
 import type { SalesDashboard } from "./types";
 import "./sales.css";
@@ -72,9 +72,10 @@ export function SalesDashboardPage() {
         {data?.units.map(u => <option key={u.id} value={u.id}>{u.code} · {u.name}{!u.active && " (inativa)"}</option>)}
         {selection.unit && !data?.units.some(u => u.id === selection.unit) && <option value={selection.unit}>Unidade selecionada na URL</option>}
       </select></label>
-      <label>Escopo financeiro<select aria-label="Escopo financeiro" name="scope" defaultValue={selection.scope}><option value="stone">Stone</option><option value="combined">Stone + PIX</option></select></label>
-      <label>Competência diária<input aria-label="Competência diária" name="daily" type="month" min={selection.from} max={selection.to} defaultValue={selection.daily} /><small>Vazia: última disponível no período</small></label>
-      <details className="sales-direct-unit"><summary>Recorte direto por UUID</summary><label>Unidade por UUID<input name="unitId" placeholder="UUID autorizado" autoComplete="off" /></label><small>Use para selecionar uma unidade quando a base exceder 100. O banco valida o acesso.</small></details>
+      <fieldset className="sales-scope"><legend>Escopo financeiro</legend><div className="sales-segmented">
+        <label><input type="radio" name="scope" value="stone" defaultChecked={selection.scope === "stone"} /><span>Stone</span></label>
+        <label><input type="radio" name="scope" value="combined" defaultChecked={selection.scope === "combined"} /><span>Stone + PIX</span></label>
+      </div></fieldset>
       <div className="actions"><button type="submit" className="primary">Aplicar filtros</button><button type="button" onClick={refresh}>Atualizar</button>
         <button type="button" onClick={() => { update(defaultSelection()); setRevision(v => v + 1); }}>Redefinir</button>
         <button type="button" disabled={!focused && !(location.state as { salesFocus?: boolean } | null)?.salesFocus} onClick={() => {
@@ -83,30 +84,41 @@ export function SalesDashboardPage() {
         }}>Voltar</button>
         <button type="button" onClick={() => update({ ...selection, unit: "", from: selection.baseFrom, to: selection.baseTo, daily: "", day: "" })}>Comparar tudo</button>
       </div>
+      <details className="sales-advanced"><summary>Filtros avançados</summary><div>
+        <label>Competência diária<input aria-label="Competência diária" name="daily" type="month" min={selection.from} max={selection.to} defaultValue={selection.daily} /><small>Vazia: última disponível no período</small></label>
+        <label>Recorte direto por UUID<input aria-label="Unidade por UUID" name="unitId" placeholder="UUID autorizado" autoComplete="off" /><small>Até uma unidade autorizada; o banco valida o acesso.</small></label>
+      </div></details>
     </form>
     {error ? <Notice error>{error}<div className="actions"><button onClick={refresh}>Tentar novamente</button></div></Notice> : !data ? <LoadingState label="Carregando dashboard…" /> : <>
       <div className="sales-applied" role="status"><strong>{focused ? "Foco ativo" : "Comparação gerencial"}</strong><span>{competency(data.filters.from)} a {competency(data.filters.to)} · {data.filters.scope === "stone" ? "Stone" : "Stone + PIX"} · {data.units.length} unidades autorizadas neste recorte · leitura às {current?.at} (São Paulo)</span></div>
       {!data.months.length && <EmptyState title="Sem movimento no período">A consulta não retornou competências disponíveis. Altere o período ou o recorte autorizado.</EmptyState>}
       {data.months.some(m => m.status_basis === "historical_unavailable") && <Notice>Status histórico indisponível para este acesso. Os totais autorizados continuam disponíveis; comparação, média diária e projeção podem não ter base válida.</Notice>}
       {data.months.some(m => m.partial === true) && <Notice tone="warning">Há competência parcial. Comparações usam o corte diário informado pela API; projeções são estimativas lineares.</Notice>}
-      <div className="sales-kpis" aria-label="Indicadores executivos">
-        <Metric label="Total financeiro do período" value={money(summary!.total)} hint="Movimento diário + ajuste mensal · escopo selecionado" />
-        <div className="sales-kpi-action"><Metric label="Competência mais recente" value={money(latest?.total)} hint={competency(latest?.competency)} />{latest && <button onClick={() => focus(undefined, latest.competency)}>Focar mais recente</button>}</div>
-        <Metric label="Variação da competência recente" value={latest?.comparison.available ? percent(latest.comparison.variation_pct) : "Sem comparação"} hint={<>{comparisonLabel(latest ?? null)}{latest?.comparison.available && <><br />{money(latest.comparison.current_amount)} × {money(latest.comparison.reference_amount)}</>}</>} />
-        <Metric label="Média diária do período" value={money(summary!.daily_average)} hint="Dias considerados de cada competência; indisponível se status indeterminado" />
-        <Metric label="Média mensal do período" value={money(summary!.monthly_average)} hint={`${data.months.length} competências disponíveis; lacunas não são zeros`} />
-        <div className="sales-kpi-action"><Metric label={summary!.best_closed?.is_closed === true ? "Melhor competência fechada confirmada" : "Melhor competência completa (VEN-03)"} value={money(summary!.best_closed?.total)} hint={summary!.best_closed ? `${competency(summary!.best_closed.competency)} · ${monthStatus(summary!.best_closed)}` : "Sem competência completa confirmada"} />{summary!.best_closed && <button onClick={() => focus(undefined, summary!.best_closed!.competency)}>Focar melhor completa</button>}</div>
-        <div className="sales-kpi-action"><Metric label="Unidade líder no período" value={leader ? `${leader.code} · ${leader.name}` : "Indisponível"} hint={money(summary!.leader?.total)} />{leader && <button onClick={() => focus(leader.id)}>Focar líder</button>}</div>
-        <Metric label="Participação da líder" value={summary!.leader ? percent(summary!.leader.share_pct) : "Indisponível"} hint="Sobre o total financeiro selecionado" />
-        <Metric label="Concentração das duas maiores" value={summary!.top_two_share_pct === null ? "Indisponível" : percent(summary!.top_two_share_pct)} hint="Participação no período selecionado" />
-        <Metric label="Projeção da competência diária — estimativa" value={money(dailyMonth?.projection_is_estimate ? dailyMonth.projection : null)} hint={`${competency(data.daily.competency)} · somente ritmo diário observado`} />
+      <div className="sales-kpis" role="group" aria-label="Indicadores executivos">
+        <Metric label="Total financeiro do período" value={<KpiMoney value={summary!.total} />} hint="Movimento diário + ajuste mensal · escopo selecionado" />
+        <div className="sales-kpi-action"><Metric label="Competência mais recente" value={<KpiMoney value={latest?.total} />} hint={<>{competency(latest?.competency)} · <CompactPercent value={latest?.comparison.available ? latest.comparison.variation_pct : null} /><br />{latest ? monthStatus(latest) : "Indisponível"}</>} />{latest && <button onClick={() => focus(undefined, latest.competency)}>Focar mais recente</button>}</div>
+        <div className="sales-kpi-action"><Metric label={summary!.best_closed?.is_closed === true ? "Melhor competência fechada confirmada" : "Melhor competência completa (VEN-03)"} value={<KpiMoney value={summary!.best_closed?.total} />} hint={summary!.best_closed ? `${competency(summary!.best_closed.competency)} · ${monthStatus(summary!.best_closed)}` : "Sem competência completa confirmada"} />{summary!.best_closed && <button onClick={() => focus(undefined, summary!.best_closed!.competency)}>Focar melhor completa</button>}</div>
+        <div className="sales-kpi-action"><Metric label="Unidade líder no período" value={<span className="sales-leader-name" title={leader ? `${leader.code} · ${leader.name}` : "Indisponível"}>{leader ? `${leader.code} · ${leader.name}` : "Indisponível"}</span>} hint={<>{money(summary!.leader?.total)} · <CompactPercent value={summary!.leader?.share_pct} /> de participação</>} />{leader && <button onClick={() => focus(leader.id)}>Focar líder</button>}</div>
       </div>
+      <Insights data={data} />
+      <SectionHeading title="Desempenho das unidades" description="Evolução dos recebimentos e contribuição de cada unidade no recorte autorizado." />
       <div className="sales-analysis-grid"><MonthlyEvolution data={data} onFocus={focus} /><Ranking data={data} onFocus={focus} /></div>
       <Stacked key={access} data={data} onFocus={focus} />
+      <SectionHeading title="Comparativo por unidade" description="Mapa de intensidade e resumo mensal com valores exatos." />
       <Heatmap data={data} onFocus={focus} />
       <MonthlySummary data={data} onFocus={focus} />
+      <SectionHeading title="Ritmo de vendas" description="Observado, referência anterior e projeção explicitamente separados." />
       <DailyAnalysis data={data} day={selection.day} onFocus={focus} />
-      <div className="sales-analysis-grid"><PaymentMix data={data} /><Insights data={data} /></div>
+      <SectionHeading title="Indicadores complementares" description="Detalhes do período, comparações e estimativas da API." />
+      <div className="sales-kpis sales-secondary-kpis" role="group" aria-label="Indicadores complementares">
+        <Metric label="Variação da competência recente" value={<CompactPercent value={latest?.comparison.available ? latest.comparison.variation_pct : null} />} hint={<>{comparisonLabel(latest ?? null)}{latest?.comparison.available && <><br />{money(latest.comparison.current_amount)} × {money(latest.comparison.reference_amount)}</>}</>} />
+        <Metric label="Média diária do período" value={money(summary!.daily_average)} hint="Dias considerados de cada competência; indisponível se status indeterminado" />
+        <Metric label="Média mensal do período" value={money(summary!.monthly_average)} hint={`${data.months.length} competências disponíveis; lacunas não são zeros`} />
+        <Metric label="Participação da líder" value={summary!.leader ? <CompactPercent value={summary!.leader.share_pct} /> : "Indisponível"} hint="Sobre o total financeiro selecionado" />
+        <Metric label="Concentração das duas maiores" value={summary!.top_two_share_pct === null ? "Indisponível" : <CompactPercent value={summary!.top_two_share_pct} />} hint="Participação no período selecionado" />
+        <Metric label="Projeção da competência diária — estimativa" value={money(dailyMonth?.projection_is_estimate ? dailyMonth.projection : null)} hint={`${competency(data.daily.competency)} · somente ritmo diário observado`} />
+      </div>
+      <PaymentMix data={data} />
       <BaseContext data={data} />
     </>}
   </section>;
@@ -125,16 +137,29 @@ function MonthlySummary({ data, onFocus }: { data: SalesDashboard; onFocus: (uni
     </table></Scroll>
   </Figure>;
 }
+function KpiMoney({ value }: { value: string | null | undefined }) {
+  const formatted = money(value);
+  return <span className={`sales-kpi-money${formatted.length > 20 ? " sales-kpi-money-long" : ""}`} title={formatted} tabIndex={formatted.length > 20 ? 0 : undefined}>{formatted}</span>;
+}
+function SectionHeading({ title, description }: { title: string; description: string }) {
+  return <header className="sales-section-heading"><h2>{title}</h2><p>{description}</p></header>;
+}
 function Insights({ data }: { data: SalesDashboard }) {
   const { strongest_advance: advance, largest_decline: decline, pace } = data.insights;
-  return <Figure title="Insights gerenciais" description="Somente comparações e projeções fornecidas pelo motor analítico.">
-    <dl className="sales-definition"><div><dt>Maior avanço comparável</dt><dd>{advance ? `${competency(advance.competency)} · ${percent(advance.comparison.variation_pct)} · ${comparisonLabel(advance)}` : "Sem competências fechadas comparáveis"}</dd></div>
-      <div><dt>Maior recuo</dt><dd>{decline ? `${competency(decline.competency)} · ${percent(decline.comparison.variation_pct)} · ${comparisonLabel(decline)}` : "Sem recuo comparável disponível"}</dd></div>
-      <div><dt>Concentração das duas principais</dt><dd>{data.summary.top_two_share_pct === null ? "Indisponível" : percent(data.summary.top_two_share_pct)}</dd></div>
-      <div><dt>Ritmo da competência recente</dt><dd>{pace ? `${competency(pace.competency)} · ${pace.comparison.available ? percent(pace.comparison.variation_pct) : "Sem comparação"}` : "Indisponível"}</dd></div>
-      <div><dt>Projeção linear — estimativa</dt><dd>{money(pace?.is_estimate ? pace.projection : null)}</dd></div>
-      <div><dt>Comparação projetada</dt><dd>{pace?.is_estimate ? `${percent(pace.projected_variation_pct)} · referência ${competency(pace.reference_month)}` : "Sem comparação projetada disponível"}</dd></div>
-    </dl>
+  return <Figure title="Panorama Gaúcha" description="Principais movimentos no recorte selecionado, fornecidos pelo motor analítico.">
+    <div className="sales-insights">
+      <article className="sales-insight" data-tone={advance?.comparison.trend ?? "neutral"}><h3>Maior avanço</h3>
+        <p>{advance ? <><strong>{competency(advance.competency)} · <CompactPercent value={advance.comparison.variation_pct} /></strong><small>{comparisonLabel(advance)}</small></> : "Sem competências fechadas comparáveis"}</p></article>
+      <article className="sales-insight" data-tone={decline ? "down" : "neutral"}><h3>Ponto de atenção</h3>
+        <p>{decline ? <><strong>{competency(decline.competency)} · <CompactPercent value={decline.comparison.variation_pct} /></strong><small>Maior recuo · {comparisonLabel(decline)}</small></> : "Sem recuo comparável disponível"}</p></article>
+      <article className="sales-insight" data-tone="neutral"><h3>Ritmo atual e concentração</h3>
+        <p>{pace ? <><strong>{competency(pace.competency)} · <CompactPercent value={pace.comparison.available ? pace.comparison.variation_pct : null} /></strong><small>Ritmo da competência recente</small></> : "Indisponível"}</p>
+        <p>Projeção linear — estimativa: <strong>{money(pace?.is_estimate ? pace.projection : null)}</strong>
+          <small>Comparação projetada: {pace?.is_estimate ? <><CompactPercent value={pace.projected_variation_pct} /> · referência {competency(pace.reference_month)}</> : "Sem comparação projetada disponível"}</small></p>
+        <p>As duas principais: <strong><CompactPercent value={data.summary.top_two_share_pct} /></strong></p>
+        <details><summary>Precisão dos percentuais</summary><small>Ritmo: {percent(pace?.comparison.available ? pace.comparison.variation_pct : null)} · concentração: {percent(data.summary.top_two_share_pct)} · projeção: {pace?.is_estimate ? `${percent(pace.projected_variation_pct)} · referência ${competency(pace.reference_month)}` : "Sem comparação"}</small></details>
+      </article>
+    </div>
   </Figure>;
 }
 function BaseContext({ data }: { data: SalesDashboard }) {
