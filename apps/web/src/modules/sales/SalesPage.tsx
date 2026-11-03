@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { Confirm, EmptyState, LoadingState, Notice, PageTitle, Table } from "../../shared/ui";
 import { deleteEntry, entryDetail, listEntries, listSalesUnits, salesMessage } from "./api";
 import { EntryEditor } from "./EntryEditor";
+import { SalesNavigation } from "./SalesNavigation";
 import { civilDate, money, validDate } from "./format";
 import type { PaymentMethod, SalesEntry, SalesUnit } from "./types";
 import "./sales.css";
@@ -24,7 +25,7 @@ export function SalesPage() {
   const access = JSON.stringify([auth.session?.user.id, active, auth.grants]);
   const [revision, setRevision] = useState(0);
   const key = JSON.stringify([access, from, to, unit, method, page, revision]);
-  const [result, setResult] = useState<{ key: string; access: string; units: SalesUnit[]; rows: SalesEntry[]; next: boolean; error: string }>();
+  const [result, setResult] = useState<{ key: string; rows: SalesEntry[]; next: boolean; error: string }>();
   const [success, setSuccess] = useState("");
   const [actionError, setActionError] = useState("");
   const [editor, setEditor] = useState<{ entry?: SalesEntry }>();
@@ -38,8 +39,19 @@ export function SalesPage() {
   const current = result?.key === key ? result : undefined;
   // O catálogo não é recarregado por edição de filtros; uma atualização explícita ou
   // mutação reavalia atividade e capacidades. Toda RPC revalida acesso no banco.
-  const catalog = useRef<{ key: string; promise: Promise<SalesUnit[]> } | undefined>(undefined);
+  const [catalog, setCatalog] = useState<{ key: string; units: SalesUnit[]; error: string }>();
   const catalogKey = JSON.stringify([access, revision]);
+  const currentCatalog = catalog?.key === catalogKey ? catalog : undefined;
+  useEffect(() => {
+    let obsolete = false;
+    if (!allowed) return;
+    void listSalesUnits().then(units => {
+      if (!obsolete) setCatalog({ key: catalogKey, units, error: "" });
+    }).catch(error => {
+      if (!obsolete) setCatalog({ key: catalogKey, units: [], error: salesMessage(error) });
+    });
+    return () => { obsolete = true; };
+  }, [allowed, catalogKey]);
   useEffect(() => {
     setEditor(undefined); setDeleting(undefined); setSuccess(""); setActionError("");
     ++actionGeneration.current;
@@ -53,33 +65,36 @@ export function SalesPage() {
         if ((from && !validDate(from)) || (to && !validDate(to)) || (from && to && from > to)
           || (method && method !== "Stone" && method !== "PIX"))
           throw new Error("filters");
-        if (catalog.current?.key !== catalogKey)
-          catalog.current = { key: catalogKey, promise: listSalesUnits() };
-        const [units, rows] = await Promise.all([
-          catalog.current.promise,
-          read ? listEntries({ from: from || undefined, to: to || undefined,
+        const rows = read ? await listEntries({ from: from || undefined, to: to || undefined,
             unit_id: unit || undefined, payment_method: method as PaymentMethod || undefined,
-            limit: PAGE_SIZE + 1, offset: page * PAGE_SIZE }) : Promise.resolve([]),
-        ]);
+            limit: PAGE_SIZE + 1, offset: page * PAGE_SIZE }) : [];
         if (generation.current !== request) return;
         // Uma remoção concorrente pode esvaziar a última página; voltar preservando filtros.
         if (read && page > 0 && rows.length === 0) {
           setParams(previous => { const next = new URLSearchParams(previous); next.delete("page"); return next; }, { replace: true });
           return;
         }
-        setResult({ key, access, units, rows: rows.slice(0, PAGE_SIZE), next: rows.length > PAGE_SIZE, error: "" });
+        setResult({ key, rows: rows.slice(0, PAGE_SIZE), next: rows.length > PAGE_SIZE, error: "" });
       } catch (e) {
         if (generation.current !== request) return;
-        catalog.current = undefined;
-        setResult({ key, access, units: [], rows: [], next: false,
+        setResult({ key, rows: [], next: false,
           error: e instanceof Error && e.message === "filters" ? "Confira as datas e a forma de pagamento dos filtros." : salesMessage(e) });
       }
     }
     void load();
     return () => { ++generation.current; };
   }, [key, access, allowed, read, from, to, unit, method, page, catalogKey, setParams]);
-  const units = result?.access === access ? result.units : [];
-  const canCreate = units.some(u => u.active && u.can_create && auth.can("sales.entry.create", { unit_id: u.id }));
+  const units = currentCatalog?.units ?? [];
+  const canCreate = !!currentCatalog && !currentCatalog.error && units.some(u => u.active && u.can_create && auth.can("sales.entry.create", { unit_id: u.id }));
+  const fullCatalog = auth.grants.some(g => g.permission.startsWith("sales.entry.") && g.scope_type === "global");
+  const createBlock = !has("create")
+    ? "Seu acesso permite consultar os lançamentos, mas não cadastrar novas vendas. Solicite a permissão de cadastro ao administrador."
+    : !currentCatalog ? "Carregando as unidades autorizadas para cadastro…"
+    : currentCatalog.error ? "Não foi possível carregar as unidades autorizadas. Tente novamente para verificar se o cadastro está disponível."
+    : !units.length && fullCatalog ? "Não é possível registrar vendas porque ainda não existe nenhuma unidade cadastrada. Cadastre uma unidade ativa para começar."
+    : units.length && !units.some(u => u.active) ? "Não há unidades ativas disponíveis para novos lançamentos no seu acesso. Ative uma unidade ou cadastre uma nova para continuar."
+    : !canCreate ? "Você possui permissão de cadastro, mas não há nenhuma unidade ativa autorizada para seu acesso. Solicite ao administrador a verificação das unidades e permissões."
+    : "";
   const rowAllowed = (e: SalesEntry, action: "edit" | "delete") =>
     !!units.find(u => u.id === e.unit_id)?.[`can_${action}`] && auth.can(`sales.entry.${action}`, { unit_id: e.unit_id });
   function refresh() { setRevision(r => r + 1); }
@@ -115,12 +130,17 @@ export function SalesPage() {
   }
   if (!allowed) return <EmptyState title="Acesso não autorizado">Você não possui acesso operacional a Vendas / Maquininhas.</EmptyState>;
   return <section className="sales-page">
-    <PageTitle eyebrow="Comercial" title="Vendas / Maquininhas" description="Lançamentos diários agregados por unidade, em Stone e PIX.">
-      {canCreate && <button className="primary" onClick={() => { setSuccess(""); setActionError(""); setEditor({}); }}>Novo lançamento</button>}
+    <PageTitle title="Lançamentos" description="Lançamentos diários agregados por unidade, em Stone e PIX.">
+      <SalesNavigation />
+      <button className="primary" disabled={!canCreate} aria-describedby={createBlock ? "sales-create-block" : undefined} onClick={() => { if (canCreate) { setSuccess(""); setActionError(""); setEditor({}); } }}>Novo lançamento</button>
     </PageTitle>
+    {createBlock && <Notice tone="warning"><span id="sales-create-block">{createBlock}</span>
+      {auth.can("admin.unit.manage") && currentCatalog && !currentCatalog.error && has("create") && <div className="actions"><Link className="button-link" to="/admin/units">Cadastrar unidade</Link></div>}
+    </Notice>}
+    {currentCatalog?.error && <Notice error>{currentCatalog.error}<div className="actions"><button onClick={refresh}>Tentar carregar unidades novamente</button></div></Notice>}
     {success && <Notice tone="success">{success}</Notice>}
     {actionError && <Notice error>{actionError}</Notice>}
-    {read && result?.access === access ? <form className="sales-filters" key={JSON.stringify([from, to, unit, method, units.map(u => u.id)])} onSubmit={event => {
+    {read && currentCatalog && !currentCatalog.error ? <form className="sales-filters" key={JSON.stringify([from, to, unit, method, units.map(u => u.id)])} onSubmit={event => {
       event.preventDefault();
       const data = new FormData(event.currentTarget);
       const next = new URLSearchParams();
@@ -156,7 +176,7 @@ export function SalesPage() {
         <button disabled={page === 0} onClick={() => setParams(p => { const n = new URLSearchParams(p); n.set("page", String(page - 1)); return n; })}>Anterior</button>
         <button disabled={!current.next} onClick={() => setParams(p => { const n = new URLSearchParams(p); n.set("page", String(page + 1)); return n; })}>Próxima</button>
       </nav>
-    </> : !canCreate && <Notice>Nenhuma unidade ativa disponível para cadastro. A consulta de lançamentos não está disponível para o seu acesso.</Notice>}
+    </> : null}
     {editor && <EntryEditor entry={editor.entry} units={units} onClose={() => setEditor(undefined)} onSaved={() => mutated(editor.entry ? "Lançamento atualizado." : "Lançamento cadastrado.")} />}
     {deleting && <Confirm title="Excluir lançamento?" description={`${civilDate(deleting.sale_date)} · ${units.find(u => u.id === deleting.unit_id)?.name ?? "Unidade autorizada"} · ${deleting.payment_method} · ${money(deleting.amount)}. O lançamento sairá da consulta; o histórico será preservado.`}
       onClose={() => setDeleting(undefined)} onConfirm={remove} confirmDisabled={deleteConflict || deleteUnavailable}>

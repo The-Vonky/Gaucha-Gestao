@@ -9,12 +9,16 @@ it("D5-B: separação, nomes preservados e provisionamento técnico auditado", a
     await db.exec(readFileSync("tests/fixtures/room-booking-auth.sql", "utf8"));
     await db.exec(STORAGE_STUB);
     const migrations = readdirSync("supabase/migrations").sort();
-    for (const file of migrations.filter((f) => !f.includes("d5b_access")))
+    const d5bIndex = migrations.findIndex(f => f.includes("d5b_access"));
+    for (const file of migrations.slice(0, d5bIndex))
       await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
     const before = await db.query("select id,key,system,active,global_only from core.roles order by key");
     for (const file of migrations.filter((f) => f.includes("d5b_access")))
       await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
     expect((await db.query("select id,key,system,active,global_only from core.roles order by key")).rows).toEqual(before.rows);
+    // Migrations posteriores dependem da composição já corrigida pela D5-B.
+    for (const file of migrations.slice(d5bIndex + 1))
+      await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
     await db.exec(readFileSync("tests/fixtures/room-booking-operations.sql", "utf8"));
     await db.exec(readFileSync("tests/fixtures/room-booking-d5b.sql", "utf8"));
     await db.exec("select set_config('request.jwt.claim.sub','',false)");

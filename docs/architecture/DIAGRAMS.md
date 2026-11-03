@@ -1,5 +1,8 @@
 # Arquitetura desenhada — AS-IS e TO-BE
 
+O fluxo de autorização de Vendas com catálogo de unidades vazio está no
+[diagrama MEL-01](../modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md#correção-funcional-e-ciclo-das-fixtures).
+
 **Fotografia reconciliada:** main após PR #69 (`fed0e0f`, 20/10/2026). **Produção: NO-GO.**
 **Autoridades:** [ADR-001](../decisions/ADR-001-modular-monolith.md), [ADR-002](../decisions/ADR-002-core-and-module-ownership.md), [ADR-004](../decisions/ADR-004-platform-stack.md), [ADR-005](../decisions/ADR-005-core-authorization.md), [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md).
 Diagramas lógicos, **não diagramas as-built de servidor em produção**. Linhas pontilhadas indicam direção ainda não entregue/validada.

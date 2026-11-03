@@ -4,7 +4,7 @@ import pg from "pg";
 /** Opt-in exclusivo do notebook autorizado. Nunca descobre um projeto remoto. */
 export class SalesLocalDatabase {
   static async open() {
-    if ((process.env.VEN03_LOCAL_TEST ?? process.env.VEN04A_LOCAL_TEST) !== "gaucha-gestao-local")
+    if ((process.env.VEN03_LOCAL_TEST ?? process.env.VEN04A_LOCAL_TEST ?? process.env.VEN04B_LOCAL_TEST) !== "gaucha-gestao-local")
       throw new Error("Validação local exige opt-in explícito gaucha-gestao-local.");
     const name = "supabase_db_gaucha-gestao-local";
     const info = JSON.parse(execFileSync("docker", ["inspect", name], { encoding: "utf8" }))[0];
@@ -18,9 +18,12 @@ export class SalesLocalDatabase {
     const client = new pg.Client({ host: "127.0.0.1", port: 54322, user: "postgres", database: "postgres", password });
     await client.connect();
     try {
+      if (!(await client.query("select pg_try_advisory_lock(hashtext('sales-local-auth-fixtures')) locked")).rows[0].locked)
+        throw new Error("Outro ensaio local de Vendas está ativo; executar sequencialmente.");
       const db = new SalesLocalDatabase(client);
       const state = (await client.query(`select current_database() db,
         to_regprocedure('public.sales_dashboard(date,date,uuid[],text,date)') is not null analytics,
+        (select count(*)::int from core.roles) roles,
         (select count(*)::int from core.units) units,
         (select count(*)::int from core.profiles) profiles,
         (select count(*)::int from supabase_migrations.schema_migrations) migrations`)).rows[0];
@@ -54,10 +57,11 @@ export class SalesLocalDatabase {
   async close() {
     if (this.rollbackOnly) {
       await this.client.query("rollback");
-      const after = (await this.client.query(`select (select count(*)::int from core.units) units,
+      const after = (await this.client.query(`select (select count(*)::int from core.roles) roles,
+        (select count(*)::int from core.units) units,
         (select count(*)::int from core.profiles) profiles,
         (select count(*)::int from supabase_migrations.schema_migrations) migrations`)).rows[0];
-      if (["units", "profiles", "migrations"].some(key => after[key] !== this.before[key]))
+      if (["roles", "units", "profiles", "migrations"].some(key => after[key] !== this.before[key]))
         throw new Error("Estado local mudou durante a validação; inspecione antes de repetir.");
       console.log("VEN-03 local: ROLLBACK confirmado; contagens anteriores preservadas.");
     }

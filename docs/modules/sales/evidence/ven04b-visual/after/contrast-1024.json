@@ -1,0 +1,22 @@
+[
+  {
+    "selector": ".sales-chart-scroll svg text",
+    "samples": 43,
+    "minimum": 6.849613080925903
+  },
+  {
+    "selector": ".sales-heat-cell",
+    "samples": 12,
+    "minimum": 9.517066458108964
+  },
+  {
+    "selector": ".sales-insight h3",
+    "samples": 3,
+    "minimum": 16.1797165639942
+  },
+  {
+    "selector": ".sales-kpis .metric-label",
+    "samples": 10,
+    "minimum": 6.852198542824401
+  }
+]

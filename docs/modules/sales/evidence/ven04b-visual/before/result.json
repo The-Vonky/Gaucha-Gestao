@@ -1,0 +1,12 @@
+{
+  "baseline": "310d9ec",
+  "widths": [
+    1440,
+    1024,
+    768,
+    375
+  ],
+  "checks": [],
+  "errors": [],
+  "transport": "Auth/RPC interceptados, nenhuma escrita no banco"
+}
