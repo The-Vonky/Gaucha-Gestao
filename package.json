@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",
-    "@eslint/js": "10.14.0",
+    "@eslint/js": "10.0.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "eslint": "10.14.0",
