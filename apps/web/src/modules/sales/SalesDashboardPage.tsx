@@ -7,6 +7,7 @@ import { comparisonLabel, competency, dashboardFilters, dashboardMoney as money,
 import { CompactPercent, DailyAnalysis, Figure, Heatmap, MonthlyEvolution, PaymentMix, Ranking, Scroll, Stacked } from "./DashboardCharts";
 import { CompetencySelect } from "./CompetencySelect";
 import { SalesNavigation } from "./SalesNavigation";
+import { SalesExportActions } from "./export/SalesExportActions";
 import type { SalesDashboard } from "./types";
 import "./sales.css";
 import "./dashboard.css";
@@ -89,6 +90,10 @@ export function SalesDashboardPage() {
         <button type="button" onClick={() => update({ ...selection, unit: "", from: selection.baseFrom, to: selection.baseTo, daily: "", day: "" })}>Comparar tudo</button>
       </div>
     </DashboardFiltersForm>
+    <SalesExportActions blocked={!data} filters={data ? {
+      from: data.filters.from, to: endOfMonth(data.filters.to),
+      unit_ids: data.filters.unit_ids, method: data.filters.scope === "stone" ? "Stone" : undefined,
+    } : {}} />
     {error ? <Notice error>{error}<div className="actions"><button onClick={refresh}>Tentar novamente</button></div></Notice> : !data ? <LoadingState label="Carregando dashboard…" /> : <>
       <div className="sales-applied" role="status"><strong>{focused ? "Foco ativo" : "Comparação gerencial"}</strong><span>{competency(data.filters.from)} a {competency(data.filters.to)} · {data.filters.scope === "stone" ? "Stone" : "Stone + PIX"} · {data.units.length} unidades autorizadas neste recorte · leitura às {current?.at} (São Paulo)</span></div>
       {!data.months.length && <EmptyState title="Sem movimento no período">A consulta não retornou competências disponíveis. Altere o período ou o recorte autorizado.</EmptyState>}
@@ -123,6 +128,12 @@ export function SalesDashboardPage() {
       <BaseContext data={data} />
     </>}
   </section>;
+}
+
+function endOfMonth(month: string) {
+  const date = new Date(`${month}T00:00:00Z`);
+  date.setUTCMonth(date.getUTCMonth() + 1, 0);
+  return date.toISOString().slice(0, 10);
 }
 
 function DashboardFiltersForm({ selection, data, onApply, children }: {

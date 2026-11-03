@@ -1,5 +1,12 @@
 # Mapa rastreável: funcionalidades, contratos e código
 
+**VEN-05A — 03/11/2026:** `modules/sales/export/{api,types,workbook,download,SalesExportActions}`
+e `public.sales_export_page`, migration `20261103175405_sales_excel_export.sql`:
+Excel filtrado/histórico autorizado, separado do read-model analítico; testes
+`sales-export-*` e integração CI Auth/PostgREST/Chromium. [Contrato](../modules/sales/VEN05A_EXCEL_EXPORT.md).
+Implementada para revisão, sem homologação ou implantação. VEN-04B integrada #94
+(`91bd16b`); as referências a revisão prévia abaixo são registros históricos.
+
 **MEL-01 — 30/10/2026:** limpeza autorizada somente no notebook, catálogo de unidades
 vazio, fixtures com teardown físico dirigido e correção de consultas globais sem unidades
 (`20261030145036_sales_empty_units.sql`). [Evidências](../modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md).

@@ -5,6 +5,7 @@ import { Confirm, EmptyState, LoadingState, Notice, PageTitle, Table } from "../
 import { deleteEntry, entryDetail, listEntries, listSalesUnits, salesMessage } from "./api";
 import { EntryEditor } from "./EntryEditor";
 import { SalesNavigation } from "./SalesNavigation";
+import { SalesExportActions } from "./export/SalesExportActions";
 import { civilDate, money, validDate } from "./format";
 import type { PaymentMethod, SalesEntry, SalesUnit } from "./types";
 import "./sales.css";
@@ -157,6 +158,9 @@ export function SalesPage() {
       <label>Forma de pagamento<select name="method" defaultValue={method}><option value="">Stone e PIX</option>{method && method !== "Stone" && method !== "PIX" && <option value={method} disabled>Forma indisponível — selecione outra</option>}<option>Stone</option><option>PIX</option></select></label>
       <div className="actions"><button className="primary" type="submit">Aplicar filtros</button><button type="button" onClick={refresh}>Atualizar consulta</button></div>
     </form> : !read && <Notice>Seu acesso não inclui consulta de lançamentos. As ações disponíveis seguem suas permissões.</Notice>}
+    {read && <SalesExportActions filters={{ from: from || undefined, to: to || undefined,
+      unit_ids: unit ? [unit] : undefined, method: method as PaymentMethod || undefined }}
+      blocked={!current || !!current.error || !currentCatalog || !!currentCatalog.error} />}
     {!current ? <LoadingState label="Carregando Vendas…" /> : current.error ? <>
       <Notice error>{current.error}</Notice><button onClick={refresh}>Tentar novamente</button>
     </> : read ? <>

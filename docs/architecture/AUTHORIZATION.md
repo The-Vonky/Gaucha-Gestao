@@ -137,6 +137,16 @@ Recursos com `unit_id` usam autorização da unidade; com `unit_id`/`sector_id`,
 
 ## Exportação, arquivos e Realtime
 
+**Vendas VEN-05A (implementada para revisão, 03/11/2026):**
+`public.sales_export_page` exige identidade ativa e, em cada unidade,
+`sales.entry.read` + `sales.export.filtered` ou `sales.export.full`, conforme modo.
+Ajustes/justificativas exigem ainda `sales.dashboard.read` na mesma unidade;
+ausência fica explícita no arquivo, sem revelar dados recusados. Global/unidade,
+inclusive histórico inativo; setor negado. Unidade explícita fora da interseção
+nega a chamada inteira. Cada página e a conferência final revalidam o acesso;
+alterações de conjunto/escopo invalidam o token. Nenhum grant ou papel acrescentado;
+tabelas privadas e RLS preservadas. [Matriz, consistência e limites](../modules/sales/VEN05A_EXCEL_EXPORT.md).
+
 Exportação nunca contorna escopo de leitura. Anexos herdam autorização da entidade de negócio e capacidade pertinente de escrita/remoção. Conhecer um object key/ID não concede acesso.
 
 Realtime, quando usado, deve respeitar RLS/escopo como uma leitura comum; ele **não faz parte do Compose mínimo de cinco serviços**.
