@@ -51,8 +51,9 @@ describe("VEN-04B — painel financeiro completo", () => {
     mount(); await ready();
     for (const title of ["Evolução mensal", "Ranking de unidades", "Composição mensal por unidade", "Heatmap", "Resumo mensal", "Acumulado diário", "Composição Stone", "Panorama Gaúcha", "Contexto da base"]) expect(figure(title)).toBeTruthy();
     expect(figure("Evolução mensal").querySelector(".sales-average")).toBeTruthy(); expect(figure("Evolução mensal").querySelector(".sales-point.partial")).toBeTruthy();
-    expect(figure("Acumulado diário").querySelector(".sales-reference")?.getAttribute("d")).toContain("L");
-    expect(figure("Acumulado diário").textContent).toContain("referência 07/2026 · corte até dia 2");
+    expect(figure("Acumulado diário").querySelector("path.sales-reference")?.getAttribute("d")).toContain("L");
+    expect(figure("Acumulado diário").textContent).toContain("Jul/2026 — referência");
+    expect(figure("Acumulado diário").textContent).toContain("Corte até dia 2");
     expect(figure("Heatmap").querySelector('[data-intensity="0.500000"]')).toBeTruthy();
     expect(metric("Variação da competência recente").textContent).toContain("25%");
   });
@@ -269,5 +270,170 @@ describe("VEN-04B — fidelidade visual e interação acessível", () => {
     for (const bar of bars) expect(Number(bar.getAttribute("height"))).toBeGreaterThan(0);
     expect(figure("Composição mensal por unidade").textContent).toContain("−R$");
     expect(total()).toContain("R$ 300,00");
+  });
+});
+
+// A fixture muda exclusivamente os agregados diários quando daily_month muda.
+function multipleMonths(daily = "2026-09-01", combined = false): SalesDashboard {
+  const d = dashboardFixture(combined);
+  d.filters.from = "2026-07-01";
+  const july = { ...d.months[0], competency: "2026-07-01", days_in_month: 31, partial: false, projection_is_estimate: false, projection: null };
+  d.months.unshift(july); d.metadata.missing_months = ["2026-08-01"];
+  d.unit_months.unshift(...d.unit_months.map(m => ({ ...m, competency: july.competency })));
+  if (daily === "2026-07-01") d.daily = { ...d.daily, competency: daily, reference_month: null, totals: d.daily.totals.filter(p => p.competency === daily), points: d.daily.points.filter(p => p.competency === daily) };
+  return d;
+}
+function dailySelect() { return screen.getByRole("combobox", { name: "Competência do gráfico", exact: true }); }
+function monthSelect(edge = "inicial") { return screen.getByRole("combobox", { name: `Mês da competência ${edge}` }); }
+function yearSelect(edge = "inicial") { return screen.getByRole("combobox", { name: `Ano da competência ${edge}` }); }
+
+describe("VEN-04B — refinamentos de usabilidade", () => {
+  beforeEach(() => { api.salesDashboard.mockImplementation(async f => ({ ...multipleMonths(f.daily_month, f.scope === "combined"), filters: { ...f, unit_ids: f.unit_ids ?? [A, B] } })); });
+  it("oferece só competências disponíveis, indica parcial e reproduz os três traçados decorativos", async () => {
+    mount("from=2026-07&to=2026-09"); await ready();
+    expect(within(dailySelect()).getAllByRole("option").map(o => o.textContent)).toEqual(["Jul/2026", "Set/2026 · parcial"]);
+    const legend = screen.getByRole("list", { name: "Séries do acumulado diário" });
+    expect(legend.textContent).toContain("Set/2026 — observado"); expect(legend.textContent).toContain("Jul/2026 — referência");
+    for (const series of ["sales-line", "sales-reference", "sales-projection"]) expect(legend.querySelector(`svg[aria-hidden=true] line.${series}`)).toBeTruthy();
+    const mix = figure("Composição Stone");
+    expect(mix.querySelector("dt .sales-stone-swatch[aria-hidden=true]")).toBeTruthy(); expect(mix.querySelector("dt .sales-pix-swatch[aria-hidden=true]")).toBeTruthy();
+  });
+  it("troca somente daily, mantém nós e filtros em edição, atualiza tabela e foco do dia correto", async () => {
+    mount(`from=2026-07&to=2026-09&unit=${A}&scope=combined&daily=2026-09&day=2`); await ready();
+    const slow = deferred<SalesDashboard>(); api.salesDashboard.mockReturnValueOnce(slow.promise);
+    const before = total(), evolution = figure("Evolução mensal"), panorama = figure("Panorama Gaúcha"), mix = figure("Composição Stone");
+    const plot = figure("Acumulado diário").querySelector(".sales-plot")!;
+    fireEvent.change(monthSelect(), { target: { value: "06" } });
+    fireEvent.click(screen.getByRole("radio", { name: "Stone", exact: true }));
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    expect(screen.getByText("Carregando competência diária…")).toBeTruthy();
+    expect(total()).toBe(before); expect(figure("Evolução mensal")).toBe(evolution); expect(figure("Panorama Gaúcha")).toBe(panorama); expect(figure("Composição Stone")).toBe(mix);
+    expect(screen.queryByText("Carregando dashboard…")).toBeNull();
+    expect(api.salesDashboard).toHaveBeenLastCalledWith({ from: "2026-07-01", to: "2026-09-01", unit_ids: [A], scope: "combined", daily_month: "2026-07-01" });
+    await act(async () => slow.resolve(multipleMonths("2026-07-01", true)));
+    expect(figure("Acumulado diário").querySelector(".sales-plot")).toBe(plot);
+    expect(figure("Acumulado diário").textContent).toContain("Jul/2026 — observado");
+    expect(screen.getByLabelText("Competência diária").getAttribute("value")).toBe("2026-07");
+    expect((monthSelect() as HTMLSelectElement).value).toBe("06"); expect((screen.getByRole("radio", { name: "Stone", exact: true }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByTestId("url").textContent).not.toContain("day="); expect(total()).toBe(before);
+    fireEvent.click(screen.getByText("Valores diários e referência anterior"));
+    fireEvent.click(within(figure("Acumulado diário")).getByRole("button", { name: "02/07/2026" }));
+    expect(screen.getByTestId("url").textContent).toContain("daily=2026-07&day=2"); expect(api.salesDashboard).toHaveBeenCalledTimes(2);
+  });
+  it("daily explícito sobrevive a reload e ao histórico; ausência volta à última disponível", async () => {
+    const first = mount("from=2026-07&to=2026-09"); await ready();
+    expect((dailySelect() as HTMLSelectElement).value).toBe("2026-09");
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    await waitFor(() => expect(figure("Acumulado diário").textContent).toContain("Jul/2026 — observado"));
+    const search = screen.getByTestId("url").textContent!.split("?")[1];
+    fireEvent.click(screen.getByRole("button", { name: "Navegador anterior" }));
+    await waitFor(() => expect((dailySelect() as HTMLSelectElement).value).toBe("2026-09"));
+    fireEvent.click(screen.getByRole("button", { name: "Navegador seguinte" }));
+    await waitFor(() => expect((dailySelect() as HTMLSelectElement).value).toBe("2026-07"));
+    first.unmount(); mount(search); await ready(); expect((dailySelect() as HTMLSelectElement).value).toBe("2026-07");
+    expect(api.salesDashboard.mock.calls.at(-1)![0].daily_month).toBe("2026-07-01");
+  });
+  it("respostas diárias fora de ordem são descartadas sem sobrescrever o contexto principal", async () => {
+    mount("from=2026-07&to=2026-09"); await ready(); const slow = deferred<SalesDashboard>();
+    api.salesDashboard.mockReturnValueOnce(slow.promise);
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    fireEvent.change(dailySelect(), { target: { value: "2026-09" } });
+    await waitFor(() => expect(figure("Acumulado diário").textContent).toContain("Set/2026 — observado"));
+    await act(async () => slow.resolve(multipleMonths("2026-07-01")));
+    expect(figure("Acumulado diário").textContent).toContain("Set/2026 — observado"); expect(total()).toContain("300,00"); expect(api.salesDashboard).toHaveBeenCalledTimes(3);
+  });
+  it("erro diário e retry ficam no card sem substituir os agregados", async () => {
+    mount("from=2026-07&to=2026-09"); await ready(); const evolution = figure("Evolução mensal");
+    api.salesDashboard.mockRejectedValueOnce(new Error("falha sintética"));
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    await screen.findByRole("alert"); expect(total()).toContain("300,00");
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente no gráfico" }));
+    await waitFor(() => expect(figure("Acumulado diário").textContent).toContain("Jul/2026 — observado"));
+    expect(figure("Evolução mensal")).toBe(evolution); expect(api.salesDashboard).toHaveBeenCalledTimes(3);
+  });
+  it.each(["identidade", "grants", "inativo"])("invalida o diário pendente após mudar %s", async change => {
+    const mounted = mount("from=2026-07&to=2026-09"); await ready(); const slow = deferred<SalesDashboard>();
+    api.salesDashboard.mockReturnValueOnce(slow.promise);
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    if (change === "identidade") auth.session.user.id = "outra-identidade";
+    else if (change === "grants") auth.grants = [grant(undefined, "unit", B)];
+    else auth.profile.active = false;
+    api.salesDashboard.mockReturnValue(new Promise(() => {}));
+    mounted.rerender(<MemoryRouter><SalesDashboardPage /></MemoryRouter>);
+    expect(screen.queryByText("Total financeiro do período", { exact: true })).toBeNull();
+    await act(async () => slow.resolve(multipleMonths("2026-07-01")));
+    expect(screen.queryByText("Total financeiro do período", { exact: true })).toBeNull();
+  });
+  it.each(["42501", "PGRST301"])("recusa %s da API diária invalida também os agregados principais", async code => {
+    mount("from=2026-07&to=2026-09"); await ready();
+    api.salesDashboard.mockRejectedValueOnce({ code });
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    await screen.findByRole("alert");
+    expect(screen.queryByText("Total financeiro do período", { exact: true })).toBeNull();
+    expect(screen.queryByText("Jul/2026 — observado")).toBeNull();
+  });
+  it("referência ausente, status indeterminado e projeção inválida não fabricam séries", async () => {
+    const d = multipleMonths("2026-07-01"); d.months[0].partial = null; d.months[0].status_basis = "historical_unavailable";
+    d.months[0].projection = "999.99"; d.months[0].projection_is_estimate = false;
+    api.salesDashboard.mockResolvedValue(d); mount("from=2026-07&to=2026-09&daily=2026-07"); await ready();
+    const daily = figure("Acumulado diário"); expect(daily.textContent).toContain("Sem referência disponível");
+    expect(daily.querySelector(".sales-projection")).toBeNull(); expect(daily.querySelector(".sales-series-sample .sales-reference")).toBeNull();
+    expect(within(dailySelect()).getByRole("option", { name: /Jul.*status indeterminado/ })).toBeTruthy();
+  });
+  it("URL lacunar sinaliza ausência; período sem competências mantém os demais cards", async () => {
+    const d = multipleMonths(); d.daily = { competency: null, reference_month: null, cutoff_day: null, points: [], totals: [] };
+    api.salesDashboard.mockResolvedValue(d); const mounted = mount("from=2026-07&to=2026-09&daily=2026-08"); await ready();
+    expect(within(dailySelect()).getByRole("option", { name: /Ago.*sem movimento/ })).toBeTruthy();
+    expect(figure("Acumulado diário").textContent).toContain("Sem detalhamento diário observado");
+    mounted.unmount(); d.months = []; d.unit_months = []; api.salesDashboard.mockResolvedValue(d);
+    mount("from=2026-07&to=2026-09"); await ready(); expect((dailySelect() as HTMLSelectElement).disabled).toBe(true);
+    expect(figure("Acumulado diário").textContent).toContain("Sem competências com movimento"); expect(figure("Composição Stone")).toBeTruthy();
+  });
+  it("mês/ano só aplicam no submit, permitem lacunas e revalidam daily fora do novo período", async () => {
+    mount("from=2026-07&to=2026-09&daily=2026-07"); await ready();
+    expect(within(monthSelect()).getAllByRole("option")).toHaveLength(12);
+    expect(within(monthSelect()).getAllByRole("option").map(o => o.textContent)).toEqual(["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]);
+    fireEvent.change(monthSelect(), { target: { value: "08" } }); expect(api.salesDashboard).toHaveBeenCalledTimes(1);
+    apply(); await waitFor(() => expect(api.salesDashboard).toHaveBeenCalledTimes(2));
+    expect(api.salesDashboard.mock.calls.at(-1)![0]).toEqual({ from: "2026-08-01", to: "2026-09-01", scope: "stone" });
+    expect(screen.getByTestId("url").textContent).not.toContain("daily=");
+  });
+  it("navega anos além da carga inicial e preserva datas da URL sem milhares de opções", async () => {
+    mount("from=1986-12&to=1987-01"); await ready();
+    expect((yearSelect() as HTMLSelectElement).value).toBe("1986"); expect((monthSelect() as HTMLSelectElement).value).toBe("12");
+    expect(within(yearSelect()).getAllByRole("option").length).toBeLessThan(30);
+    fireEvent.change(yearSelect(), { target: { value: "previous" } });
+    fireEvent.change(yearSelect(), { target: { value: "1966" } });
+    fireEvent.change(yearSelect("final"), { target: { value: "previous" } });
+    fireEvent.change(yearSelect("final"), { target: { value: "1967" } }); apply();
+    await waitFor(() => expect(api.salesDashboard.mock.calls.at(-1)![0].from).toBe("1966-12-01"));
+    expect(api.salesDashboard.mock.calls.at(-1)![0].to).toBe("1967-01-01");
+  });
+  it.each(["unidade", "modalidade"])("troca de %s invalida o diário pendente e mantém o novo escopo", async change => {
+    mount("from=2026-07&to=2026-09"); await ready(); const slow = deferred<SalesDashboard>();
+    api.salesDashboard.mockReturnValueOnce(slow.promise);
+    fireEvent.change(dailySelect(), { target: { value: "2026-07" } });
+    if (change === "unidade") fireEvent.change(screen.getByLabelText("Unidade", { exact: true }), { target: { value: B } });
+    else fireEvent.click(screen.getByRole("radio", { name: "Stone + PIX", exact: true }));
+    apply(); await ready();
+    const before = figure("Acumulado diário").textContent;
+    const obsolete = multipleMonths(); obsolete.summary.total = "999999.99";
+    await act(async () => slow.resolve(obsolete));
+    expect(figure("Acumulado diário").textContent).toBe(before);
+    expect(total()).toContain(change === "modalidade" ? "350,00" : "300,00");
+    expect(api.salesDashboard.mock.calls.at(-1)![0]).toMatchObject(change === "unidade" ? { unit_ids: [B] } : { scope: "combined" });
+  });
+  it("Redefinir descarta o rascunho mesmo quando o período aplicado já é o padrão", async () => {
+    mount(); await ready(); fireEvent.click(screen.getByRole("button", { name: "Redefinir", exact: true })); await ready();
+    const before = (monthSelect() as HTMLSelectElement).value;
+    fireEvent.change(monthSelect(), { target: { value: before === "02" ? "03" : "02" } });
+    fireEvent.click(screen.getByRole("button", { name: "Redefinir", exact: true })); await ready();
+    expect((monthSelect() as HTMLSelectElement).value).toBe(before);
+  });
+  it("recusa mais de 24 competências e ordem invertida pela validação existente", async () => {
+    mount("from=2026-07&to=2026-09"); await ready(); fireEvent.change(yearSelect(), { target: { value: "2024" } }); apply();
+    await screen.findByText(/Selecione até 24 competências/); expect(api.salesDashboard).toHaveBeenCalledTimes(1);
+    fireEvent.change(yearSelect(), { target: { value: "2026" } }); fireEvent.change(monthSelect(), { target: { value: "12" } }); apply();
+    await screen.findByText(/janela em ordem crescente/); expect(api.salesDashboard).toHaveBeenCalledTimes(1);
   });
 });

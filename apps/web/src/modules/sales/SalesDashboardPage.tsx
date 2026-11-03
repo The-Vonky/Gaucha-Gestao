@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { EmptyState, LoadingState, Metric, Notice, PageTitle } from "../../shared/ui";
 import { salesDashboard, salesMessage } from "./api";
 import { comparisonLabel, competency, dashboardFilters, dashboardMoney as money, defaultSelection, monthStatus, percent, readSelection, selectionError, selectionParams, type DashboardSelection } from "./dashboard";
 import { CompactPercent, DailyAnalysis, Figure, Heatmap, MonthlyEvolution, PaymentMix, Ranking, Scroll, Stacked } from "./DashboardCharts";
+import { CompetencySelect } from "./CompetencySelect";
 import { SalesNavigation } from "./SalesNavigation";
 import type { SalesDashboard } from "./types";
 import "./sales.css";
@@ -14,17 +15,22 @@ export function SalesDashboardPage() {
   const auth = useAuth(), location = useLocation(), navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const selection = readSelection(params), serialized = JSON.stringify(selection);
-  const [revision, setRevision] = useState(0);
+  const [revision, setRevision] = useState(0), [dailyRevision, setDailyRevision] = useState(0), [formRevision, setFormRevision] = useState(0);
   const active = !!auth.profile?.active && !!auth.session && !auth.loading && !auth.error;
   const allowed = active && auth.grants.some(g => g.permission === "sales.dashboard.read" && g.scope_type !== "sector");
   const access = JSON.stringify([auth.session?.user.id, active, auth.grants]);
   // O dia é foco sobre agregados já recebidos; não exige outra leitura financeira.
   const filters = dashboardFilters(selection), query = JSON.stringify(filters);
-  const key = JSON.stringify([access, query, revision]);
+  // A competência diária não invalida os agregados do recorte principal.
+  const mainQuery = JSON.stringify({ ...filters, daily_month: undefined });
+  const key = JSON.stringify([access, mainQuery, revision]);
+  const dailyKey = JSON.stringify([key, query, dailyRevision]);
+  const formKey = JSON.stringify([access, mainQuery, selection.baseFrom, selection.baseTo, formRevision]);
   const invalid = selectionError(selection);
   const outside = !!selection.unit && !auth.can("sales.dashboard.read", { unit_id: selection.unit });
   const [result, setResult] = useState<{ key: string; data?: SalesDashboard; error?: string; at?: string }>();
-  useEffect(() => { setResult(undefined); }, [access]);
+  const [dailyResult, setDailyResult] = useState<{ key: string; data?: Pick<SalesDashboard, "daily" | "months">; error?: string }>();
+  useEffect(() => { setResult(undefined); setDailyResult(undefined); }, [access]);
   const current = result?.key === key ? result : undefined;
   const data = !invalid && !outside ? current?.data : undefined;
   useEffect(() => {
@@ -32,63 +38,57 @@ export function SalesDashboardPage() {
     if (!allowed || invalid || outside) return;
     const requestFilters = JSON.parse(query) as ReturnType<typeof dashboardFilters>;
     void salesDashboard(requestFilters).then(data => {
-      if (!obsolete) setResult({ key, data, at: new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date()) });
+      if (!obsolete) {
+        setResult(previous => previous?.key === key && previous.data ? previous : { key, data, at: new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date()) });
+        setDailyResult({ key: dailyKey, data: { daily: data.daily, months: data.months } });
+      }
     }).catch(error => {
-      if (!obsolete) setResult({ key, error: error?.code === "23514"
+      if (!obsolete) {
+        const message = error?.code === "23514"
         ? "Selecione um recorte válido de até 100 unidades e 24 competências. Para uma base maior, informe uma unidade autorizada pelo UUID. Nenhum total parcial foi exibido."
-        : salesMessage(error) });
+        : salesMessage(error);
+        // Uma recusa de autorização/sessão invalida também o snapshot principal.
+        const denied = ["42501", "28000", "28P01", "PGRST301", "PGRST302", "PGRST303"].includes(error?.code);
+        setResult(previous => !denied && previous?.key === key && previous.data ? previous : { key, error: message });
+        setDailyResult({ key: dailyKey, error: message });
+      }
     });
     return () => { obsolete = true; };
-  }, [allowed, invalid, outside, query, key]);
+  }, [allowed, invalid, outside, query, key, dailyKey]);
   const update = useCallback((next: DashboardSelection) => {
     if (JSON.stringify(next) !== serialized) setParams(selectionParams(next), { state: { salesFocus: true } });
   }, [serialized, setParams]);
+  const dailyCurrent = dailyResult?.key === dailyKey ? dailyResult : undefined;
   const focus = useCallback((unit?: string, month?: string, day?: string) => {
     const previous = JSON.parse(serialized) as DashboardSelection;
     const next = { ...previous, ...(unit ? { unit } : {}), ...(month ? { from: month.slice(0, 7), to: month.slice(0, 7), daily: month.slice(0, 7), day: "" } : {}),
-      ...(day ? { daily: data?.daily.competency?.slice(0, 7) ?? previous.daily, day } : {}) };
+      ...(day ? { daily: dailyCurrent?.data?.daily.competency?.slice(0, 7) ?? previous.daily, day } : {}) };
     update(next);
-  }, [serialized, update, data?.daily.competency]);
+  }, [serialized, update, dailyCurrent?.data?.daily.competency]);
+  const changeDailyMonth = useCallback((daily: string) => {
+    const previous = JSON.parse(serialized) as DashboardSelection;
+    if (daily && data?.months.some(m => m.competency.slice(0, 7) === daily && !data.metadata.missing_months.includes(m.competency))
+      && daily >= previous.from && daily <= previous.to) update({ ...previous, daily, day: "" });
+  }, [serialized, data, update]);
   function refresh() { auth.refresh(); setRevision(v => v + 1); }
   if (!allowed) return <EmptyState title="Acesso não autorizado">Você não possui acesso gerencial a Vendas / Maquininhas.</EmptyState>;
   const error = invalid || (outside ? "Unidade indisponível para este acesso. Confira o recorte da URL." : current?.error);
   const latest = data?.summary.latest, summary = data?.summary;
-  const dailyMonth = data?.months.find(m => m.competency === data.daily.competency);
+  const dailyMonth = dailyCurrent?.data?.months.find(m => m.competency === dailyCurrent.data?.daily.competency);
   const leader = data?.units.find(u => u.id === summary?.leader?.unit_id);
   const focused = !!selection.unit || selection.from !== selection.baseFrom || selection.to !== selection.baseTo || !!selection.day;
   return <section className="sales-dashboard">
     <PageTitle title="Dashboard gerencial" description="Evolução, participação e ritmo das vendas no recorte autorizado."><SalesNavigation /></PageTitle>
-    <form className="sales-dashboard-filters" key={serialized} onSubmit={event => {
-      event.preventDefault(); const form = new FormData(event.currentTarget);
-      const from = String(form.get("from")), to = String(form.get("to")), daily = String(form.get("daily"));
-      const next = { ...selection, from, to, unit: String(form.get("unitId") || form.get("unit") || ""),
-        daily, scope: String(form.get("scope")) as DashboardSelection["scope"], day: "", baseFrom: from, baseTo: to };
-      update(next);
-    }}>
-      <label>Competência inicial<input name="from" type="month" required min="0001-01" max="9999-12" defaultValue={selection.from} /></label>
-      <label>Competência final<input name="to" type="month" required min="0001-01" max="9999-12" defaultValue={selection.to} /></label>
-      <label>Unidade<select aria-label="Unidade" name="unit" defaultValue={selection.unit}>
-        <option value="">Todas as autorizadas</option>
-        {data?.units.map(u => <option key={u.id} value={u.id}>{u.code} · {u.name}{!u.active && " (inativa)"}</option>)}
-        {selection.unit && !data?.units.some(u => u.id === selection.unit) && <option value={selection.unit}>Unidade selecionada na URL</option>}
-      </select></label>
-      <fieldset className="sales-scope"><legend>Escopo financeiro</legend><div className="sales-segmented">
-        <label><input type="radio" name="scope" value="stone" defaultChecked={selection.scope === "stone"} /><span>Stone</span></label>
-        <label><input type="radio" name="scope" value="combined" defaultChecked={selection.scope === "combined"} /><span>Stone + PIX</span></label>
-      </div></fieldset>
+    <DashboardFiltersForm key={formKey} selection={selection} data={data} onApply={update}>
       <div className="actions"><button type="submit" className="primary">Aplicar filtros</button><button type="button" onClick={refresh}>Atualizar</button>
-        <button type="button" onClick={() => { update(defaultSelection()); setRevision(v => v + 1); }}>Redefinir</button>
+        <button type="button" onClick={() => { update(defaultSelection()); setRevision(v => v + 1); setFormRevision(v => v + 1); }}>Redefinir</button>
         <button type="button" disabled={!focused && !(location.state as { salesFocus?: boolean } | null)?.salesFocus} onClick={() => {
           if ((location.state as { salesFocus?: boolean } | null)?.salesFocus) void navigate(-1);
           else update({ ...selection, unit: "", from: selection.baseFrom, to: selection.baseTo, daily: "", day: "" });
         }}>Voltar</button>
         <button type="button" onClick={() => update({ ...selection, unit: "", from: selection.baseFrom, to: selection.baseTo, daily: "", day: "" })}>Comparar tudo</button>
       </div>
-      <details className="sales-advanced"><summary>Filtros avançados</summary><div>
-        <label>Competência diária<input aria-label="Competência diária" name="daily" type="month" min={selection.from} max={selection.to} defaultValue={selection.daily} /><small>Vazia: última disponível no período</small></label>
-        <label>Recorte direto por UUID<input aria-label="Unidade por UUID" name="unitId" placeholder="UUID autorizado" autoComplete="off" /><small>Até uma unidade autorizada; o banco valida o acesso.</small></label>
-      </div></details>
-    </form>
+    </DashboardFiltersForm>
     {error ? <Notice error>{error}<div className="actions"><button onClick={refresh}>Tentar novamente</button></div></Notice> : !data ? <LoadingState label="Carregando dashboard…" /> : <>
       <div className="sales-applied" role="status"><strong>{focused ? "Foco ativo" : "Comparação gerencial"}</strong><span>{competency(data.filters.from)} a {competency(data.filters.to)} · {data.filters.scope === "stone" ? "Stone" : "Stone + PIX"} · {data.units.length} unidades autorizadas neste recorte · leitura às {current?.at} (São Paulo)</span></div>
       {!data.months.length && <EmptyState title="Sem movimento no período">A consulta não retornou competências disponíveis. Altere o período ou o recorte autorizado.</EmptyState>}
@@ -107,8 +107,9 @@ export function SalesDashboardPage() {
       <SectionHeading title="Comparativo por unidade" description="Mapa de intensidade e resumo mensal com valores exatos." />
       <Heatmap data={data} onFocus={focus} />
       <MonthlySummary data={data} onFocus={focus} />
-      <SectionHeading title="Ritmo de vendas" description="Observado, referência anterior e projeção explicitamente separados." />
-      <DailyAnalysis data={data} day={selection.day} onFocus={focus} />
+      <SectionHeading title="Ritmo de vendas" description="Observado, referência e projeção explicitamente separados." />
+      <DailyAnalysis data={data} analysis={dailyCurrent?.data} loading={!dailyCurrent} error={dailyCurrent?.error}
+        dailyMonth={selection.daily} day={selection.day} onFocus={focus} onDailyMonthChange={changeDailyMonth} onRetry={() => setDailyRevision(v => v + 1)} />
       <SectionHeading title="Indicadores complementares" description="Detalhes do período, comparações e estimativas da API." />
       <div className="sales-kpis sales-secondary-kpis" role="group" aria-label="Indicadores complementares">
         <Metric label="Variação da competência recente" value={<CompactPercent value={latest?.comparison.available ? latest.comparison.variation_pct : null} />} hint={<>{comparisonLabel(latest ?? null)}{latest?.comparison.available && <><br />{money(latest.comparison.current_amount)} × {money(latest.comparison.reference_amount)}</>}</>} />
@@ -116,12 +117,43 @@ export function SalesDashboardPage() {
         <Metric label="Média mensal do período" value={money(summary!.monthly_average)} hint={`${data.months.length} competências disponíveis; lacunas não são zeros`} />
         <Metric label="Participação da líder" value={summary!.leader ? <CompactPercent value={summary!.leader.share_pct} /> : "Indisponível"} hint="Sobre o total financeiro selecionado" />
         <Metric label="Concentração das duas maiores" value={summary!.top_two_share_pct === null ? "Indisponível" : <CompactPercent value={summary!.top_two_share_pct} />} hint="Participação no período selecionado" />
-        <Metric label="Projeção da competência diária — estimativa" value={money(dailyMonth?.projection_is_estimate ? dailyMonth.projection : null)} hint={`${competency(data.daily.competency)} · somente ritmo diário observado`} />
+        <Metric label="Projeção da competência diária — estimativa" value={money(dailyMonth?.projection_is_estimate ? dailyMonth.projection : null)} hint={`${competency(dailyCurrent?.data?.daily.competency)} · somente ritmo diário observado`} />
       </div>
       <PaymentMix data={data} />
       <BaseContext data={data} />
     </>}
   </section>;
+}
+
+function DashboardFiltersForm({ selection, data, onApply, children }: {
+  selection: DashboardSelection; data?: SalesDashboard; onApply: (next: DashboardSelection) => void; children: ReactNode;
+}) {
+  const [from, setFrom] = useState(selection.from), [to, setTo] = useState(selection.to), [daily, setDaily] = useState(selection.daily);
+  useEffect(() => { setDaily(selection.daily >= from && selection.daily <= to ? selection.daily : ""); }, [selection.daily]);
+  const anchors = [selection.from, selection.to, data?.metadata.first_available_month ?? "", data?.metadata.latest_available_month ?? ""];
+  return <form className="sales-dashboard-filters" onSubmit={event => {
+    event.preventDefault(); const form = new FormData(event.currentTarget);
+    const validDaily = daily && daily >= from && daily <= to ? daily : "";
+    onApply({ ...selection, from, to, unit: String(form.get("unitId") || form.get("unit") || ""), daily: validDaily,
+      scope: String(form.get("scope")) as DashboardSelection["scope"], day: "", baseFrom: from, baseTo: to });
+  }}>
+    <CompetencySelect label="Competência inicial" name="from" value={from} onChange={value => { setFrom(value); if (daily && daily < value) setDaily(""); }} anchors={anchors} />
+    <CompetencySelect label="Competência final" name="to" value={to} onChange={value => { setTo(value); if (daily && daily > value) setDaily(""); }} anchors={anchors} />
+    <label>Unidade<select aria-label="Unidade" name="unit" defaultValue={selection.unit}>
+      <option value="">Todas as autorizadas</option>
+      {data?.units.map(u => <option key={u.id} value={u.id}>{u.code} · {u.name}{!u.active && " (inativa)"}</option>)}
+      {selection.unit && !data?.units.some(u => u.id === selection.unit) && <option value={selection.unit}>Unidade selecionada na URL</option>}
+    </select></label>
+    <fieldset className="sales-scope"><legend>Escopo financeiro</legend><div className="sales-segmented">
+      <label><input type="radio" name="scope" value="stone" defaultChecked={selection.scope === "stone"} /><span>Stone</span></label>
+      <label><input type="radio" name="scope" value="combined" defaultChecked={selection.scope === "combined"} /><span>Stone + PIX</span></label>
+    </div></fieldset>
+    {children}
+    <details className="sales-advanced"><summary>Filtros avançados</summary><div>
+      <label>Competência diária<input aria-label="Competência diária" name="daily" type="month" min={from} max={to} value={daily} onChange={e => setDaily(e.target.value)} /><small>Vazia: última disponível no período</small></label>
+      <label>Recorte direto por UUID<input aria-label="Unidade por UUID" name="unitId" placeholder="UUID autorizado" autoComplete="off" /><small>Até uma unidade autorizada; o banco valida o acesso.</small></label>
+    </div></details>
+  </form>;
 }
 
 function MonthlySummary({ data, onFocus }: { data: SalesDashboard; onFocus: (unit?: string, month?: string) => void }) {

@@ -1,5 +1,135 @@
 # VEN-04B — Correção de fidelidade visual (03/11/2026)
 
+
+## Refinamentos de usabilidade — 03/11/2026 (rodada atual)
+
+Continuação autorizada da VEN-04B na mesma PR #94. Baseline remoto confirmado por
+GitHub e `git fetch`: `d98aaa67cb2b9d7faac61decd043c7c4dc4e74ad`, incorporado por
+fast-forward. Correções da PR #97 preservadas. Os capítulos seguintes registram a
+rodada visual anterior, inclusive seu audit histórico; a tabela desta seção registra
+os resultados atuais. Não houve avanço de VEN-05–08.
+
+### Cinco melhorias e contratos
+
+1. **Legenda diária:** segmentos SVG decorativos reutilizam `.sales-line`,
+   `.sales-reference` e `.sales-projection`, reproduzindo cor, espessura e traçado.
+   Texto identifica observado, referência efetivamente retornada e estimativa.
+   Ausência de referência/detalhamento fica explícita. Projeção exige
+   `projection_is_estimate=true`, valor não nulo e ponto observado. Corte e regra de
+   ajustes aparecem como contexto secundário, sem repetir a legenda abaixo do SVG.
+   Dimensões (310px), escala, coordenadas, linhas e marcadores do gráfico preservados.
+2. **Competência dentro do card:** usa `DashboardSelection.daily` e a mesma RPC
+   `sales_dashboard(..., p_daily_month)`. Opções vêm de `data.months`, dentro da janela,
+   excluindo `metadata.missing_months`; parcial/status indeterminado são rotulados.
+   Uma lacuna explícita na URL indica “sem movimento”; nenhum mês disponível desabilita
+   o seletor, mantendo os outros cards. Referência pode ser lacunar ou externa à janela,
+   conforme a API, sem inferência de mês civil anterior.
+3. **Stone/PIX:** marcadores `.sales-swatch` decorativos usam os mesmos tokens da barra
+   (`--brand-green-700` / `--brand-orange-700`). Valores, percentuais e proporções
+   continuam os da API; nulos/base zero mantêm a indicação de indisponibilidade.
+4. **Escopo financeiro:** `fieldset`/`legend` mantidos, labels sem margem inferior
+   herdada e radios visualmente ocultos sem min-height herdado. Controle e selects
+   principais têm 44px, texto centralizado e estados de seleção/hover/foco.
+5. **Competência inicial/final:** `CompetencySelect` usa selects nativos de mês/ano;
+   doze meses em português e anos paginados em faixas de até 21, com âncoras de URL e
+   disponibilidade. “Anos anteriores/posteriores” navegam pelas faixas sem aplicar
+   filtros. O domínio civil 0001–9999 continua acessível, sem milhares de opções e sem
+   tratar ausência de movimento como proibição. Internamente continua `YYYY-MM`,
+   enviado como `YYYY-MM-01`. Aplicação e limite civil de 24 meses não mudaram.
+
+A chave da leitura principal contém identidade/estado de acesso/grants, unidade,
+modalidade, período e revisão explícita. A chave diária acrescenta `daily` e revisão
+do retry do card. Um único efeito consulta a RPC: na entrada preenche ambos os estados;
+quando muda apenas `daily`, conserva o payload principal e atualiza somente diário/
+metadados da competência e a métrica complementar diária. Nenhum cache entre montagens.
+Respostas obsoletas são descartadas no cleanup. Alterações de identidade, permissões,
+perfil, período, unidade ou modalidade invalidam os dados aplicáveis antes da renderização.
+
+Loading/erro/retry ficam no card diário para falhas de leitura. Recusa de autorização
+ou sessão pela API remove também os agregados principais (negação por padrão). Os demais gráficos mantêm seus nós e o scroll
+não é reposicionado. `daily` fica na URL com seleção explícita; ausência seleciona a
+última competência disponível. Reload e histórico nativo preservados. A troca diária
+limpa `day`; foco em um dia usa a competência da resposta diária corrente. Focar uma
+competência no dashboard inteiro continua sendo uma ação diferente.
+
+O formulário tem ciclo próprio de rascunho, sem remontagem por `daily`/`day`. Alterações
+não aplicadas de mês/ano, unidade, modalidade e UUID são preservadas durante a leitura
+diária. O campo avançado acompanha a seleção diária quando compatível com a janela em
+edição. Mudar a janela limpa uma competência diária fora dela; `Redefinir` descarta o
+rascunho inclusive se a seleção aplicada já for a padrão. URLs inválidas continuam
+recusadas por `selectionError()`, sem normalização silenciosa para acesso global.
+
+Arquivos: `SalesDashboardPage.tsx`, `DashboardCharts.tsx`, `dashboard.css`, novo
+`CompetencySelect.tsx`, testes UI e os dois roteiros/fixtures visuais; documentação
+canônica, diagrama de fluxo e roadmap atualizados. Inspecionados `dashboard.ts`,
+`types.ts`, `api.ts`, tokens e formulários Shared; contratos e estilos globais intactos.
+Referência funcional inspecionada somente em leitura na cópia de
+`dashboard_vendas-Gaucha`: `dailyMonthSelect`, `renderDaily()`,
+`bindFullDashboardEnhancements()`, `updateDashboardControls()`, `startMonth` e `endMonth`,
+nos cinco arquivos indicados no brief, reconferidos pelo conector GitHub. Nenhuma
+lógica financeira JavaScript copiada.
+
+### Evidências atuais
+
+| Largura | Toolbar | Mês/ano | Diário e legendas | Após trocar competência | Stone/PIX |
+| --- | --- | --- | --- | --- | --- |
+| 1440 | [captura](evidence/ven04b-usability/toolbar-1440.png) | [captura](evidence/ven04b-usability/month-year-1440.png) | [captura](evidence/ven04b-usability/daily-1440.png) | [captura](evidence/ven04b-usability/daily-changed-1440.png) | [captura](evidence/ven04b-usability/mix-1440.png) |
+| 1024 | [captura](evidence/ven04b-usability/toolbar-1024.png) | [captura](evidence/ven04b-usability/month-year-1024.png) | [captura](evidence/ven04b-usability/daily-1024.png) | [captura](evidence/ven04b-usability/daily-changed-1024.png) | [captura](evidence/ven04b-usability/mix-1024.png) |
+| 768 | [captura](evidence/ven04b-usability/toolbar-768.png) | [captura](evidence/ven04b-usability/month-year-768.png) | [captura](evidence/ven04b-usability/daily-768.png) | [captura](evidence/ven04b-usability/daily-changed-768.png) | [captura](evidence/ven04b-usability/mix-768.png) |
+| 375 | [captura](evidence/ven04b-usability/toolbar-375.png) | [captura](evidence/ven04b-usability/month-year-375.png) | [captura](evidence/ven04b-usability/daily-375.png) | [captura](evidence/ven04b-usability/daily-changed-375.png) | [captura](evidence/ven04b-usability/mix-375.png) |
+
+[Resultados executáveis](evidence/ven04b-usability/result.json),
+[reflow equivalente a 200%](evidence/ven04b-usability/toolbar-zoom-200.png).
+Capturas inspecionadas pelo agente, sem aceite visual humano presumido.
+
+### Validação desta rodada
+
+Node 22.23.4, dependências exatas da PR #97 via `npm ci --cache /tmp/ven04b-npm-cache`.
+Vite existente em 127.0.0.1:5173 confirmado e reutilizado. Docker local
+`gaucha-gestao-local` identificado somente em leitura; nenhum serviço/container/banco/
+volume/porta adicional provisionado, nenhum cadastro ou dado persistente alterado.
+As onze alterações locais preexistentes de `peer:true` no lockfile já estavam presentes
+no lockfile remoto sincronizado; cópia original preservada em `/tmp` e nenhum diff de
+dependências acrescentado. `supabase/snippets/` preexistente intocado e fora do commit.
+
+| Comando/prova | Resultado atual |
+| --- | --- |
+| `npm run typecheck` / `npm run lint` | PASS |
+| Dashboard UI/format/envelope | 84 PASS / 3 arquivos |
+| `npm test -- --maxWorkers=2` | 830 PASS / 62 arquivos (116,44s) |
+| `npm run build` / `npm run verify:build` | PASS; aviso preexistente de chunk >500 kB |
+| `npm audit --audit-level=moderate --cache /tmp/ven04b-npm-cache` | PASS, zero vulnerabilidades |
+| Chromium `sales-dashboard-visual.mjs` | PASS em 1440/1024/768/375; três SVGs de 310px, controles de 44px, cores/traçados correspondentes, diário sem remontar o restante, uma RPC por seleção, scroll, reload e histórico |
+| Chromium `sales-navigation-visual.mjs` | PASS; navegação institucional, escopos, bloqueios e perfil inativo, transporte interceptado |
+| Axe 4.11.0 WCAG A/AA | Zero violações automáticas nas quatro larguras; contraste SVG/offscreen tem inconclusivos. Amostras independentes ≥6,85:1 nos textos SVG e ≥9,51:1 no heatmap |
+| Teclado/reflow | Selects por setas; radios por setas; reflow em 720px equivalente a 200% de 1440px sem overflow externo |
+| `git diff --check` | PASS |
+
+Reprodução do navegador (ferramentas já disponíveis em `/tmp` nesta estação):
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/tmp/gaucha-playwright LD_LIBRARY_PATH=/tmp/ven04b-browser-libs/usr/lib/x86_64-linux-gnu VEN04B_AXE_PATH=/tmp/ven04b-axe/package/axe.min.js VEN04B_ARTIFACT_DIR=docs/modules/sales/evidence/ven04b-usability node tests/integration/sales-dashboard-visual.mjs
+VEN04B_ARTIFACT_DIR=/tmp/ven04b-usability-navigation node tests/integration/sales-navigation-visual.mjs
+```
+
+Ocorrências registradas: teste antigo buscava o primeiro `.sales-reference`, agora a
+amostra SVG sem `d`; corrigido para `path.sales-reference`. Primeira execução dos novos
+testes tinha hook retornando inadvertidamente o mock e bloqueio HTML por `daily` fora
+da janela em edição; corrigidos. Execução integral no sandbox terminou com código 143,
+sem relatório; resultado integral acima corresponde à nova execução fora dessa restrição.
+A simulação inicial por CSS `zoom:2` causou overflow porque manteve os breakpoints de
+desktop; substituída por prova explícita de reflow a 720px, sem alegar zoom nativo.
+
+Limites: Auth/PostgREST reais, integração em PostgreSQL persistente, zoom nativo e
+leitor de tela manuais **não executados** nesta rodada. Scripts que criam/mutam fixtures
+locais (`sales-dashboard-local.mjs` etc.) não foram executados. Fixtures interceptadas
+não comprovam RLS em rede nem homologação; testes SQL em memória são evidência distinta.
+Nenhum `APPROVED` humano ou segunda revisão presumido. Titular revisa diff/CI e aceita
+ou rejeita a interface antes de decidir merge. Reversão por revert do commit desta
+rodada, sem operação de banco. **Sem merge/deploy; STAGING/PROD/C30 intocados. PROD NO-GO.**
+
+## Registro da rodada anterior de fidelidade visual
+
 Implementação na branch `codex/ven-04b-sales-dashboard`, na [PR #94](https://github.com/The-Vonky/Gaucha-Gestao/pull/94).
 Baseline inspecionada: `310d9ec24d891e188e637ce83db16d691720571c`, igual ao HEAD remoto no início.
 O mantenedor solicitou a correção da apresentação existente. Não houve merge, deploy,

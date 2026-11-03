@@ -1,14 +1,15 @@
 import { createContext, memo, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { chartScale, compactMoney, compactPercent, competency, dashboardMoney as money, intensity, monthStatus, percent, stackCoordinates, unitColor, visualMaximum, visualRatio } from "./dashboard";
+import { competencyLabel } from "./CompetencySelect";
 import type { SalesDashboard } from "./types";
 
 type Focus = (unit?: string, month?: string, day?: string) => void;
 type Tip = { id: string; label: string; left: number; top: number };
 const Tooltip = createContext<(tip?: Tip) => void>(() => {});
-export function Figure({ title, children, description, badge }: { title: string; description?: ReactNode; badge?: string; children: ReactNode }) {
+export function Figure({ title, children, description, badge, controls }: { title: string; description?: ReactNode; badge?: string; controls?: ReactNode; children: ReactNode }) {
   const id = useId(), [tip, setTip] = useState<Tip>();
   return <figure className="sales-figure" aria-labelledby={id}>
-    <figcaption id={id}><div><h2>{title}</h2>{description && <p>{description}</p>}</div>{badge && <span className="sales-chart-badge">{badge}</span>}</figcaption>
+    <figcaption><div><h2 id={id}>{title}</h2>{description && <p>{description}</p>}</div>{badge && <span className="sales-chart-badge">{badge}</span>}{controls}</figcaption>
     <Tooltip value={setTip}>{children}</Tooltip>
     {tip && <div id={tip.id} role="tooltip" className="sales-tooltip" style={{ left: tip.left, top: tip.top }}>{tip.label}</div>}
   </figure>;
@@ -154,10 +155,17 @@ export const Heatmap = memo(function Heatmap({ data, onFocus }: { data: SalesDas
   </Figure>;
 });
 
-export const DailyAnalysis = memo(function DailyAnalysis({ data, day, onFocus }: { data: SalesDashboard; day: string; onFocus: Focus }) {
-  const { daily } = data;
-  const month = data.months.find(m => m.competency === daily.competency);
-  const elapsed = new Set(data.daily.points.filter(p => p.has_elapsed).map(p => `${p.competency}/${p.day}`));
+export const DailyAnalysis = memo(function DailyAnalysis({ data, analysis, dailyMonth = "", loading = false, error, day, onFocus, onDailyMonthChange, onRetry }: {
+  data: SalesDashboard; analysis?: Pick<SalesDashboard, "daily" | "months">; dailyMonth?: string; loading?: boolean; error?: string;
+  day: string; onFocus: Focus; onDailyMonthChange?: (month: string) => void; onRetry?: () => void;
+}) {
+  const available = data.months.filter(m => m.competency.slice(0, 7) >= data.filters.from.slice(0, 7)
+    && m.competency.slice(0, 7) <= data.filters.to.slice(0, 7) && !data.metadata.missing_months.includes(m.competency));
+  const source = analysis ?? (!onDailyMonthChange ? data : undefined);
+  const daily = source?.daily ?? { competency: null, reference_month: null, cutoff_day: null, points: [], totals: [] };
+  const month = source?.months.find(m => m.competency === daily.competency);
+  const chosen = dailyMonth || available.at(-1)?.competency.slice(0, 7) || "";
+  const elapsed = new Set(daily.points.filter(p => p.has_elapsed).map(p => `${p.competency}/${p.day}`));
   const current = daily.totals.filter(p => p.competency === daily.competency && elapsed.has(`${p.competency}/${p.day}`));
   const reference = daily.totals.filter(p => p.competency === daily.reference_month && elapsed.has(`${p.competency}/${p.day}`));
   const estimate = month?.projection_is_estimate === true ? month.projection : null;
@@ -165,9 +173,22 @@ export const DailyAnalysis = memo(function DailyAnalysis({ data, day, onFocus }:
   const maxDay = Math.max(month?.days_in_month ?? 31, ...reference.map(p => p.day));
   const observed = current.at(-1);
   const selected = current.find(p => String(p.day) === day);
-  return <Figure title="Acumulado diário e projeção" description={<>Competência {competency(daily.competency)} · referência {competency(daily.reference_month)}{daily.cutoff_day !== null && ` · corte até dia ${daily.cutoff_day}`}. Ajustes mensais não são distribuídos entre dias.</>}>
-    <div className="sales-daily-metrics"><p>Acumulado observado: <strong>{observed ? money(observed.cumulative) : "Indisponível"}</strong></p><p>Projeção linear — estimativa: <strong>{money(estimate)}</strong></p></div>
-    {!current.length && <p>Sem detalhamento diário observado nesta competência.</p>}
+  return <Figure title="Acumulado diário e projeção" description={<>{daily.cutoff_day !== null && `Corte até dia ${daily.cutoff_day}. `}Ajustes mensais não são distribuídos entre dias.</>}
+    controls={onDailyMonthChange && <label className="sales-daily-select">Competência do gráfico<select aria-label="Competência do gráfico" value={chosen}
+      disabled={!available.length} onChange={e => onDailyMonthChange(e.target.value)}>
+      {!available.some(m => m.competency.slice(0, 7) === chosen) && <option value={chosen}>{chosen ? `${competencyLabel(chosen)} · sem movimento` : "Sem competências disponíveis"}</option>}
+      {available.map(m => <option key={m.competency} value={m.competency.slice(0, 7)}>{competencyLabel(m.competency)}{m.partial === true ? " · parcial" : m.partial === null ? " · status indeterminado" : ""}</option>)}
+    </select></label>}>
+    <div aria-busy={loading} className="sales-daily-content">
+    {loading && <p role="status" className="sales-chart-note">Carregando competência diária…</p>}
+    {error && <p role="alert">{error} <button type="button" onClick={onRetry}>Tentar novamente no gráfico</button></p>}
+    <ul className="sales-daily-legend" aria-label="Séries do acumulado diário">
+      <li>{current.length > 0 && <SeriesLine series="sales-line" />}<span>{competencyLabel(daily.competency)} — observado{!current.length && " indisponível"}</span></li>
+      <li>{reference.length > 0 && <SeriesLine series="sales-reference" />}<span>{daily.reference_month ? `${competencyLabel(daily.reference_month)} — referência${!reference.length ? " sem dados diários" : ""}` : "Sem referência disponível"}</span></li>
+      {estimate !== null && observed && <li><SeriesLine series="sales-projection" /><span>Projeção linear — estimativa · {competencyLabel(daily.competency)}</span></li>}
+    </ul>
+    <div className="sales-daily-metrics"><p>Acumulado observado: <strong>{observed ? money(observed.cumulative) : "Indisponível"}</strong></p><p>{estimate !== null && observed ? <>Projeção linear — estimativa: <strong>{money(estimate)}</strong></> : "Sem projeção disponível."}</p></div>
+    {!loading && !error && !current.length && <p>{available.length ? "Sem detalhamento diário observado nesta competência." : "Sem competências com movimento no período."}</p>}
     <Chart label="Gráfico de acumulado diário" minimum={760}>{width => {
       const x = (d: number) => 110 + (d - 1) / (maxDay - 1) * (width - 160), y = scale.y;
       return <><Grid scale={scale} width={width} />
@@ -183,20 +204,24 @@ export const DailyAnalysis = memo(function DailyAnalysis({ data, day, onFocus }:
         {[1, 5, 10, 15, 20, 25, maxDay].map(d => <text key={d} x={x(d)} y="280" textAnchor="middle">{d}</text>)}
       </>;
     }}</Chart>
-    <p className="sales-chart-note">Linha contínua: observado · tracejado cinza: referência anterior · tracejado âmbar: estimativa após o observado.</p>
     {day && <p role="status">Foco no dia {day}: {selected ? `${money(selected.total)} no dia · ${money(selected.cumulative)} acumulado` : "sem valor observado disponível"}. Somente agregados autorizados.</p>}
     <details><summary>Valores diários e referência anterior</summary><Scroll label="Tabela diária"><table><thead><tr><th scope="col">Série</th><th scope="col">Data</th><th scope="col">Total diário</th><th scope="col">Acumulado sem ajustes</th></tr></thead>
       <tbody>{[...current, ...reference].map(p => <tr key={p.sale_date}><th scope="row">{p.competency === daily.competency ? "Observado" : "Referência anterior"}</th>
         <td>{p.competency === daily.competency ? <button aria-pressed={String(p.day) === day} onClick={() => onFocus(undefined, undefined, String(p.day))}>{p.sale_date.split("-").reverse().join("/")}</button> : p.sale_date.split("-").reverse().join("/")}</td>
         <td>{money(p.total)}</td><td>{money(p.cumulative)}</td></tr>)}</tbody></table></Scroll></details>
+    </div>
   </Figure>;
 });
+
+function SeriesLine({ series }: { series: string }) {
+  return <svg className="sales-series-sample" viewBox="0 0 42 12" width="42" height="12" aria-hidden="true" focusable="false"><line className={series} x1="2" x2="40" y1="6" y2="6" /></svg>;
+}
 
 export const PaymentMix = memo(function PaymentMix({ data }: { data: SalesDashboard }) {
   const mix = data.payment_mix;
   return <Figure title="Composição Stone × PIX" description="Base dos dois métodos, inclusive quando os indicadores principais estão em Stone. Não altera o total selecionado.">
     <div className="sales-mix-bar" aria-hidden="true"><span style={{ width: `${mix.stone_share_pct === null ? 0 : intensity(String(Number(mix.stone_share_pct) / 100)) * 100}%` }} /><span style={{ width: `${mix.pix_share_pct === null ? 0 : intensity(String(Number(mix.pix_share_pct) / 100)) * 100}%` }} /></div>
-    <dl className="sales-definition sales-payment-definition"><div><dt>Stone</dt><dd>{money(mix.stone)} · {mix.stone_share_pct === null ? "Composição indisponível (base zero)" : <CompactPercent value={mix.stone_share_pct} />}</dd></div>
-      <div><dt>PIX</dt><dd>{money(mix.pix)} · {mix.pix_share_pct === null ? "Composição indisponível (base zero)" : <CompactPercent value={mix.pix_share_pct} />}</dd></div></dl>
+    <dl className="sales-definition sales-payment-definition"><div><dt><span className="sales-swatch sales-stone-swatch" aria-hidden="true" />Stone</dt><dd>{money(mix.stone)} · {mix.stone_share_pct === null ? "Composição indisponível (base zero)" : <CompactPercent value={mix.stone_share_pct} />}</dd></div>
+      <div><dt><span className="sales-swatch sales-pix-swatch" aria-hidden="true" />PIX</dt><dd>{money(mix.pix)} · {mix.pix_share_pct === null ? "Composição indisponível (base zero)" : <CompactPercent value={mix.pix_share_pct} />}</dd></div></dl>
   </Figure>;
 });

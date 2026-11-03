@@ -1,5 +1,5 @@
 // Fixture exclusiva do navegador. Todas as somas/oráculos abaixo usam centavos BigInt.
-export function visualFixture(d, combined = false) {
+export function visualFixture(d, combined = false, dailyMonth = "2026-09-01") {
   const seed = d.months[0], units = d.units, dailySeed = d.daily.totals[0];
   const cents = value => BigInt(value.replace(".", ""));
   const decimal = n => `${n < 0n ? "-" : ""}${(n < 0n ? -n : n) / 100n}.${String((n < 0n ? -n : n) % 100n).padStart(2, "0")}`;
@@ -31,10 +31,18 @@ export function visualFixture(d, combined = false) {
   const total = sum(d.months.map(m => m.total)), stone = sum(d.months.map(m => m.stone)), pix = sum(d.months.map(m => m.pix));
   d.summary = { ...d.summary, total: decimal(total), stone: decimal(stone), pix: decimal(pix), daily_total: decimal(total), adjustment_total: "0.00", monthly_average: decimal(divide(total, 6n)), daily_average: decimal(divide(total, 168n)), latest: d.months.at(-1), best_closed: d.months[3], leader: d.ranking[0] };
   d.insights = { strongest_advance: d.months[3], largest_decline: d.months[2], pace: { ...d.insights.pace, comparison: d.months.at(-1).comparison, reference_month: "2026-08-01", projection: d.months.at(-1).projection, projected_variation_pct: "7.142857" } };
-  d.daily.cutoff_day = 15; d.daily.reference_month = "2026-08-01";
-  d.daily.totals = [d.months[4], d.months[5]].flatMap(m => {
-    const days = m.last_day_with_data, perDay = cents(m.total) / BigInt(days);
-    return Array.from({ length: days }, (_, i) => ({ ...dailySeed, competency: m.competency, sale_date: `${m.competency.slice(0, 8)}${String(i + 1).padStart(2, "0")}`, day: i + 1, total: decimal(i === days - 1 ? cents(m.total) - perDay * BigInt(i) : perDay), cumulative: i === days - 1 ? m.total : decimal(perDay * BigInt(i + 1)) }));
+  const focused = d.months.find(m => m.competency === dailyMonth);
+  const reference = d.months.find(m => m.competency === focused?.comparison.reference_month);
+  d.daily = { competency: focused?.competency ?? null, reference_month: reference?.competency ?? null,
+    cutoff_day: focused?.partial ? focused.last_day_with_data : null, points: [], totals: [] };
+  d.daily.totals = [reference, focused].filter(Boolean).flatMap(m => {
+    const days = m.last_day_with_data;
+    const through = (value, day) => day === days ? cents(value) : cents(value) / BigInt(days) * BigInt(day);
+    return Array.from({ length: days }, (_, i) => ({ ...dailySeed, competency: m.competency,
+      sale_date: `${m.competency.slice(0, 8)}${String(i + 1).padStart(2, "0")}`, day: i + 1,
+      total: decimal(through(m.total, i + 1) - through(m.total, i)), cumulative: decimal(through(m.total, i + 1)),
+      stone: decimal(through(m.stone, i + 1) - through(m.stone, i)), pix: decimal(through(m.pix, i + 1) - through(m.pix, i)),
+      cumulative_stone: decimal(through(m.stone, i + 1)), cumulative_pix: decimal(through(m.pix, i + 1)) }));
   });
   d.daily.points = d.daily.totals.map(p => ({ ...p, unit_id: units[0].id, has_elapsed: true }));
   d.payment_mix = { stone: decimal(stone), pix: decimal(pix), stone_share_pct: "83.333333", pix_share_pct: "16.666667" };

@@ -1,5 +1,9 @@
 # VEN-04B — Dashboard gerencial de Vendas / Maquininhas
 
+**Refinamentos de usabilidade — 03/11/2026:** diário com seletor independente e legendas
+por traçado/competência, marcadores Stone/PIX, toolbar de 44px e seleção visual de mês/ano.
+[Evidências e limitações atuais](VEN04B_VISUAL_FIDELITY.md#refinamentos-de-usabilidade--03112026-rodada-atual).
+
 **Correção visual — 03/11/2026:** quatro KPIs executivos, Panorama Gaúcha com três
 insights antes dos gráficos, toolbar compacta, SVGs de altura fixa com escala/grade/
 área, ranking, legenda inferior e cores por UUID. Contratos VEN-03 preservados.
@@ -66,7 +70,11 @@ flowchart LR
   E --> D
   A --> D["/sales/dashboard: sales.dashboard.read"]
   D --> RPC["sales_dashboard: autorização e snapshot SQL"]
-  RPC --> V["Indicadores + séries + ranking + matriz + diário + contexto"]
+  RPC --> V["Indicadores + séries + ranking + matriz + contexto"]
+  D --> M["Mês do gráfico: daily na URL; mantém janela e rascunho"]
+  M --> RPC
+  RPC --> DAILY["Diário: observado + referência da API + estimativa válida"]
+  DAILY --> DAY["Foco em dia agregado; sem nova leitura"]
   V --> F["Foco autorizado em unidade, competência e dia"]
   F --> D
 ```
@@ -93,7 +101,15 @@ O banco verifica novamente a autorização. Se todas excederem 100, a resposta �
 sem total parcial; **Recorte direto por UUID** permite escolher uma unidade autorizada.
 Uma seleção unitária não descobre nomes de outras unidades. Seletores mostram somente
 o catálogo do payload corrente; comparar tudo permite consultar novamente o conjunto.
-Competência diária fora da janela é recusada. Respostas antigas são descartadas por
+Competências inicial/final usam selects nativos de mês/ano; os anos são navegáveis
+em faixas com âncoras de URL/disponibilidade, sem restringir lacunas. Rascunho só é
+aplicado em **Aplicar filtros** e sobrevive à troca diária. **Redefinir** descarta o
+rascunho. O seletor dentro do card diário altera somente `daily`, limpa `day` e lê a
+mesma RPC, com loading/erro/retry locais. Mantém os agregados principais e a janela;
+opções são competências com movimento no payload, com status parcial/indeterminado.
+Sem seleção explícita, usa a última disponível. O avançado acompanha o mesmo estado.
+Ao editar a janela, competência diária fora dela é limpa antes de aplicar.
+Competência diária fora da janela em URL direta é recusada. Respostas antigas são descartadas por
 cleanup da requisição; resultado é vinculado a identidade, grants, filtros e revisão.
 Mudança de acesso oculta imediatamente o resultado e elimina o estado anterior.
 

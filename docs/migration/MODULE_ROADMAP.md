@@ -2,7 +2,8 @@
 
 **VEN-04B — correção visual de 03/11/2026:** apresentação reconstruída na PR #94,
 com quatro KPIs, Panorama, gráficos e cores por UUID, mantendo VEN-03 e permissões.
-[Antes/depois, validação e audit pendente](../modules/sales/VEN04B_VISUAL_FIDELITY.md).
+[Antes/depois, refinamentos de usabilidade e validação atual](../modules/sales/VEN04B_VISUAL_FIDELITY.md).
+Diário independente, legendas, seletores mês/ano e toolbar refinados no mesmo escopo.
 Revisão visual/merge pelo titular pendentes; VEN-05–08 e PROD NO-GO preservados.
 
 **MEL-01 — 30/10/2026:** limpeza autorizada somente no notebook, catálogo de unidades

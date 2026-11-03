@@ -32,7 +32,7 @@ if (baseline) {
   } }] });
 }
 const checks = [], errors = [], requests = [];
-let stress = false;
+let stress = false, releaseDaily, pendingDaily;
 try {
   server = await salesLocalWeb({ API_URL: api, ANON_KEY: "sb_publishable_visual_fixture" });
   if (baselineServer) {
@@ -53,7 +53,7 @@ try {
       return route.continue();
     }
     assert.equal(url.origin, api, "A prova só pode utilizar endpoints locais interceptados");
-    const path = url.pathname, method = route.request().method(); requests.push({ path, method });
+    const path = url.pathname, method = route.request().method(); requests.push({ path, method, ...(path.endsWith("/sales_dashboard") ? { filters: JSON.parse(route.request().postData() || "{}") } : {}) });
     if (method === "OPTIONS") return route.fulfill({ status: 200, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" } });
     const json = data => route.fulfill({ json: data, headers: { "Access-Control-Allow-Origin": "*" } });
     if (path.endsWith("/profiles")) return json({ id: user.id, active, display_name: "Pessoa de teste visual" });
@@ -61,8 +61,9 @@ try {
     if (path.endsWith("/sales_operation_units")) return catalogError ? route.abort() : json(units);
     if (path.endsWith("/sales_entries_list")) return json([]);
     if (path.endsWith("/sales_dashboard")) {
-      const combined = JSON.parse(route.request().postData() || "{}").p_scope === "combined";
-      const data = visualFixture(dashboardFixture(combined), combined);
+      const filters = JSON.parse(route.request().postData() || "{}"), combined = filters.p_scope === "combined";
+      const data = visualFixture(dashboardFixture(combined), combined, filters.p_daily_month ?? undefined);
+      if (pendingDaily) { const pending = pendingDaily; pendingDaily = undefined; await pending; }
       if (stress) {
         data.units[0].name = "Unidade sintética com denominação extensa para avaliação de truncamento e acesso ao nome completo";
         data.summary.total = "9007199254740993.01";
@@ -94,6 +95,49 @@ try {
         writeFileSync(`${directory}/axe-${width}.json`, JSON.stringify(result, null, 2));
         assert.deepEqual(result.violations, [], `axe WCAG A/AA em ${width}`);
       }
+      const toolbar = page.locator(".sales-dashboard-filters"), daily = page.getByRole("figure", { name: "Acumulado diário e projeção", exact: true });
+      await toolbar.screenshot({ path: `${directory}/toolbar-${width}.png` });
+      await page.locator(".sales-competency").first().screenshot({ path: `${directory}/month-year-${width}.png` });
+      const sizes = await page.locator('.sales-segmented, .sales-competency-controls select, .sales-dashboard-filters > label > select').evaluateAll(elements => elements.map(el => ({ height: el.getBoundingClientRect().height, bottom: el.getBoundingClientRect().bottom })));
+      assert.ok(sizes.every(s => s.height === 44), `Alturas iguais: ${JSON.stringify(sizes)}`);
+      if (width > 1200) assert.ok(sizes.every(s => Math.abs(s.bottom - sizes[0].bottom) < 1), "Controles alinhados na toolbar");
+      const samples = await daily.locator('.sales-series-sample line').evaluateAll(lines => lines.map(line => {
+        const plot = line.closest('figure').querySelector(`.sales-plot path.${line.getAttribute('class')}`);
+        const sample = getComputedStyle(line), actual = getComputedStyle(plot);
+        return { sample: [sample.stroke, sample.strokeWidth, sample.strokeDasharray], plot: [actual.stroke, actual.strokeWidth, actual.strokeDasharray] };
+      }));
+      assert.equal(samples.length, 3); assert.ok(samples.every(s => JSON.stringify(s.sample) === JSON.stringify(s.plot)));
+      const mix = page.getByRole('figure', { name: 'Composição Stone × PIX', exact: true });
+      const mixColors = await mix.evaluate(el => [...el.querySelectorAll('.sales-swatch')].map((swatch, i) => getComputedStyle(swatch).backgroundColor === getComputedStyle(el.querySelectorAll('.sales-mix-bar > span')[i]).backgroundColor));
+      assert.deepEqual(mixColors, [true, true]);
+      await daily.screenshot({ path: `${directory}/daily-${width}.png` });
+      await mix.screenshot({ path: `${directory}/mix-${width}.png` });
+      await daily.scrollIntoViewIfNeeded();
+      const scrollBefore = await page.evaluate(() => {
+        window.__ven04bMain = [...document.querySelectorAll('.sales-kpis > *, .sales-analysis-grid > *, .sales-insights, .sales-heat-cell')];
+        return scrollY;
+      });
+      const calls = requests.filter(r => r.path.endsWith('/sales_dashboard')).length;
+      pendingDaily = new Promise(resolve => { releaseDaily = resolve; });
+      await page.getByLabel('Competência do gráfico', { exact: true }).selectOption('2026-07');
+      await expect(page.getByText('Carregando competência diária…')).toBeVisible();
+      assert.ok(await page.evaluate(() => window.__ven04bMain.every(el => el.isConnected)));
+      releaseDaily();
+      await expect(daily.getByText('Jul/2026 — observado', { exact: true })).toBeVisible();
+      await expect(daily.getByText('Jun/2026 — referência', { exact: true })).toBeVisible();
+      await expect(daily.locator('.sales-projection')).toHaveCount(0);
+      assert.equal(requests.filter(r => r.path.endsWith('/sales_dashboard')).length, calls + 1);
+      assert.deepEqual(requests.filter(r => r.path.endsWith('/sales_dashboard')).at(-1).filters,
+        { p_from: '2026-04-01', p_to: '2026-09-01', p_units: null, p_scope: 'stone', p_daily_month: '2026-07-01' });
+      assert.ok(Math.abs(await page.evaluate(() => scrollY) - scrollBefore) <= 2, 'Troca diária preserva scroll');
+      // Enquadra a captura abaixo do breadcrumb fixo, após verificar o scroll real.
+      await daily.evaluate(el => window.scrollTo({ top: scrollY + el.getBoundingClientRect().top - 80, behavior: 'instant' }));
+      await daily.screenshot({ path: `${directory}/daily-changed-${width}.png` });
+      await expect(page).toHaveURL(/daily=2026-07/);
+      await page.reload(); await expect(daily.getByText('Jul/2026 — observado', { exact: true })).toBeVisible();
+      await page.goBack(); await expect(page.getByLabel('Competência do gráfico', { exact: true })).toHaveValue('2026-09');
+      await page.goForward(); await expect(daily.getByText('Jul/2026 — observado', { exact: true })).toBeVisible();
+      checks.push(`${width}: controles de 44px, legendas com estilos idênticos, cores do mix, diário independente, scroll, reload, Voltar/Avançar`);
       const contrast = await page.evaluate(() => {
         const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d");
         const luminance = color => {
@@ -140,6 +184,18 @@ try {
     await page.reload(); await expect(page.getByRole("radio", { name: "Stone + PIX", exact: true })).toBeChecked();
     await expect(page.getByLabel("Indicadores executivos")).toContainText("R$ 1.656.000,00");
     checks.push("Tooltip por foco/Escape; legenda sem RPC; combinado exato, URL e reload");
+    await page.goto(base + "/sales/dashboard?from=2026-04&to=2026-09");
+    const startMonth = page.getByLabel('Mês da competência inicial');
+    await startMonth.focus(); await page.keyboard.press('ArrowDown'); await expect(startMonth).toHaveValue('05');
+    await startMonth.selectOption('04');
+    const stoneRadio = page.getByRole('radio', { name: 'Stone', exact: true });
+    await stoneRadio.focus(); await page.keyboard.press('ArrowRight'); await expect(page.getByRole('radio', { name: 'Stone + PIX', exact: true })).toBeChecked();
+    await page.keyboard.press('ArrowLeft'); await expect(stoneRadio).toBeChecked();
+    await page.setViewportSize({ width: 720, height: 500 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Sem overflow no reflow equivalente a 200% em 1440px');
+    await page.locator('.sales-dashboard-filters').screenshot({ path: `${directory}/toolbar-zoom-200.png` });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    checks.push('Seletores/radios por teclado; reflow em 720px equivalente a 200% de 1440px sem overflow (zoom nativo não automatizado)');
     stress = true;
     for (const width of [1440,375]) {
       await page.setViewportSize({ width, height: 1000 }); await page.reload();
