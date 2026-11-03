@@ -55,4 +55,15 @@ describe("VEN-05A — transporte e reconciliação", () => {
     expect(exportMessage({ code: "42501" })).toContain("permissão");
     expect(() => parseExportPage(null)).toThrow();
   });
+  it.each(["PGRST202", "42883"])("RPC ausente (%s) informa indisponibilidade do recurso sem expor o banco", async code => {
+    const error = { code, message: "Could not find public.sales_export_page; detalhe privado", details: "SQL privado" };
+    mocks.rpc.mockResolvedValue({ data: null, error });
+    await expect(exportPage("full", {})).rejects.toMatchObject({ code });
+    const text = exportMessage(error);
+    expect(text).toContain("ainda não está disponível neste ambiente");
+    expect(text).not.toContain("conexão");
+    expect(text).not.toMatch(/sales_export_page|SQL privado|detalhe privado/);
+    // Status HTTP isolado não basta: uma rota/proxy 404 não prova ausência da RPC.
+    expect(exportMessage({ status: 404, message: "rota ausente" })).toContain("conexão");
+  });
 });

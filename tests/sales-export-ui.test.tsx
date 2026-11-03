@@ -62,7 +62,7 @@ describe("VEN-05A — controles e download", () => {
     render(<SalesExportActions filters={{}} />); fireEvent.click(filtered()); await screen.findByText(/Nenhum dado disponível/);
     expect(mocks.exportBlob).not.toHaveBeenCalled(); expect(mocks.downloadExport).not.toHaveBeenCalled();
   });
-  it.each([["42501", "permissão"], ["PGRST301", "sessão expirou"], ["54000", "Limite de volume"], ["40001", "mudaram"], ["XX000", "conexão"]])("erro %s permite tentativa explícita sem vazar detalhes", async (code, message) => {
+  it.each([["42501", "permissão"], ["PGRST301", "sessão expirou"], ["54000", "Limite de volume"], ["40001", "mudaram"], ["PGRST202", "ainda não está disponível neste ambiente"], ["42883", "ainda não está disponível neste ambiente"], ["XX000", "conexão"]])("erro %s permite tentativa explícita sem vazar detalhes", async (code, message) => {
     mocks.collectExport.mockRejectedValue({ code, message: "segredo SQL" });
     render(<SalesExportActions filters={{}} />); fireEvent.click(filtered()); expect((await screen.findByRole("alert")).textContent).toContain(message);
     expect(screen.queryByText("segredo SQL")).toBeNull(); expect(mocks.downloadExport).not.toHaveBeenCalled();

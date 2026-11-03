@@ -1,7 +1,12 @@
 # VEN-05A — Exportação Excel autorizada
 
-**Estado em 03/11/2026:** implementada para revisão do mantenedor; sem homologação,
-aplicação da migration em banco persistente, deploy, migração financeira ou cutover.
+**Atualização operacional de 03/11/2026:** migration aplicada exclusivamente no
+notebook autorizado, com backup validado estruturalmente e quatro fluxos de
+exportação homologados tecnicamente no navegador real. [Registro local](#aplicação-controlada-e-homologação-no-notebook--03112026).
+Aceite/merge da PR #98 continuam pendentes do mantenedor; STAGING/C30/PROD intactos.
+
+**Estado da entrega original em 03/11/2026:** implementada para revisão do mantenedor;
+naquela autorização, sem aplicação persistente, deploy, migração financeira ou cutover.
 VEN-05B (impressão/PDF) permanece fora de escopo. **PROD NO-GO.**
 
 **Autorização:** pedido expresso do titular de 03/11 para limpar dez branches
@@ -252,8 +257,8 @@ passou na suíte completa. Não há tolerância de centavos.
 **Checks GitHub e evidência de integração:** [PR #98](https://github.com/The-Vonky/Gaucha-Gestao/pull/98/checks).
 Consultar o resultado associado ao HEAD da PR; não confundir aprovação local com
 PostgreSQL/Chromium reais. A descrição da PR registra o resultado final dos jobs.
-Nenhuma execução no banco do notebook, C30, STAGING ou PROD é
-autorizada por este contrato. O CI aplica migrations exclusivamente nos seus
+O contrato original não autorizava execução no banco do notebook, C30, STAGING ou
+PROD. A autorização posterior limita-se ao notebook no registro abaixo. O CI aplica migrations exclusivamente nos seus
 serviços efêmeros. Não é prova de aplicação persistente nem de login em produção.
 
 ## Limitações, reversão e próximo gate
@@ -292,6 +297,158 @@ O padrão do formulário inclui o texto das opções no label; o ensaio agora us
 `select[name="method"]`. A prova local com transporte interceptado reproduziu
 essa falha e passou após a correção, incluindo download/readback. O teste real
 ganhou identificação de cada etapa e captura apenas da mensagem sanitizada da UI.
+
+## Aplicação controlada e homologação no notebook — 03/11/2026
+
+**Autoridade:** novo pedido expresso do mantenedor para aplicar exclusivamente
+`20261103175405`, após auditoria de pendências e backup, e validar exportação sobre
+os dados locais existentes, somente por leitura/exportação. Não autoriza C30,
+STAGING, produção, seeds, novas concessões, migração financeira ou cutover.
+Referência revisada: PR #98, `49686a3737ad8986de86e0a2b52cb339f5add22f`.
+
+### Diagnóstico e destino confirmado
+
+O mantenedor observou HTTP 404 em `POST /rest/v1/rpc/sales_export_page` e função
+ausente no banco. A auditoria somente leitura confirmou assinatura inexistente,
+nenhum overload conflitante, **29 migrations aplicadas** e uma única pendência:
+`20261103175405_sales_excel_export.sql`. Não havia versões locais extras nem
+outras migrations a aplicar. Helpers, tabelas e quatro capacidades necessárias
+estavam presentes; o arquivo era idêntico ao da branch publicada.
+
+| Elemento | Identificação efetivamente verificada |
+| --- | --- |
+| Projeto | `gaucha-gestao-local` |
+| Frontend | `http://localhost:5173`; URL efetiva do cliente conferida no módulo servido pelo Vite |
+| API/Kong | `http://127.0.0.1:54321`; container `supabase_kong_gaucha-gestao-local` |
+| PostgREST | `supabase_rest_gaucha-gestao-local`; destino interno verificado por URI sanitizada, DNS e rede Docker |
+| PostgreSQL | `supabase_db_gaucha-gestao-local`, versão 17.6, database `postgres` |
+| Conexão do host | `127.0.0.1:54322`, confirmada pelo binding real e pelo status do CLI; não inferida apenas do arquivo de configuração |
+| CLI existente | Supabase 2.117.0; versão e ajuda de `migration list`/`migration up` conferidas |
+| Método de auditoria | `migration list --local` e consultas SQL em transação somente leitura; nenhum vínculo remoto |
+| SHA-256 da migration | `e209d103b80d950455e0dccc10ba40cff954a5d76c0db28ba5606cbe40697e4d` |
+
+### Backup preservado e limites da prova de recuperação
+
+Diretório privado, fora do repositório:
+`~/backups/gaucha-gestao-local/ven05a-2026-11-03T19-22-18-124Z-c384cae9/`.
+Os caminhos absolutos e checksums constam no `manifest.json` privado desse
+diretório. Arquivos com modo `0600`, diretório `0700`; nenhum conteúdo financeiro,
+senha, hash de senha, JWT, sessão ou dump enviado à PR.
+
+| Arquivo | Tamanho | SHA-256 |
+| --- | --- | --- |
+| `postgres-before-ven05a.dump` | 1.009.606 bytes | `c43de935d0125b3b3e15965501f2f16c07afa0eae4db48f8d5bf118788f4e40d` |
+| `globals-before-ven05a.sql` | 7.436 bytes | `6ffd04ac44ea37e34501b8304a0e2512ec569515ce1cc7349bca5b4eca79fafb` |
+| `postgres-before-ven05a.toc` | 110.088 bytes | `1550d194bc8b99c844ee7f2d21df4ea215c2f225a72438cadc45286f8f1779e1` |
+
+`pg_dump --format=custom` abrangeu a base completa, sem exclusão de schemas/dados,
+funções, owners, grants ou histórico de migrations. `pg_dumpall --globals-only`
+preservou os objetos globais separadamente, em arquivo privado sensível. Foram
+conferidos tamanho, checksums, `pg_restore --list`, presença de Auth/Core/Vendas e
+histórico, e **decodificação integral** do arquivo com `pg_restore --file=/dev/null`,
+sem conectar a destino de restauração.
+
+Não foi provisionado banco/container adicional para restore. **Não houve restore
+operacional completo**: TOC e decodificação comprovam integridade estrutural,
+não recuperação funcional de Auth/serviços/Storage. Esta limitação não foi
+substituída por uma alegação de backup/restore produtivo validado.
+
+Recuperação proposta, sem execução: preservar esses originais; inventariar o
+estado posterior; obter autorização para um destino separado; revisar/restaurar
+globals e owners/grants necessários; restaurar o custom dump nesse destino e
+validar dados/RPCs/Auth. Não usar `--clean`, reset ou restore integral sobre a base
+em uso por inferência. Como a mudança local é de leitura, eventual contenção pode
+usar forward-fix que revogue EXECUTE da assinatura, com nova autorização e migration.
+
+### Aplicação e pós-verificação
+
+Após revalidar hashes do backup e da migration, assinatura ausente e pendência
+única, executou-se **`supabase migration up --local`**, usando o CLI já instalado.
+Nenhum `--linked`, `db push`, `reset`, `repair`, seed ou SQL remoto foi usado.
+A migration histórica permaneceu sem edição. Aplicação concluída em
+03/11/2026 às **16:26:14, America/Sao_Paulo**.
+
+Resultados efetivos:
+
+- `to_regprocedure('public.sales_export_page(text,date,date,uuid[],text,integer,integer,text)')`
+  passou de `NULL` à assinatura esperada;
+- histórico local passou de **29 para 30 migrations**, preservando todas as
+  anteriores e acrescentando somente `20261103175405` pelo mecanismo oficial;
+- `SECURITY DEFINER=true`, `search_path=''`, EXECUTE de `authenticated=true`,
+  `anon=false` e `PUBLIC=false`;
+- o cache PostgREST reconheceu a função após o NOTIFY contido na própria migration:
+  chamada anônima recebeu **HTTP 401 / SQLSTATE 42501**, sem dados; não foi
+  necessário executar um NOTIFY adicional;
+- contagens e fingerprints SHA-256 das **79 tabelas** comparadas imediatamente
+  antes/depois foram idênticos. Nenhuma tabela anterior foi alterada pela aplicação.
+
+### Exportações reais, identidade e reconciliação
+
+O mantenedor autenticou interativamente uma janela InPrivate do Edge do Windows,
+sem informar senha/JWT ao agente, e confirmou manualmente um download. A automação
+usou essa sessão real contra o frontend existente e o mesmo PostgREST confirmado;
+não houve mock, service role no browser, conta criada, senha alterada ou grant novo.
+
+| Origem | Modalidade | RPC | XLSX/readback | Reconciliação com fonte SQL |
+| --- | --- | --- | --- | --- |
+| Lançamentos | Período aplicado | HTTP 200 | PASS | PASS, zero centavos de diferença |
+| Lançamentos | Histórico autorizado | HTTP 200 | PASS | PASS, zero centavos de diferença |
+| Dashboard | Período aplicado | HTTP 200 | PASS | PASS, zero centavos de diferença |
+| Dashboard | Histórico autorizado | HTTP 200 | PASS | PASS, zero centavos de diferença |
+
+Os quatro arquivos foram lidos com `read-excel-file`. Conferiram-se abas esperadas
+(ajustes somente quando presentes/autorizados), IDs de todas as linhas, unidade,
+forma, data/competência, valor decimal textual e célula numérica/textual. Totais
+foram comparados com consultas SQL independentes sobre ativos e ajustes, filtradas
+pelas unidades autorizadas, e novamente somados em BigInt. O Resumo coincidiu com
+essas fontes; não se usou fórmula Excel como oráculo. XML/ZIP foi conferido contra
+fórmulas e vínculos externos executáveis.
+
+Em Lançamentos, mudou-se apenas o rascunho da forma de pagamento e confirmou-se
+que o arquivo permaneceu no filtro aplicado. O Dashboard usou competências inteiras
+e escopo combinado; históricos não herdaram os filtros das telas. Unidades dos
+arquivos foram verificadas contra a interseção atual de capacidades Core.
+
+**Limite do negativo unitário desta sessão:** a conta autenticada cobria todas as
+unidades existentes; não havia unidade existente fora de seu escopo para um 403
+real com essa mesma conta. A recusa anônima foi exercida; a matriz de usuário
+restrito permanece coberta pelos testes PostgreSQL/CI. Não se afirma que uma
+segunda identidade restrita tenha sido homologada interativamente sem evidência.
+
+As cópias de XLSX e recibos ficaram somente no diretório privado do backup,
+sem valores, nomes, IDs empresariais ou screenshots na documentação pública.
+Os downloads originais foram preservados. Após os quatro fluxos, as **56 tabelas
+fora de Auth** comparadas mantiveram contagens e conteúdo iguais ao estado posterior
+à aplicação. Sessões/metadados de autenticação decorrentes do login não são
+declarados idênticos; não houve mutação de lançamentos, ajustes ou permissões.
+
+### Correção da mensagem e checks desta continuação
+
+`exportMessage` agora distingue **`PGRST202`** (função ausente no cache/contrato
+PostgREST) e **`42883`** (função indefinida) de falha real de rede. A interface
+informa que a exportação ainda não está disponível naquele ambiente e orienta
+procurar o responsável, sem expor assinatura, schema ou detalhes SQL. HTTP 404
+isolado não é considerado prova de RPC ausente. Mensagens de autorização, sessão,
+concorrência e volume permanecem específicas; a ação de tentar novamente existente
+é reutilizada. Nenhuma mudança de permissão ou schema adicional foi necessária.
+
+Arquivos de código/teste: `modules/sales/export/api.ts`,
+`tests/sales-export-api.test.ts`, `tests/sales-export-ui.test.tsx`.
+Regressões novas: ausência de RPC nas duas modalidades de transporte, mensagem
+segura, ausência de download em erro e recuperação após disponibilizar o recurso.
+
+Resultados locais desta continuação:
+
+- API/UI: **38 PASS / 2 arquivos**;
+- suíte completa `npm test -- --maxWorkers=2`: **926 PASS / 67 arquivos**, 133,80s;
+- `npm run typecheck` e `npm run lint`: **PASS**;
+- os quatro fluxos de navegador real descritos acima: **PASS**.
+
+Build, verificação do bundle, audit e checks do novo HEAD são registrados na
+descrição da própria [PR #98](https://github.com/The-Vonky/Gaucha-Gestao/pull/98).
+Nenhum resultado anterior é tratado como check aprovado de um SHA posterior.
+Aceite do mantenedor e merge continuam pendentes. Não houve deploy, operação em
+C30/STAGING/PROD nem avanço para VEN-05B.
 
 ## Limpeza Git comprovada
 

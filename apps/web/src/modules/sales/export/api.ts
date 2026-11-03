@@ -91,6 +91,8 @@ export async function validateExport(report: SalesExport, filters: ExportFilters
 }
 export function exportMessage(error: unknown) {
   const code = object(error) ? error.code : "";
+  if (code === "PGRST202" || code === "42883")
+    return "A exportação Excel ainda não está disponível neste ambiente. Solicite ao responsável a atualização do ambiente e tente novamente após a liberação do recurso.";
   if (code === "54000") return "Limite de volume atingido (20.000 registros, 1.000 unidades ou 8 MiB de dados). Reduza o recorte. O histórico completo não foi exportado parcialmente.";
   if (code === "40001") return "Dados ou permissões mudaram durante a exportação. Tente novamente para consultar a versão atual.";
   if (code === "23514") return "Confira os filtros e a modalidade de exportação.";
