@@ -412,15 +412,25 @@ arquivos foram verificadas contra a interseção atual de capacidades Core.
 **Limite do negativo unitário desta sessão:** a conta autenticada cobria todas as
 unidades existentes; não havia unidade existente fora de seu escopo para um 403
 real com essa mesma conta. A recusa anônima foi exercida; a matriz de usuário
-restrito permanece coberta pelos testes PostgreSQL/CI. Não se afirma que uma
-segunda identidade restrita tenha sido homologada interativamente sem evidência.
+restrito permanece coberta pelos testes PostgreSQL/CI. Não se afirma que o agente
+tenha instrumentado uma segunda sessão restrita ou observado um HTTP 403 nela.
+
+**Teste restrito informado pelo mantenedor em 03/11/2026:** o titular relatou ter
+usado uma conta operacional já existente, concedido temporariamente acesso a
+somente uma das duas unidades e confirmado que a exportação incluiu apenas a
+unidade permitida. Resultado manual informado: **PASS**. Trata-se de evidência
+real relatada pelo responsável, distinta dos quatro ensaios instrumentados acima;
+não equivale a captura HTTP adicional, review formal `APPROVED` ou decisão de merge.
+Essa concessão foi ação do titular, não do agente, e não pertence à migration.
 
 As cópias de XLSX e recibos ficaram somente no diretório privado do backup,
 sem valores, nomes, IDs empresariais ou screenshots na documentação pública.
 Os downloads originais foram preservados. Após os quatro fluxos, as **56 tabelas
 fora de Auth** comparadas mantiveram contagens e conteúdo iguais ao estado posterior
 à aplicação. Sessões/metadados de autenticação decorrentes do login não são
-declarados idênticos; não houve mutação de lançamentos, ajustes ou permissões.
+declarados idênticos. O agente não mutou lançamentos, ajustes ou permissões;
+a alteração temporária de acesso relatada posteriormente pelo titular não é
+incluída na comparação de preservação anterior nem revertida automaticamente.
 
 ### Correção da mensagem e checks desta continuação
 
