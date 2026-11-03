@@ -45,7 +45,7 @@ describe("VEN-05A — XLSX real e precisão de readback", () => {
     expect(data[0][1]).toBe(value);
     expect(cell?.type).toBe(cents(value).toString().length > 15 ? String : Number);
   });
-  it.each(["=HYPERLINK(\"https://evil.test\",\"x\")", "+cmd", "-1+1", "@SUM(A1)", " \t=1+1", "\r\n+cmd", "\u0000\u0001\u000b=1", "Unicode Á 汉字 😀", "X".repeat(8000)])("texto de unidade/código/justificativa é dado: %s", async value => {
+  it.each(["=HYPERLINK(\"https://evil.test\",\"x\")", "+cmd", "-1+1", "@SUM(A1)", " \t=1+1", "\r\n+cmd", "\u0000\u0001\u000b=1", "Unicode Á 汉字 😀 �", "X".repeat(8000)])("texto de unidade/código/justificativa é dado: %s", async value => {
     const report = exportFixture();
     report.units[0].name = value; report.units[0].code = value; report.rows[1].reason = value;
     const { parsed } = await inspect(report);

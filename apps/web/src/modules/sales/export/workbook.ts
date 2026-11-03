@@ -8,7 +8,9 @@ export function textCell(value: string): Cell {
   // XML 1.0 não admite estes controles. Torna a substituição visível; mantém Unicode/tab/newline.
   const safe = Array.from(value, c => {
     const n = c.codePointAt(0)!;
-    return (n < 32 && ![9, 10, 13].includes(n)) || (n >= 0xd800 && n <= 0xdfff) || n === 0xfffe || n === 0xffff ? "□" : c;
+    // O writer também remove U+FFFD; marcá-lo evita desaparecimento silencioso.
+    return (n < 32 && ![9, 10, 13].includes(n)) || (n >= 0xd800 && n <= 0xdfff)
+      || [0xfffd, 0xfffe, 0xffff].includes(n) ? "□" : c;
   }).join("");
   return { type: String, value: safe };
 }
@@ -63,7 +65,7 @@ export function exportSheets(report: SalesExport): Sheet<Blob>[] {
     pair("Precisão Excel", "Até 15 algarismos e roundtrip em centavos: célula numérica. Demais valores: texto decimal. Colunas exatas são texto BRL; sem fórmulas."),
     pair("Ajustes mensais", "Somente competências inteiras cobertas pelas datas aplicadas e unidades com leitura gerencial. Sem rateio diário."),
     pair("Limites", "20.000 registros; 1.000 unidades; 8 MiB de dados; arquivo até 20 MiB. Sem totais parciais."),
-    pair("Controle de texto", "Textos tipados como String; controles inválidos em XML substituídos por □."),
+    pair("Controle de texto", "Textos tipados como String; controles XML inválidos e U+FFFD não suportado pelo writer substituídos por □."),
     ...report.units.map(u => pair(`Unidade ${u.code}`, `${u.name} · ${u.id} · ${u.active ? "ativa" : "inativa — histórico"} · ajustes ${u.adjustments_authorized ? "autorizados" : "não autorizados; não incluídos nos totais"}`)),
   ];
   const sheet = (name: string, data: Cell[][], widths: number[]): Sheet<Blob> => ({

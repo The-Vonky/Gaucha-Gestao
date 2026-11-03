@@ -194,8 +194,9 @@ Não se alteraram fórmulas gerenciais VEN-03 nem se introduziu tolerância fina
 
 Todo texto usa `type:String`, inclusive prefixos `=`, `+`, `-`, `@`, espaços,
 tabulações e quebras de linha. Não há fórmulas, APIs de hyperlink, macros, vínculos
-externos ou recursos executáveis. Controles inválidos para XML e surrogates
-isolados viram `□`, com política explícita no Resumo; Unicode válido é preservado.
+externos ou recursos executáveis. Controles inválidos para XML, surrogates
+isolados e U+FFFD (que a biblioteca remove) viram `□`, com política explícita no
+Resumo e cobertura de readback; demais caracteres Unicode válidos são preservados.
 Testes abrem o ZIP/XLSX e rejeitam tags `<f>`, hyperlinks, vínculos externos e DDE.
 
 ## Evidências e reprodução
