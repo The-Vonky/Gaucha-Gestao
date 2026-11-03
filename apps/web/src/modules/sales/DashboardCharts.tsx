@@ -217,11 +217,25 @@ function SeriesLine({ series }: { series: string }) {
   return <svg className="sales-series-sample" viewBox="0 0 42 12" width="42" height="12" aria-hidden="true" focusable="false"><line className={series} x1="2" x2="40" y1="6" y2="6" /></svg>;
 }
 
-export const PaymentMix = memo(function PaymentMix({ data }: { data: SalesDashboard }) {
+export const PaymentMix = memo(function PaymentMix({ data, allUnits }: { data: SalesDashboard; allUnits: boolean }) {
   const mix = data.payment_mix;
+  const units = data.units.filter(unit => data.filters.unit_ids.includes(unit.id));
+  const unitLabel = !units.length ? "Nenhuma unidade autorizada no recorte" : allUnits ? "Todas as unidades autorizadas"
+    : units.map(unit => `${unit.code} · ${unit.name}${unit.active ? "" : " (inativa — histórico)"}`).join(", ");
   return <Figure title="Composição Stone × PIX" description="Base dos dois métodos, inclusive quando os indicadores principais estão em Stone. Não altera o total selecionado.">
     <div className="sales-mix-bar" aria-hidden="true"><span style={{ width: `${mix.stone_share_pct === null ? 0 : intensity(String(Number(mix.stone_share_pct) / 100)) * 100}%` }} /><span style={{ width: `${mix.pix_share_pct === null ? 0 : intensity(String(Number(mix.pix_share_pct) / 100)) * 100}%` }} /></div>
     <dl className="sales-definition sales-payment-definition"><div><dt><span className="sales-swatch sales-stone-swatch" aria-hidden="true" />Stone</dt><dd>{money(mix.stone)} · {mix.stone_share_pct === null ? "Composição indisponível (base zero)" : <CompactPercent value={mix.stone_share_pct} />}</dd></div>
       <div><dt><span className="sales-swatch sales-pix-swatch" aria-hidden="true" />PIX</dt><dd>{money(mix.pix)} · {mix.pix_share_pct === null ? "Composição indisponível (base zero)" : <CompactPercent value={mix.pix_share_pct} />}</dd></div></dl>
+    <section className="sales-scope-summary" aria-label="Leitura do recorte">
+      <h3>Leitura do recorte</h3>
+      <p>Resumo rápido dos filtros efetivamente aplicados ao dashboard.</p>
+      <dl>
+        <div><dt>Período selecionado</dt><dd>{competency(data.filters.from)} a {competency(data.filters.to)}</dd></div>
+        <div><dt>Unidade</dt><dd>{unitLabel}</dd></div>
+        <div><dt>Escopo exibido</dt><dd>{data.filters.scope === "stone" ? "Stone" : "Stone + PIX"}</dd></div>
+        <div><dt>Total financeiro do recorte</dt><dd><strong>{money(data.summary.total)}</strong></dd></div>
+        <div><dt>Última competência disponível</dt><dd>{competency(data.metadata.latest_available_month)}</dd></div>
+      </dl>
+    </section>
   </Figure>;
 });

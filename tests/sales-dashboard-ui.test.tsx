@@ -437,3 +437,99 @@ describe("VEN-04B — refinamentos de usabilidade", () => {
     await screen.findByText(/janela em ordem crescente/); expect(api.salesDashboard).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("VEN-04B — Leitura do recorte no card Stone × PIX", () => {
+  const reading = () => within(figure("Composição Stone")).getByRole("region", { name: "Leitura do recorte" });
+  const value = (label: string) => within(reading()).getByText(label, { exact: true }).closest("div")!.querySelector("dd")!.textContent;
+
+  it.each([false, true])("escopo combinado=%s usa total exato selecionado e mantém mix dos dois métodos", async combined => {
+    mount(`from=2026-09&to=2026-09${combined ? "&scope=combined" : ""}`); await ready();
+    expect(value("Escopo exibido")).toBe(combined ? "Stone + PIX" : "Stone");
+    expect(value("Total financeiro do recorte")).toBe(combined ? "R$ 350,00" : "R$ 300,00");
+    const mix = figure("Composição Stone").querySelector(".sales-payment-definition")!;
+    expect(mix.textContent).toContain("R$ 300,00"); expect(mix.textContent).toContain("R$ 50,00");
+    expect(value("Última competência disponível")).toBe("09/2026");
+    expect(reading().textContent).not.toMatch(/Último dado|leitura às/);
+  });
+  it("unidade específica resolve código/nome e histórico inativo no payload restrito", async () => {
+    const d = dashboardFixture(); d.units = [d.units[1]]; d.filters.unit_ids = [B];
+    api.salesDashboard.mockResolvedValue(d); mount(`from=2026-09&to=2026-09&unit=${B}`); await ready();
+    expect(value("Unidade")).toBe("B · Histórica Beta (inativa — histórico)");
+    expect(reading().textContent).not.toContain("Todas as unidades");
+    expect(reading().textContent).not.toContain("Unidade Alfa");
+  });
+  it.each([false, true])("todas as autorizadas, incluindo catálogo com uma só unidade=%s", async single => {
+    const d = dashboardFixture(); if (single) { d.units = [d.units[0]]; d.filters.unit_ids = [A]; }
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    expect(value("Unidade")).toBe("Todas as unidades autorizadas");
+  });
+  it("intervalo entre anos e lacunas mantêm os limites efetivos em vez dos meses com dados", async () => {
+    const d = dashboardFixture(); d.filters.from = "2025-12-01"; d.filters.to = "2026-11-01";
+    d.metadata.missing_months = ["2026-08-01", "2026-10-01", "2026-11-01"];
+    api.salesDashboard.mockResolvedValue(d); mount("from=2025-12&to=2026-11"); await ready();
+    expect(value("Período selecionado")).toBe("12/2025 a 11/2026");
+    expect(value("Última competência disponível")).toBe("09/2026");
+    expect(value("Total financeiro do recorte")).toBe("R$ 300,00");
+    expect(figure("Contexto da base").textContent).toContain("08/2026, 10/2026, 11/2026");
+  });
+  it("sem movimentos mantém resumo, zero exato e competência indisponível", async () => {
+    const d = dashboardFixture(); d.months = []; d.unit_months = []; d.ranking = [];
+    d.summary = { ...d.summary, total: "0.00", stone: "0.00", pix: "0.00", latest: null, best_closed: null, leader: null };
+    d.metadata.latest_available_month = null; d.metadata.first_available_month = null; d.metadata.missing_months = ["2026-09-01"];
+    d.daily = { competency: null, reference_month: null, cutoff_day: null, points: [], totals: [] };
+    d.payment_mix = { stone: "0.00", pix: "0.00", stone_share_pct: null, pix_share_pct: null };
+    d.insights = { strongest_advance: null, largest_decline: null, pace: null };
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    expect(screen.getByText("Sem movimento no período")).toBeTruthy();
+    expect(value("Total financeiro do recorte")).toBe("R$ 0,00");
+    expect(value("Última competência disponível")).toBe("Indisponível");
+    expect(value("Período selecionado")).toBe("09/2026 a 09/2026");
+  });
+  it("competência ausente não usa o relógio da consulta nem a última linha mensal", async () => {
+    const d = dashboardFixture(); d.metadata.latest_available_month = null;
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    expect(value("Última competência disponível")).toBe("Indisponível");
+  });
+  it.each([
+    ["9007199254740993.01", "R$ 9.007.199.254.740.993,01"],
+    ["-9007199254740993.99", "−R$ 9.007.199.254.740.993,99"],
+    ["0.01", "R$ 0,01"],
+  ])("total %s preserva centavos da API sem somar o mix", async (amount, expected) => {
+    const d = dashboardFixture(); d.summary.total = amount;
+    api.salesDashboard.mockResolvedValue(d); mount(); await ready();
+    expect(value("Total financeiro do recorte")).toBe(expected);
+  });
+  it("rascunhos não alteram resumo; Aplicar, Atualizar, Comparar tudo e histórico usam resposta efetiva", async () => {
+    api.salesDashboard.mockImplementation(async filters => {
+      const d = dashboardFixture(filters.scope === "combined");
+      d.filters = { ...filters, unit_ids: filters.unit_ids ?? [A, B] };
+      if (filters.unit_ids) d.units = d.units.filter(u => filters.unit_ids.includes(u.id));
+      return d;
+    });
+    mount(); await ready();
+    fireEvent.change(screen.getByLabelText("Mês da competência inicial"), { target: { value: "08" } });
+    fireEvent.change(screen.getByLabelText("Unidade", { exact: true }), { target: { value: B } });
+    fireEvent.click(screen.getByRole("radio", { name: "Stone + PIX", exact: true }));
+    expect(value("Período selecionado")).toBe("09/2026 a 09/2026");
+    expect(value("Escopo exibido")).toBe("Stone"); expect(value("Unidade")).toBe("Todas as unidades autorizadas");
+    apply(); await ready();
+    expect(value("Período selecionado")).toBe("08/2026 a 09/2026");
+    expect(value("Escopo exibido")).toBe("Stone + PIX"); expect(value("Unidade")).toContain("Histórica Beta");
+    expect(value("Total financeiro do recorte")).toBe("R$ 350,00");
+    const d = dashboardFixture(true); d.filters.from = "2026-08-01"; d.filters.unit_ids = [B]; d.units = [d.units[1]]; d.summary.total = "350.01";
+    api.salesDashboard.mockResolvedValueOnce(d);
+    fireEvent.click(screen.getByRole("button", { name: "Atualizar", exact: true })); await ready();
+    expect(value("Total financeiro do recorte")).toBe("R$ 350,01");
+    fireEvent.click(screen.getByRole("button", { name: "Comparar tudo", exact: true })); await ready();
+    expect(value("Unidade")).toBe("Todas as unidades autorizadas");
+    fireEvent.click(screen.getByRole("button", { name: "Navegador anterior" })); await ready();
+    expect(value("Unidade")).toContain("Histórica Beta");
+  });
+  it("nome vem somente das unidades do recorte; nenhuma consulta de catálogo extra", async () => {
+    const d = dashboardFixture(); d.filters.unit_ids = [C]; d.units = [];
+    api.salesDashboard.mockResolvedValue(d); mount(`from=2026-09&to=2026-09&unit=${C}`); await ready();
+    expect(value("Unidade")).toBe("Nenhuma unidade autorizada no recorte");
+    expect(reading().textContent).not.toMatch(/Unidade Alfa|Histórica Beta|10000000-/);
+    expect(api.listSalesUnits).not.toHaveBeenCalled(); expect(api.listEntries).not.toHaveBeenCalled();
+  });
+});

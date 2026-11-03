@@ -1,7 +1,145 @@
 # VEN-04B — Correção de fidelidade visual (03/11/2026)
 
 
-## Refinamentos de usabilidade — 03/11/2026 (rodada atual)
+## Filtros alinhados a Lançamentos e Leitura do recorte — 03/11/2026 (rodada atual)
+
+Continuação do brief VEN-04B na PR #94, branch `codex/ven-04b-sales-dashboard`.
+Baseline local/remoto confirmado via conector GitHub e `git fetch`:
+`88b29fd69e72b0e6c230eb334f26d1085982fe70`. Histórico e melhorias anteriores
+preservados. Não há nova fase, alteração de contrato financeiro ou operação de banco.
+
+### Causa e padronização medida no navegador
+
+Os overrides do Dashboard reduziam os controles para `13.12px`, labels/botões para
+`12.48px`, padding lateral para `6.4px` e fixavam selects/segmentado em `44px`.
+A toolbar usava padding `16px` (`12.8px` no mobile), gap `12px` (`9.6px` no mobile)
+e margem inferior `16px`. Lançamentos usa o Design System sem essas reduções.
+
+Comparação real no mesmo Chromium, escala 1 e viewports idênticos:
+
+| Propriedade | Dashboard antes | Lançamentos / Dashboard depois |
+| --- | --- | --- |
+| Altura dos selects 1440 / 1024 | 44px | 40px |
+| Altura dos selects 768 / 375 | 44px | 44px |
+| Fonte dos selects 1440 / 1024 | 13.12px | 15px |
+| Fonte dos selects 768 / 375 | 13.12px | 16px |
+| Label / botão | 12.48 / 12.48px | 13 / 14px |
+| Padding vertical / lateral do select | 8 / 6.4px | 8 / 12px |
+| Padding externo / gap do formulário | 16 / 12px; menores no mobile | 20 / 16px |
+| Margem inferior do formulário / label | 16 / 0px | 24 / 16px |
+| Raio / borda do controle | 10px / 1px | 10px / 1px (preservados) |
+
+`dashboard.css` remove reduções de fonte/padding e deixa selects e botões herdarem
+os estilos institucionais, inclusive fonte de 16px em telas estreitas. O segmentado
+usa `--control-height`, `--text-body`, `--radius-control`, `--color-input-bg` e
+`--color-border-control`; legendas usam `--text-label`. Padding/gap/margens usam
+`--space-*`. Nenhum estilo de Lançamentos, Shared ou token global foi alterado.
+
+Os grupos ficam em quatro colunas no desktop, duas até 1200px e uma até 540px.
+Mês/ano permanecem selects nativos lado a lado dentro do grupo, com gap de 8px,
+proporção 1.5:1 e reserva mínima de 6rem para o ano. Setembro, Novembro e Dezembro
+são verificados quanto ao espaço útil. Competência diária independente, radios,
+labels, teclado, avançados e as cinco ações existentes são preservados. O formulário
+pode crescer verticalmente para manter legibilidade.
+
+### Leitura do recorte dentro da composição
+
+`PaymentMix` mantém a barra, marcadores, dinheiro e participações da API. A subseção
+sem outro card externo traz cinco linhas, separador suave, label/valor alinhados no
+desktop e empilhados no mobile; nomes e dinheiro extensos quebram dentro da área.
+
+| Informação | Fonte efetiva |
+| --- | --- |
+| Período selecionado | `data.filters.from` / `data.filters.to`, inclusive lacunas |
+| Unidade | `data.filters.unit_ids` resolvidos somente em `data.units` |
+| Escopo exibido | `data.filters.scope` |
+| Total financeiro do recorte | `data.summary.total`, formatador exato existente |
+| Última competência disponível | `data.metadata.latest_available_month`, ou “Indisponível” |
+
+O contrato retorna em `units` somente as unidades do recorte, não um catálogo global.
+Por isso o formulário aplicado (`selection.unit` vazio) informa a intenção de
+consultar **todas** via prop `allUnits`, vinculada ao mesmo estado de leitura; não se
+infere “todas” comparando duas listas que já chegam restritas. A unidade em foco
+mostra código/nome e flag de histórico inativo. Um payload sem unidades resolvíveis
+mostra “Nenhuma unidade autorizada no recorte”, sem buscar outro catálogo ou exibir
+UUID/nome externo. Os rascunhos não aplicados não alimentam o resumo.
+
+Stone selecionado continua mostrando o total Stone em `summary.total`, enquanto o
+mix conserva os dois métodos. Nenhuma soma financeira é refeita no frontend.
+`latest_available_month` é usado literalmente, inclusive se o contrato apontar uma
+competência anterior à janela vazia; não se inventa data de movimento com o relógio
+da consulta. A seção Contexto da base e reconciliação permanece integralmente.
+Referência funcional `renderScopeSummaryFull(months)` e `frontend/index.html` do
+projeto `dashboard_vendas-Gaucha` consultados via conector GitHub, somente em leitura;
+nenhum cálculo/estilo legado copiado.
+
+### Arquivos e evidências antes/depois
+
+Código: `DashboardCharts.tsx`, `SalesDashboardPage.tsx`, `dashboard.css`.
+Testes: `tests/sales-dashboard-ui.test.tsx`, `tests/integration/sales-dashboard-visual.mjs`.
+Este relatório e `evidence/ven04b-filters-scope/` completam a entrega. O código de
+`CompetencySelect.tsx` permaneceu intacto; a correção necessária era CSS.
+
+| Largura | Lançamentos (referência) | Dashboard antes | Dashboard depois | Composição com resumo |
+| --- | --- | --- | --- | --- |
+| 1440 | [filtros](evidence/ven04b-filters-scope/after/entries-filters-1440.png) | [filtros](evidence/ven04b-filters-scope/before/toolbar-1440.png) | [filtros](evidence/ven04b-filters-scope/after/toolbar-1440.png) | [card](evidence/ven04b-filters-scope/after/mix-1440.png) |
+| 1024 | [filtros](evidence/ven04b-filters-scope/after/entries-filters-1024.png) | [filtros](evidence/ven04b-filters-scope/before/toolbar-1024.png) | [filtros](evidence/ven04b-filters-scope/after/toolbar-1024.png) | [card](evidence/ven04b-filters-scope/after/mix-1024.png) |
+| 768 | [filtros](evidence/ven04b-filters-scope/after/entries-filters-768.png) | [filtros](evidence/ven04b-filters-scope/before/toolbar-768.png) | [filtros](evidence/ven04b-filters-scope/after/toolbar-768.png) | [card](evidence/ven04b-filters-scope/after/mix-768.png) |
+| 375 | [filtros](evidence/ven04b-filters-scope/after/entries-filters-375.png) | [filtros](evidence/ven04b-filters-scope/before/toolbar-375.png) | [filtros](evidence/ven04b-filters-scope/after/toolbar-375.png) | [card](evidence/ven04b-filters-scope/after/mix-375.png) |
+
+Capturas das páginas completas de ambas as telas, dos cards anteriores e métricas
+computadas estão nos mesmos diretórios: [antes](evidence/ven04b-filters-scope/before/result.json)
+e [depois](evidence/ven04b-filters-scope/after/result.json). Também há
+[reflow equivalente a 200%](evidence/ven04b-filters-scope/after/toolbar-zoom-200.png),
+[unidade/números extensos no desktop](evidence/ven04b-filters-scope/after/mix-long-values-1440.png)
+e [mobile](evidence/ven04b-filters-scope/after/mix-long-values-375.png).
+As capturas foram inspecionadas pelo agente. O cenário de nomes/valores extensos
+altera apenas dados sintéticos de apresentação e não é oráculo financeiro agregado.
+Os quatro prints citados no brief não vieram anexados a esta rodada; a comparação
+usa as telas reais do HEAD indicado e a referência funcional consultada.
+
+### Validação desta rodada e limites
+
+Node 22.23.4; Vite local existente confirmado/reutilizado em `127.0.0.1:5173`.
+Containers `gaucha-gestao-local` inspecionados somente em leitura. Browser com
+Auth/RPC interceptados por fixtures sintéticas, sem conexões de aplicação ao banco
+ou cadastros persistidos. Nenhum projeto, container, volume ou serviço adicional.
+
+| Comando/prova | Resultado desta rodada |
+| --- | --- |
+| `npm run typecheck` / `npm run lint` | PASS |
+| UI / format / envelope (`--maxWorkers=2`) | 97 PASS / 3 arquivos; 13 casos novos do resumo |
+| `npm test -- --maxWorkers=2` | 843 PASS / 62 arquivos, 146.78s; inclui SQL/RLS em memória |
+| `npm run build` / `npm run verify:build` | PASS; aviso preexistente de chunk >500 kB |
+| `npm audit --audit-level=moderate --cache /tmp/ven04b-npm-cache` | PASS, zero vulnerabilidades |
+| `sales-dashboard-visual.mjs` | PASS nas quatro larguras; estilos computados equivalentes, teclado/reflow, diário/URL/reload, nomes/valores extensos e zero violações axe automáticas |
+| `sales-navigation-visual.mjs` | PASS; histórico, menu/teclado, escopos, perfil inativo, retry e quatro larguras |
+| `git diff --check` | PASS |
+| CI do commit entregue | A consultar após push; não reutilizar CI de `88b29fd` |
+
+Testes do resumo cobrem Stone/combinado sem somar mix, unidade específica inativa,
+todas (inclusive uma única autorizada), janela entre anos/lacunas, sem movimentos,
+última competência ausente, dinheiro extenso/negativo/centavos, rascunhos versus
+aplicação, Atualizar/Comparar tudo/histórico e ausência de nomes externos/consulta
+extra. Regressões anteriores cobrem Redefinir, Voltar, URL/reload, avançados,
+concorrência e diário independente.
+
+Não executados nesta rodada: integração Auth/PostgREST real em ambiente persistente,
+zoom nativo do navegador, leitor de tela e homologação humana. O reflow usa 720px
+para equivaler à área útil de 1440px a 200%; não é teste de zoom nativo. Axe não
+substitui auditoria integral de acessibilidade: contraste SVG/offscreen segue
+inconclusivo no motor; as amostras independentes existentes também passaram. Nenhuma autorização ou fórmula
+financeira foi alterada; os testes negativos em memória e o CI precisam ser lidos
+com esses limites. Aceite visual e decisão de merge continuam com o mantenedor único,
+sem segunda revisão humana ou `APPROVED` presumido.
+
+Reversão: revert do commit desta correção de UI/testes/docs, sem operação de banco.
+`supabase/snippets/` preexistente preservado fora do commit. Sem merge/deploy;
+STAGING/PROD/C30/legado intocados. **PROD NO-GO.**
+
+---
+
+## Refinamentos de usabilidade — 03/11/2026 (rodada anterior)
 
 Continuação autorizada da VEN-04B na mesma PR #94. Baseline remoto confirmado por
 GitHub e `git fetch`: `d98aaa67cb2b9d7faac61decd043c7c4dc4e74ad`, incorporado por

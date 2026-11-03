@@ -119,7 +119,7 @@ export function SalesDashboardPage() {
         <Metric label="Concentração das duas maiores" value={summary!.top_two_share_pct === null ? "Indisponível" : <CompactPercent value={summary!.top_two_share_pct} />} hint="Participação no período selecionado" />
         <Metric label="Projeção da competência diária — estimativa" value={money(dailyMonth?.projection_is_estimate ? dailyMonth.projection : null)} hint={`${competency(dailyCurrent?.data?.daily.competency)} · somente ritmo diário observado`} />
       </div>
-      <PaymentMix data={data} />
+      <PaymentMix data={data} allUnits={!selection.unit} />
       <BaseContext data={data} />
     </>}
   </section>;

@@ -31,7 +31,14 @@ if (baseline) {
     return file ? execFileSync("git", ["show", `${baseline}:apps/web/src/modules/sales/${file}`], { encoding: "utf8" }) : null;
   } }] });
 }
-const checks = [], errors = [], requests = [];
+const checks = [], errors = [], requests = [], filterComparisons = [];
+const measureControls = form => form.evaluate(el => {
+  const style = node => {
+    const css = getComputedStyle(node), rect = node.getBoundingClientRect();
+    return Object.fromEntries([...["fontSize", "fontWeight", "lineHeight", "paddingTop", "paddingBottom", "paddingLeft", "paddingRight", "borderRadius", "borderWidth", "borderColor", "backgroundColor", "gap", "marginBottom"].map(key => [key, css[key]]), ["height", rect.height], ["width", rect.width]]);
+  };
+  return { form: style(el), label: style(el.querySelector("label")), control: style(el.querySelector("select")), button: style(el.querySelector("button")), controls: [...el.querySelectorAll("select, .sales-segmented")].map(style) };
+});
 let stress = false, releaseDaily, pendingDaily;
 try {
   server = await salesLocalWeb({ API_URL: api, ANON_KEY: "sb_publishable_visual_fixture" });
@@ -63,6 +70,7 @@ try {
     if (path.endsWith("/sales_dashboard")) {
       const filters = JSON.parse(route.request().postData() || "{}"), combined = filters.p_scope === "combined";
       const data = visualFixture(dashboardFixture(combined), combined, filters.p_daily_month ?? undefined);
+      data.filters.unit_ids = filters.p_units ?? data.filters.unit_ids;
       if (pendingDaily) { const pending = pendingDaily; pendingDaily = undefined; await pending; }
       if (stress) {
         data.units[0].name = "Unidade sintética com denominação extensa para avaliação de truncamento e acesso ao nome completo";
@@ -73,6 +81,7 @@ try {
     if (path.endsWith("/user")) return json(user);
     throw new Error(`Endpoint inesperado: ${path}`);
   });
+  const entries = await context.newPage();
   const page = await context.newPage(); page.on("pageerror", e => errors.push(e.message)); page.on("console", message => { if (message.type() === "error") console.log("Browser:", message.text().slice(0, 600)); });
   for (const width of [1440, 1024, 768, 375]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -80,6 +89,26 @@ try {
     await expect(page.getByText("Total financeiro do período", { exact: true })).toBeVisible();
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Overflow externo ${width}`);
     await page.screenshot({ path: `${directory}/dashboard-${width}.png`, fullPage: true, animations: "disabled" });
+    await entries.setViewportSize({ width, height: 1000 });
+    await entries.goto(base + "/sales/entries");
+    await expect(entries.getByRole("heading", { name: "Lançamentos", exact: true })).toBeVisible();
+    const entriesForm = entries.locator(".sales-filters");
+    await expect(entriesForm).toBeVisible();
+    await entries.screenshot({ path: `${directory}/entries-${width}.png`, fullPage: true, animations: "disabled" });
+    await entriesForm.screenshot({ path: `${directory}/entries-filters-${width}.png` });
+    await page.locator(".sales-dashboard-filters").screenshot({ path: `${directory}/toolbar-${width}.png` });
+    await page.getByRole("figure", { name: "Composição Stone × PIX", exact: true }).screenshot({ path: `${directory}/mix-${width}.png` });
+    const comparison = { width, entries: await measureControls(entriesForm), dashboard: await measureControls(page.locator(".sales-dashboard-filters")) };
+    filterComparisons.push(comparison);
+    if (!baseline) {
+      const { entries: reference, dashboard: actual } = comparison;
+      assert.deepEqual(actual.control, { ...reference.control, width: actual.control.width }, "Selects com o mesmo acabamento computado de Lançamentos");
+      for (const key of ["fontSize", "fontWeight", "lineHeight", "gap", "marginBottom"]) assert.equal(actual.label[key], reference.label[key], `Label: ${key}`);
+      for (const key of ["paddingTop", "paddingBottom", "paddingLeft", "paddingRight", "gap", "marginBottom", "borderRadius", "borderColor", "backgroundColor"]) assert.equal(actual.form[key], reference.form[key], `Formulário: ${key}`);
+      assert.deepEqual(actual.button, { ...reference.button, width: actual.button.width }, "Botões equivalentes a Lançamentos");
+      assert.ok(actual.controls.every(control => control.height === reference.control.height), "Alturas medidas pela referência, incluindo segmentado");
+      checks.push(`${width}: filtros comparados com estilos computados reais de Lançamentos (${reference.control.height}px)`);
+    }
     if (!baseline) {
       assert.equal(await page.locator('[aria-label="Indicadores executivos"] .metric').count(), 4);
       assert.equal(await page.locator('.sales-insights article').count(), 3);
@@ -95,11 +124,10 @@ try {
         writeFileSync(`${directory}/axe-${width}.json`, JSON.stringify(result, null, 2));
         assert.deepEqual(result.violations, [], `axe WCAG A/AA em ${width}`);
       }
-      const toolbar = page.locator(".sales-dashboard-filters"), daily = page.getByRole("figure", { name: "Acumulado diário e projeção", exact: true });
-      await toolbar.screenshot({ path: `${directory}/toolbar-${width}.png` });
+      const daily = page.getByRole("figure", { name: "Acumulado diário e projeção", exact: true });
       await page.locator(".sales-competency").first().screenshot({ path: `${directory}/month-year-${width}.png` });
       const sizes = await page.locator('.sales-segmented, .sales-competency-controls select, .sales-dashboard-filters > label > select').evaluateAll(elements => elements.map(el => ({ height: el.getBoundingClientRect().height, bottom: el.getBoundingClientRect().bottom })));
-      assert.ok(sizes.every(s => s.height === 44), `Alturas iguais: ${JSON.stringify(sizes)}`);
+      assert.ok(sizes.every(s => s.height === comparison.entries.control.height), `Alturas iguais: ${JSON.stringify(sizes)}`);
       if (width > 1200) assert.ok(sizes.every(s => Math.abs(s.bottom - sizes[0].bottom) < 1), "Controles alinhados na toolbar");
       const samples = await daily.locator('.sales-series-sample line').evaluateAll(lines => lines.map(line => {
         const plot = line.closest('figure').querySelector(`.sales-plot path.${line.getAttribute('class')}`);
@@ -108,6 +136,10 @@ try {
       }));
       assert.equal(samples.length, 3); assert.ok(samples.every(s => JSON.stringify(s.sample) === JSON.stringify(s.plot)));
       const mix = page.getByRole('figure', { name: 'Composição Stone × PIX', exact: true });
+      const reading = mix.getByRole('region', { name: 'Leitura do recorte' });
+      await expect(reading).toContainText('04/2026 a 09/2026');
+      await expect(reading).toContainText('Todas as unidades autorizadas');
+      await expect(reading).toContainText('R$ 1.380.000,00');
       const mixColors = await mix.evaluate(el => [...el.querySelectorAll('.sales-swatch')].map((swatch, i) => getComputedStyle(swatch).backgroundColor === getComputedStyle(el.querySelectorAll('.sales-mix-bar > span')[i]).backgroundColor));
       assert.deepEqual(mixColors, [true, true]);
       await daily.screenshot({ path: `${directory}/daily-${width}.png` });
@@ -137,7 +169,7 @@ try {
       await page.reload(); await expect(daily.getByText('Jul/2026 — observado', { exact: true })).toBeVisible();
       await page.goBack(); await expect(page.getByLabel('Competência do gráfico', { exact: true })).toHaveValue('2026-09');
       await page.goForward(); await expect(daily.getByText('Jul/2026 — observado', { exact: true })).toBeVisible();
-      checks.push(`${width}: controles de 44px, legendas com estilos idênticos, cores do mix, diário independente, scroll, reload, Voltar/Avançar`);
+      checks.push(`${width}: controles equivalentes a Lançamentos, legendas com estilos idênticos, cores do mix, diário independente, scroll, reload, Voltar/Avançar`);
       const contrast = await page.evaluate(() => {
         const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d");
         const luminance = color => {
@@ -187,6 +219,15 @@ try {
     await page.goto(base + "/sales/dashboard?from=2026-04&to=2026-09");
     const startMonth = page.getByLabel('Mês da competência inicial');
     await startMonth.focus(); await page.keyboard.press('ArrowDown'); await expect(startMonth).toHaveValue('05');
+    for (const month of ['09','11','12']) {
+      await startMonth.selectOption(month);
+      const fits = await startMonth.evaluate(el => {
+        const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d'), style = getComputedStyle(el);
+        ctx.font = style.font;
+        return ctx.measureText(el.selectedOptions[0].text).width + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + 18 <= el.clientWidth;
+      });
+      assert.ok(fits, `Nome do mês ${month} legível sem compressão`);
+    }
     await startMonth.selectOption('04');
     const stoneRadio = page.getByRole('radio', { name: 'Stone', exact: true });
     await stoneRadio.focus(); await page.keyboard.press('ArrowRight'); await expect(page.getByRole('radio', { name: 'Stone + PIX', exact: true })).toBeChecked();
@@ -202,6 +243,14 @@ try {
       await expect(page.getByLabel("Indicadores executivos")).toContainText("R$ 9.007.199.254.740.993,01");
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       await page.screenshot({ path: `${directory}/long-values-${width}.png`, fullPage: true, animations: "disabled" });
+      await page.goto(base + `/sales/dashboard?from=2026-04&to=2026-09&unit=${A}`);
+      const focusedReading = page.getByRole('region', { name: 'Leitura do recorte' });
+      await expect(focusedReading).toContainText('Unidade sintética com denominação extensa');
+      await expect(focusedReading).toContainText('R$ 9.007.199.254.740.993,01');
+      await expect(focusedReading).not.toContainText('Histórica Beta');
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      await page.getByRole('figure', { name: 'Composição Stone × PIX', exact: true }).screenshot({ path: `${directory}/mix-long-values-${width}.png` });
+      await page.goto(base + '/sales/dashboard?from=2026-04&to=2026-09');
     }
     stress = false;
     checks.push("Nomes extensos e total além de MAX_SAFE_INTEGER em 1440/375 sem overflow externo");
@@ -239,6 +288,6 @@ try {
     }
   }
   assert.deepEqual(errors, []);
-  writeFileSync(`${directory}/result.json`, JSON.stringify({ baseline: baseline ?? "worktree", widths: [1440,1024,768,375], checks, errors, transport: "Auth/RPC interceptados, nenhuma escrita no banco" }, null, 2));
+  writeFileSync(`${directory}/result.json`, JSON.stringify({ baseline: baseline ?? "worktree", widths: [1440,1024,768,375], filterComparisons, checks, errors, transport: "Auth/RPC interceptados, nenhuma escrita no banco" }, null, 2));
   console.log("Screenshots PASS", directory);
 } catch (error) { console.log("Page errors:", errors); throw error; } finally { await browser?.close(); await server?.close(); await baselineServer?.close(); }
