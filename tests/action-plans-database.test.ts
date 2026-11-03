@@ -578,7 +578,6 @@ describe("Action Plans database", { concurrent: false }, () => {
     });
     expect((await plan(id)).completed_at).not.toBeNull();
     await status(id, v, "in_progress");
-    v++;
     expect(await plan(id)).toMatchObject({
       completed_by: null,
       completed_at: null,

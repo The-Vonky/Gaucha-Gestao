@@ -122,7 +122,7 @@ try {
   async function duringExport(mutate, before, after) {
     const sessions = [];
     const queries = [];
-    let results = [];
+    let results;
     await db.query("select pg_advisory_lock($1::bigint)", [lockKey]);
     try {
       for (const kind of ["inspection", "unit_history"]) {
