@@ -1,9 +1,12 @@
 # GG-10 — Validação local em 04/11/2026
 
 Baseline: `422a51fe91843824013ad337122f6954c954e59c` (`origin/main`).
-Implementação testada: `48ac0aac9816ccdeec35fe6d8c34a83c07fc75c1`.
+Implementação inicial testada: `48ac0aac9816ccdeec35fe6d8c34a83c07fc75c1`.
+Revisão final de CSS e prova browser: `6a0e35c06e160c2d1789f3cbe3715a8ac9b9d11c`.
 Branch: `codex/gg-10-institutional-announcements`.
-O commit posterior de evidências altera somente documentação.
+O commit posterior de evidências altera somente documentação. A revisão final
+acrescenta ao índice desktop de Auditoria o deslocamento e a redução de altura
+que já eram aplicados ao shell; não altera TypeScript ou testes de banco.
 
 Ambiente: notebook Linux/WSL, Node v22.23.4 via NVM, dependências já existentes.
 Vite em `127.0.0.1:5173` confirmado e reutilizado, sem interromper o processo do
@@ -21,7 +24,7 @@ PGlite na memória, com variáveis de integração persistente removidas explici
 | `npm test -- tests/announcements.test.tsx tests/app.test.tsx tests/login.test.tsx tests/sales-navigation-ui.test.tsx` | PASS, 4 arquivos / 61 testes na árvore da implementação |
 | `npm test` | 69 arquivos PASS; 1 falha por timeout no teste preexistente de reabertura em `tests/audit-database.test.ts:290` (998 PASS / 1 timeout de 10000ms) |
 | `npm test -- tests/audit-database.test.ts` | PASS, 14 testes / 26,07s; sem mudança no arquivo ou no timeout |
-| `npm test -- --maxWorkers=2` | PASS, 70 arquivos / 999 testes, 118,54s |
+| `npm test -- --maxWorkers=2` | PASS final em `6a0e35c`, 70 arquivos / 999 testes, 142,53s; execução inicial também passou em 118,54s |
 | `VITE_SUPABASE_URL=http://127.0.0.1:54321 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci-build-placeholder npm run build` | PASS; aviso Vite de chunk >500 kB mantido como limitação |
 | `npm run verify:build` | PASS: aplicação no bundle e ausência dos padrões de chaves privilegiadas |
 | `cmp apps/web/public/announcements.json apps/web/dist/announcements.json` | PASS: cópia pública idêntica no build |
@@ -69,7 +72,8 @@ momento de instalação do relógio virtual do Playwright, antes de criar timers
 - 1440/1024/768/375/320 px, mensagem de 1380 caracteres, rolagem da página,
   altura/sidebar/topbar medidas, ação alcançável na rolagem interna e ausência de
   overflow externo. Modal Shared de Nova auditoria e drawer real na top layer,
-  Enter/Escape e foco; seletor CSS sticky de Auditoria ensaiado com nó sintético.
+  Enter/Escape e foco; seletores CSS sticky de Auditoria ensaiados com nós sintéticos: barra mobile
+  e índice desktop com 40 controles, posição e altura útil verificadas.
 - Reflow equivalente a 200% em 640×450 e texto 200%; foco sintético abaixo dos
   elementos sticky. Desativação deixa slot com altura zero e cabeçalho em `top: 0`.
 
@@ -84,6 +88,17 @@ Todos superam 4,5:1. A região usa `role="status"`, `aria-live="polite"` e
 `aria-atomic="true"`; configuração idêntica conserva o nó e não repete mutações
 de texto. Não houve teste com leitor de tela real.
 
+## CI remoto
+
+No HEAD anterior `fd29d237ceff9453f71770fe994e7f9f361afed2`, os dois workflows
+concluíram PASS: [Validate foundation, run 41898443516](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/41898443516)
+e [infra-validate, run 41898443311](https://github.com/The-Vonky/Gaucha-Gestao/actions/runs/41898443311).
+Incluem `validate`, `action-plans-integration` e quatro integrações de Vendas.
+A revisão final de CSS exige novo CI no HEAD da PR; a descrição da PR registra
+esse resultado, sem promover automaticamente a prova anterior ao novo SHA.
+Integrações do CI são sintéticas em runners descartáveis e não tocam o Supabase
+persistente do mantenedor.
+
 ## Artefatos e limites
 
 Artefatos sintéticos locais não versionados: `tmp/gg10/results.json`,
@@ -92,7 +107,7 @@ Artefatos sintéticos locais não versionados: `tmp/gg10/results.json`,
 Screenshots desktop e celular foram inspecionados pelo agente. São fixtures da
 UI; não constituem homologação com dados reais ou prova de RLS/Auth no servidor.
 
-Não executados: integração real Auth/PostgreSQL/Storage, Android/iOS físico,
+Não executados localmente: integração real Auth/PostgreSQL/Storage, Android/iOS físico,
 zoom nativo do navegador, leitor de tela, atualização do JSON na hospedagem real,
 cache/CDN real e acesso operacional ao Docker. Não houve migration, reset,
 provisionamento, implantação ou alteração em C30/STAGING/PROD. A cópia do JSON no
