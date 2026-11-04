@@ -1537,8 +1537,8 @@
 }
 .audit-sections {
   position: sticky;
-  top: calc(var(--header-height) + var(--space-4));
-  max-height: calc(100dvh - var(--header-height) - var(--space-8));
+  top: calc(var(--announcement-height, 0px) + var(--header-height) + var(--space-4));
+  max-height: calc(100dvh - var(--announcement-height, 0px) - var(--header-height) - var(--space-8));
   overflow: auto;
   padding: var(--space-3) var(--space-2);
   background: var(--color-surface);

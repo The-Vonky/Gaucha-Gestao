@@ -28,8 +28,9 @@ flowchart LR
 A barra ocupa espaço no fluxo e fica sticky em `top: 0`, persistente ao rolar.
 `ResizeObserver` mede sua altura antes da pintura inicial e em mudanças de largura,
 texto e zoom. `--announcement-height` desloca topbar/sidebar e reduz a altura
-útil da sidebar. O único ajuste em `app/styles.css` acrescenta esse deslocamento
-à barra de seção mobile de Auditoria; não muda regras ou arquivos do módulo.
+útil da sidebar. Os ajustes em `app/styles.css` acrescentam esse deslocamento
+à barra de seção mobile e ao índice de seções desktop de Auditoria, incluindo a
+altura útil do índice; não mudam regras ou arquivos do módulo.
 `--app-sticky-height` inclui o cabeçalho medido no `scroll-padding-top` do documento,
 para focos/âncoras; a variável é removida na desmontagem.
 

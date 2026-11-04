@@ -132,6 +132,28 @@ try {
   await page.locator(".audit-section-bar").evaluate(element => element.remove());
   checks.push("1440/1024/768/375/320: mensagem de 1380 caracteres, sem overflow externo, barra/header/sidebar medidos ao rolar, ação alcançável por scroll; drawers na top layer e seletor sticky de Auditoria sob cabeçalho");
 
+  // O índice desktop também precisa caber abaixo do conjunto barra+cabeçalho.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator("#main").evaluate(element => {
+    const layout = document.createElement("div"); layout.className = "audit-layout";
+    const navigation = document.createElement("aside"); navigation.className = "audit-sections";
+    for (let index = 0; index < 40; index++) {
+      const control = document.createElement("button"); control.textContent = `Seção sintética ${index}`;
+      navigation.append(control);
+    }
+    const content = document.createElement("div"); content.style.minHeight = "2200px";
+    layout.append(navigation, content); element.prepend(layout);
+  });
+  await page.evaluate(() => window.scrollTo(0, 700)); await geometry(1440);
+  await expect.poll(() => page.evaluate(() => {
+    const navigation = document.querySelector(".audit-sections").getBoundingClientRect();
+    const header = document.querySelector(".topbar").getBoundingClientRect();
+    const spacing = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--space-4")) * 16;
+    return Math.max(Math.abs(navigation.top - header.bottom - spacing), Math.max(0, navigation.bottom - innerHeight));
+  })).toBeLessThan(1);
+  await page.locator(".audit-layout").evaluate(element => element.remove());
+  checks.push("Índice sticky desktop de Auditoria: posição sob barra+cabeçalho e altura útil dentro do viewport, com 40 controles sintéticos");
+
   // Reflow de viewport 1280→640 e texto 16→32px: duas verificações separadas.
   await page.setViewportSize({ width: 640, height: 450 });
   await geometry(640);
