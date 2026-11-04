@@ -32,7 +32,13 @@ const compose = ['compose','--env-file',envFile,'--project-name',project,'-f',pa
 const command = [...compose,'exec','-T','db','psql','-X','-w','-h','db','-U','postgres','-d',database,'-Atq','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate'];
 const subprocessEnv = { ...process.env, ...config }; delete subprocessEnv.COMPOSE_FILE; delete subprocessEnv.COMPOSE_PROFILES;
 const lit = value => "'" + String(value).replaceAll("'", "''") + "'";
-const sql = query => execFileSync('docker',command,{input:query+';\n',env:subprocessEnv,encoding:'utf8',stdio:['pipe','pipe','pipe'],timeout:20_000}).trim();
+const sql = (query, bootstrap=false) => {
+  // Autoridade da fixture: supabase_admin SOMENTE para memberships/ACL/policies da plataforma.
+  // SQL da aplicação e todas as chamadas do worker continuam com postgres -> SET ROLE restrito.
+  const invocation=[...command];
+  if(bootstrap){invocation[invocation.indexOf('-h')+1]='localhost';invocation[invocation.indexOf('-U')+1]='supabase_admin';}
+  return execFileSync('docker',invocation,{input:query+';\n',env:subprocessEnv,encoding:'utf8',stdio:['pipe','pipe','pipe'],timeout:20_000}).trim();
+};
 const json = query => JSON.parse(sql(query));
 const bucket = 'audit-evidence-thumbnails';
 const source = 'audit-checklist-evidence';
@@ -114,14 +120,13 @@ try {
   sql(`create role ${role} nologin noinherit nobypassrls;
     `);
   phase='custom role membership';
-  sql(`grant ${role} to supabase_storage_admin;grant ${role} to postgres with set true;
-    `);
+  sql(`grant ${role} to supabase_storage_admin;grant ${role} to postgres with set true`,true);
   phase='custom role schema table and function ACL';
   sql(`
-    grant usage on schema storage,auth,audit_private to ${role};
-    grant select on storage.buckets,storage.objects to ${role};grant insert on storage.objects to ${role};
+    grant usage on schema audit_private to ${role};
     grant execute on function audit_private.claim_evidence_derivative(),audit_private.prepare_evidence_derivative(uuid,jsonb),audit_private.complete_evidence_derivative(uuid),audit_private.fail_evidence_derivative(uuid) to ${role};
     `);
+  sql(`grant usage on schema storage,auth to ${role};grant select on storage.buckets,storage.objects to ${role};grant insert on storage.objects to ${role}`,true);
   phase='custom role lease helper';
   sql(`create function audit_private.ci_derivative_object(p_bucket text,p_key text) returns boolean language sql stable security definer set search_path='' as $$
       select exists(select 1 from audit.checklist_evidence_derivatives d join audit.checklist_evidence e on e.id=d.evidence_id
@@ -134,7 +139,7 @@ try {
   phase='custom role Storage policies';
   sql(`create policy ci_derivative_bucket on storage.buckets for select to ${role} using(id in ('audit-checklist-evidence','audit-evidence-thumbnails'));
     create policy ci_derivative_select on storage.objects for select to ${role} using(current_setting('storage.operation',true)='storage.object.get_authenticated' and audit_private.ci_derivative_object(bucket_id,name));
-    create policy ci_derivative_insert on storage.objects for insert to ${role} with check(bucket_id='audit-evidence-thumbnails' and current_setting('storage.operation',true)='storage.object.upload' and audit_private.ci_derivative_object(bucket_id,name))`);
+    create policy ci_derivative_insert on storage.objects for insert to ${role} with check(bucket_id='audit-evidence-thumbnails' and current_setting('storage.operation',true)='storage.object.upload' and audit_private.ci_derivative_object(bucket_id,name))`,true);
   const privileges=json(`select json_build_object('super',rolsuper,'bypass',rolbypassrls,'login',rolcanlogin,'inherits',rolinherit,'authenticated',pg_has_role(${lit(role)},'authenticated','MEMBER')) from pg_roles where rolname=${lit(role)}`);
   assert.deepEqual(privileges,{super:false,bypass:false,login:false,inherits:false,authenticated:false});
 
@@ -206,9 +211,9 @@ try {
   const orphanKey=`${randomUUID()}/orphan.png`;
   const fixtureKeys=[...cases.map(x=>x.m.derived_object_key),orphanKey];
   // Policy de fixture separada, só INSERT nas chaves exatas; retirada antes dos demais probes.
-  sql(`create policy ci_derivative_fixture_insert on storage.objects for insert to ${role} with check(bucket_id=${lit(bucket)} and current_setting('storage.operation',true)='storage.object.upload' and name in (${fixtureKeys.map(lit).join(',')}))`);
+  sql(`create policy ci_derivative_fixture_insert on storage.objects for insert to ${role} with check(bucket_id=${lit(bucket)} and current_setting('storage.operation',true)='storage.object.upload' and name in (${fixtureKeys.map(lit).join(',')}))`,true);
   for(const key of fixtureKeys)ok(await req(object(bucket,key),jwt(randomUUID()),{method:'POST',body:derived,headers:{'Content-Type':'image/png','x-upsert':'false'}}));
-  sql('drop policy ci_derivative_fixture_insert on storage.objects');
+  sql('drop policy ci_derivative_fixture_insert on storage.objects',true);
   for(const {e,m} of cases){
     assert.equal(count(m.derived_object_key),1);denied(await sign(m.derived_object_key,users.owner.token));denied(await get(bucket,m.derived_object_key,users.owner.token));
     assert.deepEqual(ok(await rpc('owner','checklist_evidence_thumbnail',{p_evidence:e.id})),[]);
@@ -217,6 +222,11 @@ try {
   denied(await sign(good.derived_object_key.replace(first.id,randomUUID()),users.owner.token));
   console.log('PASS physical object present but denied for pending/removed original, pending/failed derivative, orphan and forged key');
 
+  phase='ordinary user SQL and manifest writes';
+  assert.throws(()=>sql('set role authenticated;select audit_private.claim_evidence_derivative()'),error=>String(error.stderr??'').includes('42501'));
+  assert.throws(()=>sql(`set role ${role};select * from audit.checklist_evidence_derivatives`),error=>String(error.stderr??'').includes('42501'));
+  const forgedMetadata=await req(`/rest/v1/checklist_evidence_derivatives?evidence_id=eq.${first.id}`,users.owner.token,{method:'PATCH',body:{state:'failed'},headers:{'Content-Profile':'audit'}});
+  denied(forgedMetadata);
   phase='prohibited user Storage mutations';
   for(const name of ['owner','empty','wrong']){
     const access=users[name].token, destination=`${randomUUID()}/forged.png`;
