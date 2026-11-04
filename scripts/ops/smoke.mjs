@@ -43,6 +43,7 @@ const buckets = {
   'audit-checklist-evidence': [10485760, 'application/pdf'],
   'unit-covers': [1048576, 'image/jpeg'],
   'room-covers': [1048576, 'image/jpeg'],
+  'audit-evidence-thumbnails': [1048576, ['image/jpeg', 'image/png']],
   'abc-source-files': [10485760, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
 };
 const tag = randomBytes(8).toString('hex');
@@ -166,7 +167,8 @@ try {
     const [limit, mime] = buckets[bucket.id];
     assert.equal(bucket.public, false);
     assert.equal(Number(bucket.file_size_limit), limit);
-    assert.ok(bucket.allowed_mime_types.includes(mime));
+    if (Array.isArray(mime)) assert.deepEqual([...bucket.allowed_mime_types].sort(), [...mime].sort());
+    else assert.ok(bucket.allowed_mime_types.includes(mime));
     const blocked = await request(`/storage/v1/object/list/${bucket.id}`, anon, {method:'POST',body:JSON.stringify({prefix:'',limit:1})});
     if (blocked.ok) assert.deepEqual(await blocked.json(), []);
     else assert.ok([400,401,403].includes(blocked.status));
@@ -176,7 +178,7 @@ try {
     assert.equal(sql(`select ${routine}('smoke.pdf','application/pdf',10485760) is null`), 't');
     assert.equal(sql(`select ${routine}('smoke.pdf','application/pdf',10485761) is not null`), 't');
   }
-  console.log('smoke: exactly five private buckets verified (two 10 MiB PDF evidence, two 1 MiB JPEG covers, one 10 MiB XLSX abc-source-files) and evidence 10 MiB boundaries');
+  console.log('smoke: exactly six private buckets verified (two 10 MiB PDF evidence, two 1 MiB JPEG covers, one 10 MiB XLSX abc-source-files, one 1 MiB JPEG/PNG audit-evidence-thumbnails) and evidence 10 MiB boundaries');
 
   step = 'Storage file upload/sign/download/delete';
   // A complete one-page PDF, with byte offsets and stream length computed in ASCII.

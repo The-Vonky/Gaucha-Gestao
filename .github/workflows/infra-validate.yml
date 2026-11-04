@@ -25,6 +25,7 @@ jobs:
           # Upstream deliberately constructs quoted Lua expressions as data.
           shellcheck -e SC2089,SC2090 infra/supabase/volumes/api/kong-entrypoint.sh
           node --check scripts/ops/smoke.mjs
+          node --check scripts/ops/audit-derivatives.mjs
           if bash scripts/ops/gen-secrets.sh --environment ci --output "$GITHUB_WORKSPACE/rejected.env"; then
             echo 'Generator accepted a repository path' >&2; exit 1
           fi
@@ -114,6 +115,13 @@ jobs:
       - name: Smoke current application infrastructure contract
         shell: bash
         run: node scripts/ops/smoke.mjs --environment ci --env-file "$RUNNER_TEMP/gaucha-infra.env" --project "$INFRA_PROJECT" --database postgres
+      - name: Install image test dependencies in the existing disposable runner
+        run: |
+          npm ci
+          sudo apt-get update && sudo apt-get install -y bubblewrap
+      - name: Real Auth PostgreSQL and Storage thumbnail security
+        shell: bash
+        run: node scripts/ops/audit-derivatives.mjs --environment ci --env-file "$RUNNER_TEMP/gaucha-infra.env" --project "$INFRA_PROJECT" --database postgres
       - name: Negative healthcheck with Storage stopped
         shell: bash
         run: |

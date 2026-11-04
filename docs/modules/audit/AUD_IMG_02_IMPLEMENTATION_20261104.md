@@ -91,3 +91,13 @@ Antes de aplicação, revert dos commits basta. Após eventual aplicação autor
 A fila/manifesto única, um job por execução e nenhum agendador instalado mantêm a solução pequena. A única dependência nativa adicional é Sharp/libvips; Bubblewrap/prlimit vêm do SO. Pré-requisitos operacionais e custo de supervisão são explícitos. O mantenedor único revisa diff, CI e riscos; não houve segunda revisão humana nem aceite de merge nesta rodada.
 
 Fontes técnicas consultadas: [Storage Access Control](https://supabase.com/docs/guides/storage/security/access-control), [Sharp constructor](https://sharp.pixelplumbing.com/api-constructor/), [Sharp output](https://sharp.pixelplumbing.com/api-output/) e help local de Bubblewrap/prlimit. Changelog Supabase consultado em 04/11; o CLI **2.101.0** foi fixado apenas para `migration new` (a transição CLI v3 não foi aplicada ao projeto).
+
+## Continuação autorizada — contrato de CI e integração descartável
+
+O mantenedor autorizou a investigação real no **mesmo** stack criado por `infra-validate`, sem novo ambiente Docker local. `scripts/ops/smoke.mjs` passa a exigir exatamente seis buckets, preservando verificações anteriores e acrescentando `audit-evidence-thumbnails` privado, 1 MiB e lista exata JPEG/PNG.
+
+`scripts/ops/audit-derivatives.mjs` só aceita `GITHUB_ACTIONS=true`, ambiente `ci`, projeto do run/attempt corrente e marker de banco conferido pelo guard existente. Exercita Auth real, RLS/Storage API, um worker real com JPEG/PNG sintético, papel/JWT técnico efêmero e disputa de claim em duas conexões psql sem expor porta. Roles/policies criadas pelo script são **fixtures do laboratório**, não migration nem configuração operacional. A chave administrativa efêmera já existente é usada somente para criar contas Auth sintéticas; o processador e todas as operações de arquivos usam o papel técnico ou o usuário comum, sem fallback service_role. Casos adversos com bytes físicos usam uma policy de INSERT apenas nas chaves exatas da fixture, removida antes de verificar seus acessos.
+
+A hipótese de papel técnico em teste é NOLOGIN/NOINHERIT/NOBYPASSRLS, sem herdar `authenticated`, com SELECT/INSERT limitados à lease viva e à chave reservada. Signing/list/copy/move/update/delete não são concedidos. A assinatura do token ocorre no harness CI com o segredo **efêmero** já gerado; isso não autoriza entregar o segredo global ao futuro worker. Sucesso do experimento não aprova emissão/rotação operacional, grants persistentes ou GO C.
+
+Resultados deste ensaio devem ser lidos nos checks do SHA atualizado. Os resultados anteriores com mocks/PGlite continuam classificados como tais; não antecipam o resultado da integração real.
