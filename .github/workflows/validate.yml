@@ -17,6 +17,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      # Decoder AUD-IMG-02: namespaces sem rede; sem fallback sem isolamento.
+      - name: Dependência de isolamento dos testes de imagem
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap
       - run: npm test
       # Fictitious public values so the real application is bundled.
       # Not credentials: nothing is contacted during build and no deploy happens.

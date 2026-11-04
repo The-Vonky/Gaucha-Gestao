@@ -573,7 +573,7 @@ describe("Audit domain database", { concurrent: false }, () => {
     );
     for (const f of fns.rows) {
       expect(f.anon).toBe(false);
-      expect(f.auth).toBe(f.nspname === "audit" || ["can_upload_checklist_evidence_object","can_read_checklist_evidence_object"].includes(f.proname));
+      expect(f.auth).toBe(f.nspname === "audit" || ["can_upload_checklist_evidence_object","can_read_checklist_evidence_object","can_read_evidence_derivative"].includes(f.proname));
     }
   });
 });

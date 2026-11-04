@@ -1,3 +1,5 @@
+> **Estado vigente AUD-IMG-02 (04/11/2026):** GOs A/B concedidos para código/testes; processador, migration não aplicada e frontend desativado implementados na PR #101. [Contrato atual](AUD_IMG_02_IMPLEMENTATION_20261104.md). Descrições de proposta abaixo são o baseline anterior. Nenhum ambiente persistente ativado; economia de bytes ainda não medida.
+
 # Tráfego de imagens da Auditoria — MED-01 / AUD-IMG-01–05
 
 Data: 04/11/2026. Brief: solicitação do mantenedor «Otimização de tráfego de evidências da Auditoria». Base revalidada: `origin/main` em `d9b47359b00fd1516bc773d696d760c1c603ed84`, posterior ao HEAD de 03/11 citado no pedido. Branch: `codex/audit-evidence-traffic`.

@@ -81,3 +81,7 @@ Desenvolvimento inicial usou somente conector autenticado do GitHub. Revisão in
 **CI histórica:** PR #11 HEAD `132771d54b0eae3781d72fb11746b12f28a84f0e` aprovado no run `36720376966`, tentativa 2. Após merge, run `36728754202` aprovado em `c3f135f6026899362e1edacda3e97e922528ac8e`: typecheck, lint, **18 arquivos / 215 testes**, build, verify:build, audit sem vulnerabilidades e seis integrações, inclusive Checklist Evidence Storage/Chromium.
 
 Essa contagem é **histórica**, não a suíte atual. Nenhum teste em projeto remoto/produção foi executado. Homologação em aparelhos físicos **iOS Safari e Android Chrome**, incluindo câmera/galeria/arquivos/download, ainda não foi registrada. **Qualidade não é declarada 100%; PROD permanece NO-GO**.
+
+## AUD-IMG-02 — implementação desativada, 04/11/2026
+
+GOs A/B concedidos para código e testes: [contrato, segurança, limitações e primeiro teste integrado](AUD_IMG_02_IMPLEMENTATION_20261104.md). Nova migration append-only `20261104171756_audit_evidence_derivatives.sql`, não aplicada; processador one-shot isolado e frontend sob `VITE_AUDIT_EVIDENCE_THUMBNAILS=false`. Quando habilitado futuramente, a lista solicita somente derivado pronto; ausência/falha mostra “Miniatura indisponível” com abertura explícita do original. Download, nome apresentado, histórico e finalização permanecem no contrato existente. Identidade/Storage técnicos, aplicação persistente, backfill, instalação e ativação não autorizados. Testes SQL em memória não comprovam Storage real. PROD NO-GO.

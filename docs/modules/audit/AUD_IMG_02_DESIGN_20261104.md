@@ -1,5 +1,7 @@
 # AUD-IMG-02 — Projeto de miniaturas privadas e protocolo offline
 
+> **Registro preparatório histórico, substituído no estado de implementação pelo [contrato vigente](AUD_IMG_02_IMPLEMENTATION_20261104.md).** Após esta preparação, o mantenedor concedeu GOs A/B para código e testes seguros, incluindo nova migration sem aplicação. C/D/E, provisionamento de identidade, instalação, merge e deploy permanecem bloqueados. As descrições abaixo de ambiente e ausência de código referem-se à rodada preparatória, não ao checkout atual.
+
 **Data:** 04/11/2026. **Issue:** #100. **Base:** main em 422a51fe91843824013ad337122f6954c954e59c (PR #99 **já integrada**).
 **Escopo deste PR:** desenho, contratos executáveis e testes com fakes. **Sem GO operacional.** PROD NO-GO.
 

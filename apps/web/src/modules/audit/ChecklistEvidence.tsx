@@ -34,7 +34,7 @@ export function ChecklistEvidence({item,editable,controller,visible=true}:{item:
  {rows.map((e,index)=>{const name=evidenceName(e.original_name,index);return <li key={e.id} className="file-item">
  <div className="file-body">
  {visible&&(e.content_type==="image/jpeg"||e.content_type==="image/png")&&<div className="audit-evidence-thumbnail">
- <EvidenceImage row={e} name={name}/>
+ <EvidenceImage row={e} name={name} onOpenOriginal={()=>setPreview(e.id)}/>
  <button type="button" className="audit-evidence-enlarge" aria-label={`Ampliar ${name}`} onClick={()=>setPreview(e.id)}/>
  </div>}
  <div><strong className="audit-evidence-name">{name}</strong>
