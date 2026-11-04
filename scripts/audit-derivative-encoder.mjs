@@ -28,9 +28,16 @@ export function encodeIsolated({ bytes, contentType, version = DERIVATIVE_ENCODE
       '--ro-bind', decoder, '/app/audit-derivative-decoder.mjs',
       '--ro-bind', protocol, '/app/audit-derivative-protocol.mjs', '--chdir', '/app', '/runtime/node',
       '--max-old-space-size=64', '--max-semi-space-size=4', '/app/audit-derivative-decoder.mjs', contentType],
-    { env: { PATH: '/usr/bin:/bin', VIPS_CONCURRENCY: '1', MALLOC_ARENA_MAX: '2' }, stdio: ['pipe','pipe','ignore'] });
-    let output = Buffer.alloc(0); let rejected = false;
-    const stop = () => { rejected = true; child.kill('SIGKILL'); };
+    { env: { PATH: '/usr/bin:/bin', VIPS_CONCURRENCY: '1', MALLOC_ARENA_MAX: '2' }, stdio: ['pipe','pipe','pipe'] });
+    let output = Buffer.alloc(0); let rejected = false; let diagnostic = '';
+    child.stderr.on('data', chunk => { if(diagnostic.length<4096) diagnostic+=chunk.toString().slice(0,4096-diagnostic.length); });
+    const stop = () => {
+      if(rejected)return;
+      rejected = true;clearTimeout(timer);clearInterval(monitor);child.kill('SIGKILL');
+      // Limite não aguarda pipes herdados pelo setup do namespace encerrarem.
+      child.stdin.destroy();child.stdout.destroy();child.stderr.destroy();
+      const error=denied();error.code='DECODER_LIMIT';reject(error);
+    };
     const timer = setTimeout(stop, timeoutMs);
     const monitor = setInterval(() => {
       void residentBytes(child.pid).then(bytes => { if (bytes > maxRss) stop(); }).catch(() => {});
@@ -43,7 +50,11 @@ export function encodeIsolated({ bytes, contentType, version = DERIVATIVE_ENCODE
     });
     child.on('close', code => {
       clearTimeout(timer); clearInterval(monitor);
-      if (rejected || code !== 0) return reject(denied());
+      if (rejected || code !== 0) {
+        const error=denied();
+        error.code=rejected?'DECODER_LIMIT':/not permitted|namespace|permission denied/i.test(diagnostic)?'DECODER_ISOLATION_FAILED':'DECODER_FAILED';
+        return reject(error);
+      }
       try {
         const result = JSON.parse(output.toString());
         result.bytes = Buffer.from(result.bytes, 'base64');

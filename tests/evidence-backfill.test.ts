@@ -9,7 +9,8 @@ let db: PGlite;
 const user = "00000000-0000-0000-0000-000000000001";
 const unit = "10000000-0000-0000-0000-000000000001";
 const files = readdirSync("supabase/migrations").sort();
-const evidence = files.filter((f) => f.includes("evidence"));
+// O contrato de runtime depende do manifesto de evidência; adiar a mesma cadeia.
+const evidence = files.filter((f) => f.includes("evidence") || f.includes("audit_derivative_runtime_contract"));
 async function one<T>(sql: string, params: unknown[] = []) {
   return (await db.query<T>(sql, params)).rows[0];
 }

@@ -12,6 +12,8 @@ export async function restrictedConnection(database) {
     const {rows:[identity]}=await client.query(`select session_user=current_user and current_user=$1 as own_login,
       not(rolsuper or rolcreaterole or rolcreatedb or rolreplication or rolbypassrls) as restricted,
       not exists(select 1 from pg_auth_members where member=r.oid) as no_memberships,
+      not has_database_privilege(current_user,current_database(),'CREATE')
+      and not has_schema_privilege(current_user,'audit_private','CREATE') as no_create_acl,
       nullif(current_setting('app.settings.jwt_secret',true),'') is null
       and nullif(current_setting('pgrst.jwt_secret',true),'') is null
       and not exists(select 1 from pg_db_role_setting cross join lateral unnest(setconfig) setting
@@ -24,7 +26,7 @@ export async function restrictedConnection(database) {
         and has_schema_privilege(current_user,n.oid,'USAGE') and p.prosecdef and has_function_privilege(current_user,p.oid,'EXECUTE')
         and not(n.nspname='audit_private' and p.proname in ('runtime_derivative_claim','runtime_derivative_prepare','runtime_derivative_complete','runtime_derivative_fail','runtime_derivative_scope'))) as only_runtime_calls
       from pg_roles r where rolname=current_user`,[user]);
-    const failures={own_login:'SQL_LOGIN_MISMATCH',restricted:'SQL_ROLE_PRIVILEGED',no_memberships:'SQL_MEMBERSHIP',no_global_secrets:'SQL_GLOBAL_SECRET',no_data_acl:'SQL_DATA_ACL',only_runtime_calls:'SQL_FUNCTION_ACL'};
+    const failures={own_login:'SQL_LOGIN_MISMATCH',restricted:'SQL_ROLE_PRIVILEGED',no_memberships:'SQL_MEMBERSHIP',no_create_acl:'SQL_CREATE_ACL',no_global_secrets:'SQL_GLOBAL_SECRET',no_data_acl:'SQL_DATA_ACL',only_runtime_calls:'SQL_FUNCTION_ACL'};
     for(const [check,code] of Object.entries(failures))if(!identity?.[check])throw Object.assign(new Error('Unsafe SQL identity/configuration'),{code});
     return client;
   } catch(error){await client.end();throw error;}

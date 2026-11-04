@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createHash,randomUUID} from 'node:crypto';
+import {isolatedEncoder} from './audit-derivative-encoder.mjs';
 import {workerBoot,restrictedConnection,runtimeRepository} from './audit-derivative-runtime-client.mjs';
 const boot=await workerBoot();let connection;let phase='own SQL login';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -34,7 +35,11 @@ try{
   const request=(bucket,key,token,options={})=>fetch(`${boot.config.apiUrl}/storage/v1/object/${options.method?'':'authenticated/'}${bucket}/${key}`,{
     ...options,headers:{apikey:boot.config.anonKey,Authorization:`Bearer ${token}`,'Content-Type':'image/png','x-upsert':'false'},signal:AbortSignal.timeout(10000)});
   const original=await request(source.scope.bucket,source.scope.key,source.token);assert.equal(original.status,200);
-  assert.equal(hash(Buffer.from(await original.arrayBuffer())),m.original_sha256);
+  const input=Buffer.from(await original.arrayBuffer());
+  assert.equal(hash(input),m.original_sha256);
+  phase='nested isolated encoder';
+  const decoded=await isolatedEncoder.encode({bytes:input,contentType:'image/png'});assert.equal(hash(decoded.bytes),m.derived_sha256);
+  phase='lease and exact object tokens';
   await assert.rejects(boot.requestToken(job.lease,'service_role'));
   await assert.rejects(boot.requestToken(randomUUID(),'source'));
   assert.equal(await repo.prepare(job.lease,m),true);
