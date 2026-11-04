@@ -1,0 +1,63 @@
+/* GG-10: identidade Elo para testes e tokens semânticos para estados operacionais. */
+.institutional-announcement {
+  --announcement-bg: var(--brand-orange-100);
+  --announcement-fg: var(--brand-orange-950);
+  --announcement-border: var(--brand-orange-800);
+  --color-focus: var(--announcement-fg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: calc(var(--space-3) + env(safe-area-inset-top, 0px))
+    max(var(--space-6), env(safe-area-inset-right, 0px)) var(--space-3)
+    max(var(--space-6), env(safe-area-inset-left, 0px));
+  max-height: 40dvh;
+  overflow-y: auto;
+  background: var(--announcement-bg);
+  color: var(--announcement-fg);
+  border-bottom: 1px solid var(--announcement-border);
+  font: var(--text-body-sm);
+  overflow-wrap: anywhere;
+  scroll-padding-block: var(--space-2);
+}
+.announcement-maintenance {
+  --announcement-bg: var(--warning-bg);
+  --announcement-fg: var(--warning);
+  --announcement-border: var(--warning);
+}
+.announcement-information {
+  --announcement-bg: var(--info-bg);
+  --announcement-fg: var(--info);
+  --announcement-border: var(--info);
+}
+.announcement-critical {
+  --announcement-bg: var(--danger-bg);
+  --announcement-fg: var(--danger-text);
+  --announcement-border: var(--danger);
+}
+.institutional-announcement > .icon { flex: none; align-self: center; }
+.announcement-copy { flex: 1; min-width: 0; }
+.announcement-copy strong { margin-right: var(--space-2); }
+.announcement-action { flex: 0 1 22rem; min-width: 0; }
+.announcement-action button {
+  width: 100%;
+  min-height: var(--touch-target);
+  white-space: normal;
+  background: transparent;
+  border-color: var(--announcement-border);
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+}
+/* Mantém texto legível mesmo indisponível; o estado também aparece por escrito. */
+.announcement-action button:disabled { opacity: 1; color: inherit; }
+.announcement-unavailable { display: block; margin-top: var(--space-1); font-size: .75rem; line-height: 1.4; }
+@media (max-width: 599px) {
+  .institutional-announcement {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding-inline: max(var(--space-4), env(safe-area-inset-left, 0px)) max(var(--space-4), env(safe-area-inset-right, 0px));
+  }
+  .institutional-announcement > .icon { align-self: flex-start; }
+  .announcement-copy { flex-basis: calc(100% - 2rem); }
+  .announcement-action { flex-basis: 100%; }
+}

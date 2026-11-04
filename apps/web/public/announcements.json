@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "enabled": true,
+  "announcements": [
+    {
+      "id": "testing-notice",
+      "type": "testing",
+      "title": "Ambiente de testes",
+      "message": "Esta versão da Gaúcha Gestão está em fase de validação. Utilize somente dados autorizados e relate problemas encontrados.",
+      "enabled": true,
+      "startsAt": null,
+      "endsAt": null,
+      "audience": "authenticated",
+      "priority": 10,
+      "showIcon": true,
+      "action": {
+        "type": "feedback",
+        "label": "Relatar problema ou sugerir melhoria",
+        "enabled": false
+      }
+    }
+  ]
+}

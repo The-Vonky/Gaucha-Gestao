@@ -30,6 +30,7 @@ import {
   type Destination,
   type NavChild,
 } from "./navigation";
+import { AnnouncementLayout } from "./AnnouncementLayout";
 import "./shell.css";
 function Logout({ compact = false }: { compact?: boolean }) {
   const [error, setError] = useState(false);
@@ -75,6 +76,10 @@ function Boundary() {
       </main>
     );
   if (!auth.session) return <Login />;
+  return <AnnouncementLayout><AuthenticatedBoundary /></AnnouncementLayout>;
+}
+function AuthenticatedBoundary() {
+  const auth = useAuth();
   if (auth.error)
     return (
       <main className="center-state">
