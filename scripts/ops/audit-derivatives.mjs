@@ -11,6 +11,7 @@ import { createInterface } from 'node:readline';
 import sharp from 'sharp';
 import { runOneShot, storageApiAdapter, authorizedStorageTransport } from '../audit-derivative-worker.mjs';
 import { isolatedEncoder } from '../audit-derivative-encoder.mjs';
+import { runRuntimeCI } from './audit-derivative-runtime-ci.mjs';
 import { derivativeObjectKey } from '../audit-derivative-protocol.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -304,9 +305,12 @@ try {
   ok(await rpc('owner','remove_checklist_evidence',{p_evidence:first.id}));denied(await sign(good.derived_object_key,users.reader.token));
   assert.equal(count(good.derived_object_key),1);
   console.log('PASS removal after ready revokes new signing, retains derivative and original objects; no purge');
+  phase='dedicated LOGIN and bounded one-shot issuer';
+  await runRuntimeCI({sql,json,compose,subprocessEnv,config,base,root,evidence,manifest,derived,lit,count});
   console.log('PASS AUD-IMG-02 real CI integration complete; no persistent provisioning or operational credentials');
 } catch (error) {
-  const code=String(error.stderr??'').match(/(?:ERROR|FATAL):\s*([0-9A-Z]{5})/)?.[1]??'CHECK_FAILED';
+  const code=String(error.stderr??'').match(/(?:ERROR|FATAL):\s*([0-9A-Z]{5})/)?.[1]??(/^[A-Z0-9_]{1,32}$/.test(String(error.code??''))?error.code:'CHECK_FAILED');
+  if(/^[a-zA-Z0-9 /:.-]{1,100}$/.test(error.phase??''))phase+=' / '+error.phase;
   console.error(`AUD-IMG-02 real CI integration failed at: ${phase}; code=${code}`);
   process.exitCode=1;
 }

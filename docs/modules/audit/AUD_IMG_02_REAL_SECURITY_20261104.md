@@ -61,3 +61,17 @@ Referências primárias: [Supabase Custom Roles](https://supabase.com/docs/guide
 URLs já emitidas conservam sua janela residual até expirar: no ensaio, revogar grant bloqueou nova assinatura/GET autenticado, mas o link anterior permaneceu válido. Não há promessa de revogação instantânea. A validação real reduz incerteza sobre Auth/RLS/Storage; **não é aprovação geral de segurança ou autorização de operação**.
 
 Reversão desta continuação: revert dos ajustes do workflow/testes/docs. Nenhum dado persistente foi criado ou migrado. O código funcional continua desativado por padrão; não houve merge ou deploy. PROD NO-GO.
+
+## Continuação: login próprio e emissor one-shot
+
+O HEAD `4680364` e seus sete checks foram reconfirmados. A nova rodada reutiliza a suíte e acrescenta somente o que faltava: login PostgreSQL próprio, senha SCRAM real, negação de privilégios extras e emissor temporário separado do worker. O resultado do novo HEAD e os links de execução são registrados na PR #101; código de teste não equivale a PASS.
+
+`20261104192428_audit_derivative_runtime_contract.sql` acrescenta `runtime_login` à lease, cinco funções privadas parametrizadas e um helper Storage. Não cria LOGIN, senha ou grants operacionais. Uma evidência esperada pode ser fixada na claim; divergência aborta a transação, sem efeitos em outro job. As funções derivam propriedade de `session_user`, sem identidade enviada pelo cliente.
+
+`scripts/audit-derivative-runtime.mjs` é um emissor/supervisor **one-shot**, sem serviço permanente. Ele guarda a chave fora do sandbox e consulta escopo com login mínimo, sem sessão administrativa; assina role fixa, uma lease, bucket/chave exatos, expiração de 30 s limitada à lease e `jti` novo. Renovação repete a autorização, nunca estende lease e não usa refresh token. O worker recebe apenas a própria senha SQL, chave pública/origem e capacidades temporárias. Um protocolo por pipes é limitado a uma lease/32 emissões; não aceita role/key/TTL livres.
+
+O worker roda em Bubblewrap com PID/filesystem próprios, ambiente limpo e somente código/dependências read-only. Não vê arquivos do emissor/home/proc do host. Usa rede dos endpoints existentes; o decoder continua sem rede. O login SQL não herda roles, não tem acesso a tabelas nem aos quatro contratos legados: só EXECUTE dos cinco wrappers. `RESET ROLE` conserva sua própria identidade; não há SET ROLE administrativo na execução nova.
+
+Foi encontrada exposição prévia de `JWT_SECRET` no GUC global `app.settings.jwt_secret`. A adaptação de init deixa de criar essa configuração em stacks novos, sem alterar Auth/REST/Storage ou rotacionar a chave. O cliente SQL recusa esse legado ou segredo de plataforma conhecido em GUC/catálogo, atributos/memberships privilegiados e ACLs extras. O CI testa o bloqueio, a remoção explícita como bootstrap e nova conexão segura; não executa essa remoção em ambiente persistente.
+
+[Runbook local de GO C](../../operations/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md): inventário real somente leitura, diferença Storage local v1.72.1 x CI v1.74.0, backup/recuperação ainda não provados, aplicação incremental das duas migrations, provisioning mínimo após autorização, uma evidência sintética, negativas e reversão sem exclusão. Nenhuma credencial persistente, timer, serviço ou backfill foi criado. A emissão de confiança permanece uma responsabilidade operacional sensível; o worker nunca recebe a chave global.

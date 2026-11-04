@@ -97,7 +97,7 @@ export function authorizedStorageTransport({ origin, apiKey, accessToken, fetchI
       const token = await new Promise((resolve, reject) => {
         const abort = () => reject(new Error('Token timeout'));
         controller.signal.addEventListener('abort', abort, { once: true });
-        Promise.resolve().then(() => accessToken(controller.signal)).then(resolve, reject)
+        Promise.resolve().then(() => accessToken(controller.signal, { bucket, key, method })).then(resolve, reject)
           .finally(() => controller.signal.removeEventListener('abort', abort));
       });
       // Rejeição defensiva, não validação criptográfica; o Storage é autoridade do token.

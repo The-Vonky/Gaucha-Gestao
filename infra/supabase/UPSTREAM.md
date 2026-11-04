@@ -59,3 +59,7 @@ A imagem DB `supabase/postgres:17.6.1.136` corresponde a [commit upstream `d156b
 Migrations da aplicação autenticam como `postgres` via hostname `db`; marcador/ledger pertencem ao helper de infraestrutura. CI valida login com senha correta, rejeição da incorreta e owner real dos schemas/funções `SECURITY DEFINER`. **Não alterar owners após as migrations.**
 
 **Produção NO-GO:** esse documento descreve origem e adaptações do laboratório, não configuração de host físico ou R2/Cloudflare já provisionados.
+
+## AUD-IMG-02 — segredo e login SQL técnico
+
+A continuação da PR #101 remove de `jwt.sql` apenas o armazenamento global de JWT_SECRET em `ALTER DATABASE ... SET app.settings.jwt_secret`; esse GUC/catálogo é legível a logins SQL. Auth/REST/Storage mantêm seus segredos próprios. Stacks existentes não são alterados por editar o init; remoção do legado, inventário de dependências e login mínimo exigem o [GO C local e runbook](../../docs/operations/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md). Não reiniciar/recriar ambientes persistentes para reaplicar init.

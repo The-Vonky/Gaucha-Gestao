@@ -101,3 +101,7 @@ O mantenedor autorizou a investigação real no **mesmo** stack criado por `infr
 A hipótese de papel técnico em teste é NOLOGIN/NOINHERIT/NOBYPASSRLS, sem herdar `authenticated`, com SELECT/INSERT limitados à lease viva e à chave reservada. Signing/list/copy/move/update/delete não são concedidos. A assinatura do token ocorre no harness CI com o segredo **efêmero** já gerado; isso não autoriza entregar o segredo global ao futuro worker. Sucesso do experimento não aprova emissão/rotação operacional, grants persistentes ou GO C.
 
 Resultados deste ensaio devem ser lidos nos checks do SHA atualizado. Os resultados anteriores com mocks/PGlite continuam classificados como tais; não antecipam o resultado da integração real.
+
+## Login técnico e emissão sem serviço permanente
+
+Continuação autorizada: [contratos e prova nova](AUD_IMG_02_REAL_SECURITY_20261104.md#continuação-login-próprio-e-emissor-one-shot) e [runbook para solicitar GO C local](../../operations/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md). LOGIN/escopo SQL próprios e emissor one-shot substituem a dependência de SET ROLE administrativo do ensaio anterior; nenhuma configuração persistente foi aplicada. Confirmar resultado do novo HEAD na PR #101 antes de solicitar a autorização.

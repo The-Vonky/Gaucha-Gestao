@@ -57,3 +57,7 @@ SO legado sem suporte depende de risco documentado e controles compensatórios.
 - Antes do rollout: definir responsáveis por bloqueio de conta, revogação, consulta de logs, rotação de segredos, rollback e restore.
 
 **Produção permanece NO-GO** até gates operacionais e autorização humana.
+
+## Login técnico de derivados — PR #101
+
+Credencial SQL técnica não pode ler segredo global por GUC ou catálogo, herdar papel privilegiado ou executar processamento com SET ROLE administrativo. O [runtime e runbook de AUD-IMG-02](../operations/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md) separam emissor one-shot e worker isolado, vinculam lease ao session_user e restringem JWT a lease/bucket/chave/30 s, com revalidação na renovação. Configuração persistente continua dependente de GO C; não há serviço/timer instalado nem autorização de produção.
