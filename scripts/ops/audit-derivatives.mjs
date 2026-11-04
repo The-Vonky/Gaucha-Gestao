@@ -29,7 +29,7 @@ const config = Object.fromEntries(readFileSync(envFile, 'utf8').trim().split('\n
 }));
 const base = `http://127.0.0.1:${config.GATEWAY_PORT}`;
 const compose = ['compose','--env-file',envFile,'--project-name',project,'-f',path.join(root,'infra/supabase/docker-compose.yml')];
-const command = [...compose,'exec','-T','db','psql','-X','-w','-h','db','-U','postgres','-d',database,'-Atq','-v','ON_ERROR_STOP=1'];
+const command = [...compose,'exec','-T','db','psql','-X','-w','-h','db','-U','postgres','-d',database,'-Atq','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate'];
 const subprocessEnv = { ...process.env, ...config }; delete subprocessEnv.COMPOSE_FILE; delete subprocessEnv.COMPOSE_PROFILES;
 const lit = value => "'" + String(value).replaceAll("'", "''") + "'";
 const sql = query => execFileSync('docker',command,{input:query+';\n',env:subprocessEnv,encoding:'utf8',stdio:['pipe','pipe','pipe'],timeout:20_000}).trim();
@@ -112,18 +112,27 @@ try {
 
   phase='custom role setup (disposable only)';
   sql(`create role ${role} nologin noinherit nobypassrls;
-    grant ${role} to supabase_storage_admin;
+    `);
+  phase='custom role membership';
+  sql(`grant ${role} to supabase_storage_admin;grant ${role} to postgres with set true;
+    `);
+  phase='custom role schema table and function ACL';
+  sql(`
     grant usage on schema storage,auth,audit_private to ${role};
     grant select on storage.buckets,storage.objects to ${role};grant insert on storage.objects to ${role};
     grant execute on function audit_private.claim_evidence_derivative(),audit_private.prepare_evidence_derivative(uuid,jsonb),audit_private.complete_evidence_derivative(uuid),audit_private.fail_evidence_derivative(uuid) to ${role};
-    create function audit_private.ci_derivative_object(p_bucket text,p_key text) returns boolean language sql stable security definer set search_path='' as $$
+    `);
+  phase='custom role lease helper';
+  sql(`create function audit_private.ci_derivative_object(p_bucket text,p_key text) returns boolean language sql stable security definer set search_path='' as $$
       select exists(select 1 from audit.checklist_evidence_derivatives d join audit.checklist_evidence e on e.id=d.evidence_id
       where d.state='processing' and d.lease_until>clock_timestamp() and d.lease_id::text=auth.jwt()->>'audit_derivative_lease'
       and e.status='available' and ((p_bucket='audit-checklist-evidence' and p_key=e.object_key)
         or(p_bucket='audit-evidence-thumbnails' and p_key=d.derived_object_key)))
     $$;
     revoke all on function audit_private.ci_derivative_object(text,text) from public,anon,authenticated;grant execute on function audit_private.ci_derivative_object(text,text) to ${role};
-    create policy ci_derivative_bucket on storage.buckets for select to ${role} using(id in ('audit-checklist-evidence','audit-evidence-thumbnails'));
+    `);
+  phase='custom role Storage policies';
+  sql(`create policy ci_derivative_bucket on storage.buckets for select to ${role} using(id in ('audit-checklist-evidence','audit-evidence-thumbnails'));
     create policy ci_derivative_select on storage.objects for select to ${role} using(current_setting('storage.operation',true)='storage.object.get_authenticated' and audit_private.ci_derivative_object(bucket_id,name));
     create policy ci_derivative_insert on storage.objects for insert to ${role} with check(bucket_id='audit-evidence-thumbnails' and current_setting('storage.operation',true)='storage.object.upload' and audit_private.ci_derivative_object(bucket_id,name))`);
   const privileges=json(`select json_build_object('super',rolsuper,'bypass',rolbypassrls,'login',rolcanlogin,'inherits',rolinherit,'authenticated',pg_has_role(${lit(role)},'authenticated','MEMBER')) from pg_roles where rolname=${lit(role)}`);
@@ -265,8 +274,9 @@ try {
   assert.equal(count(good.derived_object_key),1);
   console.log('PASS removal after ready revokes new signing, retains derivative and original objects; no purge');
   console.log('PASS AUD-IMG-02 real CI integration complete; no persistent provisioning or operational credentials');
-} catch {
-  console.error(`AUD-IMG-02 real CI integration failed at: ${phase}`);
+} catch (error) {
+  const code=String(error.stderr??'').match(/(?:ERROR|FATAL):\s*([0-9A-Z]{5})/)?.[1]??'CHECK_FAILED';
+  console.error(`AUD-IMG-02 real CI integration failed at: ${phase}; code=${code}`);
   process.exitCode=1;
 }
 // Fixtures, roles/policies e tokens só existem neste stack efêmero. O teardown existente do
