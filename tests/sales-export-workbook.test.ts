@@ -24,17 +24,24 @@ describe("VEN-05A — XLSX real e precisão de readback", () => {
   it("abas, colunas, competência sem dia, fuso e metadados", async () => {
     const report = exportFixture(), { parsed, xml } = await inspect(report);
     expect(parsed.map(s => s.sheet)).toEqual(["Lançamentos", "Ajustes mensais", "Resumo"]);
-    expect(parsed[0].data[1].slice(0, 6)).toEqual(["01/09/2026", report.units[0].name, "A", "Stone", 0.01, "0.01"]);
+    expect(parsed[0].data[4].slice(0, 6)).toEqual(["01/09/2026", report.units[0].name, "A", "Stone", 0.01, "0.01"]);
     expect(parsed[1].data[1][0]).toBe("09/2026");
     const meta = parsed[2].data;
     expect(meta.find(r => r[0] === "Total consolidado exato (BRL)")?.[1]).toBe("0.11");
     expect(meta.find(r => r[0] === "Gerado em (America/Sao_Paulo)")?.[1]).toContain("02/11/2026");
     expect(meta.find(r => r[0] === "Gerado em (America/Sao_Paulo)")?.[1]).toContain("23:59:59");
+    expect(parsed[0].data[3]).toEqual(["Data", "Unidade", "Código da unidade", "Forma de pagamento", "Valor (R$)", "Valor exato (BRL)", "Lançado por", "Última atualização (America/Sao_Paulo)"]);
+    expect(parsed[0].data[4][6]).toBe("Pessoa sintética Á 😀");
+    expect(parsed[0].data.at(-1)?.[0]).toBe("Total exportado");
+    expect(parsed[0].data.at(-1)?.[4]).toBe(0.01);
+    expect(parsed[0].data.at(-1)?.[5]).toBe("0.01");
     expect(xml).toContain('state="frozen"');
-    expect(xml).toMatch(/<c[^>]*r="E2"[^>]*><v>0\.01<\/v>/);
-    expect(xml).toMatch(/<c[^>]*r="F2"[^>]*t="(?:s|inlineStr)"/);
-    expect(exportFilename(report)).toBe("vendas-periodo-filtrado-20261103025959.xlsx");
-    expect(exportFilename({ ...report, mode: "full" })).toContain("historico-autorizado");
+    expect(xml).toContain('ySplit="4"');
+    expect(xml).toContain('mergeCell ref="A1:H1"');
+    expect(xml).toMatch(/<c[^>]*r="E5"[^>]*><v>0\.01<\/v>/);
+    expect(xml).toMatch(/<c[^>]*r="F5"[^>]*t="(?:s|inlineStr)"/);
+    expect(exportFilename(report)).toBe("historico-filtrado-01-09-2026-30-09-2026-1total.xlsx");
+    expect(exportFilename({ ...report, mode: "full" })).toBe("historico-completo-01-09-2026-30-09-2026-1total.xlsx");
   });
   it.each(["0.01", "0.10", "0.29", "1.15", "999999999999.99", "9999999999999.99", "10000000000000.01", "99999999999999.99", "19999999999999999.98"])("roundtrip de %s e política de 15 algarismos", async value => {
     const cell = moneyCell(value);
@@ -47,11 +54,12 @@ describe("VEN-05A — XLSX real e precisão de readback", () => {
   });
   it.each(["=HYPERLINK(\"https://evil.test\",\"x\")", "+cmd", "-1+1", "@SUM(A1)", " \t=1+1", "\r\n+cmd", "\u0000\u0001\u000b=1", "Unicode Á 汉字 😀 �", "X".repeat(8000)])("texto de unidade/código/justificativa é dado: %s", async value => {
     const report = exportFixture();
-    report.units[0].name = value; report.units[0].code = value; report.rows[1].reason = value;
+    report.units[0].name = value; report.units[0].code = value; report.rows[1].reason = value; report.rows[0].created_by_name = value;
     const { parsed } = await inspect(report);
     const expected = textCell(value)?.value;
-    expect(parsed[0].data[1][1]).toBe(expected);
-    expect(parsed[0].data[1][2]).toBe(expected);
+    expect(parsed[0].data[4][1]).toBe(expected);
+    expect(parsed[0].data[4][2]).toBe(expected);
+    expect(parsed[0].data[4][6]).toBe(expected);
     expect(parsed[1].data[1][6]).toBe(expected);
     expect(typeof parsed[1].data[1][6]).toBe("string");
   });
@@ -62,7 +70,7 @@ describe("VEN-05A — XLSX real e precisão de readback", () => {
     expect((await inspect(report)).parsed.map(s => s.sheet)).toEqual(["Lançamentos", "Resumo"]);
     report.rows = []; report.record_count = report.entry_count = report.next_offset = 0;
     report.entry_total = report.total = "0.00";
-    expect((await inspect(report)).parsed[0].data).toHaveLength(1);
+    expect((await inspect(report)).parsed[0].data).toHaveLength(5);
     expect(() => textCell("A".repeat(32768))).toThrow("limite");
   });
   it("20.000 linhas reconciliadas pelo readback, total grande vira texto sem arredondar", async () => {
@@ -71,7 +79,7 @@ describe("VEN-05A — XLSX real e precisão de readback", () => {
     report.entry_count = report.record_count = report.next_offset = n; report.adjustment_count = 0;
     report.entry_total = report.total = "19999999999999800.00"; report.adjustment_total = "0.00";
     const start = performance.now(); const { parsed, buffer } = await inspect(report);
-    const amounts = parsed[0].data.slice(1);
+    const amounts = parsed[0].data.slice(4, -1);
     expect(amounts).toHaveLength(n);
     const total = amounts.reduce((sum, r) => sum + cents((r[4] as number).toFixed(2)), 0n);
     expect(total).toBe(cents(report.total));
@@ -81,6 +89,26 @@ describe("VEN-05A — XLSX real e precisão de readback", () => {
     expect(buffer.byteLength).toBeLessThan(20 * 1024 * 1024);
     console.info(`VEN-05A XLSX 20000: ${Math.round(performance.now() - start)}ms, ${buffer.byteLength} bytes; diferença=0 centavos`);
   }, 30_000);
+  it("nome de arquivo usa recorte aplicado, conta só lançamentos e trata extremos abertos", () => {
+    const report = exportFixture();
+    report.filters = { from: "2026-01-01", to: "2026-12-31", method: null };
+    report.entry_count = 56;
+    expect(exportFilename(report)).toBe("historico-filtrado-01-01-2026-31-12-2026-56total.xlsx");
+    report.filters = { from: null, to: "2026-12-31", method: null };
+    expect(exportFilename(report)).toBe("historico-filtrado-01-09-2026-31-12-2026-56total.xlsx");
+    report.mode = "full";
+    expect(exportFilename(report)).toBe("historico-completo-01-09-2026-30-09-2026-56total.xlsx");
+    report.entry_count = 0; report.entry_from = report.entry_to = null;
+    expect(exportFilename(report)).toBe("historico-completo-01-09-2026-30-09-2026-0total.xlsx");
+    report.adjustment_from = report.adjustment_to = null;
+    expect(exportFilename(report)).toBe("historico-completo-02-11-2026-02-11-2026-0total.xlsx");
+    report.entry_from = "0001-01-01"; report.entry_to = "9999-12-31";
+    expect(exportFilename(report)).toBe("historico-completo-01-01-0001-31-12-9999-0total.xlsx");
+  });
+  it.each([undefined, null, "", "   "])("nome indisponível %s usa fallback neutro", async name => {
+    const report = exportFixture(); report.rows[0].created_by_name = name;
+    expect((await inspect(report)).parsed[0].data[4][6]).toBe("Não identificado");
+  });
   it("não gera arquivo com total inconsistente", () => {
     const report = exportFixture(); report.total = "0.12";
     expect(() => exportSheets(report)).toThrow("reconciliação");

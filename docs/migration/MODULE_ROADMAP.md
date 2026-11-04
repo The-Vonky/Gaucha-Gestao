@@ -5,7 +5,9 @@ autorizado implementada, **pendente de revisão do mantenedor**, sem homologaç�
 implantação. RPC específica, ajustes em aba separada, paginação com detecção de
 mudanças, reconciliação exata e testes XLSX/readback. [Contrato e limites](../modules/sales/VEN05A_EXCEL_EXPORT.md).
 VEN-04B foi integrada pela PR #94, merge `91bd16b`. Registros abaixo são históricos;
-VEN-05B permanece fora do escopo, aguardando revisão da 05A. Sem operações persistentes.
+VEN-05B permanece fora do escopo, aguardando revisão da 05A. Em 04/11, refinados
+UX, nomes/XLSX e nome do criador; migrations aplicadas somente no notebook
+autorizado, com preservação dos dados. Sem STAGING/PROD, merge ou deploy.
 
 **VEN-04B — correção visual de 03/11/2026:** apresentação reconstruída na PR #94,
 com quatro KPIs, Panorama, gráficos e cores por UUID, mantendo VEN-03 e permissões.

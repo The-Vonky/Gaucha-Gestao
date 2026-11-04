@@ -106,7 +106,7 @@ describe("VEN-02 — operações no banco", () => {
     await login(3);
     const all = await list();
     expect(all.every(e => e.unit_id === A)).toBe(true);
-    expect(await list(["2026-02-01", "2026-02-01", A, "PIX", 10, 0])).toEqual([a]);
+    expect(await list(["2026-02-01", "2026-02-01", A, "PIX", 10, 0])).toEqual([{ ...a, created_by_name: "Novo usuário" }]);
     const first = await list([null, null, null, null, 1, 0]);
     const second = await list([null, null, null, null, 1, 1]);
     expect([...first, ...second]).toEqual(all.slice(0, 2));

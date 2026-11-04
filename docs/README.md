@@ -37,7 +37,7 @@ O [inventário de 22/10](operations/C30_STAGING_AS_BUILT_20261022.md) é um **sn
 | Operar Vendas / Maquininhas VEN-04A | [Guia operacional e RPC auxiliar](modules/sales/VEN04A_OPERATIONS_UI.md) | [Validação no notebook](modules/sales/VEN04A_LOCAL_VALIDATION.md) |
 | Revisar motor analítico VEN-03 | [Contratos e segurança](modules/sales/VEN03_ANALYTICS.md) | [Validação local autorizada](modules/sales/VEN03_LOCAL_VALIDATION.md) |
 | Revisar dashboard e acesso institucional VEN-04B | [Contrato UI](modules/sales/VEN04B_DASHBOARD_UI.md) | [Correção, limpeza local e validação](modules/sales/VEN04B_ACCESS_CORRECTION.md) |
-| Revisar exportação Excel VEN-05A | [Contrato, precisão, permissões e limites](modules/sales/VEN05A_EXCEL_EXPORT.md) | Implementada para revisão; sem homologação ou implantação |
+| Revisar exportação Excel VEN-05A | [Contrato, precisão, permissões e limites](modules/sales/VEN05A_EXCEL_EXPORT.md) | Refinada em 04/11; validada no notebook; merge/homologação visual Excel pendentes |
 | Revisar navegação e cadastro MEL-03–06 | [Rotas, permissões, testes e screenshots](modules/sales/VEN04B_MEL03_06_VALIDATION.md) | Entrega intermediária na PR #94, sem VEN-05 |
 | Conferir limpeza local de unidades MEL-01 | [Operação autorizada, backup e estado vazio](modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md) | Teardown dirigido e migration funcional sem exclusão de dados |
 | Planejar os módulos futuros | [Blueprint por domínio](planning/MODULE_BLUEPRINTS.md) | [Roadmap canônico](migration/MODULE_ROADMAP.md) |

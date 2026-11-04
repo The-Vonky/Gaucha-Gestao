@@ -30,22 +30,32 @@ export function moneyCell(value: string): Cell {
 const timestamp = (value: string) => new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "short", timeStyle: "medium", timeZone: "America/Sao_Paulo",
 }).format(new Date(value));
-const head = (...labels: string[]): Cell[] => labels.map(value => ({ type: String, value, fontWeight: "bold", backgroundColor: "#DFEAE5", wrap: true }));
+const head = (...labels: string[]): Cell[] => labels.map(value => ({ type: String, value, fontWeight: "bold", backgroundColor: "#185C45", textColor: "#FFFFFF", height: 30, alignVertical: "center", wrap: true }));
 
 export function exportSheets(report: SalesExport): Sheet<Blob>[] {
   reconcile(report);
   const units = new Map(report.units.map(u => [u.id, u]));
-  const entries: Cell[][] = [head("Data", "Unidade", "Código da unidade", "Forma de pagamento", "Valor (R$)", "Valor exato (BRL)", "ID do lançamento", "ID da unidade", "Versão", "Atualizado em (America/Sao_Paulo)")];
+  const entries: Cell[][] = [
+    [{ ...textCell("Gaúcha Alimentação — Lançamentos de Vendas"), columnSpan: 8, fontSize: 20, fontWeight: "bold", textColor: "#185C45", height: 42, alignVertical: "center" }],
+    [{ ...textCell("Dados exportados diretamente do sistema. Valores em reais."), columnSpan: 8, textColor: "#52665D", height: 26 }],
+    [{ ...textCell(`${report.mode === "full" ? "Histórico completo autorizado" : "Período filtrado"} · ${report.entry_count} lançamentos · Gerado em ${timestamp(report.checked_at)} (São Paulo)`), columnSpan: 8, backgroundColor: "#E8F1EC", height: 28 }],
+    head("Data", "Unidade", "Código da unidade", "Forma de pagamento", "Valor (R$)", "Valor exato (BRL)", "Lançado por", "Última atualização (America/Sao_Paulo)"),
+  ];
   const adjustments: Cell[][] = [head("Competência", "Unidade", "Código da unidade", "Forma de pagamento", "Valor do ajuste (R$)", "Valor exato (BRL)", "Justificativa", "ID do ajuste", "ID da unidade")];
   for (const r of report.rows) {
     const u = units.get(r.unit_id);
     if (!u) throw new ExportError("Unidade incompatível com a exportação.");
     const common = [textCell(r.kind === "entry" ? r.date.split("-").reverse().join("/") : `${r.date.slice(5, 7)}/${r.date.slice(0, 4)}`),
       textCell(u.name), textCell(u.code), textCell(r.payment_method), moneyCell(r.amount), textCell(r.amount)];
-    if (r.kind === "entry") entries.push([...common, textCell(r.id), textCell(r.unit_id),
-      { type: Number, value: r.version! }, textCell(timestamp(r.updated_at!))]);
+    if (r.kind === "entry") entries.push([...common, textCell(r.created_by_name?.trim() ? r.created_by_name : "Não identificado"), textCell(timestamp(r.updated_at!))]
+      .map((cell, index) => ({ ...cell, backgroundColor: entries.length % 2 ? "#F1F6F3" : "#FFFFFF",
+        bottomBorderColor: "#DCE5DF", bottomBorderStyle: "hair", height: 32,
+        alignVertical: "center", wrap: index === 1 || index === 6, ...(index === 4 ? { align: "right" as const } : {}) })));
     else adjustments.push([...common, textCell(r.reason!), textCell(r.id), textCell(r.unit_id)]);
   }
+  entries.push([textCell("Total exportado"), null, null, null, moneyCell(report.entry_total), textCell(report.entry_total), null, null]
+    .map(cell => ({ ...cell, fontWeight: "bold", backgroundColor: "#DCEDE3", textColor: "#185C45", height: 32,
+      topBorderColor: "#185C45", topBorderStyle: "thin", alignVertical: "center" })));
   const pair = (name: string, value: string): Cell[] => [textCell(name), textCell(value)];
   const summary: Cell[][] = [head("Contexto", "Valor"),
     pair("Exportação", report.mode === "full" ? "Histórico completo autorizado" : "Período filtrado"),
@@ -68,10 +78,10 @@ export function exportSheets(report: SalesExport): Sheet<Blob>[] {
     pair("Controle de texto", "Textos tipados como String; controles XML inválidos e U+FFFD não suportado pelo writer substituídos por □."),
     ...report.units.map(u => pair(`Unidade ${u.code}`, `${u.name} · ${u.id} · ${u.active ? "ativa" : "inativa — histórico"} · ajustes ${u.adjustments_authorized ? "autorizados" : "não autorizados; não incluídos nos totais"}`)),
   ];
-  const sheet = (name: string, data: Cell[][], widths: number[]): Sheet<Blob> => ({
-    sheet: name, data, stickyRowsCount: 1, showGridLines: false, columns: widths.map(width => ({ width })),
+  const sheet = (name: string, data: Cell[][], widths: number[], stickyRowsCount = 1): Sheet<Blob> => ({
+    sheet: name, data, stickyRowsCount, showGridLines: false, columns: widths.map(width => ({ width })),
   });
-  return [sheet("Lançamentos", entries, [14, 32, 20, 22, 25, 25, 38, 38, 12, 32]),
+  return [sheet("Lançamentos", entries, [14, 36, 20, 22, 25, 25, 30, 34], 4),
     ...(report.adjustment_count ? [sheet("Ajustes mensais", adjustments, [16, 32, 20, 22, 25, 25, 56, 38, 38])] : []),
     sheet("Resumo", summary, [48, 110])];
 }

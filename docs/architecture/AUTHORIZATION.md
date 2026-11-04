@@ -145,7 +145,10 @@ ausência fica explícita no arquivo, sem revelar dados recusados. Global/unidad
 inclusive histórico inativo; setor negado. Unidade explícita fora da interseção
 nega a chamada inteira. Cada página e a conferência final revalidam o acesso;
 alterações de conjunto/escopo invalidam o token. Nenhum grant ou papel acrescentado;
-tabelas privadas e RLS preservadas. [Matriz, consistência e limites](../modules/sales/VEN05A_EXCEL_EXPORT.md).
+tabelas privadas e RLS preservadas. A partir de `20261104122256`, listagem e
+exportação incluem somente o nome atual do criador dos lançamentos autorizados,
+sem abrir o diretório de perfis nem exportar e-mail/UUID do criador. Mudança de
+nome também invalida o token. [Matriz, consistência e limites](../modules/sales/VEN05A_EXCEL_EXPORT.md).
 
 Exportação nunca contorna escopo de leitura. Anexos herdam autorização da entidade de negócio e capacidade pertinente de escrita/remoção. Conhecer um object key/ID não concede acesso.
 

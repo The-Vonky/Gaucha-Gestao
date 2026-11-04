@@ -33,6 +33,7 @@ export function parseExportPage(value: unknown): ExportPage {
       || !["Stone", "PIX"].includes(String(row.payment_method)) || !decimal(row.amount)
       || cents(row.amount) === 0n || cents(row.amount) > 99999999999999n
       || (row.kind === "entry" && (typeof row.updated_at !== "string" || !Number.isFinite(Date.parse(row.updated_at))
+        || (row.created_by_name != null && typeof row.created_by_name !== "string")
         || !Number.isInteger(row.version) || (row.version as number) < 1))
       || (row.kind === "adjustment" && (typeof row.reason !== "string" || !row.date.endsWith("-01")
         || !units.get(row.unit_id)!.adjustments_authorized))) throw incompatible();

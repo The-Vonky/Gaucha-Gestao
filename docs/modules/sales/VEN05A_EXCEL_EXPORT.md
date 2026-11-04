@@ -1,5 +1,11 @@
 # VEN-05A — Exportação Excel autorizada
 
+**Refinamentos de 04/11/2026:** exportação somente em Lançamentos; ações após os
+filtros, nomes de arquivo legíveis, planilha com total destacado e coluna
+**Lançado por**. Migration incremental `20261104122256` aplicada somente no
+Supabase local por autorização expressa do mantenedor; dados preservados.
+[Registro desta rodada](#refinamentos-finais--04112026). Sem merge/deploy.
+
 **Atualização operacional de 03/11/2026:** migration aplicada exclusivamente no
 notebook autorizado, com backup validado estruturalmente e quatro fluxos de
 exportação homologados tecnicamente no navegador real. [Registro local](#aplicação-controlada-e-homologação-no-notebook--03112026).
@@ -33,7 +39,8 @@ Foram consultados no repositório `The-Vonky/dashboard_vendas-Gaucha`:
 | `docs/GUIA_USO.md` | `ac9811bd07aabe94937c9ba0f6506c1b08806455` | Dashboard/Dados & Backup iniciam download nativo em Downloads do Windows e exibem caminho; ajustes em aba separada |
 
 A plataforma preserva a utilidade das abas, substitui caminhos Windows por download
-web e acrescenta código/UUID da unidade, versão, contexto e reconciliação. Não copia
+web e acrescenta código da unidade, nome do criador, contexto e reconciliação.
+IDs e versão continuam internos ao transporte autorizado, fora da aba principal. Não copia
 exportação irrestrita, aritmética `float` ou fórmulas do legado. Os padrões de
 `audit/reporting/{workbook,download,ReportingActions}` foram examinados; usa-se a
 mesma biblioteca instalada `write-excel-file@4.1.1` e tipagem explícita, sem importar
@@ -41,19 +48,19 @@ internals de outro módulo e sem alterar Auditoria ou dependências.
 
 ## Interface e recorte aplicado
 
-Os mesmos controles aparecem em Lançamentos e Dashboard quando há interseção de
-leitura detalhada e capacidade de exportação. As permissões da tela continuam
-independentes das permissões do arquivo. Apenas dashboard não habilita exportação.
+Os controles de exportação aparecem **somente em Lançamentos**, quando há
+interseção de leitura detalhada e capacidade de exportação. O Dashboard não tem
+entrada visual de exportação. As permissões da tela e do arquivo continuam
+independentes. Ações entre filtros e tabela: **Novo lançamento**, **Exportar período
+filtrado**, **Exportar histórico completo autorizado**. O retorno ao dashboard
+permanece no cabeçalho; criação mantém os bloqueios de capacidade/unidade ativa.
 
-- **Exportar período filtrado:** datas inclusivas, unidades e Stone/PIX do recorte
-  aplicado. Em Lançamentos, usa a URL confirmada, sem limitar à página visível.
-  No Dashboard, usa `data.filters` da resposta atual e estende a competência final
-  ao último dia civil do mês. Foco em dia e ocultação de séries são destaques
-  visuais; não mudam o total do recorte principal nem o período exportado.
-  Rascunhos ainda não confirmados nos controles não afetam o arquivo.
+- **Exportar período filtrado:** datas inclusivas, unidades e Stone/PIX da URL
+  aplicada em Lançamentos, sem limitar à página visível. Rascunhos ainda não
+  confirmados nos controles não afetam o arquivo.
 - **Exportar histórico completo autorizado:** todas as datas, unidades e formas
   cobertas simultaneamente por `sales.entry.read` e `sales.export.full`, inclusive
-  unidades inativas. Não herda os filtros do dashboard. Não significa banco inteiro.
+  unidades inativas. Não herda os filtros da tela. Não significa banco inteiro.
 
 A tela explica que ajustes exigem também leitura gerencial e competências inteiras.
 Um recorte diário incompleto não pode atribuir um ajuste a um dia: somente meses
@@ -98,8 +105,9 @@ schemas privados e RLS restritiva continuam sem grants de leitura direta.
 
 ## RPC e paginação
 
-Migration append-only gerada pelo CLI, sem execução persistente:
-`20261103175405_sales_excel_export.sql`.
+Migrations append-only geradas pelo CLI: `20261103175405_sales_excel_export.sql`
+e `20261104122256_sales_entry_creator_name.sql`. Ambas aplicadas exclusivamente
+no Supabase local, conforme autorizações e registros ao final deste documento.
 
 ```sql
 public.sales_export_page(
@@ -119,8 +127,13 @@ offset 0–20.000, token obrigatório após a primeira página. Sem SQL dinâmic
 Resposta versionada com catálogo Core, permissibilidade de ajustes, filtros
 efetivos, contagens, totais `numeric` como strings de duas casas e limites dos
 dados disponíveis. Linhas contêm somente: tipo, UUID, data ou competência, UUID
-da unidade, forma e valor; lançamento acrescenta versão/última atualização;
-ajuste acrescenta justificativa. Não retorna autores, e-mails, lotes ou `source_ref`.
+da unidade, forma e valor; lançamento acrescenta versão/última atualização e `created_by_name` (nome atual
+do perfil Core referenciado por `created_by`, ou null). Ajuste acrescenta
+justificativa. A exportação não retorna UUID de autor, e-mail, lotes ou `source_ref`.
+A listagem recebe o mesmo nome como campo adicional, mantendo os demais campos
+operacionais anteriores. Não há consulta ao diretório administrativo no frontend,
+novo endpoint de perfis, grant ou mudança de RLS. Nome de criador inativo permanece
+legível no lançamento autorizado; quem consulta precisa continuar ativo.
 
 `SECURITY DEFINER` é necessário para acessar as tabelas privadas; `search_path=''`,
 objetos qualificados, validação ativa via helpers Core e EXECUTE somente para
@@ -139,7 +152,7 @@ Escolheu-se offset sobre um conjunto **conferido por conteúdo**, em vez de curs
 isolado: cursor evita deslocamento de posição, mas sozinho não detecta mudanças
 de valor, exclusão ou escopo durante a leitura. O SHA-256 do JSONB canônico cobre
 linhas, IDs, versões, valores, datas, motivos, catálogo, visibilidade de ajustes,
-modo e filtros; timestamps de requisição ficam fora do digest. Cada página refaz
+modo, filtros e nome do criador; timestamps de requisição ficam fora do digest. Cada página refaz
 o conjunto limitado e exige o token original. Chamada final no offset total faz
 a mesma revalidação depois de gerar o arquivo. O cliente também verifica ordem,
 unicidade, avanço, quantidades e reconciliação independente em BigInt.
@@ -170,16 +183,30 @@ aprovada; o erro atual é explícito e o limite fica pendente do aceite operacio
 Esses limites delimitam processamento em memória; não são promessa de consumo
 máximo do navegador, pois o writer mantém dados/XML/ZIP intermediários. Homologar
 hardware e bases representativas antes de uso real. Downloads usam ObjectURL,
-âncora temporária e revogação em 30s; nome fixo com modalidade e timestamp numérico,
-sem nome de pessoa/unidade ou caminhos locais. O navegador define onde salvar.
+âncora temporária e revogação em 30s; nome sem acentos/espaços, em minúsculas:
+`historico-filtrado-dd-mm-aaaa-dd-mm-aaaa-XXtotal.xlsx` ou
+`historico-completo-dd-mm-aaaa-dd-mm-aaaa-XXtotal.xlsx`, sem nomes de pessoas/unidades.
+`XXtotal` conta apenas lançamentos, nunca ajustes nem a linha de total.
+No filtrado, datas explícitas da consulta são preservadas. Extremos abertos e
+histórico completo usam os limites dos dados exportados; ajustes abrangem até
+o último dia de sua competência. Sem lançamento, ajustes ainda resultam em
+`0total`; se não houver qualquer dado, a UI não baixa arquivo. O helper isolado
+usa a data de geração em São Paulo quando não há extremos disponíveis. O navegador define onde salvar.
 
 ## Formato e precisão
 
 | Aba | Colunas |
 | --- | --- |
-| Lançamentos | Data civil dd/mm/aaaa; unidade; código; forma; valor BRL; valor exato textual BRL; UUID do lançamento; UUID da unidade; versão; atualização em America/Sao_Paulo |
+| Lançamentos | Data civil dd/mm/aaaa; unidade; código; forma; valor BRL; valor exato textual BRL; Lançado por; última atualização em America/Sao_Paulo |
 | Ajustes mensais (se houver autorizados) | Competência mm/aaaa, sem dia inventado; unidade; código; forma; valor do ajuste BRL; valor exato textual BRL; justificativa; UUID do ajuste; UUID da unidade |
 | Resumo | Modalidade; datas aplicadas; formas; geração/fuso; unidades com estado e cobertura de ajustes; quantidades; limites disponíveis de lançamentos/competências; totais separados e consolidado; reconciliação; consistência e limitações |
+
+A aba principal tem título institucional em verde, subtítulo, faixa com modalidade,
+quantidade e geração, cabeçalhos verdes com texto branco, bordas leves, linhas
+alternadas e quatro linhas superiores congeladas. A linha **Total exportado**
+contém somente o total de lançamentos; ajustes e consolidado ficam no Resumo.
+A coluna textual **Valor exato (BRL)** foi mantida para preservar a precisão aceita;
+não contém IDs ou metadados técnicos. Resumo/ajustes usam o mesmo cabeçalho verde.
 
 No SQL, somas `numeric` exatas de **somente ativos** e ajustes autorizados. JSON usa
 strings canônicas com duas casas. JavaScript soma/verifica exclusivamente `BigInt`
@@ -211,7 +238,7 @@ Testes abrem o ZIP/XLSX e rejeitam tags `<f>`, hyperlinks, vínculos externos e 
 | Banco em memória | `tests/sales-export-database.test.ts`: migrations reais, identidade ativa, global/A/A+B, negação de C/UUID inexistente, unidade inativa, read sem export, dashboard+export sem read, escopos distintos, revogação, inserts/updates/deletes/ajustes/catálogo entre páginas, limites e somas exatas |
 | API | `tests/sales-export-api.test.ts`: paginação, contrato/tipos, duplicações/ordem, totais inconsistentes, cancelamento, token alterado, sessão expirada e erros sem detalhes SQL |
 | XLSX real | `tests/sales-export-workbook.test.ts`: writer instalado + `read-excel-file`, XML interno, tipos, limites, injeção nos três campos, Unicode/controles, abas, datas/fuso e 20.000 linhas |
-| UI/download | `tests/sales-export-ui.test.tsx`, `tests/sales-export-download.test.ts`: aplicado vs rascunho, fim de mês, Stone, histórico sem filtros, negações, estados, recuperação, revogação final, troca de identidade e ObjectURL |
+| UI/download | `tests/sales-export-ui.test.tsx`, `tests/sales-export-download.test.ts`: aplicado vs rascunho, Dashboard sem exportação, ações após filtros, coluna do criador, nomes de arquivos, Stone, histórico sem filtros, negações, estados, recuperação, revogação final, troca de identidade e ObjectURL |
 | Chromium com transporte sintético | `tests/integration/sales-export-browser.mjs`: aplicação, writer, download e readback reais, API/Auth inteiramente interceptados, sem acesso a banco; executado localmente com PASS e adicionado antes da inicialização Supabase no CI |
 | PostgreSQL17 real no CI | matriz `sales-integration` acrescenta `export`, roda a mesma suíte de banco em serviço vazio do runner |
 | Auth/PostgREST/Chromium no CI | `tests/integration/sales-export.mjs`, guarda exclusiva de runner hospedado antes de ler configuração; JWTs reais, >1.000 registros, unidades autorizadas, mutação, bloqueio Core observado nas duas ordens e download/readback/XML pelo navegador |
@@ -263,10 +290,10 @@ serviços efêmeros. Não é prova de aplicação persistente nem de login em pr
 
 ## Limitações, reversão e próximo gate
 
-Pendente homologação humana no Excel/LibreOffice real, navegação responsiva,
+Pendente homologação humana no Excel/LibreOffice real, dispositivos físicos,
 download nos navegadores usados pela equipe, limites em hardware representativo,
-matriz de concessões reais, revisão dos ajustes/justificativas e da política de
-competências inteiras. A revisão do mantenedor deve aceitar os limites explícitos;
+matriz de concessões reais e revisão humana da apresentação final. O brief desta
+rodada registra limites, precisão e competências inteiras já aceitos pelo titular;
 volume que excede o limite não recebe alegação de histórico completo exportado.
 Sessão sem identidade/inválida é testada no transporte; códigos de expiração no
 adaptador. Não se declara ter aguardado expiração de um JWT real.
@@ -482,3 +509,100 @@ fix/ci-minimatch-audit-20261103
 `git ls-remote --heads origin` confirmou apenas `main` antes da criação da nova
 branch. `main` local atualizada por fast-forward e igual a `origin/main`. Branches
 locais foram preservadas; sem reset, force-push, remoção de arquivos ou worktrees.
+
+
+## Refinamentos finais — 04/11/2026
+
+**Brief:** continuação expressa da PR #98 a partir de `cc7b5e5`, sem VEN-05B.
+O mantenedor autorizou adicionalmente criar e aplicar a migration incremental
+necessária no notebook, preservando dados, RLS e precisão. C30/STAGING/PROD,
+merge e deploy continuam fora do escopo.
+
+### Nome do criador e compatibilidade
+
+`20261104122256_sales_entry_creator_name.sql` substitui somente as definições de
+`sales_entries_list` e `sales_export_page`, mantendo assinaturas, autorização,
+limites e grants. `created_by_name` é resolvido apenas para lançamentos já
+permitidos. Não cria tabela/coluna, não executa DML financeiro e não altera
+`sales_private.entry_json` ou o contrato das RPCs de escrita/detalhe.
+É o **nome atual do perfil criador**, não o último editor nem um snapshot histórico
+do nome. Renomeá-lo invalida o token de exportação. Perfil ausente/criador nulo
+resulta em **Não identificado** na UI/XLSX. O cliente também aceita campo ausente
+para compatibilidade temporária com ambientes anteriores; nesses ambientes o
+nome real depende da aplicação autorizada da migration.
+
+### Prova local e preservação
+
+Destino confirmado por Docker, binding `127.0.0.1:54322`, projeto
+`gaucha-gestao-local`, database `postgres`. Histórico anterior: 30 migrations,
+única pendência `20261104122256`. Aplicação: `supabase migration up --local`.
+Histórico posterior: **31 migrations**. SHA-256 da nova migration:
+`2c021ead34660709b1f7574926a1b05d1829c513cf9ea9fba612897eb8628282`. As duas RPCs preservam `SECURITY DEFINER`,
+`search_path=''`, anon sem EXECUTE e authenticated com EXECUTE.
+
+Backup privado anterior em `/tmp/ven05a-local-private/before.dump`, 1.019.926 bytes,
+SHA-256 `de7c4f8a365a7f3264fcd599701633c8de651746d3aa0df11851c8f0c84d72c7`;
+`pg_restore --list` e decodificação integral para `/dev/null` passaram.
+Hashes do JSON canônico e contagens das **14 tabelas Core/Vendas** permaneceram
+iguais após aplicação e validação. Nove lançamentos existentes foram conferidos
+na listagem e exportação sob `authenticated`, em transação revertida: nomes
+correspondem ao Core, sem novos dados expostos no arquivo. Nenhum dado existente
+foi apagado/reescrito. Não houve restauração em outro banco; o backup em `/tmp`
+é temporário e não substitui a política de recuperação do ambiente.
+
+Reversão: preservar a migration aplicada; se necessário, forward-fix que restaure
+as definições anteriores das duas funções, mantidas no diretório privado do backup.
+Não remover histórico, resetar banco ou modificar migrations aplicadas.
+
+### Evidências visuais e limites
+
+Chromium com transporte totalmente sintético: 1440, 1280, 768 e 390 px, sem
+overflow da página; tabela com região de rolagem própria. Ações entre filtros e
+tabela, alinhadas no desktop, coluna **Lançado por**, dois downloads com nome
+correto e Dashboard sem exportação: **PASS**. Escrita e download do XLSX e readback
+são reais; Auth/API desta prova são interceptados. A validação SQL local acima
+é separada; não se declara novo login real ou nova homologação humana.
+
+![Lançamentos em desktop, dados sintéticos](evidence/ven05a-refinements/lancamentos-desktop.png)
+
+![Lançamentos em mobile, dados sintéticos](evidence/ven05a-refinements/lancamentos-mobile.png)
+
+Os prints mencionados no brief não vieram como imagens neste anexo; o acabamento
+segue a direção textual e o comportamento legado já documentado. Excel, Google
+Sheets e LibreOffice interativos não foram abertos nesta rodada. Readback/XML não
+substituem homologação visual nesses aplicativos. Limites financeiros, volume e
+competências inteiras aceitos anteriormente foram preservados.
+
+Resultados dos checks desta rodada constam na PR #98, associados ao SHA enviado.
+
+
+### Checks locais desta rodada
+
+Base da rodada: `cc7b5e5`; alterações finais revisadas na mesma branch da PR #98.
+O SHA publicado e os checks GitHub Actions ficam registrados na descrição da PR.
+
+| Comando/prova | Resultado efetivamente observado |
+| --- | --- |
+| `npm run typecheck` | PASS |
+| `npm run lint` | PASS |
+| `npm test -- --maxWorkers=2` | **937 PASS / 67 arquivos**, 108,10s |
+| `npm run build` | PASS com configuração pública sintética; aviso já existente de chunk >500 kB |
+| `npm run verify:build` | PASS |
+| `npm audit --audit-level=moderate` | **0 vulnerabilidades** |
+| `node tests/integration/sales-export-browser.mjs` | PASS; quatro viewports, filtros aplicados, dois downloads e Dashboard sem exportação |
+| RPCs no banco local + hashes Core/Vendas | PASS, 9 lançamentos existentes e 14 tabelas preservadas |
+| PostgREST local após NOTIFY | Duas RPCs reconhecidas; anon recusado com `42501` |
+| Referências locais dos seis documentos alterados / `git diff --check` | PASS |
+
+O primeiro ensaio XLSX detectou que `.trim()` alterava o conteúdo de nomes não
+vazios: corrigido para preservar o texto e usar trim apenas para decidir o fallback.
+O teste negativo de perfis foi corrigido para esperar ocultação por RLS (zero
+linhas). A primeira suíte completa teve 935 PASS e uma expectativa antiga da
+listagem: ela foi atualizada para exigir também `created_by_name`; a execução
+completa final acima passou, incluindo histórico importado sem criador.
+
+O Chromium inicialmente não abriu por bibliotecas do sistema ausentes; três
+pacotes foram baixados e extraídos somente em `/tmp`, sem instalação no sistema.
+Executado com `LD_LIBRARY_PATH` temporário. O ensaio guardado em CI continua usando
+as dependências de navegador já previstas no workflow. Capturas com dados
+sintéticos podem ser reproduzidas definindo `VEN05A_ARTIFACT_DIR`.

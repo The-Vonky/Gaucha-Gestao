@@ -19,6 +19,8 @@ export type SalesEntry = {
   payment_method: PaymentMethod;
   amount: DecimalAmount;
   created_by: string | null;
+  /** Nome atual do perfil criador; ausente em ambientes anteriores à migration. */
+  created_by_name?: string | null;
   updated_by: string | null;
   created_at: string;
   updated_at: string;

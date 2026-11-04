@@ -4,7 +4,7 @@ export type ExportFilters = { from?: string; to?: string; unit_ids?: string[]; m
 export type ExportMode = "filtered" | "full";
 export type ExportRow = {
   kind: "entry" | "adjustment"; id: string; date: string; unit_id: string;
-  payment_method: PaymentMethod; amount: string; updated_at?: string; version?: number; reason?: string;
+  payment_method: PaymentMethod; amount: string; created_by_name?: string | null; updated_at?: string; version?: number; reason?: string;
 };
 export type ExportPage = {
   contract_version: 1; mode: ExportMode;

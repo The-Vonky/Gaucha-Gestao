@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { chromium } from "playwright";
 import { createServer } from "vite";
 import readExcelFile from "read-excel-file/node";
+import { dashboardFixture } from "../fixtures/sales-dashboard.ts";
 import { exportFixture, exportUnit } from "../fixtures/sales-export.ts";
 
 // Aplicação e writer reais, transporte inteiramente interceptado. Sem banco/Auth reais.
@@ -14,6 +15,7 @@ const payload = Buffer.from(JSON.stringify({ sub: user.id, aud: "authenticated",
 const session = { access_token: `eyJhbGciOiJIUzI1NiJ9.${payload}.synthetic`, refresh_token: "synthetic-refresh", token_type: "bearer", expires_in: 3600, user };
 const grants = ["sales.entry.read", "sales.dashboard.read", "sales.export.filtered", "sales.export.full"].map(permission => ({ permission, scope_type: "unit", unit_id: exportUnit, sector_id: null }));
 const report = exportFixture();
+const artifactDir = process.env.VEN05A_ARTIFACT_DIR;
 let browser, server, phase = "iniciar navegador";
 try {
   server = await createServer({ configFile: "apps/web/vite.config.ts", root: "apps/web", server: { host: "127.0.0.1", port: 0 } });
@@ -29,10 +31,11 @@ try {
     if (path === "/rest/v1/profiles") return reply({ id: user.id, display_name: "Exportação sintética", active: true });
     if (path.endsWith("/rpc/my_access")) return reply(grants);
     if (path.endsWith("/rpc/sales_operation_units")) return reply([{ ...report.units[0], can_read: true, can_create: false, can_edit: false, can_delete: false }]);
-    if (path.endsWith("/rpc/sales_entries_list")) return reply([]);
+    if (path.endsWith("/rpc/sales_entries_list")) return reply([{ ...report.rows[0], sale_date: report.rows[0].date }]);
+    if (path.endsWith("/rpc/sales_dashboard")) return reply(dashboardFixture());
     if (path.endsWith("/rpc/sales_export_page")) {
       const args = request.postDataJSON(), offset = args.p_offset;
-      return reply({ ...report, offset, next_offset: 2, rows: offset ? [] : report.rows });
+      return reply({ ...report, mode: args.p_mode, filters: { from: args.p_from, to: args.p_to, method: args.p_method }, offset, next_offset: 2, rows: offset ? [] : report.rows });
     }
     throw new Error(`Endpoint sintético inesperado: ${path}`);
   });
@@ -42,7 +45,23 @@ try {
   await page.getByLabel("Senha", { exact: true }).fill("Synthetic-browser-aA1!");
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   phase = "consulta aplicada";
-  await page.getByText("Nenhum lançamento encontrado", { exact: true }).waitFor();
+  await page.getByRole("columnheader", { name: "Lançado por", exact: true }).waitFor();
+  await page.getByRole("cell", { name: "Pessoa sintética Á 😀", exact: true }).waitFor();
+  if (artifactDir) await mkdir(artifactDir, { recursive: true });
+  for (const [name, width] of [["desktop", 1440], ["notebook", 1280], ["tablet", 768], ["mobile", 390]]) {
+    await page.setViewportSize({ width, height: 960 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Sem overflow da página em ${name}`);
+    const actions = page.getByRole("group", { name: "Ações dos lançamentos", exact: true });
+    assert.equal(await actions.getByRole("button").count(), 3);
+    const filterBox = await page.locator(".sales-filters").boundingBox(), actionBox = await actions.boundingBox(), tableBox = await page.locator(".table-scroll").boundingBox();
+    assert.ok(actionBox.y >= filterBox.y + filterBox.height && tableBox.y >= actionBox.y + actionBox.height, `Ações entre filtros e tabela em ${name}`);
+    if (name === "desktop") {
+      const boxes = await actions.getByRole("button").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().top));
+      assert.ok(boxes.every(top => Math.abs(top - boxes[0]) < 2), "Botões alinhados no desktop");
+    }
+    if (artifactDir) await page.screenshot({ path: `${artifactDir}/lancamentos-${name}.png`, fullPage: true });
+  }
+  await page.setViewportSize({ width: 1440, height: 960 });
   await page.locator('select[name="method"]').selectOption("PIX");
   phase = "gerar e baixar XLSX";
   const pending = page.waitForEvent("download", { timeout: 15000 });
@@ -52,12 +71,22 @@ try {
     page.locator(".sales-export [role=alert]").waitFor().then(async () => ({ error: await page.locator(".sales-export [role=alert]").textContent() })),
   ]);
   assert.ok(!outcome.error, outcome.error);
+  assert.equal(outcome.download.suggestedFilename(), "historico-filtrado-01-09-2026-30-09-2026-1total.xlsx");
   const bytes = await readFile(await outcome.download.path());
   const sheets = await readExcelFile(bytes);
   assert.deepEqual(sheets.map(s => s.sheet), ["Lançamentos", "Ajustes mensais", "Resumo"]);
-  assert.equal(sheets[0].data[1][5], "0.01");
+  assert.equal(sheets[0].data[4][5], "0.01");
   assert.equal(sheets[2].data.find(r => r[0] === "Total consolidado exato (BRL)")[1], "0.11");
-  console.log("VEN-05A browser sintético PASS: aplicação/writer/download/readback reais; sem acesso a banco.");
+  assert.equal(sheets[0].data[4][6], "Pessoa sintética Á 😀");
+  if (artifactDir) await writeFile(`${artifactDir}/exemplo-sintetico.xlsx`, bytes);
+  const fullDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Exportar histórico completo autorizado", exact: true }).click();
+  assert.equal((await fullDownload).suggestedFilename(), "historico-completo-01-09-2026-30-09-2026-1total.xlsx");
+  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/sales/dashboard`);
+  await page.getByText("Total financeiro do período", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /Exportar/ }).count(), 0);
+  if (artifactDir) await page.screenshot({ path: `${artifactDir}/dashboard-desktop.png`, fullPage: true });
+  console.log("VEN-05A browser sintético PASS: 4 viewports; criador; ambos downloads; dashboard sem exportação; aplicação/writer/download/readback reais; sem acesso a banco.");
 } catch (error) {
   console.error(`VEN-05A browser sintético falhou: ${phase}`);
   throw error; // Todo transporte desta prova é sintético e interceptado.

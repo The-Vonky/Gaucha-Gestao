@@ -20,3 +20,10 @@
 .sales-page .pager { flex-wrap: wrap; }
 @media (max-width: 1050px) { .sales-page .sales-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 540px) { .sales-page .sales-filters, .sales-form-fields { grid-template-columns: minmax(0, 1fr); } }
+
+.sales-entry-actions { margin-bottom: 1.5rem; }
+.sales-entry-actions > .actions { align-items: flex-start; }
+.sales-entry-actions .sales-export { display: contents; }
+.sales-entry-actions .sales-export > .actions { display: contents; }
+.sales-entry-actions .sales-export > p { flex-basis: 100%; margin: 0; }
+.sales-page td.sales-author { max-width: 18rem; overflow-wrap: anywhere; }

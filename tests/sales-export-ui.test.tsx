@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { can, type AccessGrant } from "../apps/web/src/core/auth/permissions";
 import { SalesExportActions } from "../apps/web/src/modules/sales/export/SalesExportActions";
@@ -49,7 +49,7 @@ describe("VEN-05A — controles e download", () => {
     expect(mocks.validateExport).toHaveBeenCalledWith(exportFixture(), { from: "2026-09-01", method: "Stone" });
     expect(mocks.exportBlob.mock.invocationCallOrder[0]).toBeLessThan(mocks.validateExport.mock.invocationCallOrder[0]);
     expect(mocks.validateExport.mock.invocationCallOrder[0]).toBeLessThan(mocks.downloadExport.mock.invocationCallOrder[0]);
-    expect(mocks.downloadExport).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/^vendas-periodo-filtrado-\d{14}\.xlsx$/));
+    expect(mocks.downloadExport).toHaveBeenCalledWith(expect.any(Blob), "historico-filtrado-01-09-2026-30-09-2026-1total.xlsx");
   });
   it("histórico ignora todos os filtros selecionados e usa modalidade própria", async () => {
     render(<SalesExportActions filters={{ from: "2026-09-01", unit_ids: [exportUnit], method: "Stone" }} />);
@@ -91,12 +91,33 @@ describe("VEN-05A — controles e download", () => {
     fireEvent.click(filtered()); await screen.findByText("Download iniciado.");
     expect(mocks.collectExport).toHaveBeenCalledWith("filtered", { from: "2026-09-01", to: "2026-09-30", method: "Stone" }, expect.any(Function));
   });
-  it("Dashboard usa recorte principal, fim de mês inclusivo e Stone sem PIX", async () => {
+  it("Dashboard não oferece exportação mesmo com todas as permissões", async () => {
     render(<MemoryRouter initialEntries={["/sales/dashboard?from=2026-09&to=2026-09"]}><SalesDashboardPage /></MemoryRouter>);
     await screen.findByText("Total financeiro do período", { exact: true });
-    fireEvent.click(screen.getByRole("radio", { name: "Stone + PIX", exact: true })); // ainda não aplicado
-    fireEvent.click(filtered()); await screen.findByText("Download iniciado.");
-    const d = dashboardFixture();
-    expect(mocks.collectExport).toHaveBeenCalledWith("filtered", { from: d.filters.from, to: "2026-09-30", unit_ids: d.filters.unit_ids, method: "Stone" }, expect.any(Function));
+    expect(screen.queryByRole("button", { name: /Exportar/ })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Exportação Excel de Vendas" })).toBeNull();
+    expect(mocks.collectExport).not.toHaveBeenCalled();
+  });
+  it("tabela mostra criador por nome e fallback sem e-mail", async () => {
+    mocks.listEntries.mockResolvedValue([
+      { id: "a", sale_date: "2026-09-01", unit_id: exportUnit, payment_method: "Stone", amount: "1.00", created_by_name: "Pessoa sintética" },
+      { id: "b", sale_date: "2026-09-02", unit_id: exportUnit, payment_method: "PIX", amount: "2.00", created_by_name: null },
+    ]);
+    render(<MemoryRouter><SalesPage /></MemoryRouter>);
+    await screen.findByRole("columnheader", { name: "Lançado por" });
+    expect(screen.getByRole("cell", { name: "Pessoa sintética" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "Não identificado" })).toBeTruthy();
+  });
+  it("ações dos lançamentos ficam entre filtros e tabela, fora do título", async () => {
+    render(<MemoryRouter><SalesPage /></MemoryRouter>);
+    await screen.findByText("Nenhum lançamento encontrado");
+    const group = screen.getByRole("group", { name: "Ações dos lançamentos" });
+    expect(within(group).getAllByRole("button").map(button => button.textContent)).toEqual([
+      "Novo lançamento", "Exportar período filtrado", "Exportar histórico completo autorizado",
+    ]);
+    const filters = screen.getByRole("button", { name: "Aplicar filtros" }).closest("form")!;
+    expect(filters.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(group.compareDocumentPosition(screen.getByText("Nenhum lançamento encontrado")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Lançamentos" }).parentElement?.contains(within(group).getByRole("button", { name: "Novo lançamento" }))).toBe(false);
   });
 });

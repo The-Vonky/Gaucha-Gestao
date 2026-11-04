@@ -4,10 +4,11 @@
 
 ```mermaid
 flowchart LR
-  UI["Lançamentos / Dashboard — filtros aplicados"] --> EXP["Exportação: período ou histórico autorizado"]
+  UI["Lançamentos — ações após filtros aplicados"] --> EXP["Exportação: período ou histórico autorizado"]
   EXP --> RPC["public.sales_export_page — cada página e conferência final"]
   RPC --> CORE["Core: perfil ativo + leitura + exportação por unidade"]
   CORE --> ENT["sales.entries ativos — privado"]
+  ENT --> NAME["Core: somente nome atual do criador no lançamento autorizado"]
   CORE --> DASH["Exigir também sales.dashboard.read para ajustes"]
   DASH --> ADJ["sales.legacy_monthly_adjustments — privado"]
   RPC --> CHECK["Conjunto limitado + SHA-256 + totais numeric como texto"]
@@ -18,7 +19,8 @@ flowchart LR
 ```
 
 [Contrato, permissões e limites](../modules/sales/VEN05A_EXCEL_EXPORT.md).
-Sem implantação ou operação em banco persistente; sem VEN-05B.
+Migrations VEN-05A aplicadas somente no notebook autorizado (03–04/11);
+sem STAGING/PROD ou VEN-05B.
 
 O fluxo de autorização de Vendas com catálogo de unidades vazio está no
 [diagrama MEL-01](../modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md#correção-funcional-e-ciclo-das-fixtures).

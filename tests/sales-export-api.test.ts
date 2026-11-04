@@ -24,8 +24,9 @@ describe("VEN-05A — transporte e reconciliação", () => {
     expect(mocks.rpc).toHaveBeenNthCalledWith(2, "sales_export_page", expect.objectContaining({ p_offset: 1, p_token: f.token }));
     expect(mocks.rpc).toHaveBeenLastCalledWith("sales_export_page", expect.objectContaining({ p_offset: 2, p_token: f.token }));
   });
-  it.each(["numeric", "decimal", "duplicate", "order", "count", "sum", "unit", "adjustment", "incomplete"])("recusa contrato inválido: %s", async kind => {
+  it.each(["numeric", "decimal", "duplicate", "order", "count", "sum", "unit", "adjustment", "incomplete", "author"])("recusa contrato inválido: %s", async kind => {
     const f = exportFixture();
+    if (kind === "author") f.rows[0].created_by_name = 42 as unknown as string;
     if (kind === "numeric") f.rows[0].amount = 0.01 as unknown as string;
     if (kind === "decimal") f.rows[0].amount = "0.001";
     if (kind === "duplicate") f.rows = [f.rows[0], f.rows[0]];

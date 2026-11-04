@@ -55,6 +55,37 @@ afterEach(async () => { await db.exec("rollback; reset role"); });
 afterAll(async () => { await db?.close(); });
 
 describe("VEN-05A — exportação autorizada em banco efêmero", () => {
+  it("nome do criador acompanha apenas lançamentos autorizados, sem e-mail ou novo identificador", async () => {
+    await owner(`update core.profiles set display_name='Criador sintético Á' where id='${uid(2)}';`);
+    await login(3);
+    const p = await full();
+    expect(p.rows.filter(r => r.kind === "entry").every(r => r.created_by_name === "Criador sintético Á")).toBe(true);
+    expect(p.rows.some(r => r.unit_id !== A)).toBe(false);
+    expect(p.rows.filter(r => r.kind === "entry").every(r => !("created_by" in r) && !("email" in r))).toBe(true);
+    const listed = (await db.query<{ rows: { created_by_name: string; unit_id: string }[] }>("select public.sales_entries_list() rows")).rows[0].rows;
+    expect(listed.length).toBeGreaterThan(0);
+    expect(listed.every(r => r.created_by_name === "Criador sintético Á" && r.unit_id === A)).toBe(true);
+    await denied(() => db.query("select public.sales_entries_list(p_unit=>$1)", [C]));
+    expect((await db.query("select display_name from core.profiles where id=$1", [uid(2)])).rows).toEqual([]);
+    await owner(`update core.profiles set active=false where id='${uid(2)}';`);
+    await login(3);
+    expect((await full()).rows.find(r => r.kind === "entry")?.created_by_name).toBe("Criador sintético Á");
+  });
+  it("histórico importado sem criador retorna null sem perder o lançamento", async () => {
+    await owner(`insert into sales.import_batches(id,source_revision,manifest_sha256) values('${uid(99)}','teste-criador-ausente',repeat('a',64));
+      insert into sales.entries(sale_date,unit_id,payment_method,amount,source,source_ref,import_batch_id,created_by)
+      values('2026-10-01','${A}','Stone',1,'legacy_import','teste-criador-ausente','${uid(99)}',null);`);
+    await login(3);
+    expect((await full()).rows.find(r => r.date === "2026-10-01")?.created_by_name).toBeNull();
+    const listed = (await db.query<{ rows: { sale_date: string; created_by_name: string | null }[] }>("select public.sales_entries_list() rows")).rows[0].rows;
+    expect(listed.find(r => r.sale_date === "2026-10-01")?.created_by_name).toBeNull();
+  });
+  it("renomear o perfil criador invalida a preparação pelo token", async () => {
+    await login(3); const p = await full();
+    await owner(`update core.profiles set display_name='Criador renomeado' where id='${uid(2)}';`);
+    await login(3);
+    await denied(() => page(["full", null, null, null, null, 1, 500, p.token]), "40001");
+  });
   it("global: histórico inclui unidade inativa e reconcilia sem perder centavo", async () => {
     await login(1);
     const p = await full(); reconcile(p);

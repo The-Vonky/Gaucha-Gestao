@@ -28,7 +28,7 @@ async function user(name, grants, units) {
   const email = `ven05a-${tag}-${name}@example.test`;
   const res = await fetch(`${config.API_URL}/auth/v1/admin/users`, { method: "POST", headers: {
     apikey: config.SERVICE_ROLE_KEY, Authorization: `Bearer ${config.SERVICE_ROLE_KEY}`, "Content-Type": "application/json",
-  }, body: JSON.stringify({ email, password, email_confirm: true }) });
+  }, body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { display_name: `Pessoa sintética ${name}` } }) });
   assert.equal(res.status, 200, "Auth sintético no CI");
   const id = (await res.json()).id;
   const role = (await db.query("insert into core.roles(key,name) values($1,$1) returning id", [`ven05a-${tag}-${name}`])).rows[0].id;
@@ -134,10 +134,11 @@ try {
   ]);
   assert.ok(!outcome.error, outcome.error); // Somente mensagem já sanitizada pela UI.
   const download = outcome.download;
-  assert.match(download.suggestedFilename(), /^vendas-periodo-filtrado-\d{14}\.xlsx$/);
+  assert.match(download.suggestedFilename(), /^historico-filtrado-01-09-2026-30-09-2026-1total\.xlsx$/);
   const bytes = await readFile(await download.path()); const sheets = await readExcelFile(bytes, { trim: false });
   assert.deepEqual(sheets.map(s => s.sheet), ["Lançamentos", "Ajustes mensais", "Resumo"]);
-  assert.equal(sheets[0].data.length, 2); assert.equal(sheets[0].data[1][3], "Stone"); assert.equal(sheets[0].data[1][5], "0.01");
+  assert.equal(sheets[0].data.length, 6); assert.equal(sheets[0].data[4][3], "Stone"); assert.equal(sheets[0].data[4][5], "0.01");
+  assert.equal(sheets[0].data[4][6], "Pessoa sintética global");
   assert.equal(sheets[1].data[1][0], "09/2026"); assert.equal(sheets[1].data[1][5], "0.10");
   assert.equal(sheets[2].data.find(r => r[0] === "Total consolidado exato (BRL)")[1], "0.11");
   for (const [name, data] of Object.entries(unzipSync(bytes))) if (/\.xml$|\.rels$/.test(name)) assert.doesNotMatch(strFromU8(data), /<f(?:\s|>)|TargetMode="External"|<hyperlink/i);
