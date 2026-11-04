@@ -158,12 +158,10 @@ export function SalesPage() {
       <div className="actions"><button className="primary" type="submit">Aplicar filtros</button><button type="button" onClick={refresh}>Atualizar consulta</button></div>
     </form> : !read && <Notice>Seu acesso não inclui consulta de lançamentos. As ações disponíveis seguem suas permissões.</Notice>}
     <div className="sales-entry-actions" role="group" aria-label="Ações dos lançamentos">
-      <div className="actions">
-        <button className="primary" disabled={!canCreate} aria-describedby={createBlock ? "sales-create-block" : undefined} onClick={() => { if (canCreate) { setSuccess(""); setActionError(""); setEditor({}); } }}>Novo lançamento</button>
-        {read && <SalesExportActions filters={{ from: from || undefined, to: to || undefined,
-          unit_ids: unit ? [unit] : undefined, method: method as PaymentMethod || undefined }}
-          blocked={!current || !!current.error || !currentCatalog || !!currentCatalog.error} />}
-      </div>
+      <SalesExportActions filters={{ from: from || undefined, to: to || undefined,
+        unit_ids: unit ? [unit] : undefined, method: method as PaymentMethod || undefined }}
+        blocked={!read || !current || !!current.error || !currentCatalog || !!currentCatalog.error}
+        endAction={<button className="primary" disabled={!canCreate} aria-describedby={createBlock ? "sales-create-block" : undefined} onClick={() => { if (canCreate) { setSuccess(""); setActionError(""); setEditor({}); } }}>Novo lançamento</button>} />
     </div>
     {!current ? <LoadingState label="Carregando Vendas…" /> : current.error ? <>
       <Notice error>{current.error}</Notice><button onClick={refresh}>Tentar novamente</button>

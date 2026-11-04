@@ -23,6 +23,8 @@ const filtered = () => screen.getByRole("button", { name: "Exportar período fil
 const full = () => screen.getByRole("button", { name: "Exportar histórico completo autorizado" });
 function deferred<T>() { let resolve!: (value: T) => void; return { promise: new Promise<T>(r => { resolve = r; }), resolve: (value: T) => resolve(value) }; }
 beforeEach(() => {
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+  HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
   vi.resetAllMocks(); auth.profile.active = true; auth.loading = false; auth.error = ""; auth.session.user.id = "export-user"; auth.grants = all();
   mocks.collectExport.mockResolvedValue(exportFixture()); mocks.validateExport.mockResolvedValue(undefined); mocks.exportBlob.mockResolvedValue(new Blob(["synthetic"]));
   mocks.listEntries.mockResolvedValue([]);
@@ -108,13 +110,27 @@ describe("VEN-05A — controles e download", () => {
     expect(screen.getByRole("cell", { name: "Pessoa sintética" })).toBeTruthy();
     expect(screen.getByRole("cell", { name: "Não identificado" })).toBeTruthy();
   });
+  it("cadastro continua disponível sem permissão de exportação", async () => {
+    auth.grants = [grant("sales.entry.read"), grant("sales.entry.create")];
+    mocks.listSalesUnits.mockResolvedValue([{ id: exportUnit, code: "A", name: "Unidade A", active: true, can_read: true, can_create: true, can_edit: false, can_delete: false }]);
+    render(<MemoryRouter><SalesPage /></MemoryRouter>);
+    await screen.findByText("Nenhum lançamento encontrado");
+    expect(screen.queryByRole("group", { name: "Exportação Excel de Vendas" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Novo lançamento" }));
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+  });
   it("ações dos lançamentos ficam entre filtros e tabela, fora do título", async () => {
     render(<MemoryRouter><SalesPage /></MemoryRouter>);
     await screen.findByText("Nenhum lançamento encontrado");
     const group = screen.getByRole("group", { name: "Ações dos lançamentos" });
     expect(within(group).getAllByRole("button").map(button => button.textContent)).toEqual([
-      "Novo lançamento", "Exportar período filtrado", "Exportar histórico completo autorizado",
+      "Exportar período filtrado", "Exportar histórico completo autorizado", "Novo lançamento",
     ]);
+    const exportGroup = within(group).getByRole("group", { name: "Exportação Excel de Vendas" });
+    const createGroup = within(group).getByRole("group", { name: "Cadastro de lançamento" });
+    expect(within(exportGroup).getAllByRole("button")).toHaveLength(2);
+    expect(within(createGroup).getByRole("button", { name: "Novo lançamento" })).toBeTruthy();
+    expect(exportGroup.contains(within(createGroup).getByRole("button"))).toBe(false);
     const filters = screen.getByRole("button", { name: "Aplicar filtros" }).closest("form")!;
     expect(filters.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(group.compareDocumentPosition(screen.getByText("Nenhum lançamento encontrado")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

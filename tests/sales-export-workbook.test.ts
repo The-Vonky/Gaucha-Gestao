@@ -18,26 +18,30 @@ async function inspect(report: SalesExport) {
     expect(xml, name).not.toMatch(/<f(?:\s|>)/i);
     expect(xml, name).not.toMatch(/<hyperlinks?|TargetMode="External"|oleObject|ddeLink|externalLink|vbaProject/i);
   }
-  return { parsed, buffer, xml: new TextDecoder().decode(archive["xl/worksheets/sheet1.xml"]) };
+  return { parsed, buffer, styles: new TextDecoder().decode(archive["xl/styles.xml"]), xml: new TextDecoder().decode(archive["xl/worksheets/sheet1.xml"]) };
 }
 describe("VEN-05A — XLSX real e precisão de readback", () => {
   it("abas, colunas, competência sem dia, fuso e metadados", async () => {
-    const report = exportFixture(), { parsed, xml } = await inspect(report);
+    const report = exportFixture(), { parsed, xml, styles } = await inspect(report);
     expect(parsed.map(s => s.sheet)).toEqual(["Lançamentos", "Ajustes mensais", "Resumo"]);
-    expect(parsed[0].data[4].slice(0, 6)).toEqual(["01/09/2026", report.units[0].name, "A", "Stone", 0.01, "0.01"]);
+    expect(parsed[0].data[4].slice(0, 5)).toEqual(["01/09/2026", report.units[0].name, "A", "Stone", 0.01]);
     expect(parsed[1].data[1][0]).toBe("09/2026");
     const meta = parsed[2].data;
-    expect(meta.find(r => r[0] === "Total consolidado exato (BRL)")?.[1]).toBe("0.11");
+    expect(meta.find(r => r[0] === "Total consolidado (R$)")?.[1]).toBe(0.11);
     expect(meta.find(r => r[0] === "Gerado em (America/Sao_Paulo)")?.[1]).toContain("02/11/2026");
     expect(meta.find(r => r[0] === "Gerado em (America/Sao_Paulo)")?.[1]).toContain("23:59:59");
-    expect(parsed[0].data[3]).toEqual(["Data", "Unidade", "Código da unidade", "Forma de pagamento", "Valor (R$)", "Valor exato (BRL)", "Lançado por", "Última atualização (America/Sao_Paulo)"]);
-    expect(parsed[0].data[4][6]).toBe("Pessoa sintética Á 😀");
+    expect(parsed[0].data[3]).toEqual(["Data", "Unidade", "Código da unidade", "Forma de pagamento", "Valor (R$)", "Lançado por", "Última atualização (America/Sao_Paulo)"]);
+    expect(parsed[0].data[4][5]).toBe("Pessoa sintética Á 😀");
     expect(parsed[0].data.at(-1)?.[0]).toBe("Total exportado");
     expect(parsed[0].data.at(-1)?.[4]).toBe(0.01);
-    expect(parsed[0].data.at(-1)?.[5]).toBe("0.01");
+    expect(parsed[0].data[4]).toHaveLength(7);
+    expect(parsed[1].data[0]).toEqual(["Competência", "Unidade", "Código da unidade", "Forma de pagamento", "Valor do ajuste (R$)", "Justificativa", "ID do ajuste", "ID da unidade"]);
+    expect(parsed[1].data[1][4]).toBe(0.10);
+    expect(meta.filter(r => /Total/.test(String(r[0]))).map(r => r[0])).toEqual(["Total de lançamentos (R$)", "Total de ajustes (R$)", "Total consolidado (R$)"]);
+    expect(styles).toContain('formatCode="&quot;R$&quot; #,##0.00"');
     expect(xml).toContain('state="frozen"');
     expect(xml).toContain('ySplit="4"');
-    expect(xml).toContain('mergeCell ref="A1:H1"');
+    expect(xml).toContain('mergeCell ref="A1:G1"');
     expect(xml).toMatch(/<c[^>]*r="E5"[^>]*><v>0\.01<\/v>/);
     expect(xml).toMatch(/<c[^>]*r="F5"[^>]*t="(?:s|inlineStr)"/);
     expect(exportFilename(report)).toBe("historico-filtrado-01-09-2026-30-09-2026-1total.xlsx");
@@ -45,11 +49,11 @@ describe("VEN-05A — XLSX real e precisão de readback", () => {
   });
   it.each(["0.01", "0.10", "0.29", "1.15", "999999999999.99", "9999999999999.99", "10000000000000.01", "99999999999999.99", "19999999999999999.98"])("roundtrip de %s e política de 15 algarismos", async value => {
     const cell = moneyCell(value);
-    const b = await writeExcelFile([{ sheet: "Precisão", data: [[cell, textCell(value)]] }]).toBuffer();
+    const b = await writeExcelFile([{ sheet: "Precisão", data: [[cell]] }]).toBuffer();
     const data = (await readExcelFile(b))[0].data;
     const readback = typeof data[0][0] === "number" ? data[0][0].toFixed(2) : String(data[0][0]);
     expect(cents(readback)).toBe(cents(value));
-    expect(data[0][1]).toBe(value);
+    expect(data[0]).toHaveLength(1);
     expect(cell?.type).toBe(cents(value).toString().length > 15 ? String : Number);
   });
   it.each(["=HYPERLINK(\"https://evil.test\",\"x\")", "+cmd", "-1+1", "@SUM(A1)", " \t=1+1", "\r\n+cmd", "\u0000\u0001\u000b=1", "Unicode Á 汉字 😀 �", "X".repeat(8000)])("texto de unidade/código/justificativa é dado: %s", async value => {
@@ -59,9 +63,9 @@ describe("VEN-05A — XLSX real e precisão de readback", () => {
     const expected = textCell(value)?.value;
     expect(parsed[0].data[4][1]).toBe(expected);
     expect(parsed[0].data[4][2]).toBe(expected);
-    expect(parsed[0].data[4][6]).toBe(expected);
-    expect(parsed[1].data[1][6]).toBe(expected);
-    expect(typeof parsed[1].data[1][6]).toBe("string");
+    expect(parsed[0].data[4][5]).toBe(expected);
+    expect(parsed[1].data[1][5]).toBe(expected);
+    expect(typeof parsed[1].data[1][5]).toBe("string");
   });
   it("sem ajuste omite a aba; vazio mantém cabeçalho e resumo de zero", async () => {
     const report = exportFixture(); report.rows = [report.rows[0]];
@@ -83,7 +87,8 @@ describe("VEN-05A — XLSX real e precisão de readback", () => {
     expect(amounts).toHaveLength(n);
     const total = amounts.reduce((sum, r) => sum + cents((r[4] as number).toFixed(2)), 0n);
     expect(total).toBe(cents(report.total));
-    expect(amounts.every(r => cents(String(r[5])) === cents((r[4] as number).toFixed(2)))).toBe(true);
+    expect(amounts.every(r => r.length === 7 && cents((r[4] as number).toFixed(2)) === 99999999999999n)).toBe(true);
+    expect(parsed[0].data.at(-1)?.[4]).toBe(report.entry_total);
     const meta = parsed.at(-1)!.data;
     expect(meta.find(r => r[0] === "Total consolidado (R$)")?.[1]).toBe(report.total);
     expect(buffer.byteLength).toBeLessThan(20 * 1024 * 1024);
@@ -107,7 +112,7 @@ describe("VEN-05A — XLSX real e precisão de readback", () => {
   });
   it.each([undefined, null, "", "   "])("nome indisponível %s usa fallback neutro", async name => {
     const report = exportFixture(); report.rows[0].created_by_name = name;
-    expect((await inspect(report)).parsed[0].data[4][6]).toBe("Não identificado");
+    expect((await inspect(report)).parsed[0].data[4][5]).toBe("Não identificado");
   });
   it("não gera arquivo com total inconsistente", () => {
     const report = exportFixture(); report.total = "0.12";

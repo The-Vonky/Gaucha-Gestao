@@ -1,5 +1,9 @@
 # VEN-05A — Exportação Excel autorizada
 
+**Correção final de apresentação em 04/11/2026:** somente uma coluna monetária
+por registro/total, com fallback exato na própria célula; exportações à esquerda
+e cadastro isolado à direita. [Registro final](#uma-coluna-monetária-e-ações-separadas--04112026).
+
 **Refinamentos de 04/11/2026:** exportação somente em Lançamentos; ações após os
 filtros, nomes de arquivo legíveis, planilha com total destacado e coluna
 **Lançado por**. Migration incremental `20261104122256` aplicada somente no
@@ -51,8 +55,10 @@ internals de outro módulo e sem alterar Auditoria ou dependências.
 Os controles de exportação aparecem **somente em Lançamentos**, quando há
 interseção de leitura detalhada e capacidade de exportação. O Dashboard não tem
 entrada visual de exportação. As permissões da tela e do arquivo continuam
-independentes. Ações entre filtros e tabela: **Novo lançamento**, **Exportar período
-filtrado**, **Exportar histórico completo autorizado**. O retorno ao dashboard
+independentes. Ações entre filtros e tabela: **Exportar período filtrado** e **Exportar histórico
+completo autorizado** no grupo esquerdo; **Novo lançamento** isolado à direita.
+A explicação fica abaixo da linha de botões. Em telas menores os grupos se
+reorganizam, mantendo a distinção entre exportar e cadastrar. O retorno ao dashboard
 permanece no cabeçalho; criação mantém os bloqueios de capacidade/unidade ativa.
 
 - **Exportar período filtrado:** datas inclusivas, unidades e Stone/PIX da URL
@@ -197,16 +203,16 @@ usa a data de geração em São Paulo quando não há extremos disponíveis. O n
 
 | Aba | Colunas |
 | --- | --- |
-| Lançamentos | Data civil dd/mm/aaaa; unidade; código; forma; valor BRL; valor exato textual BRL; Lançado por; última atualização em America/Sao_Paulo |
-| Ajustes mensais (se houver autorizados) | Competência mm/aaaa, sem dia inventado; unidade; código; forma; valor do ajuste BRL; valor exato textual BRL; justificativa; UUID do ajuste; UUID da unidade |
+| Lançamentos | Data civil dd/mm/aaaa; unidade; código; forma; valor BRL (numérico seguro ou texto decimal exato); Lançado por; última atualização em America/Sao_Paulo |
+| Ajustes mensais (se houver autorizados) | Competência mm/aaaa, sem dia inventado; unidade; código; forma; valor do ajuste BRL (numérico seguro ou texto decimal exato); justificativa; UUID do ajuste; UUID da unidade |
 | Resumo | Modalidade; datas aplicadas; formas; geração/fuso; unidades com estado e cobertura de ajustes; quantidades; limites disponíveis de lançamentos/competências; totais separados e consolidado; reconciliação; consistência e limitações |
 
 A aba principal tem título institucional em verde, subtítulo, faixa com modalidade,
 quantidade e geração, cabeçalhos verdes com texto branco, bordas leves, linhas
 alternadas e quatro linhas superiores congeladas. A linha **Total exportado**
 contém somente o total de lançamentos; ajustes e consolidado ficam no Resumo.
-A coluna textual **Valor exato (BRL)** foi mantida para preservar a precisão aceita;
-não contém IDs ou metadados técnicos. Resumo/ajustes usam o mesmo cabeçalho verde.
+Cada registro tem uma única coluna monetária; **Valor exato (BRL)** foi removida.
+Totais no Resumo também aparecem uma única vez, sem linhas monetárias auxiliares. Resumo/ajustes usam o mesmo cabeçalho verde.
 
 No SQL, somas `numeric` exatas de **somente ativos** e ajustes autorizados. JSON usa
 strings canônicas com duas casas. JavaScript soma/verifica exclusivamente `BigInt`
@@ -215,8 +221,8 @@ em centavos. Sem `Number`, `parseFloat` ou fórmulas para acumular valores.
 A única conversão para `Number` ocorre ao serializar uma célula: até **15 dígitos
 no inteiro de centavos**, roundtrip de `toFixed(2)` e de `toPrecision(15)` devem
 preservar a string canônica. Se não preservarem, a célula é **String decimal**, sem
-arredondamento silencioso. Cada linha acompanha também coluna textual exata BRL.
-Totais têm contraparte textual explícita no Resumo. Valores individuais até
+arredondamento silencioso. A própria célula única mantém o texto decimal exato
+quando a conversão numérica não é segura, inclusive no total final e no Resumo. Valores individuais até
 `999999999999.99` permanecem numéricos e em centavos exatos no readback; somas maiores
 podem virar texto. BRL textual usa ponto decimal canônico, identificado no cabeçalho.
 
@@ -513,6 +519,9 @@ locais foram preservadas; sem reset, force-push, remoção de arquivos ou worktr
 
 ## Refinamentos finais — 04/11/2026
 
+Registro da primeira rodada; a correção de apresentação abaixo substitui a coluna
+auxiliar e o alinhamento conjunto, preservando a migration e as provas de dados.
+
 **Brief:** continuação expressa da PR #98 a partir de `cc7b5e5`, sem VEN-05B.
 O mantenedor autorizou adicionalmente criar e aplicar a migration incremental
 necessária no notebook, preservando dados, RLS e precisão. C30/STAGING/PROD,
@@ -554,7 +563,7 @@ Reversão: preservar a migration aplicada; se necessário, forward-fix que resta
 as definições anteriores das duas funções, mantidas no diretório privado do backup.
 Não remover histórico, resetar banco ou modificar migrations aplicadas.
 
-### Evidências visuais e limites
+### Evidências visuais e limites da primeira rodada (layout posteriormente ajustado)
 
 Chromium com transporte totalmente sintético: 1440, 1280, 768 e 390 px, sem
 overflow da página; tabela com região de rolagem própria. Ações entre filtros e
@@ -606,3 +615,82 @@ pacotes foram baixados e extraídos somente em `/tmp`, sem instalação no siste
 Executado com `LD_LIBRARY_PATH` temporário. O ensaio guardado em CI continua usando
 as dependências de navegador já previstas no workflow. Capturas com dados
 sintéticos podem ser reproduzidas definindo `VEN05A_ARTIFACT_DIR`.
+
+
+## Uma coluna monetária e ações separadas — 04/11/2026
+
+**Autoridade:** novo brief do mantenedor após testar e validar as exportações no
+ambiente de desenvolvimento; continuação da PR #98 a partir de `4209858`.
+A validação relatada pelo titular não é review formal APPROVED ou autorização de
+merge/deploy. Sem VEN-05B, alterações SQL, migrations ou operações persistentes
+nesta rodada.
+
+### Estrutura final e precisão
+
+Lançamentos: **Data, Unidade, Código da unidade, Forma de pagamento, Valor (R$),
+Lançado por, Última atualização (America/Sao_Paulo)**. São sete colunas, com faixas
+superiores mescladas A:G, largura do autor/atualização e zebra ajustadas. Total
+exportado permanece na coluna E, somente para lançamentos.
+
+Ajustes mensais: competência, unidade, código, forma, valor do ajuste (R$),
+justificativa, ID do ajuste e ID da unidade. Somente uma coluna monetária.
+Resumo mantém um total de lançamentos, um de ajustes e um consolidado, com contexto,
+cobertura e reconciliação; removidas somente as três duplicações monetárias exatas.
+
+`moneyCell()` mantém a mesma proteção: conversão numérica apenas até 15 algarismos
+nos centavos e roundtrip exato de duas casas/15 algarismos. Valores não seguros
+permanecem como **String decimal exata na própria coluna**, com ponto decimal,
+sem notação científica, truncamento ou arredondamento silencioso. O Resumo explica
+essa representação em BRL. SQL, BigInt, reconciliação e limites permanecem intactos.
+Não há soma financeira em Number, fórmulas ou coluna auxiliar escondida.
+
+A prova isolada de precisão escreve e relê **uma única célula**, comparando-a à
+string original por BigInt. A prova de 20.000 linhas confere cada valor da coluna E,
+soma em centavos, total exportado e total consolidado textual quando grande.
+Nenhum teste de precisão anterior foi removido.
+
+### Ações e responsividade
+
+`SalesExportActions` aceita uma ação opcional à direita (`endAction`). Toolbar flex
+com dois grupos acessíveis: exportação à esquerda e cadastro à direita. Parágrafos,
+status e erro ficam abaixo da toolbar. Nenhuma regra `display: contents` permanece
+nessa área. Sem exportação autorizada, o cadastro continua disponível conforme
+suas próprias permissões. Loading, bloqueios, retry, filtros aplicados e revogação
+mantêm a implementação anterior.
+
+Chromium: **1440, 1024, 768 e 375 px**; verifica ausência de overflow externo,
+posição da área entre filtros e tabela, exportação na extremidade esquerda e
+cadastro na direita na mesma linha em 1440 px, explicação abaixo, e dois downloads
+com readback. Em 1024 px os grupos já podem quebrar para preservar espaço; no mobile,
+exportações ficam juntas acima e cadastro separado à direita.
+
+![Ações separadas em 1440 px — dados sintéticos](evidence/ven05a-one-money/lancamentos-desktop.png)
+
+![Ações separadas em 1024 px — dados sintéticos](evidence/ven05a-one-money/lancamentos-notebook.png)
+
+![Ações separadas em 768 px — dados sintéticos](evidence/ven05a-one-money/lancamentos-tablet.png)
+
+![Ações separadas em 375 px — dados sintéticos](evidence/ven05a-one-money/lancamentos-mobile.png)
+
+Aplicação/writer/download/readback são reais; transporte Auth/API do ensaio local
+é sintético e interceptado. Não houve nova abertura visual interativa em Excel,
+Google Sheets ou LibreOffice nesta rodada. Os checks do novo SHA são registrados
+na PR #98; as evidências anteriores não são apresentadas como resultados novos.
+
+
+Resultados locais desta correção (código revisado a partir de `4209858`):
+
+| Validação | Resultado |
+| --- | --- |
+| Typecheck e lint | PASS |
+| XLSX/UI/regressão operacional UI | **92 PASS / 3 arquivos** |
+| `npm test -- --maxWorkers=2` | **938 PASS / 67 arquivos**, 119,91s |
+| Build e verify:build | PASS, configuração pública sintética; aviso informativo de chunk >500 kB |
+| `npm audit --audit-level=moderate` | **0 vulnerabilidades** |
+| Chromium, quatro viewports e dois XLSX com readback | PASS |
+| Links/imagens deste documento e `git diff --check` | PASS |
+
+O novo teste de abertura do cadastro exigiu reproduzir o stub `showModal/close`
+já utilizado nos testes operacionais, pois jsdom não implementa esses métodos.
+O comportamento real da aplicação não foi alterado para acomodar o ensaio.
+SHA publicado e resultados GitHub Actions desta correção ficam registrados na PR.

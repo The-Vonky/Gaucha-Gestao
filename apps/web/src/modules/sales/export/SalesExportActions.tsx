@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "../../../core/auth/AuthProvider";
 import { collectExport, exportMessage, validateExport } from "./api";
 import { downloadExport, exportFilename } from "./download";
 import { exportBlob } from "./workbook";
 import type { ExportFilters, ExportMode } from "./types";
 
-export function SalesExportActions({ filters, blocked = false }: { filters: ExportFilters; blocked?: boolean }) {
+export function SalesExportActions({ filters, blocked = false, endAction }: { filters: ExportFilters; blocked?: boolean; endAction?: ReactNode }) {
   const auth = useAuth();
   const active = !!auth.session && !!auth.profile?.active && !auth.loading && !auth.error;
   const canUnit = (permission: string, id: string) => auth.can(permission, { unit_id: id });
@@ -46,14 +46,20 @@ export function SalesExportActions({ filters, blocked = false }: { filters: Expo
     } catch (err) { if (!cancelled()) { setStatus(""); setError(exportMessage(err)); } }
     finally { if (!cancelled()) { running.current = false; setBusy(false); } }
   }
-  if (!filtered && !full) return null;
-  return <div className="sales-export" role="group" aria-label="Exportação Excel de Vendas">
-    <div className="actions">
-      {filtered && <button type="button" disabled={busy || blocked} onClick={() => void prepare("filtered")}>Exportar período filtrado</button>}
-      {full && <button type="button" disabled={busy} onClick={() => void prepare("full")}>Exportar histórico completo autorizado</button>}
+  const available = filtered || full;
+  if (!available && !endAction) return null;
+  return <div className="sales-export">
+    <div className="sales-entry-toolbar">
+      {available && <div className="sales-export-buttons" role="group" aria-label="Exportação Excel de Vendas">
+        {filtered && <button type="button" disabled={busy || blocked} onClick={() => void prepare("filtered")}>Exportar período filtrado</button>}
+        {full && <button type="button" disabled={busy} onClick={() => void prepare("full")}>Exportar histórico completo autorizado</button>}
+      </div>}
+      {endAction && <div className="sales-create-actions" role="group" aria-label="Cadastro de lançamento">{endAction}</div>}
     </div>
-    <p className="muted">O período filtrado usa os filtros aplicados. O histórico completo abrange todas as datas, unidades e formas autorizadas para exportação e leitura de lançamentos. Ajustes exigem também leitura gerencial e competências inteiras no período.</p>
-    <p role="status" aria-live="polite">{busy ? "Preparando exportação…" : status}</p>
-    {error && <><p role="alert">{error}</p><button type="button" disabled={busy || !canExport(retry) || (blocked && retry === "filtered")} onClick={() => void prepare(retry)}>Tentar exportar novamente</button></>}
+    {available && <>
+      <p className="muted">O período filtrado usa os filtros aplicados. O histórico completo abrange todas as datas, unidades e formas autorizadas para exportação e leitura de lançamentos. Ajustes exigem também leitura gerencial e competências inteiras no período.</p>
+      <p role="status" aria-live="polite">{busy ? "Preparando exportação…" : status}</p>
+      {error && <><p role="alert">{error}</p><button type="button" disabled={busy || !canExport(retry) || (blocked && retry === "filtered")} onClick={() => void prepare(retry)}>Tentar exportar novamente</button></>}
+    </>}
   </div>;
 }
