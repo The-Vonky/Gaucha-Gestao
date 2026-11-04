@@ -46,6 +46,7 @@ import {
   useUnitCovers,
   type UnitCover,
 } from "../apps/web/src/core/unitCovers";
+import { privateImages } from "../apps/web/src/shared/privateImageCache";
 import { AuthProvider, useAuth } from "../apps/web/src/core/auth/AuthProvider";
 const unit = (n: number) => `10000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 function withCover(n: number, asset = `asset-${n}`) {
@@ -354,5 +355,33 @@ describe("unit cover renewal while mounted", () => {
     await advance(240_000);
     expect(chunks()).toEqual([...expected, ...expected]);
     expect(supa.createSignedUrls).toHaveBeenCalledTimes(expected.length * 2);
+  });
+});
+
+describe("AuthProvider e cache neutro de imagens privadas", () => {
+  it("preserva acesso estável, invalida grants, logout imediato e troca de usuário", async () => {
+    Object.defineProperty(URL,"createObjectURL",{value:vi.fn(()=>"blob:synthetic"),configurable:true});
+    Object.defineProperty(URL,"revokeObjectURL",{value:vi.fn(),configurable:true});
+    let refresh=()=>{};
+    function Probe(){refresh=useAuth().refresh;return null;}
+    render(<AuthProvider><Probe/></AuthProvider>);
+    const session=(id:string)=>({user:{id}});
+    supa.state.grants=[{permission:"audit.inspection.read",scope_type:"global",unit_id:null,sector_id:null}];
+    await act(async()=>supa.state.emit("SIGNED_IN",session("a")));
+    const load=vi.fn(async()=>({blob:new Blob(["synthetic"]),expiresAt:Date.now()+60_000}));
+    await privateImages.load("audit:fixture",load);
+    await act(async()=>refresh());await privateImages.load("audit:fixture",load);
+    expect(load).toHaveBeenCalledTimes(1);
+    supa.state.grants=[];await act(async()=>refresh());
+    expect(privateImages.peek("audit:fixture")).toBe("");
+    await privateImages.load("audit:fixture",load);
+    act(()=>{supa.state.emit("SIGNED_OUT",null);expect(privateImages.peek("audit:fixture")).toBe("");});
+    await act(async()=>{});
+    await expect(privateImages.load("audit:fixture",load)).rejects.toThrow();
+    await act(async()=>supa.state.emit("SIGNED_IN",session("b")));
+    await privateImages.load("audit:fixture",load);
+    act(()=>supa.state.emit("SIGNED_IN",session("c")));
+    expect(privateImages.peek("audit:fixture")).toBe("");
+    await act(async()=>{});
   });
 });

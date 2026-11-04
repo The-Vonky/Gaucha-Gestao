@@ -42,7 +42,7 @@ Browser usa JWT da pessoa com `upsert:false` e `cacheControl:'0'`. INSERT exige 
 
 Download cria URL assinada por **60 segundos**, confere endpoint real de bytes e usa âncora `download`, sem popup ou persistir URL. Objeto ausente produz feedback explícito. Links já emitidos podem continuar utilizáveis até expirar o TTL.
 
-Na UI de Auditoria, cada critério mostra nome original/tipo/tamanho/uploader/hora, envio unitário, estado enviando/confirmando/erro/tentativa novamente, diálogo de remoção e modo somente leitura quando finalizada. **Os bytes originais são preservados, sem preview inline.** Nomes longos quebram linha.
+Na UI atual, a PR #66 introduziu nomes de apresentação `Evidência N.ext`, miniatura visual JPG/PNG e ampliação do original; metadados persistidos e bytes originais são preservados. Envio, retry, remoção e leitura de finalizadas continuam no contrato acima. A otimização AUD-IMG-01 condiciona a prévia ao viewport e compartilha blobs em memória (24 MiB, até 60s), com descarte por acesso/remoção/expiração. Consulte [diagnóstico, limites e proposta de miniaturas físicas](EVIDENCE_IMAGE_TRAFFIC.md). **A prévia inline diverge da decisão E3 histórica abaixo; sua revisão formal não foi comprovada.** Nomes longos quebram linha.
 
 Ao finalizar, a UI carrega snapshot congelado da inspeção completa, avisa uploads pendentes, vincula revisão ao pai/versão e exige recarregar/conferir em caso de conflito de evidências.
 

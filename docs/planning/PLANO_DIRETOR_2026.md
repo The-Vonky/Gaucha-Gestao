@@ -242,3 +242,7 @@ Resumo de docs/modules/audit/QUALITY_ACCEPTANCE_V1.md; status conforme a matriz 
 | O6   | Retenção/purge operacional via Storage API, com autorização humana                                      | PARTIAL |
 | O7   | Observabilidade: health checks, métricas, alertas, backup/WAL                                           | OPEN    |
 | O8   | Release/rollback e aceite operacional assinado                                                          | OPEN    |
+
+## Acompanhamento de tráfego de evidências — 04/11/2026
+
+[MED-01 / AUD-IMG-01–05](../modules/audit/EVIDENCE_IMAGE_TRAFFIC.md): implementação cliente de cache volátil/visibilidade em revisão, sem mudança de upload/RLS/Storage. Baseline real 10/30/100 e homologação física pendentes. Miniaturas físicas, compressão e conciliação da divergência E3/preview exigem decisão registrada; meta de redução ≥80% ainda não medida. Nenhum gate produtivo foi encerrado.

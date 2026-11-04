@@ -162,6 +162,25 @@ describe("Audit checklist evidence contract", { concurrent: false }, () =>{
   await login(users.reader);expect((await list(id)).length).toBe(1);
   await login(users.unitA,"anon");await expect(list(id)).rejects.toMatchObject({code:"42501"});
  });
+ it("revoga leitura de imagem entre unidades, por inativação e por retirada do grant",async()=>{
+  const id=await draft();const b=await begin(id,"item-001","sintetica.jpg","image/jpeg",16);
+  await object(b.object_key,users.unitA,16,"image/jpeg");await confirm(b.evidence_id);
+  const allowed=()=>one("select audit_private.can_read_checklist_evidence_object($1) allowed",[b.object_key]);
+  expect(await allowed()).toMatchObject({allowed:true});
+  for(const change of [
+   ()=>db.query("update core.profiles set active=false where id=$1",[users.unitA]),
+   ()=>db.query("update core.user_role_assignments set unit_id=$1 where user_id=$2 and scope_type='unit'",[B,users.unitA]),
+   ()=>db.query("delete from core.user_role_assignments where user_id=$1",[users.unitA]),
+  ]){
+   await db.exec("reset role;begin");
+   try {
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[users.admin]);
+    await change();await login(users.unitA);
+    expect(await allowed()).toMatchObject({allowed:false});expect(await list(id)).toEqual([]);
+   } finally { await db.exec("rollback;reset role"); }
+   await login(users.unitA);expect(await allowed()).toMatchObject({allowed:true});
+  }
+ });
  it("edit-only may mutate independently of read",async()=>{
   const id=await draft();
   await db.exec("reset role");

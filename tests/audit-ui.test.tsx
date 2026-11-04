@@ -12,6 +12,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { privateImages } from "../apps/web/src/shared/privateImageCache";
 import { ChecklistEvidence } from "../apps/web/src/modules/audit/ChecklistEvidence";
 import type { EvidenceController } from "../apps/web/src/modules/audit/useChecklistEvidence";
 import { InspectionPage } from "../apps/web/src/modules/audit/InspectionPage";
@@ -58,6 +59,8 @@ beforeAll(() => {
 });
 afterEach(() => {
   cleanup();
+  privateImages.setAccess("");
+  vi.unstubAllGlobals();
   vi.clearAllMocks();
   permissions.allowed = true;
   evidenceApi.listEvidence.mockResolvedValue([]);
@@ -821,7 +824,15 @@ describe("Checklist evidence removal errors", () => {
     expect(screen.getByText("Evidência 2.xlsx")).toBeTruthy();
     expect(screen.queryByRole("img")).toBeNull();
   });
-  it("loads images only when visible, refreshes modal URLs and handles errors and all close controls", async () => {
+  it("reutiliza imagem entre referências, fechamento/reabertura e modal; permite retry após falha", async () => {
+    privateImages.setAccess("synthetic-session");
+    Object.defineProperty(URL,"createObjectURL",{value:vi.fn(()=>"blob:synthetic"),configurable:true});
+    Object.defineProperty(URL,"revokeObjectURL",{value:vi.fn(),configurable:true});
+    vi.stubGlobal("fetch",vi.fn(async()=>new Response(new Uint8Array(10),{headers:{"Content-Type":"image/jpeg"}})));
+    vi.stubGlobal("IntersectionObserver",class {
+      constructor(private callback: (entries: {isIntersecting:boolean}[])=>void) {}
+      observe(){this.callback([{isIntersecting:true}]);} disconnect(){}
+    });
     const row = { id: "image", inspection_id: "i1", item_key: "item-001", object_key: "image-key",
       original_name: "photo.jpg", content_type: "image/jpeg", size_bytes: 10,
       created_by: "u", uploaded_by_name: "Ana", uploaded_at: "2026-09-30T12:00:00Z" };
@@ -842,12 +853,42 @@ describe("Checklist evidence removal errors", () => {
       else fireEvent.click(modal);
       expect(screen.queryByRole("dialog")).toBeNull();
     }
-    expect(evidenceApi.downloadUrl).toHaveBeenCalledTimes(4);
+    rerender(<ChecklistEvidence item={items[0]} editable={false} controller={{...controller,rows:[{...row}]}}/>);
+    expect(evidenceApi.downloadUrl).toHaveBeenCalledTimes(1);
+    rerender(<ChecklistEvidence item={items[0]} editable={false} controller={controller} visible={false}/>);
+    rerender(<ChecklistEvidence item={items[0]} editable={false} controller={controller}/>);
+    const reopened=await screen.findByRole("img");
+    expect(reopened.getAttribute("loading")).toBe("lazy");
+    expect(reopened.getAttribute("decoding")).toBe("async");
+    expect(reopened.getAttribute("width")).toBe("88");
+    expect(evidenceApi.downloadUrl).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(1);
     fireEvent.error(screen.getByRole("img"));
-    expect(screen.getByText("Imagem indisponível.")).toBeTruthy();
+    expect(screen.getByText("Imagem indisponível ou expirada.")).toBeTruthy();
     await userEvent.click(screen.getByRole("button",{name:"Tentar novamente"}));
     expect(await screen.findByRole("img")).toBeTruthy();
+    expect(evidenceApi.downloadUrl).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole("button",{name:/Remover/})).toBeNull();
+  });
+  it("não assina imagens fora do viewport e ignora resposta anterior após logout", async () => {
+    privateImages.setAccess("synthetic-session");
+    let intersect!: (entries:{isIntersecting:boolean}[])=>void;
+    vi.stubGlobal("IntersectionObserver",class {
+      constructor(callback: typeof intersect){intersect=callback;} observe(){} disconnect(){}
+    });
+    let release!: (url:string)=>void;
+    evidenceApi.downloadUrl.mockImplementationOnce(()=>new Promise(resolve=>{release=resolve;}));
+    const row={id:"image",inspection_id:"i1",item_key:"item-001",object_key:"key",original_name:"image.jpg",content_type:"image/jpeg",size_bytes:10,created_by:"u",uploaded_by_name:"Sintético",uploaded_at:"2026-11-04"};
+    const controller:EvidenceController={data:undefined,error:"",loading:false,uploads:{},reload:vi.fn(),send:vi.fn(),retry:vi.fn(),discard:vi.fn(),rows:[row]};
+    render(<ChecklistEvidence item={items[0]} editable={false} controller={controller}/>);
+    expect(evidenceApi.downloadUrl).not.toHaveBeenCalled();
+    act(()=>intersect([{isIntersecting:false}]));
+    expect(evidenceApi.downloadUrl).not.toHaveBeenCalled();
+    act(()=>intersect([{isIntersecting:true}]));
+    await waitFor(()=>expect(evidenceApi.downloadUrl).toHaveBeenCalledTimes(1));
+    act(()=>privateImages.setAccess(""));
+    await act(async()=>release("https://storage.test/synthetic"));
+    expect(screen.queryByRole("img")).toBeNull();
   });
   it.each([
     ["55000", "Esta operação não é permitida no estado atual do registro."],
