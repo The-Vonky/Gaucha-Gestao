@@ -72,7 +72,7 @@ Original e miniatura possuem chaves distintas, com versão do encoder; reusam `p
 - `tests/audit-derivative-worker.test.ts`: decoder **real**, JPEG/PNG sintéticos, dimensões, orientação/EXIF/GPS, alpha, sem ampliação, MIME falso/truncado/hostil/limites/timeout/RSS; worker com DB/Storage **fakes**, hashes, falha parcial, read-back, lease obsoleta, 409 e transporte limitado.
 - `tests/audit-evidence-database.test.ts`: migrations e RLS executadas em **PostgreSQL/PGlite em memória**, Auth e Storage **stubs**; fila, retry/lease/CAS, escopo, revogação, grant setorial, chave/ID, escrita negada e finalização/reabertura. Chamadas sequenciais no engine em memória **não comprovam concorrência de múltiplas conexões reais** nem assinatura/headers/verbos reais da Storage API.
 - `tests/audit-thumbnail-ui.test.tsx`: transporte/Storage **mockados**; flag off/on, viewport, ausência/falha sem fallback, modal original explícito, cache separado, reconciliação e logout. Suítes atuais de download/fluxo/histórico permanecem relevantes.
-- Protocolo preparatório e seis casos Node offline foram preservados. Resultado completo, comandos e SHA devem constar no registro de validação e na PR.
+- Protocolo preparatório e seis casos Node offline foram preservados. Resultados, comandos e SHA constam no [registro de validação](AUD_IMG_02_VALIDATION_20261104.md) e na PR.
 - **Não provado:** RLS/Auth/Storage integrado self-hosted, identidade técnica, JWT customizado, verbos copy/move/upsert/assinatura reais, duas sessões PostgreSQL concorrentes, backup/restore, bytes/headers em rede real, Android/iOS físicos e legibilidade humana. MED-01 10/30/100 e economia de 80% **não medidos**.
 
 ## Primeiro teste integrado após GO C específico
