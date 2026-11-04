@@ -1,5 +1,7 @@
 # AUD-IMG-02 — Registro de validação, 04/11/2026
 
+> Baseline histórico de `fb675da`/`6e84a22`. A continuação autorizada acrescenta [integração real em Auth/PostgreSQL/Storage no CI descartável](AUD_IMG_02_REAL_SECURITY_20261104.md); seus resultados e os sete checks do HEAD são registrados na PR #101. As pendências abaixo descrevem a rodada anterior.
+
 **Código testado/publicado:** `fb675dab4e461394209887325567fdfc4b9aa130`, branch `codex/aud-img-02-derivative-design`, PR #101 draft. O commit posterior deste registro altera somente documentação. Base da PR: `422a51fe91843824013ad337122f6954c954e59c`; preparação preservada até `d74039d453ddd9f96dab2b046cba3d61168be934`.
 
 ## Ambiente e comandos

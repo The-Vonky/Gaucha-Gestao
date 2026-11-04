@@ -1,4 +1,4 @@
-> **Estado vigente AUD-IMG-02 (04/11/2026):** GOs A/B concedidos para código/testes; processador, migration não aplicada e frontend desativado implementados na PR #101. [Contrato atual](AUD_IMG_02_IMPLEMENTATION_20261104.md). Descrições de proposta abaixo são o baseline anterior. Nenhum ambiente persistente ativado; economia de bytes ainda não medida.
+> **Estado vigente AUD-IMG-02 (04/11/2026):** GOs A/B concedidos para código/testes; processador, migration não aplicada e frontend desativado implementados na PR #101. [Contrato atual](AUD_IMG_02_IMPLEMENTATION_20261104.md). Descrições de proposta abaixo são o baseline anterior. Nenhum ambiente persistente ativado; [validação real no CI descartável](AUD_IMG_02_REAL_SECURITY_20261104.md); economia de bytes ainda não medida.
 
 # Tráfego de imagens da Auditoria — MED-01 / AUD-IMG-01–05
 

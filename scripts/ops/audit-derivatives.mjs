@@ -263,7 +263,9 @@ try {
   sql(`update audit.inspection_answers set response='AT' where inspection_id=${lit(first.inspection)}`);
   ok(await rpc('owner','finalize_inspection',{p_id:first.inspection,p_version:1,p_expected_evidence_ids:[first.id]}));
   ok(await sign(good.derived_object_key,users.reader.token));
-  denied(await rpc('owner','remove_checklist_evidence',{p_evidence:first.id}));
+  const locked=await rpc('owner','remove_checklist_evidence',{p_evidence:first.id});
+  // PostgREST v14.17 mapeia 55000 para HTTP 500; exigir SQLSTATE exato, sem relaxar Storage.
+  assert.equal(locked.status,500);assert.equal(locked.data?.code,'55000');
   ok(await rpc('owner','reopen_inspection',{p_id:first.inspection,p_version:2}));ok(await sign(good.derived_object_key,users.reader.token));
   console.log('PASS finalized remains readable without edit; reopen preserves original and derivative');
 
