@@ -1,22 +1,13 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Confirm, Modal } from "../../shared/ui";
-import { ACCEPT, FORMATS_HINT, downloadEvidence, downloadUrl, formatSize, typeLabel, removeEvidence } from "./evidence";
+import { ACCEPT, FORMATS_HINT, downloadEvidence, formatSize, typeLabel, removeEvidence } from "./evidence";
 import type { ChecklistEvidence as Evidence, Item } from "./types";
 import type { EvidenceController } from "./useChecklistEvidence";
 import "./evidence.css";
+import { EvidenceImage } from "./EvidenceImage";
 function evidenceName(original:string,index:number){
  const extension=original.match(/\.[a-z0-9]+$/i)?.[0]??"";
  return `Evidência ${index+1}${extension}`;
-}
-function EvidenceImage({row,name}:{row:Evidence;name:string}){
- const [url,setUrl]=useState<string>(),[failed,setFailed]=useState(false),[attempt,setAttempt]=useState(0);
- useEffect(()=>{
-  let active=true;setUrl(undefined);setFailed(false);
-  void downloadUrl(row).then(value=>{if(active)setUrl(value);}).catch(()=>{if(active)setFailed(true);});
-  return ()=>{active=false;};
- },[row,attempt]);
- if(failed)return <span className="audit-image-error" role="status">Imagem indisponível. <button type="button" className="small" onClick={()=>setAttempt(value=>value+1)}>Tentar novamente</button></span>;
- return url?<img src={url} alt={name} onError={()=>setFailed(true)}/>:<span role="status">Carregando imagem…</span>;
 }
 export function Download({row,name=row.original_name}:{row:Evidence;name?:string}){
  const [busy,setBusy]=useState(false),[error,setError]=useState(false);
@@ -64,7 +55,7 @@ export function ChecklistEvidence({item,editable,controller,visible=true}:{item:
  </div>}
  {visible&&previewIndex>=0&&<Modal title={evidenceName(rows[previewIndex].original_name,previewIndex)} wide closeOnBackdrop onClose={()=>setPreview(undefined)}>
  <div className="audit-evidence-preview" onClick={e=>{if(e.target===e.currentTarget)setPreview(undefined);}}>
- <EvidenceImage key={preview} row={rows[previewIndex]} name={evidenceName(rows[previewIndex].original_name,previewIndex)}/>
+ <EvidenceImage expanded key={preview} row={rows[previewIndex]} name={evidenceName(rows[previewIndex].original_name,previewIndex)}/>
  </div>
  </Modal>}
  {removing&&<Confirm title="Remover evidência" description={`Remover “${evidenceName(removing.original_name,rows.findIndex(e=>e.id===removing.id))}” deste critério? O registro histórico será preservado.`}

@@ -92,6 +92,18 @@ RPC enforces allowlist, extension↔canonical MIME and size; bucket enforces MIM
 
 Reject all other extensions/MIMEs, including HEIC, SVG/HTML/scripts/executables, legacy Office and macro extensions. Browser rejection is not a security guarantee against renamed content.
 
+## Revisão restrita da decisão E3 — 04/11/2026
+
+**Aprovação de produto/aceite de risco posterior à E3 original:** o mantenedor responsável autorizou expressamente, em 04/11/2026, a manutenção da prévia incorporada **somente para evidências fotográficas JPEG/PNG**, com miniaturas e ampliação no checklist por leitores autenticados e efetivamente autorizados. A autorização registra a divergência introduzida na [PR #66](https://github.com/The-Vonky/Gaucha-Gestao/pull/66), sem reescrever a aprovação histórica de 29/09/2026. A formalização integra a [PR #99](https://github.com/The-Vonky/Gaucha-Gestao/pull/99).
+
+**Limites vinculantes:** PDF, DOCX, XLSX e outros formatos continuam **sem prévia inline**, disponíveis somente via download como anexo; SVG, HTML e conteúdo ativo não são formatos aceitos. Permanecem obrigatórios: uploader e leitor autenticados, escopo de leitura por inspeção/unidade, bucket privado e assinatura temporária, auditoria, imutabilidade/histórico dos originais, controles de invalidação por acesso e cache volátil sem persistir conteúdo privado no browser, cabeçalhos/isolamento de origem e gates operacionais de segurança. Esta revisão **não** aprova visualização genérica, novos privilégios ou relaxamento de RLS.
+
+**Risco residual aceito:** os bytes originais ainda não passam por parser de imagem confiável, antivírus ou sanitização no servidor; renderização em `<img>` e uso de blob URLs **não** significam validação ou saneamento do conteúdo. EXIF/GPS dos originais permanece intacto. Revogação remota não é instantânea, e o cache de 24 MiB limita blobs, não toda a memória do navegador. A comprovação dos cabeçalhos de objetos autorizados e a homologação física permanecem pendentes e bloqueiam inferências de prontidão produtiva.
+
+**Diretriz para AUD-IMG-02:** aprovada a **Política A**: original probatório preservado byte a byte, com derivados privados e fisicamente reduzidos exclusivamente para navegação. A aprovação da direção de produto **não autoriza automaticamente** serviço/worker privilegiado, nova migration, bucket, alteração em permissões, backfill, deploy ou mudança em STAGING/PROD. Esses itens exigem desenho específico, revisão dos riscos e autorização operacional adicional. As políticas B/C, que transformam ou alteram o estatuto do original, **não** estão aprovadas.
+
+**Validação informada:** o mantenedor relatou testes funcionais da PR #99 via DevTools com o comportamento esperado. Não foram apresentados números reais de egress para 10/30/100 imagens, E2E com Storage/Chromium ou homologação Android/iOS. A aprovação do comportamento em desenvolvimento não encerra gates de produção.
+
 ## Audit and recovery
 
 Trusted `core.system_audit_log` events use module `audit`, entity `checklist_evidence`, parent unit and inspection/item IDs: add at successful confirm, logical remove, authorized operator purge. Safe before/after metadata excludes bytes, object keys, URLs, tokens and credentials. Begin/failed operations/idempotent repeats produce no business event. Finalize events include frozen evidence IDs; reopen records transition without deleting that history.

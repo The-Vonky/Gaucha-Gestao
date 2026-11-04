@@ -42,17 +42,25 @@ Browser usa JWT da pessoa com `upsert:false` e `cacheControl:'0'`. INSERT exige 
 
 Download cria URL assinada por **60 segundos**, confere endpoint real de bytes e usa âncora `download`, sem popup ou persistir URL. Objeto ausente produz feedback explícito. Links já emitidos podem continuar utilizáveis até expirar o TTL.
 
-Na UI de Auditoria, cada critério mostra nome original/tipo/tamanho/uploader/hora, envio unitário, estado enviando/confirmando/erro/tentativa novamente, diálogo de remoção e modo somente leitura quando finalizada. **Os bytes originais são preservados, sem preview inline.** Nomes longos quebram linha.
+Na UI atual, a PR #66 introduziu nomes de apresentação `Evidência N.ext`, miniatura visual JPG/PNG e ampliação do original; metadados persistidos e bytes originais são preservados. Envio, retry, remoção e leitura de finalizadas continuam no contrato acima. A otimização AUD-IMG-01 condiciona a prévia ao viewport e compartilha blobs em memória (24 MiB, até 60s), com descarte por acesso/remoção/expiração. Consulte [diagnóstico, limites e proposta de miniaturas físicas](EVIDENCE_IMAGE_TRAFFIC.md). **A prévia inline diverge da decisão E3 histórica abaixo; sua revisão formal não foi comprovada.** Nomes longos quebram linha.
 
 Ao finalizar, a UI carrega snapshot congelado da inspeção completa, avisa uploads pendentes, vincula revisão ao pai/versão e exige recarregar/conferir em caso de conflito de evidências.
 
-## Risco residual E3 — exatamente como aprovado
+## Risco residual E3 — aprovação original de 29/09/2026 (histórico)
 
 Verificação de *magic bytes* no cliente é contornável. Assinatura ZIP não distingue XLSX, DOCX, macros ou arquivos ZIP arbitrários. SQL/bucket/confirmação validam **metadados**, mas **não** existe parser confiável dos bytes no servidor, antivírus ou sanitização. Tratar anexos como não confiáveis.
 
 EXIF/GPS original é preservado (não extraído); UI alerta para isso. Não foi adicionada conversão HEIC, quarentena nem infraestrutura antimalware.
 
-O aceite aprovado exige uploader autenticado, escopo e auditoria, download por anexo, origem API isolada, MIME canônico não ativo, ausência de preview, cabeçalhos `nosniff`/`no-cache` produtivos e proteção no endpoint. **Testes de repo não provam cabeçalhos/cache em produção.**
+O aceite **original de 29/09/2026** exigia uploader autenticado, escopo e auditoria, download por anexo, origem API isolada, MIME canônico não ativo, ausência de preview, cabeçalhos `nosniff`/`no-cache` produtivos e proteção no endpoint. A proibição histórica de preview foi **revisada restritamente em 04/11/2026**, conforme abaixo. **Testes de repo não provam cabeçalhos/cache em produção.**
+
+## Revisão restrita de E3 — 04/11/2026
+
+Após validação manual informada no DevTools da [PR #99](https://github.com/The-Vonky/Gaucha-Gestao/pull/99), o mantenedor autorizou **preview inline de JPEG/PNG na lista e no modal somente para leitores autenticados/autorizados**. A mudança de comportamento havia sido introduzida na PR #66; esta revisão formal não implica que o conteúdo seja seguro. A aprovação histórica de 29/09/2026 continua documentada acima para rastreabilidade.
+
+PDF/DOCX/XLSX permanecem **somente para download como anexo**, sem prévia inline; formatos ativos ou não permitidos continuam rejeitados. Preservar private Storage, escopo por unidade/inspeção, assinaturas temporárias, proteção por backend, downloads originais, histórico/imutabilidade, cache volátil com invalidação por mudança de acesso e controle de headers/origem. O navegador decodifica arquivos não sanitizados; <img> e blob URL **não** são controles antimalware. A proteção produtiva de cabeçalhos/endpoint segue por verificar, assim como E2E real, 10/30/100 imagens e homologação física.
+
+**AUD-IMG-02/Política A é a direção autorizada de produto**, preservando originais e usando miniaturas privadas separadas para navegação. Serviço privilegiado, migrations, bucket adicional, backfill e deploy **não são autorizados nesta aprovação**; exigem proposta técnica, decisão de segurança e GO operacional específicos. Políticas B/C e compressão substitutiva dos originais continuam não aprovadas. Consultar o [registro completo de decisão](../../briefs/AUDIT_CHECKLIST_EVIDENCE_V1.md#revisão-restrita-da-decisão-e3--04112026).
 
 ## Reconciliação e recuperação
 

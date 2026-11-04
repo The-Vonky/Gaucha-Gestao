@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { createClient } from "@supabase/supabase-js";
 const http=vi.hoisted(()=>vi.fn());
 vi.mock("../apps/web/src/core/client",()=>({
@@ -9,7 +9,10 @@ import { beginUpload, finishUpload, downloadUrl, downloadEvidence, listEvidence,
 import { checkFile, normalizeName } from "../apps/web/src/shared/evidenceFiles";
 import type { ChecklistEvidence } from "../apps/web/src/modules/audit/types";
 import { finalize } from "../apps/web/src/modules/audit/api";
-afterEach(()=>{http.mockReset();vi.unstubAllGlobals();vi.restoreAllMocks();});
+import { privateImages } from "../apps/web/src/shared/privateImageCache";
+import { imageKey, loadEvidenceImage } from "../apps/web/src/modules/audit/evidenceImages";
+beforeEach(()=>{privateImages.setAccess("synthetic-user");});
+afterEach(()=>{privateImages.setAccess("");http.mockReset();vi.unstubAllGlobals();vi.restoreAllMocks();});
 describe("Audit evidence finalization client",()=>{
  it("sends the exact complete set selected by the caller",async()=>{
   http.mockResolvedValue(new Response(null,{status:204}));
@@ -84,5 +87,55 @@ describe("Audit evidence file and transport",()=>{
   const sign=http.mock.calls.find(([url])=>String(url).includes("/object/sign/"))!;
   expect(JSON.parse(sign[1].body)).toEqual({expiresIn:60});
   expect(retryable({code:"42501"})).toBe(false);expect(retryable(new Error("network"))).toBe(true);
+ });
+});
+
+describe("prévia privada do original",()=>{
+ const row={id:"e1",inspection_id:"i1",object_key:"i1/e1",content_type:"image/jpeg",size_bytes:3,uploaded_at:"2026-11-04"} as ChecklistEvidence;
+ const signed=()=>http.mockResolvedValueOnce(json({signedURL:"/object/sign/audit-checklist-evidence/i1/e1?token=synthetic"}));
+ function objectUrls(){
+  Object.defineProperty(URL,"createObjectURL",{value:vi.fn(()=>"blob:synthetic"),configurable:true,writable:true});
+  Object.defineProperty(URL,"revokeObjectURL",{value:vi.fn(),configurable:true,writable:true});
+ }
+ it("faz uma assinatura e um GET no-store para miniatura, revisita e modal",async()=>{
+  objectUrls();signed();
+  const get=vi.fn(async()=>new Response(new Uint8Array([255,216,255]),{headers:{"Content-Type":"image/jpeg"}}));vi.stubGlobal("fetch",get);
+  await Promise.all([loadEvidenceImage(row),loadEvidenceImage({...row})]);await loadEvidenceImage({...row});
+  expect(http).toHaveBeenCalledTimes(1);expect(get).toHaveBeenCalledTimes(1);
+  expect(get.mock.calls[0][1]).toMatchObject({cache:"no-store",credentials:"omit",redirect:"error"});
+  expect(privateImages.peek(imageKey(row))).toBe("blob:synthetic");
+ });
+ it.each([401,403,404,500])("não retém respostas HTTP %s e permite retry com nova assinatura",async status=>{
+  objectUrls();signed();vi.stubGlobal("fetch",vi.fn(async()=>new Response(null,{status})));
+  await expect(loadEvidenceImage(row)).rejects.toThrow();expect(privateImages.peek(imageKey(row))).toBe("");
+  signed();vi.stubGlobal("fetch",vi.fn(async()=>new Response(new Uint8Array(3),{headers:{"Content-Type":"image/jpeg"}})));
+  await loadEvidenceImage(row);expect(http).toHaveBeenCalledTimes(2);
+ });
+ it("não inicia download se o HEAD terminar depois de trocar a sessão",async()=>{
+  signed();
+  let release!: (response:Response)=>void;
+  vi.stubGlobal("fetch",vi.fn(()=>new Promise<Response>(resolve=>{release=resolve;})));
+  const click=vi.spyOn(HTMLAnchorElement.prototype,"click").mockImplementation(()=>{});
+  const download=downloadEvidence({...row,original_name:"original.jpg"});
+  while(!release)await Promise.resolve();
+  privateImages.setAccess("another-user");release(new Response(null,{status:200}));
+  await expect(download).rejects.toThrow();expect(click).not.toHaveBeenCalled();
+ });
+ it("rejeita MIME/tamanho incorretos e não altera bytes ou download do original",async()=>{
+  objectUrls();
+  for(const [body,type] of [[new Uint8Array(3),"text/html"],[new Uint8Array(4),"image/jpeg"],[new Uint8Array(2),"image/jpeg"]] as const){
+   signed();vi.stubGlobal("fetch",vi.fn(async()=>new Response(body,{headers:{"Content-Type":type}})));
+   await expect(loadEvidenceImage(row)).rejects.toThrow();
+  }
+  expect(URL.createObjectURL).not.toHaveBeenCalled();
+ });
+ it("remove do cache após remoção confirmada e reconciliação, incluindo acesso negado",async()=>{
+  objectUrls();signed();vi.stubGlobal("fetch",vi.fn(async()=>new Response(new Uint8Array(3),{headers:{"Content-Type":"image/jpeg"}})));
+  await loadEvidenceImage(row);http.mockResolvedValueOnce(json([]));await listEvidence("i1");
+  expect(privateImages.peek(imageKey(row))).toBe("");
+  signed();await loadEvidenceImage(row);http.mockResolvedValueOnce(new Response(null,{status:204}));await removeEvidence(row.id);
+  expect(privateImages.peek(imageKey(row))).toBe("");
+  signed();await loadEvidenceImage(row);http.mockResolvedValueOnce(json({code:"42501"},403));
+  await expect(listEvidence("i1")).rejects.toMatchObject({code:"42501"});expect(privateImages.peek(imageKey(row))).toBe("");
  });
 });

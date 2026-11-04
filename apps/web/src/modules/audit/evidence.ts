@@ -2,13 +2,18 @@ import { client } from "../../core/client";
 import { message } from "../../shared/errors";
 import { checkFile, FileValidationError } from "../../shared/evidenceFiles";
 import { db } from "./api";
+import { privateImages } from "../../shared/privateImageCache";
+import { imagePrefix, reconcileEvidenceImages } from "./evidenceImages";
 import type { ChecklistEvidence } from "./types";
 export { ACCEPT, FORMATS_HINT, checkFile, normalizeName, typeLabel, formatSize } from "../../shared/evidenceFiles";
 export const BUCKET="audit-checklist-evidence";
 export type UploadAttempt={id:string;key:string;body:Blob;uploaded:boolean};
 export async function listEvidence(inspection:string):Promise<ChecklistEvidence[]>{
+ const epoch=privateImages.getAccessVersion();
  const {data,error}=await db().rpc("checklist_evidence",{p_inspection:inspection});
- if(error)throw error;return data??[];
+ if(epoch!==privateImages.getAccessVersion())throw new Error("A sessão mudou. Recarregue as evidências.");
+ if(error){privateImages.reconcile(imagePrefix(inspection),new Set());throw error;}
+ reconcileEvidenceImages(inspection,data??[]);return data??[];
 }
 export async function pendingCount(inspection:string):Promise<number>{
  const {data,error}=await db().rpc("checklist_evidence_pending_count",{p_inspection:inspection});
@@ -36,8 +41,10 @@ export async function finishUpload(a:UploadAttempt,onStored:()=>void=()=>{}){
 export async function removeEvidence(id:string){
  const {error}=await db().rpc("remove_checklist_evidence",{p_evidence:id});
  if(error)throw error;
+ // IDs são imutáveis; descarte todos os snapshots desse registro após remoção.
+ privateImages.invalidateMatching(key=>key.startsWith("audit:")&&key.includes(":["+JSON.stringify(id)+","));
 }
-export async function downloadUrl(e:ChecklistEvidence,name=e.original_name){
+export async function downloadUrl(e:Pick<ChecklistEvidence,"object_key"> & Partial<Pick<ChecklistEvidence,"original_name">>,name=e.original_name??"Evidência"){
  if(!client)throw new Error("Configuração indisponível.");
  const {data,error}=await client.storage.from(BUCKET).createSignedUrl(e.object_key,60);
  if(error)throw error;
@@ -49,11 +56,12 @@ export async function downloadUrl(e:ChecklistEvidence,name=e.original_name){
  return url.href;
 }
 export async function downloadEvidence(e:ChecklistEvidence,name=e.original_name){
+ const epoch=privateImages.getAccessVersion();
  const url=await downloadUrl(e,name);
  // Check the actual bytes endpoint before starting a same-tab attachment download.
  // A missing backend file must be shown as unavailable even when signing succeeds.
  const response=await fetch(url,{method:"HEAD",cache:"no-store"});
- if(!response.ok)throw new Error("Arquivo indisponível.");
+ if(!response.ok||epoch!==privateImages.getAccessVersion())throw new Error("Arquivo indisponível.");
  const anchor=document.createElement("a");anchor.href=url;anchor.rel="noopener";document.body.append(anchor);anchor.click();anchor.remove();
 }
 export function retryable(e:unknown){

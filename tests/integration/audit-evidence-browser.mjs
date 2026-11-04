@@ -4,6 +4,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright";
+import { attachAuditTraffic } from "./audit-evidence-traffic.mjs";
 import { assert, config, db, password, users, BUCKET, PDF, bytes, blob, must, fails, api, list, row, inspection, fill, begin, upload, confirm, attach, countEvents, state, service } from "./audit-evidence-fixture.mjs";
 
 export async function runBrowser() {
@@ -315,6 +316,40 @@ export async function runBrowser() {
       await section.getByRole("button", { name: "Baixar Evidência 2.pdf", exact: true }).waitFor();
       assert.equal((await list("ui", uiInspection)).length, 3);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Reopened evidence fits viewport");
+      // AUD-IMG-01: bytes sintéticos; preservar download original e reutilizar prévia no modal.
+      checkpoint("image cache reuse");
+      const traffic=await attachAuditTraffic(page,{appOrigin:origin,storageOrigin:config.API_URL});
+      try {
+        traffic.stage("upload");
+        const png=await page.evaluate(()=>{
+          const canvas=document.createElement("canvas");canvas.width=960;canvas.height=640;
+          const drawing=canvas.getContext("2d");drawing.fillStyle="#fff";drawing.fillRect(0,0,960,640);
+          drawing.fillStyle="#111";drawing.font="32px sans-serif";drawing.fillText("EVIDENCIA SINTETICA 0123456789",40,80);
+          return Array.from(Uint8Array.from(atob(canvas.toDataURL("image/png").split(",")[1]),character=>character.charCodeAt(0)));
+        });
+        const original=Buffer.from(png);
+        await input.setInputFiles({name:"sintetica.png",mimeType:"image/png",buffer:original});
+        const imageFile=section.locator(".file-item").filter({has:page.getByRole("button",{name:"Ampliar Evidência 3.png",exact:true})});
+        const image=imageFile.getByRole("img");
+        await imageFile.scrollIntoViewIfNeeded();await image.waitFor();
+        await image.evaluate(element=>element.decode());
+        const initial=(await traffic.snapshot()).requests.filter(request=>request.category==="image-get").length;
+        assert.equal(initial,1,"Uma transferência da prévia");
+        traffic.stage("modal");
+        await imageFile.getByRole("button",{name:"Ampliar Evidência 3.png",exact:true}).click();
+        const modal=page.getByRole("dialog");await modal.getByRole("img").evaluate(element=>element.decode());
+        assert.equal(await modal.getByRole("img").getAttribute("src"),await image.getAttribute("src"),"Modal reutiliza o blob");
+        await modal.getByRole("button",{name:"Fechar",exact:true}).click();
+        traffic.stage("revisit");
+        const toggle=page.locator('li.audit-item:has([aria-label="Evidências do critério 1"]) .audit-evidence-toggle');
+        await toggle.click();await openEvidence();await imageFile.scrollIntoViewIfNeeded();
+        await image.waitFor();await image.evaluate(element=>element.decode());
+        assert.equal((await traffic.snapshot()).requests.filter(request=>request.category==="image-get").length,initial,"Revisita sem GET do original");
+        traffic.stage("download");
+        const [originalDownload]=await Promise.all([page.waitForEvent("download"),imageFile.getByRole("button",{name:"Baixar Evidência 3.png",exact:true}).click()]);
+        assert.ok(readFileSync(await originalDownload.path()).equals(original),"Download preserva bytes PNG");
+        assert.equal(originalDownload.suggestedFilename(),"Evidência 3.png");
+      } finally { await traffic.close(); }
       await context.close();
     }
     console.log("PASS Chromium desktop/375px real upload/download/remove, long UTF-8 names, focus/labels, app dialog, no overflow/preview/popup, MIME/signature/NFC/OOXML limits, actual interrupted responses and idempotent retry, missing download, full-section review/conflict/pending warning and finalized/reopen file flow");

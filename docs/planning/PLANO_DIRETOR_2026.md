@@ -242,3 +242,7 @@ Resumo de docs/modules/audit/QUALITY_ACCEPTANCE_V1.md; status conforme a matriz 
 | O6   | Retenção/purge operacional via Storage API, com autorização humana                                      | PARTIAL |
 | O7   | Observabilidade: health checks, métricas, alertas, backup/WAL                                           | OPEN    |
 | O8   | Release/rollback e aceite operacional assinado                                                          | OPEN    |
+
+## Acompanhamento de tráfego de evidências — 04/11/2026
+
+[MED-01 / AUD-IMG-01–05](../modules/audit/EVIDENCE_IMAGE_TRAFFIC.md): implementação cliente de cache volátil/visibilidade na PR #99, com CI e teste manual DevTools relatados como satisfatórios. O mantenedor registrou em 04/11/2026 [revisão restrita de E3](../modules/audit/CHECKLIST_EVIDENCE_V1.md#revisão-restrita-de-e3--04112026) para prévias JPG/PNG apenas sob acesso autorizado. Política A aprovada como diretriz: original preservado, miniatura privada derivada; worker/serviço privilegiado, bucket, schema/migration, backfill e deploy dependem de nova decisão específica. Baseline real 10/30/100 e homologação física pendentes, meta de redução ≥80% ainda não medida. Políticas B/C não aprovadas. Nenhum gate produtivo foi encerrado.

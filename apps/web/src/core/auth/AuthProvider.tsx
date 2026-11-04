@@ -13,6 +13,7 @@ import type { Profile } from "../types";
 import { can, type AccessGrant, type Scope } from "./permissions";
 import { message } from "../../shared/errors";
 import { setUnitCoverAccess } from "../unitCovers";
+import { privateImages } from "../../shared/privateImageCache";
 type AuthState = {
   session: Session | null;
   profile: Profile | null;
@@ -55,11 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const sameUser = current.current?.user.id === session?.user.id;
     current.current = session;
     if (!session) {
+      privateImages.setAccess("");
       setUnitCoverAccess("");
       setState({ ...initial, loading: false });
       return;
     }
     if (!sameUser) {
+      privateImages.setAccess("");
       setUnitCoverAccess(accessKey(session.user.id));
       setState({ ...initial, session, loading: true });
     }
@@ -77,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ]);
       if (profileError || accessError) throw profileError ?? accessError;
       if (request === sequence.current) {
+        privateImages.setAccess(profile?.active ? accessKey(session.user.id, true, grants ?? []) : "");
         setUnitCoverAccess(
           accessKey(session.user.id, profile?.active, grants ?? []),
         );
@@ -90,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       if (request === sequence.current) {
+        privateImages.setAccess("");
         setUnitCoverAccess(accessKey(session.user.id));
         setState({ ...initial, session, loading: false, error: message(e) });
       }
@@ -102,6 +107,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!client) return;
     // Supabase emits INITIAL_SESSION; do not await Supabase calls inside its auth callback.
     const { data } = client.auth.onAuthStateChange((_event, session) => {
+      // Limpa imediatamente, antes de qualquer resposta/microtask da sessão anterior.
+      if (!session || session.user.id !== current.current?.user.id || _event === "SIGNED_OUT") {
+        ++sequence.current;
+        privateImages.setAccess("");
+      }
       queueMicrotask(() => void bootstrap(session));
     });
     const onVisible = () => {
@@ -111,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timer = setInterval(refresh, 60000);
     return () => {
       ++sequence.current;
+      privateImages.setAccess("");
       setUnitCoverAccess("");
       data.subscription.unsubscribe();
       clearInterval(timer);
