@@ -80,7 +80,8 @@ const object = (name,key) => `/storage/v1/object/${name}/${keyPath(key)}`;
 const get = (name,key,access) => req(`/storage/v1/object/authenticated/${name}/${keyPath(key)}`,access);
 const sign = (key,access) => req(`/storage/v1/object/sign/${bucket}/${keyPath(key)}`,access,{method:'POST',body:{expiresIn:60}});
 const count = key => Number(sql(`select count(*) from storage.objects where bucket_id=${lit(bucket)} and name=${lit(key)}`));
-const processorSql = query => json(`set role ${role}; ${query}; reset role`);
+// psql imprime boolean como t/f: serializar no PostgreSQL antes de JSON.parse.
+const processorSql = query => json(`set role ${role};select coalesce(to_jsonb(result),'null'::jsonb)::text from (${query}) response(result);reset role`);
 const manifest = e => ({evidence_id:e.id,encoder_version:'img-480-v1',original_object_key:e.key,
   original_sha256:sha(original),derived_sha256:sha(derived),derived_object_key:derivativeObjectKey({evidenceId:e.id,version:'img-480-v1',originalSha256:sha(original),derivedSha256:sha(derived),mime:'image/png'}),
   mime:'image/png',width:encoded.width,height:encoded.height,bytes:derived.length});
@@ -149,6 +150,7 @@ try {
   const repository={
     claim:async()=>{currentJob=processorSql('select audit_private.claim_evidence_derivative()');token=jwt(currentJob.lease);return currentJob;},
     prepare:async(lease,m)=>{
+      phase='worker SQL prepare';
       assert.equal(processorSql(`select audit_private.prepare_evidence_derivative(${lit(lease)},${lit(JSON.stringify(m))}::jsonb)`),true);
       phase='technical token restrictions during live lease';
       denied(await get(source,unrelated.key,token));denied(await get(source,first.key,jwt(randomUUID())));
@@ -158,7 +160,21 @@ try {
       const forged=token.split('.');forged[2]=(forged[2][0]==='A'?'B':'A')+forged[2].slice(1);denied(await get(source,first.key,forged.join('.')));
       phase='worker upload and readback under scoped technical token';return true;
     },
-    complete:async lease=>processorSql(`select audit_private.complete_evidence_derivative(${lit(lease)})`),
+    complete:async lease=>{
+      phase='technical mutation restrictions with physical derivative and live lease';
+      const m=manifest(first), destination=`${randomUUID()}/blocked.png`;
+      assert.equal(count(m.derived_object_key),1);
+      // Objeto já existe e read-back acabou de passar: negativas não dependem de ausência física.
+      denied(await sign(m.derived_object_key,token));denied(await sign(m.derived_object_key,users.owner.token));
+      denied(await req(object(bucket,m.derived_object_key),token,{method:'PUT',body:derived,headers:{'Content-Type':'image/png'}}));
+      denied(await req(object(bucket,m.derived_object_key),token,{method:'POST',body:derived,headers:{'Content-Type':'image/png','x-upsert':'true'}}));
+      for(const op of ['copy','move'])denied(await req(`/storage/v1/object/${op}`,token,{method:'POST',body:{bucketId:bucket,sourceKey:m.derived_object_key,destinationKey:destination}}));
+      const removed=await req(`/storage/v1/object/${bucket}`,token,{method:'DELETE',body:{prefixes:[m.derived_object_key]}});
+      if(removed.ok)assert.deepEqual(removed.data,[]);else denied(removed);
+      assert.equal(count(m.derived_object_key),1);assert.equal(count(destination),0);
+      assert.ok((await get(bucket,m.derived_object_key,token)).bytes.equals(derived));
+      return processorSql(`select audit_private.complete_evidence_derivative(${lit(lease)})`);
+    },
     fail:async lease=>processorSql(`select audit_private.fail_evidence_derivative(${lit(lease)})`),
   };
   const transport=authorizedStorageTransport({origin:base,apiKey:config.ANON_KEY,accessToken:async()=>token});
@@ -272,7 +288,10 @@ try {
     held.stdin.end('commit;\n');await done;
     assert.equal(stderr,'');assert.equal(processorSql('select audit_private.claim_evidence_derivative()'),null);
     sql(`update audit.checklist_evidence_derivatives set lease_until=clock_timestamp()-interval '1 second' where evidence_id=${lit(raceEvidence.id)}`);
+    denied(await get(source,raceEvidence.key,jwt(firstJob.lease)));
     const newer=processorSql('select audit_private.claim_evidence_derivative()');assert.notEqual(newer.lease,firstJob.lease);
+    denied(await get(source,raceEvidence.key,jwt(firstJob.lease)));
+    assert.ok((await get(source,raceEvidence.key,jwt(newer.lease))).bytes.equals(original));
     assert.equal(processorSql(`select audit_private.complete_evidence_derivative(${lit(firstJob.lease)})`),false);
     assert.equal(processorSql(`select audit_private.fail_evidence_derivative(${lit(newer.lease)})`),true);
     assert.equal(processorSql('select audit_private.claim_evidence_derivative()'),null);
