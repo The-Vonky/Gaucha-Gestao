@@ -26,7 +26,18 @@ O [contrato vigente E3](CHECKLIST_EVIDENCE_V1.md#risco-residual-e3--exatamente-c
 - Falhas de assinatura, rede, objeto ausente, link expirado, decodificação e memória têm retry explícito. Falhas não são cacheadas. Não há retry infinito.
 - Download continua independente do cache de prévias: nova assinatura, HEAD e anexo com bytes originais/nome vigente. Resposta que atravessar uma mudança de sessão não inicia download.
 
-Fluxo: critério aberto → viewport/interação → cache da sessão → assinatura autorizada em caso de falta → GET no-store limitado → blob compartilhado → expiração/remoção/mudança de acesso/limite → revogação da URL.
+```mermaid
+flowchart LR
+  A[Critério aberto] --> B[Viewport ou interação]
+  B --> C{Blob válido na sessão?}
+  C -->|Sim| D[Lista e modal compartilham blob]
+  C -->|Não| E[Assinatura autorizada]
+  E --> F[GET no-store limitado]
+  F --> D
+  D --> G[Expiração, remoção, acesso ou limite]
+  G --> H[Revogar URL e retirar imagem]
+```
+
 
 **Limite de revogação:** AuthProvider revalida perfil/grants ao voltar à aba e a cada 60s. Revogação remota não é uma notificação instantânea; assinaturas já emitidas têm a janela residual existente. O cache não comprova acesso atual enquanto offline. Sem mudança conhecida, expira em até 60s e não renova por cache hit. Revogação instantânea exigiria contrato adicional no servidor e está fora desta entrega.
 
@@ -38,7 +49,7 @@ Fluxo: critério aberto → viewport/interação → cache da sessão → assina
 
 Ferramentas entregues:
 
-1. `scripts/generate-audit-evidence-fixtures.mjs`: PNGs RGB determinísticos 960×640, entropia elevada, seeds fixas e manifesto com bytes/SHA-256; somente filesystem, sem upload. Limita a 10, 30 ou 100 arquivos e não sobrescreve existentes. Execução verificada para 10 em `/tmp/audit-synthetic-med01-10`: 1.844.468 bytes por arquivo. São ruído sintético para volume, não teste de legibilidade ou câmera.
+1. `scripts/generate-audit-evidence-fixtures.mjs`: PNGs RGB determinísticos 960×640, entropia elevada, seeds fixas e manifesto com bytes/SHA-256; somente filesystem, sem upload. Limita a 10, 30 ou 100 arquivos e não sobrescreve existentes. Execução verificada para 10/30/100 em diretórios distintos de `/tmp`: 1.844.468 bytes por arquivo; totais registrados na [validação](EVIDENCE_IMAGE_VALIDATION_20261104.md). São ruído sintético para volume, não teste de legibilidade ou câmera.
 2. `tests/integration/audit-evidence-traffic.mjs`: coletor opt-in Chromium CDP, categorias separadas app/API/Auth/assinatura/upload/GET/HEAD, alias numérico por objeto, etapa, status, falha, TTFB/duração, bytes codificados do corpo e bytes de rede incluindo headers. Upload tem tamanho de corpo fornecido por Playwright, sem leitura do conteúdo. Não emite paths, URLs, querystrings, tokens, filenames, headers Auth, cookies ou corpos.
 3. `scripts/measure-audit-evidence.mjs`: conecta ao Chromium **já aberto** pelo mantenedor via CDP local, sem iniciar servidor, alterar cache do browser ou acessar banco. Seleciona a aba da aplicação local, permite marcar etapas e grava relatório sanitizado. Restringe origens a loopback; Storage esperado em `127.0.0.1:54321`. CDP é apropriado somente a um perfil de teste sem contas reais. Não habilitar tracing/HAR/vídeo/screenshots com sessões reais.
 
@@ -130,7 +141,7 @@ Executar no Chrome e Edge desktop, Android Chrome físico e iOS Safari físico, 
 
 Testes adicionados/ampliados: cache (deduplicação, TTL, LRU, limites, timeout, fila e contexto), transporte (no-store, MIME/tamanho, 401/403/404/500, retry, remoção/reconciliação), UI (viewport, referência estável, reabertura/modal, logout e controles), AuthProvider e negações SQL de imagem por inativação/unidade/grants. E2E real estendido com PNG sintético, GET contado no modal/revisita e download com comparação de bytes. O coletor também tem testes de sanitização e contagem.
 
-Resultados finais por SHA serão registrados em `EVIDENCE_IMAGE_VALIDATION_20261104.md`. Integração Storage/Chromium real, baseline 10/30/100, headers de arquivo autorizado e dispositivos físicos permanecem pendentes até execução documentada. Não há afirmação de homologação, backup comprovado ou PROD pronta.
+Resultados finais por SHA estão em [validação de 04/11](EVIDENCE_IMAGE_VALIDATION_20261104.md). Integração Storage/Chromium real, baseline 10/30/100, headers de arquivo autorizado e dispositivos físicos permanecem pendentes até execução documentada. Não há afirmação de homologação, backup comprovado ou PROD pronta.
 
 Riscos principais: conflito E3/inline pendente; janela residual de revogação; orçamento de blobs não equivale a limite total do processo; decodificação de originais não confiáveis continua; thumbnail visual ainda transfere original na primeira visita. Não foi provada redução percentual. Miniaturas físicas/políticas B/C e infraestrutura aguardam autorização explícita do design.
 
