@@ -20,3 +20,15 @@
 .sales-page .pager { flex-wrap: wrap; }
 @media (max-width: 1050px) { .sales-page .sales-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 540px) { .sales-page .sales-filters, .sales-form-fields { grid-template-columns: minmax(0, 1fr); } }
+
+.sales-entry-actions { margin-bottom: 1.5rem; }
+.sales-entry-toolbar { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
+.sales-export-buttons { display: flex; flex-wrap: wrap; gap: .5rem; max-width: 100%; }
+.sales-create-actions { margin-inline-start: auto; }
+.sales-export > p { margin: .5rem 0 0; }
+@media (max-width: 540px) {
+  .sales-entry-toolbar { flex-direction: column; align-items: stretch; }
+  .sales-export-buttons { flex-direction: column; }
+  .sales-create-actions { margin-inline-start: 0; align-self: flex-end; }
+}
+.sales-page td.sales-author { max-width: 18rem; overflow-wrap: anywhere; }

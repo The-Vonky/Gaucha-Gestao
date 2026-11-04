@@ -31,7 +31,7 @@ jobs:
   sales-integration:
     strategy:
       matrix:
-        suite: [operations, analytics, units]
+        suite: [operations, analytics, units, export]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -73,6 +73,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # Aplicação/writer/download reais com transporte interceptado, sem banco.
+      - run: node tests/integration/sales-export-browser.mjs
       # Disposable local services only; no linked project or deployment credentials.
       # Storage API is required by the evidence suite; imgproxy stays excluded.
       - run: npx --yes supabase@2.117.0 start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
@@ -90,6 +92,8 @@ jobs:
       - run: node tests/integration/core-references.mjs
       # Core governance and logs: real JWT/PostgREST negative authorization matrix.
       - run: node tests/integration/core-security-matrix.mjs
+      # VEN-05A: JWT/PostgREST, paginação, concorrência e download XLSX real.
+      - run: node tests/integration/sales-export.mjs
       # Admin UI at 375/768/1024/1440; adds uniquely tagged rows only, so it runs last.
       - run: node tests/integration/admin.mjs
       - if: always()

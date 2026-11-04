@@ -13,13 +13,14 @@ function amount(value: unknown): string {
   return value;
 }
 
-async function rpc(name: string, args: Record<string, unknown>): Promise<unknown> {
+export async function salesRpc(name: string, args: Record<string, unknown>): Promise<unknown> {
   if (!client) throw new Error("Ambiente indisponível.");
   const { data, error } = await (client as unknown as SupabaseClient)
     .schema("public").rpc(name, args);
   if (error) throw error;
   return data;
 }
+const rpc = salesRpc;
 
 function entry(data: unknown): SalesEntry {
   if (!data || typeof data !== "object" || !("amount" in data)

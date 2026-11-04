@@ -5,6 +5,7 @@ import { Confirm, EmptyState, LoadingState, Notice, PageTitle, Table } from "../
 import { deleteEntry, entryDetail, listEntries, listSalesUnits, salesMessage } from "./api";
 import { EntryEditor } from "./EntryEditor";
 import { SalesNavigation } from "./SalesNavigation";
+import { SalesExportActions } from "./export/SalesExportActions";
 import { civilDate, money, validDate } from "./format";
 import type { PaymentMethod, SalesEntry, SalesUnit } from "./types";
 import "./sales.css";
@@ -132,7 +133,6 @@ export function SalesPage() {
   return <section className="sales-page">
     <PageTitle title="Lançamentos" description="Lançamentos diários agregados por unidade, em Stone e PIX.">
       <SalesNavigation />
-      <button className="primary" disabled={!canCreate} aria-describedby={createBlock ? "sales-create-block" : undefined} onClick={() => { if (canCreate) { setSuccess(""); setActionError(""); setEditor({}); } }}>Novo lançamento</button>
     </PageTitle>
     {createBlock && <Notice tone="warning"><span id="sales-create-block">{createBlock}</span>
       {auth.can("admin.unit.manage") && currentCatalog && !currentCatalog.error && has("create") && <div className="actions"><Link className="button-link" to="/admin/units">Cadastrar unidade</Link></div>}
@@ -157,13 +157,20 @@ export function SalesPage() {
       <label>Forma de pagamento<select name="method" defaultValue={method}><option value="">Stone e PIX</option>{method && method !== "Stone" && method !== "PIX" && <option value={method} disabled>Forma indisponível — selecione outra</option>}<option>Stone</option><option>PIX</option></select></label>
       <div className="actions"><button className="primary" type="submit">Aplicar filtros</button><button type="button" onClick={refresh}>Atualizar consulta</button></div>
     </form> : !read && <Notice>Seu acesso não inclui consulta de lançamentos. As ações disponíveis seguem suas permissões.</Notice>}
+    <div className="sales-entry-actions" role="group" aria-label="Ações dos lançamentos">
+      <SalesExportActions filters={{ from: from || undefined, to: to || undefined,
+        unit_ids: unit ? [unit] : undefined, method: method as PaymentMethod || undefined }}
+        blocked={!read || !current || !!current.error || !currentCatalog || !!currentCatalog.error}
+        endAction={<button className="primary" disabled={!canCreate} aria-describedby={createBlock ? "sales-create-block" : undefined} onClick={() => { if (canCreate) { setSuccess(""); setActionError(""); setEditor({}); } }}>Novo lançamento</button>} />
+    </div>
     {!current ? <LoadingState label="Carregando Vendas…" /> : current.error ? <>
       <Notice error>{current.error}</Notice><button onClick={refresh}>Tentar novamente</button>
     </> : read ? <>
-      {current.rows.length ? <Table headers={["Data", "Unidade", "Forma de pagamento", "Valor", "Ações"]}>
+      {current.rows.length ? <Table headers={["Data", "Unidade", "Forma de pagamento", "Valor", "Lançado por", "Ações"]}>
         {current.rows.map(e => <tr key={e.id}>
           <td>{civilDate(e.sale_date)}</td><td>{units.find(u => u.id === e.unit_id)?.name ?? "Unidade autorizada"}{units.find(u => u.id === e.unit_id)?.active === false && <span className="badge">Inativa</span>}</td>
           <td>{e.payment_method}</td><td className="sales-money">{money(e.amount)}</td>
+          <td className="sales-author">{e.created_by_name?.trim() ? e.created_by_name : "Não identificado"}</td>
           <td><div className="sales-row-actions">
             {rowAllowed(e, "edit") && <button disabled={opening} onClick={() => void openEntry(e, "edit")} aria-label={`Editar ${civilDate(e.sale_date)} ${e.payment_method}`}>Editar</button>}
             {rowAllowed(e, "delete") && <button disabled={opening} onClick={() => void openEntry(e, "delete")} aria-label={`Excluir ${civilDate(e.sale_date)} ${e.payment_method}`}>Excluir</button>}

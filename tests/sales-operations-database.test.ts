@@ -106,7 +106,7 @@ describe("VEN-02 — operações no banco", () => {
     await login(3);
     const all = await list();
     expect(all.every(e => e.unit_id === A)).toBe(true);
-    expect(await list(["2026-02-01", "2026-02-01", A, "PIX", 10, 0])).toEqual([a]);
+    expect(await list(["2026-02-01", "2026-02-01", A, "PIX", 10, 0])).toEqual([{ ...a, created_by_name: "Novo usuário" }]);
     const first = await list([null, null, null, null, 1, 0]);
     const second = await list([null, null, null, null, 1, 1]);
     expect([...first, ...second]).toEqual(all.slice(0, 2));
@@ -236,7 +236,7 @@ describe("VEN-02 — operações no banco", () => {
       has_function_privilege('authenticated',p.oid,'EXECUTE') authenticated
       from pg_proc p join pg_namespace n on n.oid=p.pronamespace
       where n.nspname='public' and p.proname like 'sales_%'`);
-    expect(functions.rows).toHaveLength(7);
+    expect(functions.rows).toHaveLength(8); // VEN-05A acrescenta sales_export_page, sem grants de tabelas.
     for (const f of functions.rows) {
       expect(f).toMatchObject({ prosecdef: true, anon: false, authenticated: true });
       expect(f.proconfig).toContain('search_path=""');

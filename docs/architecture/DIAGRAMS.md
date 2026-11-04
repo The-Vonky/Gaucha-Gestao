@@ -1,5 +1,27 @@
 # Arquitetura desenhada — AS-IS e TO-BE
 
+## Vendas — exportação VEN-05A para revisão (03/11/2026)
+
+```mermaid
+flowchart LR
+  UI["Lançamentos — ações após filtros aplicados"] --> EXP["Exportação: período ou histórico autorizado"]
+  EXP --> RPC["public.sales_export_page — cada página e conferência final"]
+  RPC --> CORE["Core: perfil ativo + leitura + exportação por unidade"]
+  CORE --> ENT["sales.entries ativos — privado"]
+  ENT --> NAME["Core: somente nome atual do criador no lançamento autorizado"]
+  CORE --> DASH["Exigir também sales.dashboard.read para ajustes"]
+  DASH --> ADJ["sales.legacy_monthly_adjustments — privado"]
+  RPC --> CHECK["Conjunto limitado + SHA-256 + totais numeric como texto"]
+  CHECK --> EXACT["BigInt: ordem, contagens e centavos reconciliados"]
+  EXACT --> XLSX["XLSX: Lançamentos / Ajustes mensais / Resumo"]
+  XLSX --> FINAL["Revalidar autorização e token"]
+  FINAL --> DOWNLOAD["Download no navegador"]
+```
+
+[Contrato, permissões e limites](../modules/sales/VEN05A_EXCEL_EXPORT.md).
+Migrations VEN-05A aplicadas somente no notebook autorizado (03–04/11);
+sem STAGING/PROD ou VEN-05B.
+
 O fluxo de autorização de Vendas com catálogo de unidades vazio está no
 [diagrama MEL-01](../modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md#correção-funcional-e-ciclo-das-fixtures).
 

@@ -39,6 +39,11 @@ it("MEL-01: administrador consulta catálogo e Vendas vazios sem criar dados ou 
   const d = (await db.query<{ result: SalesDashboard }>("select public.sales_dashboard('2026-10-01','2026-10-01',null,'combined') result")).rows[0].result;
   expect(d.units).toEqual([]); expect(d.ranking).toEqual([]); expect(d.unit_months).toEqual([]);
   expect(d.summary.total).toBe("0.00");
+  // VEN-05A mantém o contrato global com catálogo vazio; não confunde falta de dados com negação.
+  if (!process.env.VEN04B_LOCAL_TEST) {
+    const e = (await db.query<{ result: { units: unknown[]; rows: unknown[]; total: string; record_count: number } }>("select public.sales_export_page('full') result")).rows[0].result;
+    expect(e).toMatchObject({ units: [], rows: [], total: "0.00", record_count: 0 });
+  }
   expect((await db.query<{ ok: boolean }>("select private.has_global_permission('room_booking.manage') ok")).rows[0].ok).toBe(false);
 });
 

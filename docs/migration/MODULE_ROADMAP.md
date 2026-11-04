@@ -1,5 +1,14 @@
 # Roteiro de migração dos módulos
 
+**VEN-05A — 03/11/2026:** exportação Excel do período aplicado e histórico completo
+autorizado implementada, **pendente de revisão do mantenedor**, sem homologação ou
+implantação. RPC específica, ajustes em aba separada, paginação com detecção de
+mudanças, reconciliação exata e testes XLSX/readback. [Contrato e limites](../modules/sales/VEN05A_EXCEL_EXPORT.md).
+VEN-04B foi integrada pela PR #94, merge `91bd16b`. Registros abaixo são históricos;
+VEN-05B permanece fora do escopo, aguardando revisão da 05A. Em 04/11, refinados
+UX, nomes/XLSX e nome do criador; migrations aplicadas somente no notebook
+autorizado, com preservação dos dados. Sem STAGING/PROD, merge ou deploy.
+
 **VEN-04B — correção visual de 03/11/2026:** apresentação reconstruída na PR #94,
 com quatro KPIs, Panorama, gráficos e cores por UUID, mantendo VEN-03 e permissões.
 [Antes/depois, refinamentos de usabilidade e validação atual](../modules/sales/VEN04B_VISUAL_FIDELITY.md).
@@ -51,7 +60,7 @@ A sequência leva em conta: prioridade atual do negócio; validação da fundaç
 | --- | --- | --- | --- |
 | Auditoria de Qualidade | **v1 implementada na plataforma** | Médio/alto | P1–P9 físicos e O1–O8 operacionais ainda exigem aceite; não reimplementar funcionalidades concluídas |
 | Registros ISO / Propostas ISO | Legado concluído | Médio | A origem é funcionalmente de propostas/clientes comerciais apesar do nome histórico ISO; resolver ownership/menu por gate de migração |
-| Vendas / Maquininhas | VEN-01/02/03/04A integradas #90–93; VEN-04B gerencial para revisão | Alto: precisão financeira, escopo e concorrência | Mantenedor revisa [dashboard VEN-04B](../modules/sales/VEN04B_DASHBOARD_UI.md), diff/CI e evidências locais; decide merge. VEN-05–08 seguem gates próprios. Sem homologação ou corte. |
+| Vendas / Maquininhas | VEN-01–04B integradas #90–94; VEN-05A Excel implementada, pendente de revisão | Alto: precisão financeira, escopo e concorrência | Mantenedor revisa [contrato VEN-05A](../modules/sales/VEN05A_EXCEL_EXPORT.md), diff/CI, negativos de acesso e limites; decide merge. VEN-05B–08 seguem gates próprios. Sem homologação ou corte. |
 | Pesquisa de Satisfação | Legado concluído | Baixo | Boa candidata à integração por unidade/período |
 | Agendamento de Salas | Nova implementação independente; AG-00 integrado, AG-01 na PR #88 | Médio: RLS/grants e concorrência requerem teste | Desenvolvimento local com `gaucha-gestao-local` existente, sem criar banco/container extra. Revisão/merge pelo mantenedor único, PR e CI; próximas etapas AG-02 (RPCs) e AG-03 (UI). Sem deploy PROD. Ver [brief](../briefs/ROOM_BOOKING_V1.md) e [matriz](../modules/room-booking/ACCEPTANCE_V1.md). |
 | Frota | Legado não concluído | Médio | Prosseguir na plataforma quando a fundação permitir |
