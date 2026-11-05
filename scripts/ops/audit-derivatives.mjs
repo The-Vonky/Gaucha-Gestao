@@ -53,9 +53,7 @@ let currentJob;
 let token;
 let positiveSignedUrl;
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
-// PNG sintético >2 MiB: exercita o transporte real além do antigo limite JSON.
-const original = await sharp(randomBytes(960*640*4),{raw:{width:960,height:640,channels:4}}).png().toBuffer();
-assert.ok(original.length>2*1024*1024 && original.length<=10*1024*1024);
+const original = await sharp({create:{width:960,height:640,channels:4,background:{r:170,g:35,b:80,alpha:0.6}}}).png().toBuffer();
 const encoded = await isolatedEncoder.encode({bytes:original,contentType:'image/png'});
 const derived = encoded.bytes;
 assert.ok(derived.length < original.length);
@@ -88,10 +86,10 @@ const processorSql = query => json(`set role ${role};select coalesce(to_jsonb(re
 const manifest = e => ({evidence_id:e.id,encoder_version:'img-480-v1',original_object_key:e.key,
   original_sha256:sha(original),derived_sha256:sha(derived),derived_object_key:derivativeObjectKey({evidenceId:e.id,version:'img-480-v1',originalSha256:sha(original),derivedSha256:sha(derived),mime:'image/png'}),
   mime:'image/png',width:encoded.width,height:encoded.height,bytes:derived.length});
-async function evidence(status='available') {
+async function evidence(status='available',bytes=original) {
   const inspection=ok(await rpc('owner','create_inspection',{p_unit:A,p_applied_on:'2026-11-04',p_previous_visit_on:null}));
-  const [begun]=ok(await rpc('owner','begin_checklist_evidence_upload',{p_inspection:inspection,p_item_key:'item-001',p_original_name:'synthetic.png',p_content_type:'image/png',p_size:original.length}));
-  ok(await req(object(source,begun.object_key),users.owner.token,{method:'POST',body:original,headers:{'Content-Type':'image/png','x-upsert':'false'}}));
+  const [begun]=ok(await rpc('owner','begin_checklist_evidence_upload',{p_inspection:inspection,p_item_key:'item-001',p_original_name:'synthetic.png',p_content_type:'image/png',p_size:bytes.length}));
+  ok(await req(object(source,begun.object_key),users.owner.token,{method:'POST',body:bytes,headers:{'Content-Type':'image/png','x-upsert':'false'}}));
   if(status!=='pending')ok(await rpc('owner','confirm_checklist_evidence_upload',{p_evidence:begun.evidence_id}));
   if(status==='removed')ok(await rpc('owner','remove_checklist_evidence',{p_evidence:begun.evidence_id}));
   return {id:begun.evidence_id,key:begun.object_key,inspection};
@@ -308,7 +306,7 @@ try {
   assert.equal(count(good.derived_object_key),1);
   console.log('PASS removal after ready revokes new signing, retains derivative and original objects; no purge');
   phase='dedicated LOGIN and bounded one-shot issuer';
-  await runRuntimeCI({sql,json,compose,subprocessEnv,config,base,root,evidence,manifest,lit,count,verifyOriginal:async key=>{const got=await get(source,key,users.owner.token);assert.equal(got.status,200);assert.ok(got.bytes.equals(original));}});
+  await runRuntimeCI({sql,json,compose,subprocessEnv,config,base,root,evidence,manifest,lit,count,verifyOriginal:async(key,bytes)=>{const got=await get(source,key,users.owner.token);assert.equal(got.status,200);assert.ok(got.bytes.equals(bytes));}});
   console.log('PASS AUD-IMG-02 real CI integration complete; no persistent provisioning or operational credentials');
 } catch (error) {
   const code=String(error.stderr??'').match(/(?:ERROR|FATAL):\s*([0-9A-Z]{5})/)?.[1]??(/^[A-Z0-9_]{1,32}$/.test(String(error.code??''))?error.code:'CHECK_FAILED');

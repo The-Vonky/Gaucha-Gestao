@@ -4,6 +4,7 @@ import {randomBytes} from 'node:crypto';
 import {readFileSync,writeFileSync,unlinkSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import pg from 'pg';
+import sharp from 'sharp';
 import {launchRuntime} from '../audit-derivative-runtime.mjs';
 import {restrictedConnection} from '../audit-derivative-runtime-client.mjs';
 export async function runRuntimeCI({sql,json,compose,subprocessEnv,config,base,root,evidence,manifest,lit,count,verifyOriginal}) {
@@ -39,16 +40,20 @@ export async function runRuntimeCI({sql,json,compose,subprocessEnv,config,base,r
       probe:{manifest:m,canary,issuerPid:process.pid}},signingSecret:config.JWT_SECRET,probe:true});
     assert.equal(result.state,'probed');assert.ok(result.sqlLogin&&result.sqlDenials&&result.isolated&&result.exactKey&&result.expiry&&result.renewal&&result.closedLease);
   }finally{unlinkSync(canary);}
+  assert.equal(count(m.derived_object_key+'-forbidden'),0);
   assert.equal(Number(sql(`select attempts from audit.checklist_evidence_derivatives where evidence_id=${lit(probeEvidence.id)}`)),1);
   sql(`update audit.checklist_evidence_derivatives set attempts=5 where evidence_id=${lit(probeEvidence.id)}`);
   console.log('PASS runtime isolated LOGIN worker: SQL/admin/Storage metadata denials, issuer files/proc/env hidden, exact bucket/key, real 30s JWT expiry, renewal and closed-lease revocation');
   phase='runtime actual LOGIN full worker';
-  const actual=await evidence();
+  const large=await sharp(randomBytes(960*640*4),{raw:{width:960,height:640,channels:4}}).png().toBuffer();
+  assert.ok(large.length>2*1024*1024 && large.length<=10*1024*1024);
+  const actual=await evidence('available',large);
   const result=await launchRuntime({workerConfig:{apiUrl:base,anonKey:config.ANON_KEY,database,expectedEvidence:actual.id},signingSecret:config.JWT_SECRET});
-  assert.equal(result.state,'ready');assert.equal(count(manifest(actual).derived_object_key),1);
+  assert.equal(result.state,'ready');
+  const key=sql(`select derived_object_key from audit.checklist_evidence_derivatives where evidence_id=${lit(actual.id)}`);assert.equal(count(key),1);
   const state=json(`select json_build_object('state',state,'login',runtime_login) from audit.checklist_evidence_derivatives where evidence_id=${lit(actual.id)}`);
   assert.deepEqual(state,{state:'ready',login});
-  await verifyOriginal(actual.key);
+  await verifyOriginal(actual.key,large);
   sql(`alter role ${login} nologin`,true);
   console.log('PASS runtime full one-shot: dedicated PostgreSQL LOGIN -> bounded one-shot issuer -> sibling isolated decoder -> ready, original >2 MiB intact; only technical password/public API key in worker, no administrative connection/secret');
   }catch(error){if(!error.phase)error.phase=phase;throw error;}

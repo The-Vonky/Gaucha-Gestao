@@ -51,8 +51,10 @@ try{
   await deny(await request(derived.scope.bucket,derived.scope.key,source.token));
   await deny(await request(source.scope.bucket,source.scope.key,derived.token));
   phase='technical role prohibited Storage operations';
-  const forbidden=async(route,method='POST',body={})=>deny(await fetch(`${boot.config.apiUrl}/storage/v1/${route}`,{
-    method,body:JSON.stringify(body),headers:{apikey:boot.config.anonKey,Authorization:`Bearer ${derived.token}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(10000)}));
+  const forbidden=async(route,method='POST',body={})=>{const response=await fetch(`${boot.config.apiUrl}/storage/v1/${route}`,{
+    method,body:JSON.stringify(body),headers:{apikey:boot.config.anonKey,Authorization:`Bearer ${derived.token}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(10000)});
+    if(method==='DELETE'&&response.status===200)assert.deepEqual(await response.json(),[]);else await deny(response);
+  };
   await deny(await request(source.scope.bucket,source.scope.key+'-other',source.token));
   await deny(await request(source.scope.bucket,source.scope.key,source.token.slice(0,-2)+'zz'));
   await forbidden(`object/sign/${derived.scope.bucket}/${derived.scope.key}`,'POST',{expiresIn:60});
