@@ -246,6 +246,7 @@ try {
   await page.getByRole("button",{name:"Histórico de Manutenção programada — demonstração",exact:true}).click();
   const history = page.getByRole("dialog",{name:"Histórico: Manutenção programada — demonstração",exact:true});
   await expect(history).toContainText("Versão 2");await page.keyboard.press("Escape");
+  await expect(page.getByRole("button",{name:"Histórico de Manutenção programada — demonstração",exact:true})).toBeFocused();
   await page.screenshot({path:`${directory}/admin-list-1440.png`,animations:"disabled"});
   checks.push("Administração Chromium sintética: lista, rascunho/publicação com resposta de transporte, histórico sob demanda, vermelho obrigatório para crítico, formulário sem overflow 1440/1024/768/375/320 e prévia mobile");
   const beforeLogout = reads;

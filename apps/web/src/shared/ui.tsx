@@ -184,7 +184,6 @@ export function Modal({
           icon="close"
           label="Fechar"
           className="ghost"
-          autoFocus
           disabled={locked}
           onClick={onClose}
         />
