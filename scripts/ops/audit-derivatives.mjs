@@ -53,7 +53,9 @@ let currentJob;
 let token;
 let positiveSignedUrl;
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
-const original = await sharp({create:{width:960,height:640,channels:4,background:{r:170,g:35,b:80,alpha:0.6}}}).png().toBuffer();
+// PNG sintético >2 MiB: exercita o transporte real além do antigo limite JSON.
+const original = await sharp(randomBytes(960*640*4),{raw:{width:960,height:640,channels:4}}).png().toBuffer();
+assert.ok(original.length>2*1024*1024 && original.length<=10*1024*1024);
 const encoded = await isolatedEncoder.encode({bytes:original,contentType:'image/png'});
 const derived = encoded.bytes;
 assert.ok(derived.length < original.length);
@@ -306,7 +308,7 @@ try {
   assert.equal(count(good.derived_object_key),1);
   console.log('PASS removal after ready revokes new signing, retains derivative and original objects; no purge');
   phase='dedicated LOGIN and bounded one-shot issuer';
-  await runRuntimeCI({sql,json,compose,subprocessEnv,config,base,root,evidence,manifest,derived,lit,count});
+  await runRuntimeCI({sql,json,compose,subprocessEnv,config,base,root,evidence,manifest,lit,count,verifyOriginal:async key=>{const got=await get(source,key,users.owner.token);assert.equal(got.status,200);assert.ok(got.bytes.equals(original));}});
   console.log('PASS AUD-IMG-02 real CI integration complete; no persistent provisioning or operational credentials');
 } catch (error) {
   const code=String(error.stderr??'').match(/(?:ERROR|FATAL):\s*([0-9A-Z]{5})/)?.[1]??(/^[A-Z0-9_]{1,32}$/.test(String(error.code??''))?error.code:'CHECK_FAILED');

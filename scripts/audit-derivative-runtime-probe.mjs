@@ -2,7 +2,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createHash,randomUUID} from 'node:crypto';
-import {isolatedEncoder} from './audit-derivative-encoder.mjs';
 import {workerBoot,restrictedConnection,runtimeRepository} from './audit-derivative-runtime-client.mjs';
 const boot=await workerBoot();let connection;let phase='own SQL login';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -37,19 +36,36 @@ try{
   const original=await request(source.scope.bucket,source.scope.key,source.token);assert.equal(original.status,200);
   const input=Buffer.from(await original.arrayBuffer());
   assert.equal(hash(input),m.original_sha256);
-  phase='nested isolated encoder';
-  const decoded=await isolatedEncoder.encode({bytes:input,contentType:'image/png'});assert.equal(hash(decoded.bytes),m.derived_sha256);
+  phase='sibling isolated encoder';
+  const decoded=await boot.requestEncode(job.lease,{bytes:input,contentType:'image/png'});assert.equal(hash(decoded.bytes),m.derived_sha256);
+  await assert.rejects(boot.requestEncode(job.lease,{bytes:input,contentType:'image/png'}));
   phase='lease and exact object tokens';
   await assert.rejects(boot.requestToken(job.lease,'service_role'));
   await assert.rejects(boot.requestToken(randomUUID(),'source'));
   assert.equal(await repo.prepare(job.lease,m),true);
   const derived=await boot.requestToken(job.lease,'derived');assert.equal(derived.scope.key,m.derived_object_key);
-  const output=Buffer.from(boot.config.probe.derived,'base64');
+  const output=decoded.bytes;
   const uploaded=await request(derived.scope.bucket,derived.scope.key,derived.token,{method:'POST',body:output});assert.equal(uploaded.status,200);await uploaded.body?.cancel();
   const readback=await request(derived.scope.bucket,derived.scope.key,derived.token);assert.equal(readback.status,200);
   assert.equal(hash(Buffer.from(await readback.arrayBuffer())),m.derived_sha256);
   await deny(await request(derived.scope.bucket,derived.scope.key,source.token));
   await deny(await request(source.scope.bucket,source.scope.key,derived.token));
+  phase='technical role prohibited Storage operations';
+  const forbidden=async(route,method='POST',body={})=>deny(await fetch(`${boot.config.apiUrl}/storage/v1/${route}`,{
+    method,body:JSON.stringify(body),headers:{apikey:boot.config.anonKey,Authorization:`Bearer ${derived.token}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(10000)}));
+  await deny(await request(source.scope.bucket,source.scope.key+'-other',source.token));
+  await deny(await request(source.scope.bucket,source.scope.key,source.token.slice(0,-2)+'zz'));
+  await forbidden(`object/sign/${derived.scope.bucket}/${derived.scope.key}`,'POST',{expiresIn:60});
+  for(const operation of ['copy','move'])await forbidden(`object/${operation}`,'POST',{
+    bucketId:derived.scope.bucket,sourceKey:derived.scope.key,destinationKey:derived.scope.key+'-forbidden'});
+  await forbidden(`object/${derived.scope.bucket}`,'DELETE',{prefixes:[derived.scope.key]});
+  await forbidden(`object/${derived.scope.bucket}/${derived.scope.key}`,'PUT');
+  await forbidden(`object/upload/sign/${derived.scope.bucket}/${derived.scope.key}`);
+  const overwrite=await fetch(`${boot.config.apiUrl}/storage/v1/object/${derived.scope.bucket}/${derived.scope.key}`,{
+    method:'POST',body:output,headers:{apikey:boot.config.anonKey,Authorization:`Bearer ${derived.token}`,'Content-Type':'image/png','x-upsert':'true'},signal:AbortSignal.timeout(10000)});
+  await deny(overwrite);
+  const unchanged=await request(derived.scope.bucket,derived.scope.key,derived.token);assert.equal(unchanged.status,200);
+  assert.equal(hash(Buffer.from(await unchanged.arrayBuffer())),m.derived_sha256);
   phase='real JWT expiration and renewal without extending lease';
   await new Promise(resolve=>setTimeout(resolve,Math.max(1,source.expires*1000-Date.now()+1100)));
   // A lease continua viva; a negação seguinte é da expiração do JWT, não do job.
@@ -62,8 +78,8 @@ try{
   assert.equal(await repo.fail(job.lease),true);
   await assert.rejects(boot.requestToken(job.lease,'source'));await assert.rejects(boot.requestToken(job.lease,'derived'));
   await deny(await request(renewed.scope.bucket,renewed.scope.key,renewed.token));
-  process.stdout.write(JSON.stringify({type:'result',result:{state:'probed',sqlLogin:true,sqlDenials:true,isolated:true,exactKey:true,expiry:true,renewal:true,closedLease:true}})+'\n');
+  await boot.sendResult({state:'probed',sqlLogin:true,sqlDenials:true,isolated:true,exactKey:true,expiry:true,renewal:true,closedLease:true});
 }catch(error){
   const code=/^[A-Z0-9_]{1,32}$/.test(String(error.code??''))?error.code:'CHECK_FAILED';
-  process.stdout.write(JSON.stringify({type:'result',result:{state:'failed',phase,code}})+'\n');process.exitCode=1;
+  await boot.sendResult({state:'failed',phase,code}).catch(()=>{});process.exitCode=1;
 }finally{await connection?.end();boot.close();}

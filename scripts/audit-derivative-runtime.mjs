@@ -1,7 +1,10 @@
 // Emissor e supervisor ONE-SHOT confiável. Nenhum servidor/timer é criado.
-import { createHmac,randomUUID } from 'node:crypto';
+import { createHmac,randomUUID,createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { createInterface } from 'node:readline';
+import {FrameChannel} from './audit-derivative-runtime-protocol.mjs';
+import {isolatedEncoder} from './audit-derivative-encoder.mjs';
+import {storageApiAdapter,authorizedStorageTransport} from './audit-derivative-worker.mjs';
+import {DERIVATIVE_MAX_ORIGINAL_BYTES,DERIVATIVE_MAX_OUTPUT_BYTES,DERIVATIVE_ENCODER_VERSION} from './audit-derivative-protocol.mjs';
 import { fileURLToPath } from 'node:url';
 import { restrictedConnection,runtimeRepository } from './audit-derivative-runtime-client.mjs';
 export const TECHNICAL_TOKEN_TTL=30;
@@ -25,14 +28,44 @@ export function leaseIssuer({connection,signingSecret}) {
     return {token:`${head}.${body}.${signature}`,expires:exp,scope};
   };
 }
+// Uma única imagem, escopo fresco e bytes conferidos contra o objeto autorizado.
+export function oneShotEncoder({connection,readSource,encode=isolatedEncoder.encode}) {
+  const repository=runtimeRepository(connection);let used=false;
+  return async({lease,contentType},bytes,authorizedLease,signal)=>{
+    if(used||!authorizedLease||lease!==authorizedLease||!Buffer.isBuffer(bytes)||bytes.length<1||
+      bytes.length>DERIVATIVE_MAX_ORIGINAL_BYTES||!['image/jpeg','image/png'].includes(contentType))throw new Error('Encode denied');
+    used=true;
+    const scope=await repository.scope(lease,'source');
+    if(scope.lease!==lease||scope.login!=='audit_derivative_worker'||scope.bucket!=='audit-checklist-evidence'||
+      !scope.key||Number(scope.bytes)!==bytes.length||scope.mime!==contentType)throw new Error('Encode scope denied');
+    signal?.throwIfAborted();
+    const original=await readSource(scope,signal);
+    const digest=value=>createHash('sha256').update(value).digest('hex');
+    if(!Buffer.isBuffer(original)||original.length!==bytes.length||digest(original)!==digest(bytes))throw new Error('Encode source mismatch');
+    signal?.throwIfAborted();
+    const result=await encode({bytes,contentType,version:DERIVATIVE_ENCODER_VERSION},{signal});
+    signal?.throwIfAborted();
+    if(!Buffer.isBuffer(result?.bytes)||result.bytes.length<1||result.bytes.length>DERIVATIVE_MAX_OUTPUT_BYTES||result.bytes.length>=bytes.length||
+      !['image/jpeg','image/png'].includes(result.mime)||!Number.isInteger(result.width)||!Number.isInteger(result.height)||
+      result.width<1||result.width>480||result.height<1||result.height>480)throw new Error('Invalid encoder output');
+    return {bytes:result.bytes,mime:result.mime,width:result.width,height:result.height};
+  };
+}
 export async function launchRuntime({workerConfig,signingSecret,probe=false}) {
   if(typeof signingSecret!=='string'||signingSecret.length<32)throw new Error('Invalid issuer secret');
-  // O emissor consulta escopo com O MESMO login mínimo; não há conexão administrativa aqui.
+  // O emissor consulta escopo com O MESMO login mínimo; nenhuma sessão administrativa.
   const connection=await restrictedConnection(workerConfig.database);
   const issue=leaseIssuer({connection,signingSecret});
+  const abort=new AbortController();
+  const encode=oneShotEncoder({connection,readSource:async(scope,signal)=>{
+    const issued=await issue({lease:scope.lease,kind:'source'});
+    const storage=storageApiAdapter({request:authorizedStorageTransport({origin:workerConfig.apiUrl,apiKey:workerConfig.anonKey,signal,
+      accessToken:async()=>{signal.throwIfAborted();return issued.token;}})});
+    return storage.readOriginal(scope.key,Number(scope.bytes),scope.mime);
+  }});
   const entry=probe?'audit-derivative-runtime-probe.mjs':'audit-derivative-runtime-worker.mjs';
-  const files=['audit-derivative-protocol.mjs','audit-derivative-worker.mjs','audit-derivative-encoder.mjs','audit-derivative-decoder.mjs',
-    'audit-derivative-runtime-client.mjs',entry];
+  const files=['audit-derivative-protocol.mjs','audit-derivative-worker.mjs','audit-derivative-encoder.mjs',
+    'audit-derivative-runtime-protocol.mjs','audit-derivative-runtime-client.mjs',entry];
   const args=['--unshare-all','--share-net','--die-with-parent','--new-session','--cap-drop','ALL',
     '--ro-bind','/usr','/usr','--ro-bind','/lib','/lib','--ro-bind','/lib64','/lib64','--proc','/proc','--dev','/dev','--tmpfs','/tmp',
     '--dir','/app','--dir','/app/scripts','--dir','/runtime','--ro-bind',process.execPath,'/runtime/node',
@@ -40,34 +73,38 @@ export async function launchRuntime({workerConfig,signingSecret,probe=false}) {
   for(const file of files)args.push('--ro-bind',scripts+file,'/app/scripts/'+file);
   args.push('--chdir','/app','/runtime/node','--max-old-space-size=96','/app/scripts/'+entry);
   const child=spawn('/usr/bin/bwrap',args,{env:{PATH:'/usr/bin:/bin'},stdio:['pipe','pipe','ignore']});
-  const lines=createInterface({input:child.stdout});let result;let active=false;let requests=0;
-  const timer=setTimeout(()=>child.kill('SIGKILL'),110_000);
+  let result,authorizedLease;let active=false;let requests=0;
+  const stop=()=>{abort.abort();child.kill('SIGKILL');child.stdin.destroy();child.stdout.destroy();};
+  const timer=setTimeout(stop,110_000);
   const finished=new Promise((resolve,reject)=>{
-    child.on('error',reject);child.on('close',code=>code===0&&result?resolve(result):reject(Object.assign(new Error('Isolated worker failed'),{phase:result?.phase,code:result?.code})));
+    child.on('error',()=>{stop();reject(new Error('Worker unavailable'));});
+    child.on('close',code=>{abort.abort();if(code===0&&result)resolve(result);else reject(Object.assign(new Error('Isolated worker failed'),{phase:result?.phase,code:result?.code}));});
   });
-  lines.on('line',line=>{
-    if(line.length>8192){child.kill('SIGKILL');return;}
-    let m;try{m=JSON.parse(line);}catch{child.kill('SIGKILL');return;}
+  void finished.catch(()=>{}); // O envio inicial também pode falhar antes do await.
+  const channel=new FrameChannel({input:child.stdout,output:child.stdin,onError:stop,onEnd:()=>{},onFrame:(m,body)=>{
     if(m.type==='result'){
-      if(!['idle','ready','stale','failed','orphan',...(probe?['probed']:[])].includes(m.result?.state)){child.kill('SIGKILL');return;}
+      if(active||result||!['idle','ready','stale','failed','orphan',...(probe?['probed']:[])].includes(m.result?.state)){stop();return;}
       result={state:m.result.state};
-      if(probe){
-        for(const flag of ['sqlLogin','sqlDenials','isolated','exactKey','expiry','renewal','closedLease'])result[flag]=m.result[flag]===true;
-        if(/^[a-zA-Z0-9 /:.-]{1,100}$/.test(m.result.phase??''))result.phase=m.result.phase;
-        if(/^[A-Z0-9_]{1,32}$/.test(m.result.code??''))result.code=m.result.code;
-      }
+      if(probe)for(const flag of ['sqlLogin','sqlDenials','isolated','exactKey','expiry','renewal','closedLease'])result[flag]=m.result[flag]===true;
+      if(/^[a-zA-Z0-9 /:.-]{1,100}$/.test(m.result.phase??''))result.phase=m.result.phase;
+      if(/^[A-Z0-9_]{1,32}$/.test(m.result.code??''))result.code=m.result.code;
       return;
     }
-    if(m.type!=='token'||active||++requests>32){child.kill('SIGKILL');return;}
+    if(result||!['token','encode'].includes(m.type)||active||++requests>34){stop();return;}
     active=true;
-    void issue({lease:m.lease,kind:m.kind}).then(value=>({type:'token-result',id:m.id,value}),()=>({type:'token-result',id:m.id,error:true}))
-      .then(reply=>{if(!child.stdin.destroyed)child.stdin.write(JSON.stringify(reply)+'\n');})
-      .finally(()=>{active=false;});
-  });
-  child.stdin.on('error',()=>{});
-  // Allowlist de configuração: mesmo um chamador que passe config com secrets não os transmite.
+    const operation=m.type==='token'?issue({lease:m.lease,kind:m.kind}).then(value=>{
+      authorizedLease=value.scope.lease;return {message:{type:'token-result',id:m.id,value}};
+    }):encode(m,body,authorizedLease,abort.signal).then(({bytes,...value})=>({message:{type:'encode-result',id:m.id,value},body:bytes}));
+    void operation.catch(error=>({message:{type:m.type+'-result',id:m.id,error:true,
+      code:/^DECODER_[A-Z_]{1,24}$/.test(error.code??'')?error.code:'REQUEST_DENIED'}}))
+      .then(reply=>{active=false;if(!abort.signal.aborted)return channel.send(reply.message,reply.body);})
+      .catch(stop);
+  }});
+  // Allowlist: nunca transmitir o segredo de assinatura ou ambiente do supervisor.
   const {host,port,database,user,password,ssl}=workerConfig.database;
-  child.stdin.write(JSON.stringify({type:'init',config:{apiUrl:workerConfig.apiUrl,anonKey:workerConfig.anonKey,
-    database:{host,port,database,user,password,ssl},expectedEvidence:workerConfig.expectedEvidence,...(probe?{probe:workerConfig.probe}:{} )}})+'\n');
-  try{return await finished;}finally{clearTimeout(timer);lines.close();if(child.exitCode===null)child.kill('SIGKILL');await connection.end();}
+  try{
+    await channel.send({type:'init',config:{apiUrl:workerConfig.apiUrl,anonKey:workerConfig.anonKey,
+      database:{host,port,database,user,password,ssl},expectedEvidence:workerConfig.expectedEvidence,...(probe?{probe:workerConfig.probe}:{})}});
+    return await finished;
+  }finally{clearTimeout(timer);channel.close();stop();await connection.end();}
 }

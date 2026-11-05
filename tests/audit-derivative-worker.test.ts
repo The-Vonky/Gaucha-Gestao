@@ -50,6 +50,9 @@ describe('encoder real em subprocesso Linux (sem Storage)', () => {
     await expect(encodeIsolated({ bytes, contentType: 'image/jpeg' }, { timeoutMs: 1 })).rejects.toThrow();
     await expect(encodeIsolated({ bytes, contentType: 'image/jpeg' }, { maxRss: 1 })).rejects.toThrow();
     await expect(encodeIsolated({ bytes, contentType: 'image/jpeg', version: 'other' })).rejects.toThrow();
+    const controller=new AbortController();
+    const cancelled=encodeIsolated({bytes,contentType:'image/jpeg'},{signal:controller.signal});controller.abort();
+    await expect(cancelled).rejects.toThrow();
   });
 });
 async function environment() {
@@ -136,4 +139,14 @@ it('limita aquisição de token antes de iniciar HTTP',async()=>{
   const request=authorizedStorageTransport({origin:'https://storage.example.test',apiKey:'anon',accessToken:()=>new Promise(()=>{}),fetchImpl});
   await expect(request({method:'GET',bucket:'audit-checklist-evidence',key:'a/b',timeoutMs:5})).rejects.toThrow();
   expect(fetchImpl).not.toHaveBeenCalled();
+});
+
+it('callback de token recebe signal, bucket e chave exatos; cancelamento externo interrompe HTTP',async()=>{
+ const accessToken=vi.fn().mockResolvedValue('limited-test-token');
+ const controller=new AbortController();
+ const fetchImpl=vi.fn(async(_url,{signal})=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(new Error('aborted')),{once:true})));
+ const request=authorizedStorageTransport({origin:'https://storage.example.test',apiKey:'anon',accessToken,fetchImpl,signal:controller.signal});
+ const result=request({method:'GET',bucket:'audit-checklist-evidence',key:'a/b',timeoutMs:100});
+ await vi.waitFor(()=>expect(fetchImpl).toHaveBeenCalledTimes(1));controller.abort();await expect(result).rejects.toThrow();
+ expect(accessToken).toHaveBeenCalledWith(expect.any(AbortSignal),{bucket:'audit-checklist-evidence',key:'a/b',method:'GET'});
 });

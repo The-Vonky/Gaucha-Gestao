@@ -6,7 +6,7 @@ import {execFileSync} from 'node:child_process';
 import pg from 'pg';
 import {launchRuntime} from '../audit-derivative-runtime.mjs';
 import {restrictedConnection} from '../audit-derivative-runtime-client.mjs';
-export async function runRuntimeCI({sql,json,compose,subprocessEnv,config,base,root,evidence,manifest,derived,lit,count}) {
+export async function runRuntimeCI({sql,json,compose,subprocessEnv,config,base,root,evidence,manifest,lit,count,verifyOriginal}) {
   let phase='runtime bootstrap';
   try{
   const login='audit_derivative_worker',password=randomBytes(32).toString('hex');
@@ -36,7 +36,7 @@ export async function runRuntimeCI({sql,json,compose,subprocessEnv,config,base,r
   writeFileSync(canary,randomBytes(32),{mode:0o600,flag:'wx'});
   try{
     const result=await launchRuntime({workerConfig:{apiUrl:base,anonKey:config.ANON_KEY,database,expectedEvidence:probeEvidence.id,
-      probe:{manifest:m,derived:derived.toString('base64'),canary,issuerPid:process.pid}},signingSecret:config.JWT_SECRET,probe:true});
+      probe:{manifest:m,canary,issuerPid:process.pid}},signingSecret:config.JWT_SECRET,probe:true});
     assert.equal(result.state,'probed');assert.ok(result.sqlLogin&&result.sqlDenials&&result.isolated&&result.exactKey&&result.expiry&&result.renewal&&result.closedLease);
   }finally{unlinkSync(canary);}
   assert.equal(Number(sql(`select attempts from audit.checklist_evidence_derivatives where evidence_id=${lit(probeEvidence.id)}`)),1);
@@ -48,7 +48,8 @@ export async function runRuntimeCI({sql,json,compose,subprocessEnv,config,base,r
   assert.equal(result.state,'ready');assert.equal(count(manifest(actual).derived_object_key),1);
   const state=json(`select json_build_object('state',state,'login',runtime_login) from audit.checklist_evidence_derivatives where evidence_id=${lit(actual.id)}`);
   assert.deepEqual(state,{state:'ready',login});
+  await verifyOriginal(actual.key);
   sql(`alter role ${login} nologin`,true);
-  console.log('PASS runtime full one-shot: dedicated PostgreSQL LOGIN -> bounded one-shot issuer -> isolated worker -> ready; only technical password/public API key in worker, no administrative connection/secret');
+  console.log('PASS runtime full one-shot: dedicated PostgreSQL LOGIN -> bounded one-shot issuer -> sibling isolated decoder -> ready, original >2 MiB intact; only technical password/public API key in worker, no administrative connection/secret');
   }catch(error){if(!error.phase)error.phase=phase;throw error;}
 }

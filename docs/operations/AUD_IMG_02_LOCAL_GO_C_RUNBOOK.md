@@ -1,10 +1,10 @@
 # AUD-IMG-02 — Solicitação e execução limitada do GO C local
 
-**Proposta, 04/11/2026. GO C não concedido.** Destino único: Supabase existente `gaucha-gestao-local`, pertencente ao mantenedor. PR #101 permanece draft. Não autoriza merge, deploy, C30/STAGING/PROD, timer, serviço, backfill ou processamento de acervo.
+**Proposta atualizada em 05/11/2026. GO C não concedido.** Destino único: Supabase existente `gaucha-gestao-local`, pertencente ao mantenedor. PR #101 permanece draft. Não autoriza merge, deploy, C30/STAGING/PROD, timer, serviço, backfill ou processamento de acervo.
 
 ## Inventário conhecido e gates antes de qualquer escrita
 
-Inspeção desta rodada: apenas `docker ps` e transação SQL **READ ONLY**, encerrada com ROLLBACK. PostgreSQL 17, **31 migrations**, última `20261104122256`; tabelas de derivados/runtime ausentes. Foi consultada somente a **presença booleana** de configuração global com JWT secret: **presente**, sem ler ou registrar seu valor.
+Inventário de 04/11/2026 (não repetido com escrita nesta continuação): apenas `docker ps` e transação SQL **READ ONLY**, encerrada com ROLLBACK. PostgreSQL 17, **31 migrations**, última `20261104122256`; tabelas de derivados/runtime ausentes. Foi consultada somente a **presença booleana** de configuração global com JWT secret: **presente**, sem ler ou registrar seu valor.
 
 | Serviço existente | Imagem observada |
 | --- | --- |
@@ -89,7 +89,7 @@ Em diretório privado **fora do checkout**, owner do operador e modo 0600, prepa
 }
 ```
 
-Conferir portas/origem antes de preencher; não copiar `.env`/status completo da CLI para o arquivo do worker. O launcher transmite somente os campos permitidos. Requer Linux não root, Node compatível, pg/Sharp do lockfile, Bubblewrap/prlimit e namespaces funcionais. Não instalar timer/serviço. Worker fica sem mounts de home/arquivos privados, sem ambiente herdado e com `/proc` isolado; usa a rede para os endpoints existentes. Decoder continua isolado **sem rede**. Esse isolamento não equivale a filtro de egress do host ou hard cgroup.
+Conferir portas/origem antes de preencher; não copiar `.env`/status completo da CLI para o arquivo do worker. O launcher transmite somente os campos permitidos. Requer Linux não root, Node compatível, pg/Sharp do lockfile, Bubblewrap/prlimit e namespaces funcionais. Não instalar timer/serviço. Worker fica sem mounts de home/arquivos privados, sem ambiente herdado e com `/proc` isolado; usa a rede para os endpoints existentes. Decoder é subprocesso **irmão**, aberto pelo supervisor fora do namespace do worker, também em Bubblewrap: sem rede, credenciais, banco ou mounts privados. Não há namespaces aninhados nem fallback sem isolamento. Esse isolamento não equivale a filtro de egress do host ou hard cgroup.
 
 ## Uma evidência sintética e validação negativa local
 
@@ -102,6 +102,10 @@ node scripts/audit-derivative-runtime-once.mjs --config /diretorio-privado/launc
 ```
 
 Esperado: `ready`, original byte a byte inalterado, manifesto vinculado ao login, derivado menor com hashes/read-back corretos, sem alterar versão/histórico da inspeção. O emissor one-shot possui o segredo e consulta escopo usando **o mesmo login mínimo**, sem conexão administrativa. Atende só uma lease, source/derived com chave calculada pelo banco, TTL 30 s limitado ao vencimento da lease; máximo 32 emissões por processo. Renovar exige revalidar lease ativa e não a prolonga. Não há refresh token, endpoint permanente ou daemon.
+
+O worker pede codificação por pipes privados com prefixo binário e header JSON de até 4 KiB; corpos são limitados por tipo: entrada JPEG/PNG até 10 MiB, resposta até 1 MiB, demais mensagens sem corpo. Não há imagem Base64 no protocolo do worker. O supervisor revalida a lease e confere tamanho/MIME e SHA-256 contra leitura independente **do mesmo objeto autorizado**, usando token mínimo; só então chama o decoder irmão. Uma codificação por execução, sem paths/role/TTL livres. Header/corpo incompleto expira em 5 s; pedido de encoder em 30 s, decoder em 20 s e supervisor em 110 s. Encerramento/erro cancela o decoder e fecha pipes. Mantêm-se CPU 15 s, AS 2 GiB, heap 64 MiB, RSS observado 384 MiB e limites físicos de pixels/dimensões. Um host que bloqueie namespaces deve falhar fechado; não afrouxar Bubblewrap para fazê-lo passar.
+
+A leitura adicional do original confere a identidade dos bytes antes de decodificá-los; representa tráfego de até 10 MiB por execução, sem mutação do original. O supervisor permanece componente de confiança temporário por deter o segredo de assinatura; deve executar somente o SHA revisado com arquivos protegidos. A homologação local precisa repetir isolamento e negativas **na versão v1.72.1 existente**, mesmo após PASS em CI v1.74.0.
 
 Repetir no destino local autorizado as negativas já aprovadas no CI, com fixtures explícitas e sem dados reais: anônimo, sem grant, outra unidade, setor, inativo/revogado, pending/removed/não ready, assinatura/GET e verbos proibidos; login errado/SET ROLE/SQL de dados/arquivos do servidor negados; token source não lê derived e vice-versa; token expirado nega, renovação mantém chave e limite da lease; lease encerrada nega renovação e token ainda não expirado. Não rodar `scripts/ops/audit-derivatives.mjs` no local: o guard deve recusá-lo; ele pressupõe teardown de CI.
 

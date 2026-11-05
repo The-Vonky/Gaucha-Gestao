@@ -54,6 +54,8 @@ begin
  bucket=case p_kind when 'source' then 'audit-checklist-evidence' else 'audit-evidence-thumbnails' end;
  if key is null then raise exception 'Forbidden' using errcode='42501'; end if;
  return jsonb_build_object('lease',p_lease,'login',session_user,'bucket',bucket,'key',key,
+ 'bytes',case p_kind when 'source' then e.size_bytes else d.bytes end,
+ 'mime',case p_kind when 'source' then e.content_type else d.mime end,
  'server_now',floor(extract(epoch from clock_timestamp())),'lease_expires',floor(extract(epoch from d.lease_until)));
 end $$;
 -- Storage também exige a chave/bucket exatos do JWT, além da lease ainda viva.

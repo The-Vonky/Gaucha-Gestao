@@ -1,5 +1,5 @@
 import pg from 'pg';
-import { createInterface } from 'node:readline';
+import {FrameChannel} from './audit-derivative-runtime-protocol.mjs';
 import { runOneShot, storageApiAdapter, authorizedStorageTransport } from './audit-derivative-worker.mjs';
 export async function restrictedConnection(database) {
   // Allowlist: jamais aceitar options/role, URL administrativa ou variáveis PG herdadas.
@@ -19,10 +19,10 @@ export async function restrictedConnection(database) {
       and not exists(select 1 from pg_db_role_setting cross join lateral unnest(setconfig) setting
         where setting ~* '(jwt_secret|service_role_key|service_key|postgres_password|password)=' and split_part(setting,'=',2)<>'') as no_global_secrets,
       not exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
-        where n.nspname in ('core','private','audit','audit_private','storage','auth','action_plans','action_plans_private','abc','abc_private','sales_private','room_booking')
+        where n.nspname in ('core','private','audit','audit_private','storage','auth','action_plans','action_plans_private','abc','abc_private','sales_private','room_booking','public')
         and has_schema_privilege(current_user,n.oid,'USAGE') and c.relkind in ('r','v','m','p') and has_table_privilege(current_user,c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')) as no_data_acl,
       not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-        where n.nspname in ('core','private','audit','audit_private','action_plans','action_plans_private','abc','abc_private','sales_private','room_booking')
+        where n.nspname in ('core','private','audit','audit_private','action_plans','action_plans_private','abc','abc_private','sales_private','room_booking','public')
         and has_schema_privilege(current_user,n.oid,'USAGE') and p.prosecdef and has_function_privilege(current_user,p.oid,'EXECUTE')
         and not(n.nspname='audit_private' and p.proname in ('runtime_derivative_claim','runtime_derivative_prepare','runtime_derivative_complete','runtime_derivative_fail','runtime_derivative_scope'))) as only_runtime_calls
       from pg_roles r where rolname=current_user`,[user]);
@@ -36,42 +36,51 @@ export function runtimeRepository(connection,expectedEvidence=null) {
   return {claim:()=>call('claim',[expectedEvidence]),prepare:(lease,m)=>call('prepare',[lease,JSON.stringify(m)]),complete:lease=>call('complete',[lease]),fail:lease=>call('fail',[lease]),scope:(lease,kind)=>call('scope',[lease,kind])};
 }
 export async function workerBoot() {
-  let initialize;
-  const initialized=new Promise(resolve=>{initialize=resolve;});
-  const pending=new Map();let next=0;
-  const lines=createInterface({input:process.stdin});
-  lines.on('line',line=>{
-    try{
-      if(line.length>8192)throw new Error('protocol');
-      const message=JSON.parse(line);
-      if(message.type==='init'){initialize(message.config);initialize=()=>{};}
-      else if(message.type==='token-result'){
-        const request=pending.get(message.id);if(!request)return;pending.delete(message.id);clearTimeout(request.timer);
-        if(message.error)request.reject(new Error('Token denied'));else request.resolve(message.value);
-      }
-    }catch{/* mensagem inválida não concede token */}
-  });
+  let initialize,rejectInit,timer;
+  const initialized=new Promise((resolve,reject)=>{initialize=resolve;rejectInit=reject;});
+  const pending=new Map();let next=0;let configured=false;
+  const fail=()=>{clearTimeout(timer);channel.close();process.stdin.destroy();rejectInit(new Error('Supervisor closed'));for(const p of pending.values()){clearTimeout(p.timer);p.reject(new Error('Supervisor closed'));}pending.clear();};
+  const channel=new FrameChannel({input:process.stdin,output:process.stdout,onError:fail,onEnd:fail,onFrame:(message,body)=>{
+    if(message.type==='init'&&!configured){configured=true;clearTimeout(timer);initialize(message.config);return;}
+    if(!['token-result','encode-result'].includes(message.type)){fail();channel.close();return;}
+    const request=pending.get(message.id);if(!request||message.type!==request.type+'-result'){fail();channel.close();process.stdin.destroy();return;}
+    pending.delete(message.id);clearTimeout(request.timer);
+    if(message.error)request.reject(Object.assign(new Error('Supervisor denied'),{code:message.code}));
+    else if(message.type==='encode-result')request.resolve({...message.value,bytes:body});
+    else request.resolve(message.value);
+  }});
+  timer=setTimeout(()=>{fail();channel.close();process.stdin.destroy();},5000);
   const config=await initialized;
-  const requestToken=(lease,kind)=>new Promise((resolve,reject)=>{
+  const request=(type,payload,body,timeout)=>new Promise((resolve,reject)=>{
     const id=++next;
-    const timer=setTimeout(()=>{pending.delete(id);reject(new Error('Issuer timeout'));},5000);
-    pending.set(id,{resolve,reject,timer});
-    process.stdout.write(JSON.stringify({type:'token',id,lease,kind})+'\n');
+    const wait=setTimeout(()=>{pending.delete(id);reject(new Error('Supervisor timeout'));fail();channel.close();process.stdin.destroy();},timeout);
+    pending.set(id,{resolve,reject,timer:wait,type});
+    void channel.send({type,id,...payload},body).catch(()=>{fail();channel.close();});
   });
-  return {config,requestToken,close:()=>{lines.close();process.stdin.destroy();for(const p of pending.values()){clearTimeout(p.timer);p.reject(new Error('closed'));}pending.clear();}};
+  return {config,
+    requestToken:(lease,kind)=>request('token',{lease,kind},Buffer.alloc(0),5000),
+    requestEncode:(lease,args)=>request('encode',{lease,contentType:args.contentType},args.bytes,30000),
+    sendResult:result=>channel.send({type:'result',result}),
+    close:()=>{clearTimeout(timer);channel.close();process.stdin.destroy();fail();}};
 }
-export async function executeRuntime(config,requestToken) {
-  const connection=await restrictedConnection(config.database);const repository=runtimeRepository(connection,config.expectedEvidence);
-  let lease;const claim=repository.claim;repository.claim=async()=>{const job=await claim();lease=job?.lease;return job;};
-  const tokens=new Map();
-  const storage=storageApiAdapter({request:authorizedStorageTransport({origin:config.apiUrl,apiKey:config.anonKey,
+export async function executeRuntime(config,requestToken,requestEncode) {
+  const connection=await restrictedConnection(config.database);const originalRepository=runtimeRepository(connection,config.expectedEvidence);
+  let lease,phase='sql claim',failureCode;const tokens=new Map();
+  const step=(name,fn)=>async(...args)=>{phase=name;try{return await fn(...args);}catch(error){failureCode=/^[A-Z0-9_]{1,32}$/.test(error.code??'')?error.code:undefined;throw error;}};
+  const repository={
+    claim:step('sql claim',async()=>{const job=await originalRepository.claim();lease=job?.lease;return job;}),
+    prepare:step('sql prepare',originalRepository.prepare),complete:step('sql complete',originalRepository.complete),fail:originalRepository.fail,
+  };
+  const api=storageApiAdapter({request:authorizedStorageTransport({origin:config.apiUrl,apiKey:config.anonKey,
     accessToken:async(_signal,{bucket,key})=>{
-      const kind=bucket==='audit-checklist-evidence'?'source':'derived';
-      const old=tokens.get(kind);
+      const kind=bucket==='audit-checklist-evidence'?'source':'derived';const old=tokens.get(kind);
       if(old&&old.scope.key===key&&old.scope.bucket===bucket&&old.expires*1000>Date.now()+5000)return old.token;
       const issued=await requestToken(lease,kind);
       if(issued.scope.key!==key||issued.scope.bucket!==bucket)throw new Error('Unexpected token scope');
       tokens.set(kind,issued);return issued.token;
     }})});
-  try{return await runOneShot({repository,storage});}finally{tokens.clear();await connection.end();}
+  const storage={readOriginal:step('read source',api.readOriginal),putDerived:step('upload derived',api.putDerived),readDerived:step('read derived',api.readDerived)};
+  const encoder={encode:step('encode',async args=>{if(!requestEncode)throw new Error('Encoder channel missing');return requestEncode(lease,args);})};
+  try{const result=await runOneShot({repository,storage,encoder});return result.state==='failed'?{...result,phase,code:failureCode}:result;}
+  finally{tokens.clear();await connection.end();}
 }

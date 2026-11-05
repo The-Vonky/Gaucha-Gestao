@@ -47,8 +47,7 @@ export function postgresRepository(connection) {
     complete: lease => call('complete_evidence_derivative', [lease]), fail: lease => call('fail_evidence_derivative', [lease]) };
 }
 
-// Integração real permanece bloqueada: não presumir suporte a JWT customizado no Storage instalado.
-// A aplicação futura deverá fornecer transporte comprovadamente limitado a esta lease/chave.
+// Transporte fornecido pelo runtime; RLS/claims são validados pelo Storage instalado.
 export function storageApiAdapter({ request }) {
   async function read(bucket, key, maxBytes, mime) {
     const response = await request({ method: 'GET', bucket, key, timeoutMs: 15_000 });
@@ -82,7 +81,7 @@ export function storageApiAdapter({ request }) {
 }
 
 // Transporte HTTP utilizável após comprovação da identidade; nenhuma credencial padrão.
-export function authorizedStorageTransport({ origin, apiKey, accessToken, fetchImpl = fetch }) {
+export function authorizedStorageTransport({ origin, apiKey, accessToken, fetchImpl = fetch, signal }) {
   const base = new URL(origin);
   const local = ['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname);
   if ((base.protocol !== 'https:' && !(local && base.protocol === 'http:')) || base.username || base.password ||
@@ -92,8 +91,13 @@ export function authorizedStorageTransport({ origin, apiKey, accessToken, fetchI
         !['GET','POST'].includes(method) || (method === 'POST' && (bucket !== 'audit-evidence-thumbnails' || upsert !== false)) ||
         key.split('/').some(segment => !segment || segment === '.' || segment === '..')) throw new Error('Invalid operation');
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const cancel=()=>controller.abort();
+    signal?.addEventListener('abort',cancel,{once:true});
+    if(signal?.aborted)cancel();
+    const release=()=>{clearTimeout(timer);signal?.removeEventListener('abort',cancel);};
+    const timer = setTimeout(cancel, timeoutMs);
     try {
+      if(controller.signal.aborted)throw new Error('Cancelled');
       const token = await new Promise((resolve, reject) => {
         const abort = () => reject(new Error('Token timeout'));
         controller.signal.addEventListener('abort', abort, { once: true });
@@ -108,7 +112,7 @@ export function authorizedStorageTransport({ origin, apiKey, accessToken, fetchI
         { method, body, headers: { apikey: apiKey, authorization: `Bearer ${token}`, ...(method === 'POST' ? { 'content-type': mime, 'x-upsert': 'false', 'cache-control': 'no-store' } : {}) },
           signal: controller.signal, redirect: 'error', cache: 'no-store' });
       return { ok: response.ok, status: response.status, headers: response.headers, body: response.body,
-        release: () => clearTimeout(timer) };
-    } catch { clearTimeout(timer); throw new Error('Storage request failed'); }
+        release };
+    } catch { release(); throw new Error('Storage request failed'); }
   };
 }

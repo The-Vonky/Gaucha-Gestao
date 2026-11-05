@@ -61,3 +61,5 @@ SO legado sem suporte depende de risco documentado e controles compensatórios.
 ## Login técnico de derivados — PR #101
 
 Credencial SQL técnica não pode ler segredo global por GUC ou catálogo, herdar papel privilegiado ou executar processamento com SET ROLE administrativo. O [runtime e runbook de AUD-IMG-02](../operations/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md) separam emissor one-shot e worker isolado, vinculam lease ao session_user e restringem JWT a lease/bucket/chave/30 s, com revalidação na renovação. Configuração persistente continua dependente de GO C; não há serviço/timer instalado nem autorização de produção.
+
+O decoder de AUD-IMG-02 é aberto pelo supervisor como subprocesso irmão em Bubblewrap sem rede/segredos, fora do namespace do worker. Pipes binários têm header até 4 KiB, entrada até 10 MiB e saída até 1 MiB. Escopo fresco de lease e conferência do hash contra o objeto autorizado precedem uma única codificação; timeout/encerramento cancela o subprocesso, sem fallback sem isolamento.

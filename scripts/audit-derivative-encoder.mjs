@@ -13,8 +13,8 @@ async function residentBytes(pid) {
   return own + descendants.reduce((sum, value) => sum + value, 0);
 }
 const denied = () => new Error('derivative_generation_failed');
-export function encodeIsolated({ bytes, contentType, version = DERIVATIVE_ENCODER_VERSION }, { timeoutMs = 20_000, maxRss = 384 * 1024 * 1024 } = {}) {
-  if (process.platform !== 'linux' || process.getuid?.() === 0 || !Buffer.isBuffer(bytes) ||
+export function encodeIsolated({ bytes, contentType, version = DERIVATIVE_ENCODER_VERSION }, { timeoutMs = 20_000, maxRss = 384 * 1024 * 1024, signal } = {}) {
+  if (signal?.aborted || process.platform !== 'linux' || process.getuid?.() === 0 || !Buffer.isBuffer(bytes) ||
       bytes.length <= 0 || bytes.length > DERIVATIVE_MAX_ORIGINAL_BYTES ||
       !['image/jpeg','image/png'].includes(contentType) || version !== DERIVATIVE_ENCODER_VERSION) return Promise.reject(denied());
   return new Promise((resolve, reject) => {
@@ -33,23 +33,24 @@ export function encodeIsolated({ bytes, contentType, version = DERIVATIVE_ENCODE
     child.stderr.on('data', chunk => { if(diagnostic.length<4096) diagnostic+=chunk.toString().slice(0,4096-diagnostic.length); });
     const stop = () => {
       if(rejected)return;
-      rejected = true;clearTimeout(timer);clearInterval(monitor);child.kill('SIGKILL');
+      rejected = true;clearTimeout(timer);clearInterval(monitor);signal?.removeEventListener('abort',stop);child.kill('SIGKILL');
       // Limite não aguarda pipes herdados pelo setup do namespace encerrarem.
       child.stdin.destroy();child.stdout.destroy();child.stderr.destroy();
       const error=denied();error.code='DECODER_LIMIT';reject(error);
     };
     const timer = setTimeout(stop, timeoutMs);
+    signal?.addEventListener('abort',stop,{once:true});
     const monitor = setInterval(() => {
       void residentBytes(child.pid).then(bytes => { if (bytes > maxRss) stop(); }).catch(() => {});
     }, 25);
-    child.on('error', () => { clearTimeout(timer); clearInterval(monitor); reject(denied()); });
+    child.on('error', () => { clearTimeout(timer); clearInterval(monitor); signal?.removeEventListener('abort',stop); reject(denied()); });
     child.stdin.on('error', () => {});
     child.stdout.on('data', chunk => {
       if (output.length + chunk.length > Math.ceil(DERIVATIVE_MAX_OUTPUT_BYTES * 4 / 3) + 1024) stop();
       else output = Buffer.concat([output, chunk]);
     });
     child.on('close', code => {
-      clearTimeout(timer); clearInterval(monitor);
+      clearTimeout(timer); clearInterval(monitor); signal?.removeEventListener('abort',stop);
       if (rejected || code !== 0) {
         const error=denied();
         error.code=rejected?'DECODER_LIMIT':/not permitted|namespace|permission denied/i.test(diagnostic)?'DECODER_ISOLATION_FAILED':'DECODER_FAILED';
