@@ -12,6 +12,8 @@ O endereço **[https://teste.gauchagestao.online](https://teste.gauchagestao.onl
 
 O [inventário de 22/10](operations/C30_STAGING_AS_BUILT_20261022.md) é um **snapshot histórico**, assim como o [antigo plano de acesso via ngrok](operations/STAGING_PUBLIC_ACCESS_PLAN.md). Permanecem válidos o [runbook C30 geral](operations/C30_STAGING_RUNBOOK.md), as [lacunas de backup](operations/C30_BACKUP_GAPS.md) e o [guia de release/migrations](operations/C30_STAGING_RELEASE_GUIDE.md). O servidor segue no commit `f9f041e`; merge na `main` não atualiza o host.
 
+**Inventário de 05/11/2026:** [GG-01 — inspeção operacional da C30, estado de código/schema, riscos e passagem para GG-02](operations/C30_GG01_INVENTORY_20261105.md). Diagnóstico inicial concluído com ressalvas; backup independente, restore e GO de produção permanecem pendentes.
+
 ## Início rápido por objetivo
 
 | Necessidade | Ponto de partida | Aprofundamento |
