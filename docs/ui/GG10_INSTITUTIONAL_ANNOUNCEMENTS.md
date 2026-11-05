@@ -40,12 +40,20 @@ de drawers (40), modais (50), toast (60) e skip link (70). Dialogs nativos ficam
 na top layer. Não há toast global no Shared atual; o aviso de erro do logout usa
 `--z-toast`. A barra não cria novo contexto acima desses controles.
 
-Mensagens muito longas têm rolagem interna, com limite de **40dvh**, mantendo
-espaço para trabalhar. A região recebe foco por teclado para permitir rolagem;
-o CTA segue o texto no celular. Não há fechamento, carrossel ou animação.
-A ausência/desativação não reserva altura. A primeira resposta de rede e alterações
-reais podem deslocar o conteúdo pela altura necessária; não há placeholder,
-remontagem por rota nem deslocamento a cada polling com conteúdo idêntico.
+Refinamento de 05/11: barra recolhida de referência 48 px (alvos ≥44 px), com
+resumo truncado no desktop e somente título, expansão e «Relatar» no mobile.
+Título/expansão formam um botão próprio; o CTA é outro controle. Textos completos
+ficam no `Modal` Shared (`dialog.showModal`): assunto, categoria, mensagem, datas,
+feedback e explicação de indisponibilidade. Escape, fechar e backdrop fecham;
+o navegador mantém foco preso e devolve-o ao acionador. A abertura não muda a
+altura do Shell. Sem CTA quando `action` está ausente. Região live polite contém
+texto inerte; não há carrossel nem animação. Zoom/reflow pode ampliar a altura.
+
+Presets Elo usam superfície sutil com acento: manutenção âmbar, informação azul,
+crítico vermelho (também superfície de perigo), testes neutro. Classes semânticas
+success/neutral preparam verde/neutro para a próxima entrega; o JSON v1 mantém
+suas quatro categorias, prioridade e validação. Não há cor/CSS livre. Texto,
+foco e controles usam tokens existentes. Ausência/desativação não reserva altura.
 
 ## Configuração e operação local
 
@@ -160,3 +168,5 @@ publicação controlada de `enabled: false`; se a configuração estiver indispo
 a barra também some. Não afeta Auth, RLS, RPCs, migrations ou dados. Nenhum teste
 encerra P1–P9/O1–O8 ou autoriza deploy. Merge exige decisão do mantenedor;
 segunda revisão humana não ocorreu.
+
+Refinamento compacto e novas evidências: [validação de 05/11](GG10_COMPACT_VALIDATION_20261105.md).

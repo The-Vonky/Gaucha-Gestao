@@ -146,3 +146,5 @@ revisão do mantenedor. Sem backend, permissões ou implantação. GG-11 permane
 futuro: callback reservado e botão indisponível; administração de avisos depende
 de proposta própria de autorização/auditoria. Não muda a ordem dos módulos ou
 fecha gates de homologação/operação. PROD NO-GO.
+
+Refinamento de 05/11: barra compacta com leitura em modal, CTA curto, presets Elo e evidências desktop/mobile na PR #102. Administração será PR separada; aceite do mantenedor pendente.

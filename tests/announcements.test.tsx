@@ -19,6 +19,8 @@ function respond(value: unknown, status = 200) {
 }
 async function flush() { await act(async () => { await Promise.resolve(); }); }
 beforeEach(() => {
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+  HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
   vi.useFakeTimers(); vi.setSystemTime(instant);
   vi.stubGlobal("fetch", fetchMock); fetchMock.mockReset(); respond(config());
 });
@@ -73,16 +75,29 @@ describe("GG-10 — componente e integração futura", () => {
     expect(document.getElementById(button.getAttribute("aria-describedby")!)?.textContent).toContain("indisponível");
     fireEvent.click(button); expect(callback).not.toHaveBeenCalled();
   });
+  it("abre a leitura completa com categoria e datas e fecha por controle ou Escape", () => {
+    render(<InstitutionalAnnouncementBar announcement={item({ startsAt: "2026-11-04T12:00:00Z", endsAt: "2026-11-05T12:00:00Z" })} />);
+    const trigger = screen.getByRole("button", { name: /Ler comunicado/ });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("dialog", { name: "Ambiente de testes" }).textContent).toContain("Categoria:");
+    expect(document.querySelectorAll("time")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(trigger); fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
   it("JSON sozinho não ativa GG-11 e callback oficial recebe o aviso quando integrado", () => {
     const announcement = item({ action: { type: "feedback", label: "Relatar problema", enabled: true } });
     const view = render(<InstitutionalAnnouncementBar announcement={announcement} />);
-    expect((screen.getByRole("button") as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Relatar problema" }) as HTMLButtonElement).disabled).toBe(true);
     const onFeedback = vi.fn(); view.rerender(<InstitutionalAnnouncementBar announcement={announcement} onFeedback={onFeedback} />);
-    fireEvent.click(screen.getByRole("button")); expect(onFeedback).toHaveBeenCalledWith(announcement);
+    fireEvent.click(screen.getByRole("button", { name: "Relatar problema" })); expect(onFeedback).toHaveBeenCalledWith(announcement);
   });
   it("permite ocultar ícone e ação e mantém mesma estrutura nas categorias", () => {
     const view = render(<InstitutionalAnnouncementBar announcement={item({ action: null, showIcon: false })} />);
-    expect(screen.queryByRole("button")).toBeNull(); expect(view.container.querySelector("svg")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Relatar/ })).toBeNull(); expect(view.container.querySelector(".institutional-announcement > svg")).toBeNull();
     for (const type of ["testing", "maintenance", "information", "critical"] as const) {
       view.rerender(<InstitutionalAnnouncementBar announcement={item({ type })} />);
       expect(screen.getByRole("region", { name: "Aviso institucional" }).classList.contains(`announcement-${type}`)).toBe(true);

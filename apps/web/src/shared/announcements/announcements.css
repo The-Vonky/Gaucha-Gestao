@@ -1,63 +1,71 @@
-/* GG-10: identidade Elo para testes e tokens semânticos para estados operacionais. */
+/* Presets Elo: superfície discreta e acento semântico, sem cores livres. */
 .institutional-announcement {
-  --announcement-bg: var(--brand-orange-100);
-  --announcement-fg: var(--brand-orange-950);
-  --announcement-border: var(--brand-orange-800);
+  --announcement-bg: var(--color-surface-subtle);
+  --announcement-fg: var(--color-text);
+  --announcement-border: var(--neutral);
   --color-focus: var(--announcement-fg);
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: calc(var(--space-3) + env(safe-area-inset-top, 0px))
-    max(var(--space-6), env(safe-area-inset-right, 0px)) var(--space-3)
-    max(var(--space-6), env(safe-area-inset-left, 0px));
-  max-height: 40dvh;
-  overflow-y: auto;
+  gap: var(--space-2);
+  min-height: 3rem;
+  padding: env(safe-area-inset-top, 0px)
+    max(var(--space-4), env(safe-area-inset-right, 0px)) 0
+    max(var(--space-4), env(safe-area-inset-left, 0px));
   background: var(--announcement-bg);
   color: var(--announcement-fg);
-  border-bottom: 1px solid var(--announcement-border);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: inset 3px 0 var(--announcement-border);
   font: var(--text-body-sm);
-  overflow-wrap: anywhere;
-  scroll-padding-block: var(--space-2);
 }
-.announcement-maintenance {
-  --announcement-bg: var(--warning-bg);
-  --announcement-fg: var(--warning);
-  --announcement-border: var(--warning);
-}
-.announcement-information {
-  --announcement-bg: var(--info-bg);
-  --announcement-fg: var(--info);
-  --announcement-border: var(--info);
-}
+.announcement-maintenance { --announcement-border: var(--warning); }
+.announcement-information { --announcement-border: var(--info); }
 .announcement-critical {
   --announcement-bg: var(--danger-bg);
   --announcement-fg: var(--danger-text);
   --announcement-border: var(--danger);
 }
-.institutional-announcement > .icon { flex: none; align-self: center; }
-.announcement-copy { flex: 1; min-width: 0; }
-.announcement-copy strong { margin-right: var(--space-2); }
-.announcement-action { flex: 0 1 22rem; min-width: 0; }
-.announcement-action button {
-  width: 100%;
+/* Preparação da paleta para comunicados positivos e gerais. */
+.announcement-success { --announcement-border: var(--success); }
+.announcement-neutral { --announcement-border: var(--neutral); }
+.institutional-announcement > .icon { flex: none; color: var(--announcement-border); }
+.institutional-announcement .announcement-read {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
   min-height: var(--touch-target);
-  white-space: normal;
+  padding: var(--space-1);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.announcement-read strong { flex: 0 1 auto; }
+.announcement-read strong, .announcement-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.announcement-summary { flex: 1; }
+.announcement-read > .icon { flex: none; width: 1rem; height: 1rem; margin-left: auto; }
+.announcement-action { flex: none; }
+.announcement-action button {
+  min-height: var(--touch-target);
+  padding: var(--space-1) var(--space-2);
   background: transparent;
   border-color: var(--announcement-border);
   color: inherit;
   font: inherit;
   font-weight: 600;
 }
-/* Mantém texto legível mesmo indisponível; o estado também aparece por escrito. */
 .announcement-action button:disabled { opacity: 1; color: inherit; }
-.announcement-unavailable { display: block; margin-top: var(--space-1); font-size: .75rem; line-height: 1.4; }
-@media (max-width: 599px) {
-  .institutional-announcement {
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    padding-inline: max(var(--space-4), env(safe-area-inset-left, 0px)) max(var(--space-4), env(safe-area-inset-right, 0px));
-  }
-  .institutional-announcement > .icon { align-self: flex-start; }
-  .announcement-copy { flex-basis: calc(100% - 2rem); }
-  .announcement-action { flex-basis: 100%; }
+.announcement-detail { overflow-wrap: anywhere; }
+.announcement-message { white-space: pre-wrap; }
+@media (max-width: 767px) {
+  .institutional-announcement { gap: var(--space-1); padding-inline: max(var(--space-2), env(safe-area-inset-left, 0px)) max(var(--space-2), env(safe-area-inset-right, 0px)); }
+  .announcement-summary { display: none; }
+  .institutional-announcement > .icon { width: 1rem; height: 1rem; }
+}
+/* Reflow em viewport muito estreito: altura pode crescer com ampliação. */
+@media (max-width: 280px) {
+  .institutional-announcement { flex-wrap: wrap; }
+  .announcement-read strong { white-space: normal; overflow-wrap: anywhere; }
 }

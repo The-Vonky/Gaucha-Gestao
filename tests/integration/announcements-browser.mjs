@@ -103,16 +103,23 @@ try {
   };
   config.announcements[0].message = "Mensagem longa para leitura em telas estreitas. ".repeat(30);
   await update(config); await expect(banner).toContainText("Mensagem longa");
-  for (const [width, height] of [[1440, 1000], [1024, 768], [768, 1000], [375, 812], [320, 568]]) {
+  for (const [width, height] of [[1440, 1000], [1024, 768], [768, 1000], [360, 800], [375, 812], [320, 568]]) {
     await page.setViewportSize({ width, height }); await page.evaluate(() => window.scrollTo(0, 0));
     await geometry(width);
     // Torna a página longa sem criar registros ou tocar em módulos.
     await page.locator("#main").evaluate(element => element.style.minHeight = "2200px");
     await page.evaluate(() => window.scrollTo(0, 700)); await geometry(width);
-    await banner.focus(); await page.keyboard.press("End");
-    await banner.getByRole("button").scrollIntoViewIfNeeded();
-    const button = await banner.getByRole("button").boundingBox(), region = await banner.boundingBox();
-    assert.ok(button.y >= region.y - 1 && button.y + button.height <= region.y + region.height + 1, `Ação alcançável na barra longa ${width}`);
+    const collapsed = await banner.boundingBox();
+    assert.ok(collapsed.height >= 44 && collapsed.height <= 56, `Barra compacta ${width}: ${collapsed.height}`);
+    const trigger = banner.getByRole("button", { name: /^Ler comunicado:/ });
+    await trigger.focus(); await page.keyboard.press("Enter");
+    const detail = page.getByRole("dialog", { name: original.announcements[0].title, exact: true });
+    await expect(detail).toBeVisible();
+    await expect(detail).toContainText(config.announcements[0].message);
+    assert.ok(await detail.evaluate(element => element.matches(":modal")));
+    assert.equal((await banner.boundingBox()).height, collapsed.height);
+    await page.screenshot({ path: `${directory}/detail-${width}.png`, animations: "disabled" });
+    await page.keyboard.press("Escape"); await expect(detail).toHaveCount(0); await expect(trigger).toBeFocused();
     if (width < 1024) {
       await page.getByRole("button", { name: "Menu", exact: true }).click();
       const drawer = page.getByRole("dialog", { name: "Navegação", exact: true }); await expect(drawer).toBeVisible();
@@ -130,7 +137,7 @@ try {
   await page.evaluate(() => window.scrollTo(0, 700)); await geometry(375);
   await expect.poll(() => page.evaluate(() => Math.abs(document.querySelector(".audit-section-bar").getBoundingClientRect().top - document.querySelector(".topbar").getBoundingClientRect().bottom))).toBeLessThan(1);
   await page.locator(".audit-section-bar").evaluate(element => element.remove());
-  checks.push("1440/1024/768/375/320: mensagem de 1380 caracteres, sem overflow externo, barra/header/sidebar medidos ao rolar, ação alcançável por scroll; drawers na top layer e seletor sticky de Auditoria sob cabeçalho");
+  checks.push("1440/1024/768/360/375/320: barra 44–56px, mensagem longa no modal, Escape e retorno do foco, sem overflow externo; barra/header/sidebar medidos ao rolar; drawers na top layer e seletor sticky de Auditoria sob cabeçalho");
 
   // O índice desktop também precisa caber abaixo do conjunto barra+cabeçalho.
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -158,7 +165,7 @@ try {
   await page.setViewportSize({ width: 640, height: 450 });
   await geometry(640);
   await page.evaluate(() => document.documentElement.style.fontSize = "200%");
-  await geometry(640); await banner.focus(); await page.keyboard.press("End");
+  await geometry(640); await banner.getByRole("button", { name: /^Ler comunicado:/ }).focus();
   await page.screenshot({ path: `${directory}/zoom-text-200.png`, animations: "disabled" });
   await page.evaluate(() => document.documentElement.style.fontSize = "");
   checks.push("Reflow equivalente a 200% (640×450) e ampliação de texto 200%; zoom nativo e aparelhos físicos pendentes");
