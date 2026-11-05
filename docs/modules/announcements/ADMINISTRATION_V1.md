@@ -145,3 +145,26 @@ Auditoria estática: sem USAGE/DML nas tabelas, sem EXECUTE de PUBLIC/anon nos q
 endpoints e helpers, search_path fixo, sem segredo no bundle e sem alterações nas
 migrations históricas. Não foi executado advisor contra banco persistente.
 Auditoria de tráfego/capacidade e aceites produtivos permanecem fora desta prova.
+
+Rodada local de 05/11: `npm test -- --maxWorkers=2` terminou com **73 arquivos /
+1.035 PASS**. `typecheck`, `lint`, build e `verify:build`: PASS; dependências
+inalteradas e audit moderate com zero vulnerabilidades na rodada. Teste legado do
+Core atualizado de 32 para 33 capacidades do administrador, com assert explícito
+da nova capacidade e preservação de D5-B. A primeira rodada falhou apenas nessa
+contagem; resolvida. Fixtures browser de Vendas receberam resposta vazia da nova
+RPC global (sem alterar cenários de exportação/dashboard).
+
+O `Modal` Shared captura o acionador antes de `showModal`, foca o controle Fechar
+após abrir e restaura foco explicitamente no cleanup, inclusive quando React já
+retirou o dialog. O autofocus no commit React antecipava a captura do acionador.
+Revalidados testes de administração e Chromium (incluindo retorno do histórico),
+e o browser de exportação de Vendas nas quatro larguras. Não altera drawers,
+rotas ou permissões de outras áreas. Resultado do CI do SHA final e a matriz real
+JWT/API/concorrência devem ser consultados na PR #103; resultados antigos não
+comprovam SHA posterior.
+
+Conflitos potenciais confirmados com a PR #101: `.github/workflows/validate.yml`,
+`docs/README.md`, `docs/architecture/IMPLEMENTATION_MAP.md` e
+`docs/architecture/SECURITY.md`. Preservar os passos/capacidades das duas frentes
+quando houver integração autorizada. Nenhuma migration da #101 foi copiada,
+editada ou aplicada por esta tarefa.

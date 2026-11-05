@@ -162,8 +162,14 @@ export function Modal({
   const locked = busy || pending;
   useEffect(() => {
     const d = ref.current;
+    const opener = document.activeElement;
     d?.showModal();
-    return () => d?.close();
+    d?.querySelector<HTMLButtonElement>(".dialog-head button")?.focus({ preventScroll: true });
+    return () => {
+      d?.close();
+      // React pode retirar o dialog antes do cleanup; preserve o acionador.
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
+    };
   }, []);
   return (
     <dialog

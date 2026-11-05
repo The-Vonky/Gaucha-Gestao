@@ -65,6 +65,7 @@ try {
     const json = data => route.fulfill({ json: data, headers: { "Access-Control-Allow-Origin": "*" } });
     if (path.endsWith("/profiles")) return json({ id: user.id, active, display_name: "Pessoa de teste visual" });
     if (path.endsWith("/my_access")) return json(grants);
+    if (path.endsWith("/announcements_published")) return json({version:1,enabled:true,announcements:[],serverNow:new Date().toISOString(),nextRefreshAt:null});
     if (path.endsWith("/sales_operation_units")) return catalogError ? route.abort() : json(units);
     if (path.endsWith("/sales_entries_list")) return json([]);
     if (path.endsWith("/sales_dashboard")) {
