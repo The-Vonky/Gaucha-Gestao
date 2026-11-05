@@ -57,3 +57,25 @@ SO legado sem suporte depende de risco documentado e controles compensatórios.
 - Antes do rollout: definir responsáveis por bloqueio de conta, revogação, consulta de logs, rotação de segredos, rollback e restore.
 
 **Produção permanece NO-GO** até gates operacionais e autorização humana.
+
+
+## Comunicados institucionais — GG-10 / Entrega B (05/11/2026, para revisão)
+
+`announcements.notices`/`notice_history` não são expostos na Data API. RLS
+restritiva + revogação de USAGE/DML impedem manipulação direta; RPCs públicas
+pontuais têm EXECUTE revogado de PUBLIC/anon e concedido somente a authenticated,
+`search_path=''`, relações qualificadas e autorização Core explícita. Gerência
+exige `announcements.notice.manage` global atual e bloqueios compartilhados nas
+referências de autorização; leitura comum exige perfil ativo e período publicado.
+
+Cada escrita usa UUID+versão esperada, trava linha e registra snapshot imutável
+no domínio. Core recebe somente id/estado/versão, sem texto institucional.
+Datas, tamanho, prioridade, categoria e presets são validados no SQL; tags HTML
+são rejeitadas. Crítico só danger; não há CSS livre, serviço privilegiado ou
+segredo no frontend. A aplicação usa fonte RPC única e invalida dados por identidade;
+JSON público foi retirado, sem fallback/exportação de dados internos.
+
+Teste real adicional usa o stack já descartável do action-plans-integration e
+recusa execução fora de CI hospedado. Testes em memória não comprovam JWT/Auth,
+API nem disputa entre sessões. Migration proposta não autoriza aplicação persistente,
+retenção/expurgo ou deploy. [Contrato](../modules/announcements/ADMINISTRATION_V1.md).

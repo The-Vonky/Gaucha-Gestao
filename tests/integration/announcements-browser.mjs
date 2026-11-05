@@ -7,14 +7,16 @@ import { salesLocalWeb } from "./sales-local-web.mjs";
 const base = "http://127.0.0.1:5173", api = "http://127.0.0.1:54321";
 const directory = process.env.GG10_ARTIFACT_DIR ?? "tmp/gg10";
 mkdirSync(directory, { recursive: true });
-const original = JSON.parse(readFileSync("apps/web/public/announcements.json", "utf8"));
+const original = JSON.parse(readFileSync("tests/fixtures/announcements.json", "utf8"));
 let config = structuredClone(original), unavailable = false, reads = 0;
 const user = { id: "00000000-0000-4000-8000-000000000099", email: "gg10@example.test", aud: "authenticated" };
 const expires = Math.floor(Date.now() / 1000) + 3600;
 const token = [Buffer.from('{"alg":"HS256"}').toString("base64url"), Buffer.from(JSON.stringify({ sub: user.id, exp: expires, role: "authenticated" })).toString("base64url"), "synthetic"].join(".");
 const session = { access_token: token, refresh_token: "synthetic", expires_at: expires, expires_in: 3600, token_type: "bearer", user };
-const grants = ["audit.inspection.read", "audit.inspection.create", "action_plan.read"].map(permission => ({ permission, scope_type: "global", unit_id: null, sector_id: null }));
+const grants = ["audit.inspection.read", "audit.inspection.create", "action_plan.read", "announcements.notice.manage"].map(permission => ({ permission, scope_type: "global", unit_id: null, sector_id: null }));
 const errors = [], checks = [], contrasts = [];
+const notices = [];
+let noticeVersion = 0;
 let server, browser;
 try {
   server = await salesLocalWeb({ API_URL: api, ANON_KEY: "sb_publishable_gg10_fixture" });
@@ -22,9 +24,9 @@ try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, locale: "pt-BR", reducedMotion: "reduce" });
   await context.route("**/*", async route => {
     const url = new URL(route.request().url()), path = url.pathname;
-    if (url.origin === base && path === "/announcements.json") {
+    if (url.origin === api && path.endsWith("/announcements_published")) {
       reads++;
-      return unavailable ? route.fulfill({ status: 404, body: "" }) : route.fulfill({ json: config, headers: { "Cache-Control": "no-store" } });
+      return unavailable ? route.fulfill({ status: 404, body: "" }) : route.fulfill({ json: { ...config, serverNow: new Date().toISOString(), nextRefreshAt: null }, headers: { "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*" } });
     }
     if (url.origin === base) return route.continue();
     assert.equal(url.origin, api, "Proibido acessar destinos diferentes do transporte local interceptado");
@@ -36,6 +38,18 @@ try {
     if (path === "/auth/v1/user") return json(user);
     if (path.endsWith("/profiles")) return json({ id: user.id, active: true, display_name: "Pessoa sintética GG-10" });
     if (path.endsWith("/my_access")) return json(grants);
+    if (path.endsWith("/announcements_manage_list")) return json({ items: notices, total: notices.length });
+    if (path.endsWith("/announcements_notice_save")) {
+      const data = route.request().postDataJSON();
+      const now = new Date().toISOString();
+      const row = { id: "00000000-0000-4000-8000-000000000098", version: ++noticeVersion,
+        title: data.p_title, message: data.p_message, category: data.p_category, tone: data.p_tone,
+        priority: data.p_priority, starts_at: data.p_starts_at, ends_at: data.p_ends_at, state: data.p_state,
+        status: data.p_state === "published" ? "active" : data.p_state, show_feedback: data.p_show_feedback,
+        created_by: user.id, updated_by: user.id, created_at: now, updated_at: now };
+      notices.splice(0, notices.length, row); return json(row);
+    }
+    if (path.endsWith("/announcements_notice_history")) return json({items: notices.map(row=>({notice_id:row.id,version:row.version,actor_user_id:user.id,occurred_at:row.updated_at,before_data:null,after_data:row})),total:notices.length});
     if (["/units", "/inspection_summaries", "/plan_summaries"].some(p => path.endsWith(p))) return json([]);
     throw new Error(`Endpoint não previsto: ${path}`);
   });
@@ -172,7 +186,7 @@ try {
 
   await page.setViewportSize({ width: 1440, height: 1000 });
   // Contraste usa cores CSS realmente computadas em cada categoria, inclusive botão indisponível.
-  for (const type of ["testing", "maintenance", "information", "critical"]) {
+  for (const type of ["testing", "maintenance", "information", "critical", "success", "general"]) {
     const next = structuredClone(original); next.announcements[0].type = type; await update(next);
     await expect(banner).toHaveClass(new RegExp(`announcement-${type}`));
     const ratio = await banner.evaluate(element => {
@@ -203,6 +217,37 @@ try {
   unavailable = true; await page.clock.runFor(60010); await expect(banner).toHaveCount(0);
   unavailable = false; await update(original); await expect(banner).toBeVisible();
   checks.push("Refresh em página aberta, foco/scroll-padding, desativação sem espaço vazio, 404 oculta e recuperação exibe");
+  await page.locator(".sidebar").getByRole("button", { name: "Administração", exact: true }).click();
+  await page.locator(".sidebar").getByRole("link", { name: "Comunicados", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Comunicados", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "Novo comunicado", exact: true });
+  await editor.getByLabel("Assunto", { exact: true }).fill("Manutenção programada — demonstração");
+  await editor.getByLabel("Mensagem completa", { exact: true }).fill("Mensagem sintética para prévia administrativa. ".repeat(12));
+  await editor.getByLabel(/^Categoria/).selectOption("critical");
+  await expect(editor.getByRole("radio")).toHaveCount(1);
+  await expect(editor.getByRole("radio", { name: "Vermelho · crítico" })).toBeChecked();
+  for (const [width,height] of [[1440,1000],[1024,768],[768,1000],[375,812],[320,568]]) {
+    await page.setViewportSize({width,height});
+    await expect(editor).toBeVisible();
+    assert.equal(await editor.evaluate(element=>element.scrollWidth>element.clientWidth+1),false, `Formulário sem overflow ${width}`);
+    await page.screenshot({path:`${directory}/admin-editor-${width}.png`,animations:"disabled"});
+  }
+  await page.setViewportSize({width:1440,height:1000});
+  await editor.getByRole("button", {name:"Prévia mobile",exact:true}).click();
+  await page.screenshot({path:`${directory}/admin-preview-mobile.png`,animations:"disabled"});
+  await editor.getByRole("button",{name:"Salvar rascunho",exact:true}).click();
+  await expect(editor).toHaveCount(0);
+  await expect(page.getByText("Comunicado salvo no servidor.", {exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"Editar Manutenção programada — demonstração",exact:true}).click();
+  const edit = page.getByRole("dialog",{name:"Editar comunicado",exact:true});
+  await edit.getByRole("button",{name:"Publicar comunicado",exact:true}).click();await expect(edit).toHaveCount(0);
+  await expect(page.getByText("Ativo",{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"Histórico de Manutenção programada — demonstração",exact:true}).click();
+  const history = page.getByRole("dialog",{name:"Histórico: Manutenção programada — demonstração",exact:true});
+  await expect(history).toContainText("Versão 2");await page.keyboard.press("Escape");
+  await page.screenshot({path:`${directory}/admin-list-1440.png`,animations:"disabled"});
+  checks.push("Administração Chromium sintética: lista, rascunho/publicação com resposta de transporte, histórico sob demanda, vermelho obrigatório para crítico, formulário sem overflow 1440/1024/768/375/320 e prévia mobile");
   const beforeLogout = reads;
   await page.locator(".sidebar").getByRole("button", { name: "Sair", exact: true }).click();
   await expect(page.getByRole("button", { name: "Entrar", exact: true })).toBeVisible(); await expect(banner).toHaveCount(0);

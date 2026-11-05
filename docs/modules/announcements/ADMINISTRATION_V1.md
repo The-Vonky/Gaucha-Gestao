@@ -36,7 +36,7 @@ identidade privilegiada, retenção/purge, merge ou deploy.
   título/texto obrigatórios também no rascunho, para um único contrato validado.
 - Estados persistidos: draft/published/inactive/archived. Status de apresentação
   deriva do relógio SQL: rascunho/agendado/ativo/expirado/inativo/arquivado.
-- Datas finitas com timezone, início inclusivo/fim exclusivo, fim > início.
+- Datas finitas com timezone, precisão de milissegundos, início inclusivo/fim exclusivo, fim > início.
   Título ≤120, mensagem ≤1600, prioridade inteira −10000..10000. HTML e tags são
   rejeitados no backend; UI usa somente texto React. Sem CSS/HTML ou URL livre.
 - Categorias operacionais testing/maintenance/information/critical/success/general;
@@ -93,3 +93,55 @@ GG-11 continua indisponível; ADR-007 permanece fora do escopo. PROD NO-GO.
 Referências externas consultadas: [funções PostgreSQL no Supabase](https://supabase.com/docs/guides/database/functions),
 [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security) e changelog
 de 05/11 (CLI 3 local por padrão; nenhuma atualização de runtime efetuada).
+
+## Fluxo implementado
+
+```mermaid
+flowchart LR
+  Session["Fronteira autenticada / identidade atual"] --> Read["announcements_published"]
+  Read --> Clock["Snapshot ativo + relógio SQL + próxima fronteira"]
+  Clock --> Shared["Hook / barra / modal Shared"]
+  Manager["Menu / Guard de capacidade global"] --> RPC["RPCs de gestão"]
+  RPC --> Core["Core: perfil / grants / capacidade atual"]
+  RPC --> Domain["announcements: registro versionado e histórico"]
+  Domain --> Log["Auditoria sistêmica Core sem texto institucional"]
+```
+
+A lista administrativa é paginada (20 por página), mostra status calculado no SQL,
+prioridade/versão/período e abre edição/histórico sob demanda. Novo comunicado
+permanece desabilitado se a consulta real falhar. Formulário usa componentes Elo,
+prévia desktop/mobile e leitura integral; datas locais são convertidas para ISO
+com timezone no transporte. Salvar alterações preserva o estado anterior;
+Publicar/Desativar são ações explícitas. Arquivar exige confirmação e é terminal.
+Conflito preserva o texto e bloqueia reenvio da versão obsoleta; copiar alterações,
+fechar e atualizar a consulta antes de reabrir a versão atual.
+
+![Lista desktop sintética](../../ui/evidence/gg10-admin/list-1440.png)
+![Editor desktop sintético](../../ui/evidence/gg10-admin/editor-1440.png)
+![Editor 320 px sintético](../../ui/evidence/gg10-admin/editor-320.png)
+![Prévia mobile sintética](../../ui/evidence/gg10-admin/preview-mobile.png)
+
+## Evidência e limites
+
+Proposta anterior: commit `4588732`. Migration gerada pela CLI **3.0.0**:
+`20261105131548_announcements_administration.sql`; execução somente no PGlite
+em memória durante o desenvolvimento. Sem banco Docker/compartilhado/host alterado.
+No CI, a migration será aplicada somente pelo bootstrap já existente do runner
+isolado; `announcements-security.mjs` usa esse mesmo stack e exige CI hospedado.
+
+PASS local: testes focados de UI/SQL/API/hook; Chromium com transporte sintético,
+lista/criação/publicação/histórico, formulários sem overflow em 1440/1024/768/375/320;
+barra também 360; seis categorias e contrastes de texto/CTA ≥4,5:1. O transporte
+interceptado testa UI e não comprova persistência real. Contrastes discretos
+15,44:1 e crítico 9,25:1. Preservados geometria sticky, modais/drawers, CSS de
+Auditoria, foco/teclado, logout, reflow/texto 200% e refresh/falhas.
+
+NOT EXECUTED localmente: API/JWT/PostgreSQL real e duas sessões (prova adicionada
+ao CI), leitor de tela, zoom nativo e dispositivos físicos. BLOCKED: aplicação
+persistente, homologação e deploy, que não foram autorizados. Não equivalem a
+falhas de testes. Nenhuma segunda revisão humana ocorreu.
+
+Auditoria estática: sem USAGE/DML nas tabelas, sem EXECUTE de PUBLIC/anon nos quatro
+endpoints e helpers, search_path fixo, sem segredo no bundle e sem alterações nas
+migrations históricas. Não foi executado advisor contra banco persistente.
+Auditoria de tráfego/capacidade e aceites produtivos permanecem fora desta prova.

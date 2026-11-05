@@ -4,7 +4,16 @@ Implementação local autorizada em 04/11/2026. Responsável por revisão e merg
 mantenedor único. Fonte do escopo: brief GG-10 fornecido pelo mantenedor nesta tarefa;
 nenhuma issue GG-10 encontrada na consulta inicial. **PROD NO-GO; sem implantação.**
 
-## Diagnóstico e arquitetura
+## Evolução administrativa — Entrega B, 05/11/2026
+
+Na branch administrativa, a composição autenticada usa somente RPC PostgreSQL.
+O JSON saiu de `public/` e virou fixture sintética de teste; não há fallback,
+exportação ou dual-write. O contrato atual de domínio, autorização, fontes e
+implantação está em [Administração v1](../modules/announcements/ADMINISTRATION_V1.md).
+As seções abaixo registram o contrato histórico da **Entrega A / PR #102**;
+seus procedimentos de publicação JSON não operam a Entrega B.
+
+## Diagnóstico e arquitetura da Entrega A
 
 A baseline `origin/main` `422a51fe91843824013ad337122f6954c954e59c`
 possui sidebar e topbar sticky, navegação SPA, drawer e modais Shared com

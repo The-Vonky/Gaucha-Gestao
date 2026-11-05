@@ -1,8 +1,14 @@
 /** Contrato público GG-10: somente texto; nenhum destino ou código executável. */
-export type AnnouncementType = "testing" | "maintenance" | "information" | "critical";
+export type AnnouncementType = "testing" | "maintenance" | "information" | "critical" | "success" | "general";
+export type AnnouncementTone = "danger" | "warning" | "success" | "info" | "neutral";
+export const announcementTones: Record<AnnouncementType, readonly AnnouncementTone[]> = {
+  critical: ["danger"], maintenance: ["warning"], success: ["success"],
+  information: ["info", "neutral"], testing: ["neutral", "info"], general: ["neutral", "info"],
+};
 export interface Announcement {
   id: string;
   type: AnnouncementType;
+  tone?: AnnouncementTone;
   title: string;
   message: string;
   enabled: boolean;
@@ -15,11 +21,13 @@ export interface Announcement {
 }
 export interface AnnouncementConfig {
   version: 1;
+  serverNow?: number;
+  nextRefreshAt?: number;
   enabled: boolean;
   announcements: Announcement[];
 }
 const ranks: Record<AnnouncementType, number> = {
-  critical: 4, maintenance: 3, information: 2, testing: 1,
+  critical: 6, maintenance: 5, information: 4, success: 3, general: 2, testing: 1,
 };
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -29,7 +37,7 @@ function text(value: unknown, max: number): value is string {
 }
 function date(value: unknown): value is string | null {
   if (value === null) return true;
-  if (typeof value !== "string" || !/^\d{4}-(0[1-9]|1[0-2])-([0-2]\d|3[01])T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?(?:Z|[+-](?:(?:0\d|1[0-3]):[0-5]\d|14:00))$/.test(value)) return false;
+  if (typeof value !== "string" || !/^\d{4}-(0[1-9]|1[0-2])-([0-2]\d|3[01])T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:Z|[+-](?:(?:0\d|1[0-3]):[0-5]\d|14:00))$/.test(value)) return false;
   const [year, month, day] = value.slice(0, 10).split("-").map(Number);
   return day >= 1 && day <= new Date(Date.UTC(year, month, 0)).getUTCDate() && Number.isFinite(Date.parse(value));
 }
@@ -55,6 +63,8 @@ export function parseAnnouncementConfig(value: unknown): AnnouncementConfig | nu
       !date(item.endsAt) ||
       (item.startsAt !== null && item.endsAt !== null && Date.parse(item.endsAt) <= Date.parse(item.startsAt)) ||
       (item.showIcon !== undefined && typeof item.showIcon !== "boolean")) return null;
+    const category = item.type as AnnouncementType;
+    if (item.tone !== undefined && !announcementTones[category].includes(item.tone as AnnouncementTone)) return null;
     let action: Announcement["action"] = null;
     if (item.action !== undefined && item.action !== null) {
       if (!record(item.action) || item.action.type !== "feedback" || !text(item.action.label, 100) || typeof item.action.enabled !== "boolean") return null;
@@ -62,7 +72,7 @@ export function parseAnnouncementConfig(value: unknown): AnnouncementConfig | nu
     }
     ids.add(item.id);
     announcements.push({
-      id: item.id, type: item.type as AnnouncementType, title: item.title,
+      id: item.id, type: category, ...(item.tone !== undefined ? { tone: item.tone as AnnouncementTone } : {}), title: item.title,
       message: item.message, enabled: item.enabled, startsAt: item.startsAt,
       endsAt: item.endsAt, audience: "authenticated", priority: Number(item.priority),
       showIcon: item.showIcon !== false, action,
