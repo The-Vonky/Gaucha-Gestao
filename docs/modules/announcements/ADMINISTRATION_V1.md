@@ -1,0 +1,95 @@
+# GG-10 — Proposta técnica e contrato administrativo v1
+
+## Proposta anterior à alteração de schema — 05/11/2026
+
+Fonte: brief atual do mantenedor, Entrega B. Branch própria
+`codex/gg-10-announcements-admin`, derivada de `origin/main` e dependente da Entrega A
+`716417e` (PR #102). PR empilhada contra a branch visual até sua integração humana.
+Core preserva identidade, catálogo, atribuições e auditoria; `modules/announcements`
+é dono dos registros e consome Core/Shared. Shared não importa domínio/Core.
+ADRs aceitos 001/005 e padrões VEN-02/04B governam a implementação.
+
+Não foi identificado conflito com contrato aceito que exija substituir ADR.
+O pedido atual autoriza explicitamente nova capacidade, composição institucional,
+persistência e proposta de migration em código. Não autoriza aplicação persistente,
+identidade privilegiada, retenção/purge, merge ou deploy.
+
+## Modelo e autorização propostos
+
+- Tabelas `announcements.notices` e `announcements.notice_history`, schema não
+  exposto, RLS restritiva e sem USAGE/DML dos clientes. Helpers privados em
+  `announcements_private`, RPCs pontuais no `public` conforme o padrão de Vendas.
+- `announcements.notice.manage`, checada por `private.has_global_permission`.
+  Perfil, papel, permissão e atribuição precisam permanecer ativos. Escritas
+  bloqueiam/revalidam as referências Core e a linha até o commit.
+- Relação explícita no papel protegido `platform_administrator`; novo papel
+  protegido/global-only `announcement_manager` — Gestor de Comunicados — recebe
+  somente essa capacidade. Nenhuma atribuição a pessoa. Colisões/divergências
+  interrompem migration; nenhuma concessão `room_booking.manage` (D5-B).
+- Usuário comum ativo consulta somente comunicados publicados e dentro do período
+  global autorizado; não recebe rascunhos, futuros, autoria ou histórico. Não há
+  comunicação restrita a unidades/setores nesta versão. Não usar texto confidencial
+  destinado a subconjunto menor que todos os perfis ativos da plataforma.
+- Gerenciamento inclui listar/paginar, criar, editar, publicar, desativar, arquivar
+  e histórico; UUID + versão esperada com bloqueio de linha negam edição obsoleta.
+  Arquivado é terminal; não há DELETE. Rascunho pode ser incompleto? **Não:**
+  título/texto obrigatórios também no rascunho, para um único contrato validado.
+- Estados persistidos: draft/published/inactive/archived. Status de apresentação
+  deriva do relógio SQL: rascunho/agendado/ativo/expirado/inativo/arquivado.
+- Datas finitas com timezone, início inclusivo/fim exclusivo, fim > início.
+  Título ≤120, mensagem ≤1600, prioridade inteira −10000..10000. HTML e tags são
+  rejeitados no backend; UI usa somente texto React. Sem CSS/HTML ou URL livre.
+- Categorias operacionais testing/maintenance/information/critical/success/general;
+  aparência independente por presets neutral/warning/info/danger/success.
+  Crítico somente danger, manutenção somente warning, positivo somente success;
+  informação/general/testes podem usar info ou neutral. Nenhuma prioridade
+  reduzida por troca de cor. Ordem: crítico > manutenção > informação > positivo >
+  geral > testes; depois maior prioridade e menor UUID lexical.
+- Histórico de negócio guarda snapshots/autor/versão sem acesso de clientes comuns;
+  evento sistêmico Core guarda ação/id/versão/status, sem duplicar mensagem.
+  Histórico não é apagado nem editado por RPC. Retenção/purge produtiva continua
+  decisão humana futura; não introduzir job/serviço/limpeza nesta entrega.
+
+## Fonte única e sessão
+
+A Entrega B troca **a composição da aplicação** para loader autenticado RPC.
+O JSON público v1 permanece referência histórica sem consumo/fallback na aplicação;
+nenhum registro, rascunho ou histórico é exportado para ele. Não há dual-write,
+importação automática nem fallback público em falha de backend. Sem migration,
+a barra fica ausente e a administração mostra erro real, sem simular salvamento.
+Shared continua reutilizável/injetável e seus testes de JSON permanecem válidos.
+
+RPC de leitura devolve somente registros efetivamente ativos + horário do servidor
+e próxima fronteira de agendamento (sem conteúdo dos futuros). Hook sincroniza
+relógio/timer e mantém refresh de 60s/foco/visibilidade. Logout/troca de identidade
+invalidam dados e abortam pedidos; respostas antigas são descartadas. Salvar exige
+resposta de sucesso e recarrega a lista; conflito preserva o formulário para revisão.
+
+## Migration, dependências e operação futura
+
+Migration append-only posterior a `20261104122256` da main. PR #101 possui
+`20261104171756` e `20261104192428`; a migration de comunicados é posterior a ambas,
+mas não depende de suas tabelas, buckets ou runtime. Testar main+A+B e repetir após
+integração da #101, sem copiar suas migrations nem usar seu GO C. Arquivos de
+schema/Core/CI têm um único escritor nesta tarefa. Conflitos documentais em
+AUTHORIZATION/SECURITY/mapa/roadmap devem preservar as duas mudanças na integração.
+
+Validação de SQL primeiro em PGlite em memória; integração real somente em runtime
+autorizado/isolado. Nenhum novo container/porta/volume ou reset. Docker inacessível
+no inventário inicial; não há autorização de operação persistente nesta entrega.
+Implantação futura: inventário+backup recuperável, revisão do diff e negativas, GO
+explícito, migration incremental, smoke RPC/ACL/RLS e frontend após backend.
+Reversão não destrutiva: retirar UI/rota da versão publicada e desativar avisos por
+RPC autorizada; preservar tabelas/histórico. Correção por nova migration. Não voltar
+a JSON com conteúdo interno, excluir histórico nem reaplicar migration histórica.
+
+## Decisões pendentes para liberação
+
+Mantenedor aceita composição do novo perfil, audiência de todos os perfis ativos,
+experiência, risco residual de revisão individual e futura janela de aplicação.
+Retenção/expurgo e eventuais avisos segmentados dependem de escopo/decisão posterior.
+GG-11 continua indisponível; ADR-007 permanece fora do escopo. PROD NO-GO.
+
+Referências externas consultadas: [funções PostgreSQL no Supabase](https://supabase.com/docs/guides/database/functions),
+[RLS](https://supabase.com/docs/guides/database/postgres/row-level-security) e changelog
+de 05/11 (CLI 3 local por padrão; nenhuma atualização de runtime efetuada).
