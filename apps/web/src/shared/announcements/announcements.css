@@ -69,3 +69,13 @@
   .institutional-announcement { flex-wrap: wrap; }
   .announcement-read strong { white-space: normal; overflow-wrap: anywhere; }
 }
+
+.announcement-tone-neutral { --announcement-border: var(--neutral); }
+.announcement-tone-info { --announcement-border: var(--info); }
+.announcement-tone-warning { --announcement-border: var(--warning); }
+.announcement-tone-success { --announcement-border: var(--success); }
+.announcement-tone-danger {
+  --announcement-border: var(--danger);
+  --announcement-bg: var(--danger-bg);
+  --announcement-fg: var(--danger-text);
+}

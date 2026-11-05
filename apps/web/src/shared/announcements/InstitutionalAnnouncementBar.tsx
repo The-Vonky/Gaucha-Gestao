@@ -4,10 +4,10 @@ import { Modal } from "../ui";
 import type { Announcement, AnnouncementType } from "./config";
 import "./announcements.css";
 const icons: Record<AnnouncementType, IconName> = {
-  testing: "info", maintenance: "calendar", information: "info", critical: "warning",
+  testing: "info", maintenance: "calendar", information: "info", critical: "warning", success: "success", general: "info",
 };
 export const announcementCategories: Record<AnnouncementType, string> = {
-  testing: "Ambiente de testes", maintenance: "Manutenção / atenção", information: "Informação", critical: "Crítico / urgente",
+  testing: "Ambiente de testes", maintenance: "Manutenção / atenção", information: "Informação", critical: "Crítico / urgente", success: "Positivo", general: "Geral",
 };
 /** GG-11 fornecerá o callback oficial; configuração pública sozinha não ativa ações. */
 export type AnnouncementFeedback = (announcement: Announcement) => void;
@@ -29,7 +29,7 @@ export function InstitutionalAnnouncementBar({ announcement, onFeedback }: {
     aria-label={announcement.action.label} aria-describedby={unavailable ? id : undefined}
     onClick={() => onFeedback?.(announcement)}>{compact ? "Relatar" : announcement.action.label}</button>;
   return <>
-    <section className={`institutional-announcement announcement-${announcement.type}`} aria-label="Aviso institucional">
+    <section className={`institutional-announcement announcement-${announcement.type}${announcement.tone ? ` announcement-tone-${announcement.tone}` : ""}`} aria-label="Aviso institucional">
       {announcement.showIcon && <Icon name={icons[announcement.type]} />}
       <span className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">Comunicado: {announcement.title}. {announcement.message}</span>
       <button type="button" ref={trigger} className="announcement-read" aria-label={`Ler comunicado: ${announcement.title}`}

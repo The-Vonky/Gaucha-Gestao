@@ -1,10 +1,10 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { InstitutionalAnnouncementBar, type AnnouncementFeedback } from "../shared/announcements/InstitutionalAnnouncementBar";
-import { useAnnouncement } from "../shared/announcements/useAnnouncement";
+import { useAnnouncement, type AnnouncementLoader } from "../shared/announcements/useAnnouncement";
 
 /** Montado na fronteira autenticada, fora das rotas de módulos e do Core Auth. */
-export function AnnouncementLayout({ children, onFeedback }: { children: ReactNode; onFeedback?: AnnouncementFeedback }) {
-  const announcement = useAnnouncement();
+export function AnnouncementLayout({ children, onFeedback, loadConfig }: { children: ReactNode; onFeedback?: AnnouncementFeedback; loadConfig?: AnnouncementLoader }) {
+  const announcement = useAnnouncement(loadConfig);
   const root = useRef<HTMLDivElement>(null);
   const slot = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {

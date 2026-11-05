@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { parseAnnouncementConfig, selectAnnouncement, type Announcement } from "../apps/web/src/shared/announcements/config";
 import { InstitutionalAnnouncementBar } from "../apps/web/src/shared/announcements/InstitutionalAnnouncementBar";
 import { AnnouncementLayout } from "../apps/web/src/app/AnnouncementLayout";
-import defaultConfig from "../apps/web/public/announcements.json";
+import defaultConfig from "./fixtures/announcements.json";
 
 const instant = Date.parse("2026-11-04T12:00:00-03:00");
 const config = (items = [item()], enabled = true) => ({ version: 1, enabled, announcements: items });
@@ -151,6 +151,22 @@ describe("GG-10 — atualização em runtime e ciclo de vida", () => {
     if (failure === "oversized") fetchMock.mockResolvedValue({ ok: true, text: async () => " ".repeat(65537) });
     await act(() => vi.advanceTimersByTimeAsync(60000)); expect(screen.queryByRole("region")).toBeNull();
     respond(config()); await act(() => vi.advanceTimersByTimeAsync(60000)); expect(screen.getByRole("region")).toBeTruthy();
+  });
+  it("usa relógio do servidor e consulta na fronteira sem vazar conteúdo futuro", async () => {
+    const load = vi.fn().mockResolvedValue({ ...config([]), serverNow: instant + 120000, nextRefreshAt: instant + 121000 });
+    render(<AnnouncementLayout loadConfig={load}><main /></AnnouncementLayout>); await flush();
+    expect(screen.queryByRole("region")).toBeNull();
+    load.mockResolvedValue({ ...config([item({ startsAt: new Date(instant + 121000).toISOString(), endsAt: new Date(instant + 123000).toISOString() })]), serverNow: instant + 121000, nextRefreshAt: instant + 123000 });
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(load).toHaveBeenCalledTimes(2); expect(screen.getByRole("region")).toBeTruthy();
+    load.mockResolvedValue({ ...config([]), serverNow: instant + 123000 });
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+    expect(screen.queryByRole("region")).toBeNull(); expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("rejeita aparência de sucesso em crítico e aceita presets separados da categoria", () => {
+    expect(parseAnnouncementConfig(config([item({ type: "critical", tone: "success" })]))).toBeNull();
+    expect(parseAnnouncementConfig(config([item({ type: "information", tone: "neutral" })]))).not.toBeNull();
+    expect(parseAnnouncementConfig(config([item({ type: "success", tone: "success" })]))).not.toBeNull();
   });
   it("aborta requisição pendente ao desmontar e remove timers/listeners", async () => {
     fetchMock.mockImplementation((_url, options) => new Promise((_resolve, reject) => options.signal.addEventListener("abort", () => reject(new Error("abort")))));

@@ -19,6 +19,8 @@ import { AuditModule } from "../modules/audit/AuditModule";
 import { ActionPlansModule } from "../modules/action-plans/ActionPlansModule";
 import { RoomsPage } from "../modules/rooms/RoomsPage";
 import { AbcModule } from "../modules/abc/AbcModule";
+import { AnnouncementsPage } from "../modules/announcements/AnnouncementsPage";
+import { loadPublishedNotices, noPublishedNotices } from "../modules/announcements/api";
 import { SalesModule } from "../modules/sales/SalesModule";
 import { BrandMark, Loader } from "../shared/brand";
 import { Icon } from "../shared/icons";
@@ -76,7 +78,7 @@ function Boundary() {
       </main>
     );
   if (!auth.session) return <Login />;
-  return <AnnouncementLayout><AuthenticatedBoundary /></AnnouncementLayout>;
+  return <AnnouncementLayout key={`${auth.session.user.id}:${!!auth.profile?.active}:${!!auth.error}`} loadConfig={auth.profile?.active && !auth.error ? loadPublishedNotices : noPublishedNotices}><AuthenticatedBoundary /></AnnouncementLayout>;
 }
 function AuthenticatedBoundary() {
   const auth = useAuth();
@@ -512,6 +514,7 @@ function Shell() {
     "/action-plans": <ActionPlansModule />,
     "/abc": <AbcModule />,
     "/rooms": <RoomsPage />,
+    "/admin/announcements": <AnnouncementsPage key={auth.session?.user.id} />,
     "/admin/users": <UsersPage />,
     "/admin/roles": <RolesPage />,
     "/admin/permissions": <PermissionsPage />,
