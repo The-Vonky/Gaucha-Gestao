@@ -12,6 +12,8 @@ O endereço **[https://teste.gauchagestao.online](https://teste.gauchagestao.onl
 
 O [inventário de 22/10](operations/C30_STAGING_AS_BUILT_20261022.md) é um **snapshot histórico**, assim como o [antigo plano de acesso via ngrok](operations/STAGING_PUBLIC_ACCESS_PLAN.md). Permanecem válidos o [runbook C30 geral](operations/C30_STAGING_RUNBOOK.md), as [lacunas de backup](operations/C30_BACKUP_GAPS.md) e o [guia de release/migrations](operations/C30_STAGING_RELEASE_GUIDE.md). O servidor segue no commit `f9f041e`; merge na `main` não atualiza o host.
 
+**Inventário de 05/11/2026:** [GG-01 — inspeção operacional da C30, estado de código/schema, riscos e passagem para GG-02](operations/C30_GG01_INVENTORY_20261105.md). Diagnóstico inicial concluído com ressalvas; backup independente, restore e GO de produção permanecem pendentes.
+
 ## Início rápido por objetivo
 
 | Necessidade | Ponto de partida | Aprofundamento |
@@ -30,6 +32,7 @@ O [inventário de 22/10](operations/C30_STAGING_AS_BUILT_20261022.md) é um **sn
 | Avaliar ameaças e controle de acesso | [Modelo de ameaças](architecture/THREAT_MODEL.md) | [Segurança](architecture/SECURITY.md), [ADR-005](decisions/ADR-005-core-authorization.md) |
 | Operar e conferir a Curva ABC | [Guia ABC v1](modules/abc/OPERATOR_GUIDE_V1.md) | [Brief ABC](briefs/ABC_DOMAIN_V1.md), [Testes #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) |
 | Medir e reduzir tráfego de fotos do checklist | [MED-01 / AUD-IMG-01–05](modules/audit/EVIDENCE_IMAGE_TRAFFIC.md) | [GO C local executado](modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md): ready/Chromium, redução real de 92,6463% em uma imagem; escrita adicional parcial, MED-01 10/30/100 pendente; flag versionada false |
+| Configurar avisos institucionais GG-10 | [Contrato e operação local](ui/GG10_INSTITUTIONAL_ANNOUNCEMENTS.md) | [Refinamento compacto e evidências](ui/GG10_COMPACT_VALIDATION_20261105.md); [Administração v1](modules/announcements/ADMINISTRATION_V1.md) e [validação real local](modules/announcements/LOCAL_VALIDATION_20261105.md), em PR separada; GG-11 futuro |
 | Usar o módulo de Qualidade | [Guia do operador (pré-homologação)](modules/audit/OPERATOR_GUIDE_V1.md) | [Aceite da Qualidade](modules/audit/QUALITY_ACCEPTANCE_V1.md) |
 | Aceitar a primeira entrega | [Qualidade P1–P9 / O1–O8](modules/audit/QUALITY_ACCEPTANCE_V1.md) | [Matriz de conclusão](modules/audit/QUALITY_COMPLETION_V1.md) |
 | Experimentar Agendamento de Salas local (PR #88) | [Contrato e validação AG-02/03](modules/room-booking/AG02_AG03_LOCAL.md) | [Brief](briefs/ROOM_BOOKING_V1.md), [Critérios de aceite](modules/room-booking/ACCEPTANCE_V1.md) |

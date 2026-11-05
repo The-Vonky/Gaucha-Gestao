@@ -31,6 +31,7 @@ try {
     if (path === "/auth/v1/user") return reply(user);
     if (path === "/rest/v1/profiles") return reply({ id: user.id, display_name: "Exportação sintética", active: true });
     if (path.endsWith("/rpc/my_access")) return reply(grants);
+    if (path.endsWith("/rpc/announcements_published")) return reply({version:1,enabled:true,announcements:[],serverNow:new Date().toISOString(),nextRefreshAt:null});
     if (path.endsWith("/rpc/sales_operation_units")) return reply([{ ...report.units[0], can_read: true, can_create: true, can_edit: false, can_delete: false }]);
     if (path.endsWith("/rpc/sales_entries_list")) return reply([{ ...report.rows[0], sale_date: report.rows[0].date }]);
     if (path.endsWith("/rpc/sales_dashboard")) return reply(dashboardFixture());

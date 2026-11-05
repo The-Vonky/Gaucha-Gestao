@@ -137,3 +137,14 @@ Não apagar nem sobrescrever o repositório standalone durante a migração. Ap�
 ## Agendamento — AG-01 em revisão (23/10/2026)
 
 Responsável autorizou expressamente implementar fundação e abrir PR após AG-00 documental integrado (#85). Schema, catálogo Core e RLS preparados; [contrato e limites](../modules/room-booking/AG01_FOUNDATION.md). AG-02/03 não implementados por esta entrega; revisão final do titular (exceção de mantenedor único `9e20199`), merge, QA, homologação e implantação continuam pendentes.
+
+## Comunicação transversal — GG-10 (05/11/2026)
+
+[Barra compacta](../ui/GG10_COMPACT_VALIDATION_20261105.md) implementada na PR #102:
+48 px de referência, leitura em modal, CTA compacto e presets Elo. Aceite visual
+pendente do mantenedor. [Administração v1](../modules/announcements/ADMINISTRATION_V1.md)
+em branch/PR própria: comunicados persistidos por RPC, capacidade global explícita,
+perfil Gestor de Comunicados, histórico e fonte única autenticada. Migration
+aplicada somente no localhost autorizado (31→32 migrations), com barra/administração e persistência reais [validadas](../modules/announcements/LOCAL_VALIDATION_20261105.md). JSON público retirado somente
+na Entrega B. Homologação operacional, revisão e merge dependem do mantenedor.
+GG-11 permanece indisponível. GG-10 não encerrado; PROD NO-GO.

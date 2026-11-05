@@ -32,6 +32,7 @@ Sem homologação VEN-07 ou alterações em STAGING/PROD. O restante mantém sua
 | Superfície | Implementação encontrada | Contratos/DDL e testes correspondentes | Estado |
 | --- | --- | --- | --- |
 | Shell, login e navegação | apps/web/src/app/{App.tsx,navigation.ts}; core/auth/{AuthProvider.tsx,Login.tsx}; core/client.ts | core.profiles, core.my_access, [autorização](AUTHORIZATION.md); tests/login.test.tsx, tests/authorization.test.ts | AS-IS |
+| Avisos institucionais GG-10 | app/AnnouncementLayout.tsx; shared/announcements/; modules/announcements/ | [Contrato GG-10](../ui/GG10_INSTITUTIONAL_ANNOUNCEMENTS.md); tests/announcements.test.tsx; tests/integration/announcements-browser.mjs | Barra compacta PR #102; administração/RPC em PR própria para revisão, aplicada e validada somente no localhost autorizado; GG-11 indisponível |
 | Administração Core | apps/web/src/core/admin/ (usuários, papéis, permissões, unidades, setores, logs, revisões de acesso) | supabase/migrations/*core*.sql; [ACCESS_GOVERNANCE_READ](../modules/core/ACCESS_GOVERNANCE_READ_V1.md); tests/admin*.test.*, tests/integration/admin.mjs | AS-IS |
 | Auditorias | apps/web/src/modules/audit/; api.ts (create_inspection, finalize_inspection, reopen_inspection, inspection_summaries), scoring.ts | supabase/migrations/*audit*.sql; [fonte funcional](../modules/audit/AUDIT_SOURCE_OF_TRUTH.md); tests/audit*.test.*, tests/integration/audit.mjs | AS-IS |
 | Login/issuer de miniaturas | scripts/audit-derivative-runtime-*.mjs; migration 20261104192428; SQL de acesso sob GO C | [Runbook local](../operations/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md); [execução de 05/11](../modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md) | Provisionado no localhost autorizado; one-shot concluído, login voltou a NOLOGIN |
@@ -87,3 +88,5 @@ Relações representam dependência/autorização, **não ownership compartilhad
 ## Evidência e atualização
 
 A evidência histórica de implementação fica em [QUALITY_COMPLETION_V1](../modules/audit/QUALITY_COMPLETION_V1.md) e briefs Core v2; a evidência de **aceite final** depende de [QUALITY_ACCEPTANCE_V1](../modules/audit/QUALITY_ACCEPTANCE_V1.md). Para cada funcionalidade nova, incluir neste mapa arquivo público, migration/RPC, grants/RLS, testes, usuário/fluxo e estado do gate. Não marcar implementação futura como presente por constar da navegação pretendida em [PRODUCT_STRUCTURE](PRODUCT_STRUCTURE.md).
+
+GG-10 Entrega B: [persistência, autorização e fonte única](../modules/announcements/ADMINISTRATION_V1.md); migration append-only `20261105131548_announcements_administration.sql`; testes de domínio/API/UI e matriz real no CI existente.

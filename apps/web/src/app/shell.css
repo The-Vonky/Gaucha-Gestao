@@ -33,8 +33,18 @@
 }
 
 /* ---------- Layout ---------- */
+html:has(.authenticated-application) {
+  scroll-padding-top: calc(var(--app-sticky-height, 0px) + var(--space-3));
+}
+.authenticated-application[data-announcement="true"] { --shell-safe-top: 0px; }
+.announcement-slot {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+}
+
 .layout {
-  min-height: 100dvh;
+  min-height: calc(100dvh - var(--announcement-height, 0px));
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
 }
@@ -82,8 +92,8 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
 }
 .sidebar {
   position: sticky;
-  top: 0;
-  height: 100dvh;
+  top: var(--announcement-height, 0px);
+  height: calc(100dvh - var(--announcement-height, 0px));
   display: flex;
   flex-direction: column;
   padding: var(--space-5) var(--space-3) var(--space-3);
@@ -460,7 +470,7 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
 /* ---------- Work surface header ---------- */
 .topbar {
   position: sticky;
-  top: 0;
+  top: var(--announcement-height, 0px);
   z-index: var(--z-header);
   display: flex;
   align-items: center;
@@ -838,8 +848,8 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
   }
   /* The header becomes the brand navigation bar. */
   .topbar {
-    min-height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
-    padding: env(safe-area-inset-top, 0px)
+    min-height: calc(var(--header-height) + var(--shell-safe-top, env(safe-area-inset-top, 0px)));
+    padding: var(--shell-safe-top, env(safe-area-inset-top, 0px))
       max(var(--space-4), env(safe-area-inset-right, 0px)) 0
       max(var(--space-2), env(safe-area-inset-left, 0px));
     background: var(--brand-surface);

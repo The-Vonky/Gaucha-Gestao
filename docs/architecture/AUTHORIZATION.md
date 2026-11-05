@@ -184,3 +184,21 @@ Aplicação incremental autorizada somente no `gaucha-gestao-local`; ver
 [contrato e evidências](../modules/room-booking/AG02_AG03_LOCAL.md).
 
 D5-B acrescenta `private.permission_assignment_allowed`, usado por `private.has_scoped_permission` e `core.my_access`: restrição explícita de separação de funções para `room_booking.manage`, exigindo atribuição global ativa de `room_booking_manager` e ausência de `platform_administrator` ativo. Essa exceção aprovada em 26/10 não cria bypass positivo por papel nem dependência do Core em tabelas do módulo. Demais permissões seguem o contrato anterior. `validate_assignment` trava o perfil com `FOR UPDATE` ao ativar/conceder atribuições, serializando com as autorizações que mantêm `FOR SHARE`. [Procedimento técnico e limites](../modules/room-booking/D5B_ACCESS.md).
+
+
+## Comunicados — GG-10, Entrega B (05/11/2026, para revisão)
+
+Capacidade explícita `announcements.notice.manage`, somente atribuição global
+ativa sobre perfil/papel/permissão ativos. Migration proposta adiciona a relação
+a `platform_administrator` e cria o papel protegido/global-only
+`announcement_manager` (Gestor de Comunicados) com **somente essa capacidade**.
+Não atribui papéis a pessoas, não concede administração geral, não modifica
+permissões de Usuários/Perfis/Unidades/Setores/Logs e preserva D5-B.
+
+Menu/Guard de `/admin/announcements` espelham a capacidade global; quatro RPCs
+`public.announcements_*` validam acesso no servidor. Tabelas privadas com RLS
+restritiva e sem DML/USAGE de clientes. Escrita revalida/bloqueia referências Core
+e registro versionado até o commit. Histórico é exclusivo da gestão. Usuários
+comuns ativos recebem somente comunicados globais publicados dentro do período,
+sem rascunhos/futuros/autoria. Não há segmentação por unidade/setor nesta versão.
+Aplicada somente no Supabase local autorizado em 05/11/2026; negativas e persistência reais [validadas](../modules/announcements/LOCAL_VALIDATION_20261105.md). [Contrato e decisões](../modules/announcements/ADMINISTRATION_V1.md).

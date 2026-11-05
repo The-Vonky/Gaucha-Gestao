@@ -63,3 +63,26 @@ SO legado sem suporte depende de risco documentado e controles compensatórios.
 Credencial SQL técnica não pode ler segredo global por GUC ou catálogo, herdar papel privilegiado ou executar processamento com SET ROLE administrativo. O [runtime e runbook de AUD-IMG-02](../operations/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md) separam emissor one-shot e worker isolado, vinculam lease ao session_user e restringem JWT a lease/bucket/chave/30 s, com revalidação na renovação. [GO C executado em 05/11](../modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md) somente em `gaucha-gestao-local`: GUC legado removido após inspeção/backup, login mínimo e uma evidência sintética, com login novamente NOLOGIN ao final. Não há serviço/timer instalado nem autorização de produção; POST/upsert adicional da matriz local permanece parcial por timeout.
 
 O decoder de AUD-IMG-02 é aberto pelo supervisor como subprocesso irmão em Bubblewrap sem rede/segredos, fora do namespace do worker. Pipes binários têm header até 4 KiB, entrada até 10 MiB e saída até 1 MiB. Escopo fresco de lease e conferência do hash contra o objeto autorizado precedem uma única codificação; timeout/encerramento cancela o subprocesso, sem fallback sem isolamento.
+
+## Comunicados institucionais — GG-10 / Entrega B (05/11/2026, para revisão)
+
+`announcements.notices`/`notice_history` não são expostos na Data API. RLS
+restritiva + revogação de USAGE/DML impedem manipulação direta; RPCs públicas
+pontuais têm EXECUTE revogado de PUBLIC/anon e concedido somente a authenticated,
+`search_path=''`, relações qualificadas e autorização Core explícita. Gerência
+exige `announcements.notice.manage` global atual e bloqueios compartilhados nas
+referências de autorização; leitura comum exige perfil ativo e período publicado.
+
+Cada escrita usa UUID+versão esperada, trava linha e registra snapshot imutável
+no domínio. Core recebe somente id/estado/versão, sem texto institucional.
+Datas, tamanho, prioridade, categoria e presets são validados no SQL; tags HTML
+são rejeitadas. Crítico só danger; não há CSS livre, serviço privilegiado ou
+segredo no frontend. A aplicação usa fonte RPC única e invalida dados por identidade;
+JSON público foi retirado, sem fallback/exportação de dados internos.
+
+Teste real adicional usa o stack já descartável do action-plans-integration e
+recusa execução fora de CI hospedado. Testes em memória não comprovam JWT/Auth,
+API nem disputa entre sessões. Migration proposta não autoriza aplicação persistente,
+retenção/expurgo ou deploy. [Contrato](../modules/announcements/ADMINISTRATION_V1.md).
+
+GG-10: [validação real local de 05/11](../modules/announcements/LOCAL_VALIDATION_20261105.md) registra aplicação incremental autorizada, Auth/API reais, negativas, persistência e preservação de dados no gaucha-gestao-local. Nenhuma autorização para outro ambiente.

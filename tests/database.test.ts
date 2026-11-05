@@ -463,7 +463,8 @@ describe("PostgreSQL Core migration and RLS", { concurrent: false }, () => {
       )
     ).rows[0];
     expect(detail.role.version).toBe(1);
-    expect(detail.permission_keys).toHaveLength(32);
+    expect(detail.permission_keys).toHaveLength(33);
+    expect(detail.permission_keys).toContain("announcements.notice.manage");
     expect(detail.permission_keys).toContain("sales.dashboard.read");
     expect(detail.permission_keys).not.toContain("room_booking.manage");
     await login(ids.empty);
