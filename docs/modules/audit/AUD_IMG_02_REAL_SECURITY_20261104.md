@@ -1,6 +1,6 @@
 # AUD-IMG-02 — Integração real de segurança no CI descartável
 
-Continuação autorizada pelo mantenedor em 04/11/2026, PR #101 **draft**, mesma branch. Nenhum GO C persistente, backfill, ativação, merge ou deploy concedido. A feature flag permanece desligada.
+Continuação autorizada pelo mantenedor em 04/11/2026, PR #101 **draft**, mesma branch. O relato abaixo preserva as provas e bloqueios históricos de CI. **Atualização de 05/11:** [GO C executado exclusivamente no desenvolvimento local](AUD_IMG_02_LOCAL_GO_C_20261105.md), com duas migrations, login mínimo, remoção autorizada do GUC, uma miniatura `ready` e Chromium real; timeout adicional de POST/upsert permanece parcial. Flag versionada desligada e exceção temporária apenas no `.env.local`. Sem autorização de backfill, serviço permanente, merge ou deploy.
 
 ## Correção do smoke e ambiente
 

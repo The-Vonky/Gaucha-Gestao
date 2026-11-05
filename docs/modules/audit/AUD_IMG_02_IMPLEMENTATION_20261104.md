@@ -1,6 +1,6 @@
 # AUD-IMG-02 — Miniaturas privadas: implementação para revisão
 
-**04/11/2026 · Issue #100 · PR #101 draft · GOs A/B de código/testes concedidos pelo mantenedor no brief desta rodada.** C/D/E, aplicação persistente, credenciais reais, instalação, ativação, backfill, merge e deploy não concedidos. PROD NO-GO.
+**04/11/2026 · Issue #100 · PR #101 draft · GOs A/B de código/testes concedidos pelo mantenedor no brief desta rodada.** Este documento registra a implementação e seus gates históricos. **Atualização de 05/11:** o mantenedor concedeu GO C exclusivamente no desenvolvimento local, incluindo identidade mínima e teste visual temporário; [execução real e limites](AUD_IMG_02_LOCAL_GO_C_20261105.md). Migrations aplicadas, uma miniatura `ready` e Chromium comprovados; teste adicional de escrita parcial por timeout. Backfill, serviço permanente, merge e deploy continuam sem autorização. PROD NO-GO.
 
 O [desenho preparatório](AUD_IMG_02_DESIGN_20261104.md) é histórico. Esta entrega implementa decoder JPEG/PNG real, executor one-shot, transporte Storage API e repositório SQL, migration append-only e UI desativada. Não afirma que esse backend está implantado. O diretório não rastreado `supabase/snippets/` foi preservado. Nenhum dado persistente ou serviço Docker foi alterado.
 

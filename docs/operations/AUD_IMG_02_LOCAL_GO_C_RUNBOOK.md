@@ -1,6 +1,8 @@
-# AUD-IMG-02 — Solicitação e execução limitada do GO C local
+# AUD-IMG-02 — Execução limitada do GO C local
 
-**Proposta atualizada em 05/11/2026. GO C não concedido.** Destino único: Supabase existente `gaucha-gestao-local`, pertencente ao mantenedor. PR #101 permanece draft. Não autoriza merge, deploy, C30/STAGING/PROD, timer, serviço, backfill ou processamento de acervo.
+**GO C concedido e executado em 05/11/2026**, por pedido explícito do mantenedor, exclusivamente no Supabase existente `gaucha-gestao-local`. Incluiu as duas migrations, identidade técnica mínima, remoção segura do GUC legado, uma imagem sintética, one-shot e flag temporária no frontend local. [Resultados e limitações reais](../modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md): Storage v1.72.1, `ready`, redução medida de 92,6463%, Chromium aprovado; teste adicional de POST/upsert parcial por timeout. PR #101 permanece draft. Sem merge, deploy, C30/STAGING/PROD, timer, serviço, backfill ou processamento de acervo.
+
+As seções seguintes preservam o procedimento técnico e distinguem o inventário anterior da execução. O pedido vigente autorizou backup local proporcional e teste visual, substituindo os gates de produção e a exigência de GO E adicional antes presentes nesta proposta. Não reaplicar migrations/bootstrap já executados.
 
 ## Inventário conhecido e gates antes de qualquer escrita
 
@@ -19,14 +21,13 @@ O CI self-hosted usa Storage v1.74.0/PostgREST v14.17; **não atualizar o local 
 
 Antes de solicitar execução, o mantenedor registra: destino, SHA aprovado e checks, operador, janela, critérios de parada/reversão e aceite das mudanças de configuração/grants abaixo. Confirmar `git status` e uso exclusivo do checkout aprovado; não trocar a branch de outra tarefa. Conferir `supabase/config.toml` com `project_id = "gaucha-gestao-local"`. Nenhum projeto remoto vinculado é alvo permitido.
 
-## Backup e recuperação — condição operacional pendente
+## Backup local proporcional e preservação
 
-**Não foi produzido nem provado backup/restore nesta rodada.** A existência de dumps, checksums ou CI sintético não basta. Usar [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md) e registrar, sem conteúdo/segredo no Git:
+O mantenedor autorizou desenvolvimento local com preservação dos dados e **dispensou restore drill/infraestrutura de produção como condição** deste ensaio. Foi criado backup local protegido de banco, roles, bytes Storage e configuração, com catálogo legível e hashes dos arquivos existentes conferidos ao final; [localização e prova](../modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md#ambiente-preservação-e-aplicação). Não foi provado restore nem recuperação independente do computador.
 
-- Backup recuperável e independente de PostgreSQL (Auth/Core/Audit, manifesto, fila, log imutável, ledger, roles/grants necessários), **bytes de todos os buckets**, metadados Storage, configurações e referências protegidas de segredos; ponto consistente e identificação do artefato.
-- Integridade, cifragem/permissões e localização fora do checkout/host único. Não exportar `.env`, JWT, dumps ou dados empresariais para PR/log.
-- Evidência de recuperação correspondente: serviços iniciam, login funciona, inspeções e histórico são preservados, original autorizado tem o mesmo hash e unidade indevida é negada. Inventariar também configuração legada de GUC antes/depois, **sem registrar o valor**.
-- Se a prova aplicável não existe, parar e pedir ao responsável uma etapa de recuperação autorizada em ambiente já designado. **Não criar outro Docker/banco/volume por rotina**, não restaurar sobre o local persistente e não resetar/semear o banco.
+- Preservar backup local e dados existentes; permissões 0700 no diretório e 0600 nos arquivos. Nunca colocar dumps, configurações reais, JWTs ou senhas no Git/PR/log.
+- Conferir inventário, histórico e bytes antes/depois. Não restaurar sobre o banco persistente nem criar/resetar outro Docker/banco/volume por rotina.
+- [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md) continua referência para operação/produção; este ensaio local não comprova seus gates.
 
 ## Remover a exposição global antes de habilitar um LOGIN técnico
 
@@ -51,7 +52,7 @@ CLI fixada **2.117.0**, opções conferidas por `--help`; sem upgrade para v3 po
 1. `20261104171756_audit_evidence_derivatives.sql` — bucket privado/fila/manifesto/RLS.
 2. `20261104192428_audit_derivative_runtime_contract.sql` — vínculo de lease ao `session_user` e cinco contratos mínimos, sem LOGIN ou senha.
 
-No checkout aprovado e com inventário/backup/GO registrados:
+No checkout aprovado e com inventário/backup/GO registrados, quando o histórico corresponde à branch:
 
 ```bash
 npx --yes supabase@2.117.0 migration list --local
@@ -61,9 +62,11 @@ npx --yes supabase@2.117.0 migration up --local
 
 Não usar `db push`, `--linked`, reset, seed ou repair para mascarar divergência. Conferir ledger, owners, bucket privado 1 MiB JPEG/PNG, RLS e ausência de grants comuns de escrita/processamento; flag permanece false. Não modificar migrations históricas. Falha parcial: preservar estado/backup e decidir forward-fix; não repetir DDL cegamente nem apagar dados.
 
-## Configuração mínima do primeiro ensaio
+**Execução de 05/11:** havia uma migration de comunicados já aplicada por outra tarefa, ausente nesta branch. Seu conteúdo foi comparado integralmente à branch de origem. Foram aplicados apenas os dois arquivos autorizados via `psql`, com registro no ledger dentro de cada transação; 32 registros anteriores preservados. Não usar `--include-all` ou repair sem investigar uma divergência futura.
 
-Não provisionada nesta rodada. Operador autorizado usa bootstrap apenas para configurar ACLs e cria **um** login técnico separado `audit_derivative_worker`, sem superuser/BYPASSRLS/CREATEROLE/CREATEDB/REPLICATION, NOINHERIT, sem memberships, limite de três conexões e validade curta (uma hora no primeiro teste). Criá-lo inicialmente **NOLOGIN**. Definir senha por `\password audit_derivative_worker` em psql interativo protegido; não colocar senha na linha de comando/PR/log.
+## Configuração mínima do primeiro ensaio (já executado)
+
+Provisionada no ensaio local; login técnico retornou a NOLOGIN ao encerrar. O procedimento abaixo é referência para revisão/reconfiguração autorizada, não para recriar identidades existentes. Operador autorizado usa bootstrap apenas para configurar ACLs e cria **um** login técnico separado `audit_derivative_worker`, sem superuser/BYPASSRLS/CREATEROLE/CREATEDB/REPLICATION, NOINHERIT, sem memberships, limite de três conexões e validade curta (uma hora no primeiro teste). Criá-lo inicialmente **NOLOGIN**. Definir senha em canal protegido; não colocar senha na linha de comando/PR/log.
 
 Aplicar como bootstrap o arquivo revisado `scripts/ops/sql/audit-derivative-runtime-access.sql`. Ele não cria senha/login: concede CONNECT/USAGE e EXECUTE **apenas** de claim/prepare/complete/fail/scope ao login, e cria role Storage separada **NOLOGIN**, sem herdar anon/authenticated, com SELECT/INSERT somente sob policy de lease/chave/operação. Membership em `supabase_storage_admin` exige a autoridade de bootstrap; não ampliar privilégios do postgres da aplicação.
 
@@ -109,7 +112,7 @@ A leitura adicional do original confere a identidade dos bytes antes de decodifi
 
 Repetir no destino local autorizado as negativas já aprovadas no CI, com fixtures explícitas e sem dados reais: anônimo, sem grant, outra unidade, setor, inativo/revogado, pending/removed/não ready, assinatura/GET e verbos proibidos; login errado/SET ROLE/SQL de dados/arquivos do servidor negados; token source não lê derived e vice-versa; token expirado nega, renovação mantém chave e limite da lease; lease encerrada nega renovação e token ainda não expirado. Não rodar `scripts/ops/audit-derivatives.mjs` no local: o guard deve recusá-lo; ele pressupõe teardown de CI.
 
-A flag permanece false: verificar original pelo fluxo existente e miniatura por chamada autorizada de teste. Ativar preview em build persistente depende de GO E separado. Parar em 5xx inesperado, integridade divergente, acesso indevido ou versão incompatível. O código `55000` de auditoria finalizada é erro de domínio: considerar o mapeamento HTTP real da versão REST local, sem aceitar 5xx genérico como prova de negação Storage.
+A flag versionada permanece false. O pedido vigente autorizou habilitação **temporária somente no `.env.local`** para testar a listagem, ampliação e download reais; não requer novo GO E para este localhost. Não estender a autorização a builds de STAGING/PROD. Parar a operação afetada em 5xx inesperado, timeout, integridade divergente, acesso indevido ou incompatibilidade; registrar o impedimento sem atualizar serviços automaticamente. O código `55000` de auditoria finalizada é erro de domínio: considerar o mapeamento HTTP real da versão REST local, sem aceitar 5xx genérico como prova de negação Storage.
 
 ## Reversão não destrutiva e encerramento
 
@@ -118,4 +121,4 @@ A flag permanece false: verificar original pelo fluxo existente e miniatura por 
 - Guardar diagnóstico/artefatos privados, remover arquivos de credenciais de teste conforme política do mantenedor e registrar o resultado. Role/schema/bucket podem permanecer inativos; correção por migration nova/forward-fix, nunca edição das anteriores.
 - Se retirar o GUC legado romper uma dependência inventariada, suspender o LOGIN e usar a configuração protegida de recuperação sob decisão humana. Não reexpor o segredo a um login técnico ativo para fazê-lo funcionar.
 
-**Pronto para solicitar GO C** significa contrato técnico e prova CI concluídos, runbook e escopo revisáveis. **Não significa** backup local provado, versão local homologada, GO C concedido ou autorização para ativação/backfill/produção. O mantenedor registra a decisão após conferir esses gates.
+**Estado após a execução:** GO C local concedido e ciclo funcional/visual comprovado para uma imagem. O timeout adicional de escrita permanece parcial, conforme o relatório. Não significa homologação geral da versão, backfill, serviço permanente, merge ou produção autorizados.

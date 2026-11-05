@@ -1,4 +1,4 @@
-> **Estado vigente AUD-IMG-02 (04/11/2026):** GOs A/B concedidos para código/testes; processador, migration não aplicada e frontend desativado implementados na PR #101. [Contrato atual](AUD_IMG_02_IMPLEMENTATION_20261104.md). Descrições de proposta abaixo são o baseline anterior. Nenhum ambiente persistente ativado; [validação real no CI descartável](AUD_IMG_02_REAL_SECURITY_20261104.md); economia de bytes ainda não medida.
+> **Estado vigente AUD-IMG-02 (05/11/2026):** [GO C executado no localhost autorizado](AUD_IMG_02_LOCAL_GO_C_20261105.md), com migrations, login mínimo e uma imagem sintética; Storage v1.72.1, miniatura `ready` e Chromium reais. Listagem recebeu 377.025 bytes frente a 5.127.003 do original (**92,6463% nesta imagem**); ampliação/download preservados. POST/upsert adicional parcial por timeout. PR #101 draft, flag versionada false e exceção temporária no `.env.local`. Descrições/ausências de medição abaixo são o **baseline histórico anterior**; MED-01 10/30/100 permanece pendente. Sem backfill, merge ou deploy. [Contrato atual](AUD_IMG_02_IMPLEMENTATION_20261104.md).
 
 # Tráfego de imagens da Auditoria — MED-01 / AUD-IMG-01–05
 
