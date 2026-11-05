@@ -1,0 +1,91 @@
+{
+  "head": "6db536898e1301a71df4fea81b2bacf4a301d935",
+  "storage": "public.ecr.aws/supabase/storage-api:v1.72.1",
+  "results": [
+    {
+      "route": "container-loopback-close",
+      "size": "small",
+      "payloadBytes": 265,
+      "upsert": false,
+      "status": 400,
+      "code": "Unauthorized",
+      "kind": "authorization_denied",
+      "elapsedMs": 388
+    },
+    {
+      "route": "container-loopback-close",
+      "size": "small",
+      "payloadBytes": 265,
+      "upsert": true,
+      "status": 400,
+      "code": "Unauthorized",
+      "kind": "authorization_denied",
+      "elapsedMs": 241
+    },
+    {
+      "route": "container-loopback-close",
+      "size": "full",
+      "payloadBytes": 377025,
+      "upsert": false,
+      "status": 400,
+      "code": "Unauthorized",
+      "kind": "authorization_denied",
+      "elapsedMs": 256
+    },
+    {
+      "route": "container-loopback-close",
+      "size": "full",
+      "payloadBytes": 377025,
+      "upsert": true,
+      "status": 400,
+      "code": "Unauthorized",
+      "kind": "authorization_denied",
+      "elapsedMs": 260
+    },
+    {
+      "route": "gateway",
+      "size": "small",
+      "payloadBytes": 265,
+      "upsert": false,
+      "status": 400,
+      "code": "Unauthorized",
+      "kind": "authorization_denied",
+      "elapsedMs": 9
+    },
+    {
+      "route": "gateway",
+      "size": "small",
+      "payloadBytes": 265,
+      "upsert": true,
+      "status": 400,
+      "code": "Unauthorized",
+      "kind": "authorization_denied",
+      "elapsedMs": 10
+    },
+    {
+      "route": "gateway",
+      "size": "full",
+      "payloadBytes": 377025,
+      "upsert": false,
+      "status": 400,
+      "code": "Unauthorized",
+      "kind": "authorization_denied",
+      "elapsedMs": 9
+    },
+    {
+      "route": "gateway",
+      "size": "full",
+      "payloadBytes": 377025,
+      "upsert": true,
+      "status": null,
+      "phase": "headers",
+      "kind": "http_timeout",
+      "elapsedMs": 10002
+    }
+  ],
+  "objectsAndHashesPreserved": true,
+  "ledgerPreserved": true,
+  "technicalLoginEnabled": false,
+  "storageNotRestarted": true,
+  "complete": false
+}

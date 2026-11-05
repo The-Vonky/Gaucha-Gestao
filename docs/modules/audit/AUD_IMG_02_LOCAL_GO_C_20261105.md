@@ -1,5 +1,7 @@
 # AUD-IMG-02 — GO C executado no desenvolvimento local
 
+**Continuação para revisão final:** [integração da main e diagnóstico POST/upsert](AUD_IMG_02_FINAL_REVIEW_20261105.md). API direta v1.72.1 negou os quatro casos; pelo gateway local, a chamada subsequente com corpo grande expirou sem cabeçalhos. Autorização e integridade comprovadas nos caminhos descritos, matriz HTTP do gateway ainda parcial. O relato abaixo preserva a primeira execução.
+
 **05/11/2026 · PR #101 draft · HEAD funcional testado `27a82938e96b4da7a4ac7ce86e1f5fc826a88ccc`.** O mantenedor autorizou expressamente as duas migrations incrementais, identidade técnica mínima, remoção segura do GUC legado, uma imagem sintética, one-shot e teste visual temporário. Destino exclusivo: `gaucha-gestao-local`. O pedido vigente substituiu a exigência anterior de recuperação/backup de produção por backup local proporcional, preservando os dados. Sem autorização de merge, deploy, backfill ou alteração em C30/STAGING/PROD.
 
 ## Resultado funcional medido

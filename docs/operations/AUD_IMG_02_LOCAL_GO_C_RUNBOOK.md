@@ -4,6 +4,8 @@
 
 As seções seguintes preservam o procedimento técnico e distinguem o inventário anterior da execução. O pedido vigente autorizou backup local proporcional e teste visual, substituindo os gates de produção e a exigência de GO E adicional antes presentes nesta proposta. Não reaplicar migrations/bootstrap já executados.
 
+**Diagnóstico posterior de POST/upsert:** [procedimento, resultados e limite preciso](../modules/audit/AUD_IMG_02_FINAL_REVIEW_20261105.md#postupsert--autorização-e-transporte-separados). Usar o harness opt-in `tests/integration/audit-derivative-storage-local.mjs` somente com a fixture sintética existente; o controle direto no loopback não é workaround da aplicação. Timeout continua parcial, sem enfraquecer RLS ou alterar serviços.
+
 ## Inventário conhecido e gates antes de qualquer escrita
 
 Inventário de 04/11/2026 (não repetido com escrita nesta continuação): apenas `docker ps` e transação SQL **READ ONLY**, encerrada com ROLLBACK. PostgreSQL 17, **31 migrations**, última `20261104122256`; tabelas de derivados/runtime ausentes. Foi consultada somente a **presença booleana** de configuração global com JWT secret: **presente**, sem ler ou registrar seu valor.
