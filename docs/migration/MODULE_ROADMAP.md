@@ -145,6 +145,6 @@ Responsável autorizou expressamente implementar fundação e abrir PR após AG-
 pendente do mantenedor. [Administração v1](../modules/announcements/ADMINISTRATION_V1.md)
 em branch/PR própria: comunicados persistidos por RPC, capacidade global explícita,
 perfil Gestor de Comunicados, histórico e fonte única autenticada. Migration
-proposta em código, sem aplicação persistente. JSON público retirado somente
-na Entrega B. Homologação real, revisão e merge dependem do mantenedor.
+aplicada somente no localhost autorizado (31→32 migrations), com barra/administração e persistência reais [validadas](../modules/announcements/LOCAL_VALIDATION_20261105.md). JSON público retirado somente
+na Entrega B. Homologação operacional, revisão e merge dependem do mantenedor.
 GG-11 permanece indisponível. GG-10 não encerrado; PROD NO-GO.

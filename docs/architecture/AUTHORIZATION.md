@@ -201,4 +201,4 @@ restritiva e sem DML/USAGE de clientes. Escrita revalida/bloqueia referências C
 e registro versionado até o commit. Histórico é exclusivo da gestão. Usuários
 comuns ativos recebem somente comunicados globais publicados dentro do período,
 sem rascunhos/futuros/autoria. Não há segmentação por unidade/setor nesta versão.
-Proposta não aplicada a banco persistente. [Contrato e decisões](../modules/announcements/ADMINISTRATION_V1.md).
+Aplicada somente no Supabase local autorizado em 05/11/2026; negativas e persistência reais [validadas](../modules/announcements/LOCAL_VALIDATION_20261105.md). [Contrato e decisões](../modules/announcements/ADMINISTRATION_V1.md).

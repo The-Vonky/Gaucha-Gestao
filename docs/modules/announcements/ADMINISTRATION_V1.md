@@ -1,5 +1,15 @@
 # GG-10 — Proposta técnica e contrato administrativo v1
 
+## Estado local atual — 05/11/2026
+
+O mantenedor autorizou posteriormente desenvolvimento real e aplicação incremental
+no `gaucha-gestao-local`. A migration GG-10 foi aplicada (31→32 migrations), o
+comunicado sintético foi criado/publicado pela UI e barra/administração passaram
+com persistência real. [Relatório, evidências e limites](LOCAL_VALIDATION_20261105.md).
+As restrições de aplicação persistente descritas no registro inicial abaixo
+refletem a autorização anterior; a nova autorização é exclusiva deste localhost.
+C30/STAGING/PROD, merge e deploy permanecem sem autorização.
+
 ## Proposta anterior à alteração de schema — 05/11/2026
 
 Fonte: brief atual do mantenedor, Entrega B. Branch própria

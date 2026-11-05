@@ -79,3 +79,5 @@ Teste real adicional usa o stack já descartável do action-plans-integration e
 recusa execução fora de CI hospedado. Testes em memória não comprovam JWT/Auth,
 API nem disputa entre sessões. Migration proposta não autoriza aplicação persistente,
 retenção/expurgo ou deploy. [Contrato](../modules/announcements/ADMINISTRATION_V1.md).
+
+GG-10: [validação real local de 05/11](../modules/announcements/LOCAL_VALIDATION_20261105.md) registra aplicação incremental autorizada, Auth/API reais, negativas, persistência e preservação de dados no gaucha-gestao-local. Nenhuma autorização para outro ambiente.
