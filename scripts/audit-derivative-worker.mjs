@@ -31,9 +31,9 @@ export async function runOneShot({ repository, storage, encoder = isolatedEncode
       throw new Error('verify');
     if (!await repository.complete(job.lease)) return { state: 'orphan' };
     return { state: 'ready' };
-  } catch {
+  } catch (error) {
     // Se o banco falhar, a lease expira; nunca logar exceções privadas nem alterar o original.
-    try { await repository.fail(job.lease); } catch { /* recuperação por lease */ }
+    try { await repository.fail(job.lease,...(error?.code==='DECODER_NOT_SMALLER'?['derivative_not_smaller']:[])); } catch { /* recuperação por lease */ }
     return { state: 'failed' };
   }
 }

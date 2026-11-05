@@ -309,6 +309,32 @@ describe("Audit checklist evidence contract", { concurrent: false }, () =>{
 
 // PostgreSQL/PGlite real para SQL/RLS; Storage/Auth são stubs, não prova da API self-hosted.
 describe('AUD-IMG-02: manifesto, fila e RLS em memória', { concurrent: false }, () => {
+ it('executor filtra uploads novos da auditoria, preserva outras filas e termina imagens sem ganho',async()=>{
+  await db.exec("reset role;begin;update audit.checklist_evidence_derivatives set state='failed',attempts=5,lease_id=null,lease_until=null");
+  try{
+   const old=await png();await db.exec('reset role');
+   const {cutoff}=await one<{cutoff:string}>('select clock_timestamp()::text cutoff');
+   const outside=await png();await login(users.unitA);
+   const fresh=await begin(old.inspection,'item-002','fresh.png','image/png',800);
+   await object(fresh.object_key,users.unitA,800,'image/png');await confirm(fresh.evidence_id);await db.exec('reset role');
+   await db.query("select set_config('audit_derivative.created_after',$1,true),set_config('audit_derivative.inspection_id',$2,true)",[cutoff,old.inspection]);
+   const job=await one<{job:{lease:string;evidence:{id:string}}}>('select audit_private.runtime_derivative_claim(null) job');
+   expect(job.job.evidence.id).toBe(fresh.evidence_id);
+   expect(await rows('select attempts,state from audit.checklist_evidence_derivatives where evidence_id=any($1::uuid[])',[ [old.evidence_id,outside.evidence_id] ])).toEqual([{attempts:0,state:'pending'},{attempts:0,state:'pending'}]);
+   await db.query("select set_config('audit_derivative.failure_code','derivative_not_smaller',true)");
+   expect(await one('select audit_private.runtime_derivative_fail($1) ok',[job.job.lease])).toEqual({ok:true});
+   await login(users.reader);
+   expect(await rows('select * from audit.checklist_evidence_thumbnail_state($1)',[fresh.evidence_id])).toEqual([{state:'failed',reason:'derivative_not_smaller',retryable:false}]);
+   expect(await rows('select * from audit.checklist_evidence_thumbnail($1)',[fresh.evidence_id])).toEqual([]);
+   for(const u of [users.empty,users.inactive,users.sector]){await login(u);expect(await rows('select * from audit.checklist_evidence_thumbnail_state($1)',[fresh.evidence_id])).toEqual([]);}
+   await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[users.admin]);
+   await db.query("update core.user_role_assignments set unit_id=$1 where user_id=$2 and scope_type='unit'",[B,users.unitA]);
+   await login(users.unitA);expect(await rows('select * from audit.checklist_evidence_thumbnail_state($1)',[fresh.evidence_id])).toEqual([]);
+   await login(users.unitA,'anon');await db.exec('savepoint anon_state');
+   await expect(db.query('select * from audit.checklist_evidence_thumbnail_state($1)',[fresh.evidence_id])).rejects.toMatchObject({code:'42501'});
+   await db.exec('rollback to anon_state');
+  }finally{await db.exec('rollback;reset role');}
+ });
  const claim = async () => { await db.exec('reset role'); return (await one<{job:{lease:string; evidence:{id:string}}|null}>('select audit_private.claim_evidence_derivative() job')).job; };
  const manifest = (e:{evidence_id:string;object_key:string}) => ({ evidence_id:e.evidence_id,original_object_key:e.object_key,
   encoder_version:'img-480-v1',original_sha256:'a'.repeat(64),derived_sha256:'b'.repeat(64),

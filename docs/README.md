@@ -18,6 +18,7 @@ O [inventário de 22/10](operations/C30_STAGING_AS_BUILT_20261022.md) é um **sn
 
 | Necessidade | Ponto de partida | Aprofundamento |
 | --- | --- | --- |
+| Gerar miniaturas automaticamente no localhost | [Executor de terminal AUD-IMG-02](modules/audit/AUD_IMG_02_LOCAL_EXECUTOR_20261105.md) | Comando de início/parada, uploads novos sem backfill, polling e resultado real com JPEGs de 78/11 KB |
 | Entender o produto e seus limites | [README principal](../README.md) | [Estrutura do produto](architecture/PRODUCT_STRUCTURE.md) |
 | Enxergar a plataforma e os componentes | [Diagramas AS-IS/TO-BE](architecture/DIAGRAMS.md) | [Visão arquitetural](architecture/OVERVIEW.md) |
 | Consultar APIs e RPCs existentes | [Catálogo de interfaces](architecture/API_CONTRACTS.md) | [Mapa de implementação](architecture/IMPLEMENTATION_MAP.md) |

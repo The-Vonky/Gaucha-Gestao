@@ -36,8 +36,13 @@ describe('encoder real em subprocesso Linux (sem Storage)', () => {
     expect(result.bytes.includes(Buffer.from('synthetic'))).toBe(false);
   });
   it('não amplia imagens pequenas', async () => {
-    const result = await encodeIsolated({ bytes: await image('png', 80, 40), contentType: 'image/png' });
+    const input=await sharp(await image('png',80,40)).withMetadata().toBuffer();
+    const result = await encodeIsolated({ bytes: input, contentType: 'image/png' });
     expect([result.width, result.height]).toEqual([80, 40]);
+  });
+  it('recusa derivado maior do que PNG mínimo, com código terminal sanitizado',async()=>{
+    const bytes=await sharp({create:{width:1,height:1,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).png({compressionLevel:9}).toBuffer();
+    await expect(encodeIsolated({bytes,contentType:'image/png'})).rejects.toMatchObject({code:'DECODER_NOT_SMALLER'});
   });
   it('nega inválidos, truncamento, MIME falso, bytes excessivos e pixels excessivos', async () => {
     const good = await image();

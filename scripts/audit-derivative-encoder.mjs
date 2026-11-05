@@ -53,7 +53,7 @@ export function encodeIsolated({ bytes, contentType, version = DERIVATIVE_ENCODE
       clearTimeout(timer); clearInterval(monitor); signal?.removeEventListener('abort',stop);
       if (rejected || code !== 0) {
         const error=denied();
-        error.code=rejected?'DECODER_LIMIT':/not permitted|namespace|permission denied/i.test(diagnostic)?'DECODER_ISOLATION_FAILED':'DECODER_FAILED';
+        error.code=rejected?'DECODER_LIMIT':code===3?'DECODER_NOT_SMALLER':/not permitted|namespace|permission denied/i.test(diagnostic)?'DECODER_ISOLATION_FAILED':'DECODER_FAILED';
         return reject(error);
       }
       try {

@@ -33,12 +33,18 @@ try {
   if (!['jpeg','png'].includes(metadata.format) || (metadata.pages ?? 1) !== 1 ||
       metadata.width > 8192 || metadata.height > 8192) throw new Error('dimensions');
   // rotate() aplica EXIF; saída padrão do Sharp descarta EXIF/XMP/ICC/GPS.
-  let pipeline = sharp(input, options).rotate().resize({ width: 480, height: 480, fit: 'inside', withoutEnlargement: true });
-  // PNG permanece lossless, inclusive textos, etiquetas e alpha; JPEG evita chroma subsampling.
-  pipeline = png ? pipeline.png({ compressionLevel: 9 }) : pipeline.jpeg({ quality: 86, chromaSubsampling: '4:4:4' });
-  const { data, info } = await pipeline.toBuffer({ resolveWithObject: true });
-  if (data.length > DERIVATIVE_MAX_OUTPUT_BYTES) throw new Error('output');
-  process.stdout.write(JSON.stringify({ mime, width: info.width, height: info.height, bytes: data.toString('base64') }));
+  // Tentativas limitadas; sem ampliar nem reduzir além de 320 px para forçar ganho.
+  // PNG continua lossless e JPEG preserva 4:4:4, com qualidade mínima 80.
+  let result;
+  for(const [side,quality] of [[480,86],[480,82],[384,82],[320,80]]){
+    let pipeline=sharp(input,options).rotate().resize({width:side,height:side,fit:'inside',withoutEnlargement:true});
+    pipeline=png?pipeline.png({compressionLevel:9}):pipeline.jpeg({quality,chromaSubsampling:'4:4:4'});
+    const candidate=await pipeline.toBuffer({resolveWithObject:true});
+    if(candidate.data.length<input.length&&candidate.data.length<=DERIVATIVE_MAX_OUTPUT_BYTES){result=candidate;break;}
+  }
+  if(!result){process.exitCode=3;}else{
+    process.stdout.write(JSON.stringify({mime,width:result.info.width,height:result.info.height,bytes:result.data.toString('base64')}));
+  }
 } catch {
   // Erros do decoder não expõem bytes/metadata/caminhos.
   process.exitCode = 1;

@@ -31,9 +31,20 @@ export async function restrictedConnection(database) {
     return client;
   } catch(error){await client.end();throw error;}
 }
-export function runtimeRepository(connection,expectedEvidence=null) {
+export function runtimeRepository(connection,expectedEvidence=null,queueScope) {
   const call=async(name,args=[]) => (await connection.query(`select audit_private.runtime_derivative_${name}(${args.map((_,i)=>'$'+(i+1)).join(',')}) result`,args)).rows[0].result;
-  return {claim:()=>call('claim',[expectedEvidence]),prepare:(lease,m)=>call('prepare',[lease,JSON.stringify(m)]),complete:lease=>call('complete',[lease]),fail:lease=>call('fail',[lease]),scope:(lease,kind)=>call('scope',[lease,kind])};
+  const scoped=async(settings,fn)=>{
+    await connection.query('begin');
+    try{
+      for(const [name,value] of settings)await connection.query('select set_config($1,$2,true)',[name,value]);
+      const result=await fn();await connection.query('commit');return result;
+    }catch(error){await connection.query('rollback');throw error;}
+  };
+  if(queueScope&&(!/^[a-f0-9-]{36}$/.test(queueScope.inspection??'')||!Number.isFinite(Date.parse(queueScope.createdAfter))))throw new Error('Invalid queue scope');
+  return {claim:()=>queueScope?scoped([['audit_derivative.created_after',queueScope.createdAfter],['audit_derivative.inspection_id',queueScope.inspection]],()=>call('claim',[expectedEvidence])):call('claim',[expectedEvidence]),
+    prepare:(lease,m)=>call('prepare',[lease,JSON.stringify(m)]),complete:lease=>call('complete',[lease]),
+    fail:(lease,code)=>code==='derivative_not_smaller'?scoped([['audit_derivative.failure_code',code]],()=>call('fail',[lease])):call('fail',[lease]),
+    scope:(lease,kind)=>call('scope',[lease,kind])};
 }
 export async function workerBoot() {
   let initialize,rejectInit,timer;
@@ -64,7 +75,7 @@ export async function workerBoot() {
     close:()=>{clearTimeout(timer);channel.close();process.stdin.destroy();fail();}};
 }
 export async function executeRuntime(config,requestToken,requestEncode) {
-  const connection=await restrictedConnection(config.database);const originalRepository=runtimeRepository(connection,config.expectedEvidence);
+  const connection=await restrictedConnection(config.database);const originalRepository=runtimeRepository(connection,config.expectedEvidence,config.queueScope);
   let lease,phase='sql claim',failureCode;const tokens=new Map();
   const step=(name,fn)=>async(...args)=>{phase=name;try{return await fn(...args);}catch(error){failureCode=/^[A-Z0-9_]{1,32}$/.test(error.code??'')?error.code:undefined;throw error;}};
   const repository={

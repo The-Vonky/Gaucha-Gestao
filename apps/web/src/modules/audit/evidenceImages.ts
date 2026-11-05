@@ -7,6 +7,15 @@ import { db } from "./api";
 export const AUDIT_THUMBNAILS_ENABLED = import.meta.env.VITE_AUDIT_EVIDENCE_THUMBNAILS === "true";
 export const THUMBNAIL_VERSION = "img-480-v1";
 export type ImageEvidence = Pick<ChecklistEvidence, "id" | "inspection_id" | "object_key" | "content_type" | "size_bytes" | "uploaded_at">;
+export async function evidenceThumbnailState(id: string) {
+  const { data, error } = await db().rpc("checklist_evidence_thumbnail_state", { p_evidence: id });
+  const row = data?.[0];
+  if (error) throw new Error("Estado da miniatura indisponível.");
+  if (!row) return { state: "absent", reason: null, retryable: false };
+  if (!["absent", "pending", "processing", "failed", "ready"].includes(row.state) || typeof row.retryable !== "boolean")
+    throw new Error("Estado da miniatura indisponível.");
+  return { state: row.state as string, reason: row.reason as string | null, retryable: row.retryable as boolean };
+}
 export const imagePrefix = (inspection: string) => `audit:${inspection}:`;
 export const imageKey = (e: ImageEvidence) => imagePrefix(e.inspection_id) + JSON.stringify([e.id, e.object_key, e.content_type, e.size_bytes, e.uploaded_at]);
 export const thumbnailKey = (e: ImageEvidence) => imagePrefix(e.inspection_id) + "thumb:" + THUMBNAIL_VERSION + ":" + imageKey(e).slice(imagePrefix(e.inspection_id).length);

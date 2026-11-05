@@ -2,6 +2,8 @@
 
 # Tráfego de imagens da Auditoria — MED-01 / AUD-IMG-01–05
 
+**Automação local posterior:** [executor de terminal, polling e prova com imagens pequenas](AUD_IMG_02_LOCAL_EXECUTOR_20261105.md). Novos uploads de uma auditoria explícita são processados durante a sessão, sem backfill; JPEG 77.834 → 39.929 bytes, e 11.028 bytes com estado terminal sem ganho. O benchmark geral 10/30/100 continua pendente.
+
 Data: 04/11/2026. Brief: solicitação do mantenedor «Otimização de tráfego de evidências da Auditoria». Base revalidada: `origin/main` em `d9b47359b00fd1516bc773d696d760c1c603ed84`, posterior ao HEAD de 03/11 citado no pedido. Branch: `codex/audit-evidence-traffic`.
 
 **Escopo:** prévias de JPG/PNG do checklist. Originais, upload, metadados, download por anexo, RPCs, RLS, cotas, auditoria e ciclo de vida existentes preservados. Planos de Ação fora da implementação. Sem migrations, buckets, serviços, migração de acervo, CDN ou alterações C30/STAGING/PROD. O Supabase local `gaucha-gestao-local` foi apenas inventariado; bucket privado com limite de 10.485.760 bytes e migration de evidências presente. Arquivos não rastreados em `supabase/snippets/` pertencem ao trabalho anterior e não integram esta entrega.

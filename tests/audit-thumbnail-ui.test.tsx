@@ -8,6 +8,7 @@ vi.mock('../apps/web/src/modules/audit/evidence', () => ({ downloadUrl: backend.
 const row = { id: '22222222-2222-4222-8222-222222222222', inspection_id:'11111111-1111-4111-8111-111111111111',
   object_key:'11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222',content_type:'image/png',size_bytes:800,uploaded_at:'2026-11-04' };
 const manifest = { evidence_id:row.id,encoder_version:'img-480-v1',derived_object_key:`${row.id}/img-480-v1/${'a'.repeat(64)}/${'b'.repeat(64)}.png`,derived_sha256:'b'.repeat(64),mime:'image/png',bytes:120 };
+const readyState={data:[{state:'ready',reason:null,retryable:false}],error:null};
 let cache: typeof import('../apps/web/src/shared/privateImageCache').privateImages;
 let visible: (entries:{isIntersecting:boolean}[]) => void;
 beforeEach(async () => {
@@ -17,7 +18,7 @@ beforeEach(async () => {
   Object.defineProperty(URL,'revokeObjectURL',{value:vi.fn(),configurable:true});
   vi.stubGlobal('IntersectionObserver',class { constructor(callback:typeof visible){visible=callback;}observe(){}disconnect(){} });
   vi.stubGlobal('fetch',vi.fn(async()=>new Response(new Uint8Array(120),{headers:{'content-type':'image/png'}})));
-  backend.rpc.mockResolvedValue({data:[manifest],error:null});
+  backend.rpc.mockImplementation(async(name:string)=>name==='checklist_evidence_thumbnail_state'?readyState:{data:[manifest],error:null});
   backend.sign.mockResolvedValue({data:{signedUrl:'https://storage.example.test/thumb'},error:null});
   backend.original.mockResolvedValue('https://storage.example.test/original');
 });
@@ -49,12 +50,34 @@ describe('lista de miniaturas com backend mockado',()=>{
   if(stage==='rpc')backend.rpc.mockResolvedValue({data:null,error:{message:'not deployed'}});
   if(stage==='sign')backend.sign.mockResolvedValue({data:null,error:{message:'denied'}});
   if(stage==='get')vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:404})));
-  if(stage==='key')backend.rpc.mockResolvedValue({data:[{...manifest,derived_object_key:row.object_key}],error:null});
+  if(stage==='key')backend.rpc.mockImplementation(async(name:string)=>name==='checklist_evidence_thumbnail_state'?readyState:{data:[{...manifest,derived_object_key:row.object_key}],error:null});
   const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
   const open=vi.fn();render(<EvidenceImage row={row} name="Evidência" onOpenOriginal={open}/>);act(()=>visible([{isIntersecting:true}]));
   await screen.findByText('Miniatura indisponível.');expect(backend.original).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button',{name:'Abrir original'}));expect(open).toHaveBeenCalledTimes(1);expect(backend.original).not.toHaveBeenCalled();
   if(['missing','rpc','key'].includes(stage)){expect(fetch).not.toHaveBeenCalled();expect(backend.sign).not.toHaveBeenCalled();}
+ });
+ it('pending/processing atualiza a miniatura sem reload e cancela polling no unmount',async()=>{
+  vi.useFakeTimers();
+  backend.rpc.mockImplementation(async(name:string)=>name==='checklist_evidence_thumbnail_state'?{data:[{state:'processing',reason:null,retryable:true}],error:null}:{data:[manifest],error:null});
+  const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
+  const {unmount}=render(<EvidenceImage row={row} name="Evidência"/>);
+  await act(async()=>visible([{isIntersecting:true}]));
+  expect(screen.getByText('Preparando miniatura…')).toBeTruthy();
+  expect(backend.sign).not.toHaveBeenCalled();expect(backend.original).not.toHaveBeenCalled();
+  backend.rpc.mockImplementation(async(name:string)=>name==='checklist_evidence_thumbnail_state'?readyState:{data:[manifest],error:null});
+  await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
+  expect(screen.getByRole('img')).toBeTruthy();expect(backend.original).not.toHaveBeenCalled();
+  unmount();const count=backend.rpc.mock.calls.length;
+  await vi.advanceTimersByTimeAsync(10000);expect(backend.rpc).toHaveBeenCalledTimes(count);
+  vi.useRealTimers();
+ });
+ it('imagem sem ganho de bytes tem estado terminal explícito e nunca baixa o original sozinha',async()=>{
+  backend.rpc.mockResolvedValue({data:[{state:'failed',reason:'derivative_not_smaller',retryable:false}],error:null});
+  const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
+  render(<EvidenceImage row={row} name="Evidência" onOpenOriginal={vi.fn()}/>);act(()=>visible([{isIntersecting:true}]));
+  await screen.findByText('Imagem já compacta; não foi possível reduzir a miniatura.');
+  expect(backend.original).not.toHaveBeenCalled();expect(backend.sign).not.toHaveBeenCalled();
  });
  it('remoção/reconciliação e troca de acesso descartam ambos os caches',async()=>{
   const images=await import('../apps/web/src/modules/audit/evidenceImages');
