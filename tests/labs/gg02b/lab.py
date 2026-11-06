@@ -23,6 +23,8 @@ class Refused(RuntimeError):
 PREFIX = "gg-02b-"
 MARKER = "GG-02B-SYNTHETIC-v1"
 MIB = 1024 * 1024
+COMMAND_TIMEOUT_SECONDS = 120
+SEALED_PRIMARY = {"primary-unavailable", "primary-password-unavailable", "source-unavailable"}
 
 
 def require(condition, message):
@@ -61,10 +63,13 @@ def expected(version):
             for name, content in fixture(version).items()}
 
 
-def inspect_tree(root):
+def inspect_tree(root, ignored=()):
     """Recusa links, arquivos especiais e hardlinks antes de ler qualquer conteúdo."""
     result = {}
     for directory, dirs, files in os.walk(root, followlinks=False):
+        if Path(directory) == root:
+            dirs[:] = [name for name in dirs if name not in ignored]
+            files = [name for name in files if name not in ignored]
         for name in dirs + files:
             path = Path(directory) / name
             info = path.lstat()
@@ -77,7 +82,7 @@ def inspect_tree(root):
     return result
 
 
-def validate_lab(raw):
+def validate_lab(raw, secondary_only=False):
     root = Path(raw)
     require(root.is_absolute() and root.parent == Path("/tmp")
             and re.fullmatch(r"gg-02b-[0-9a-f]{32}", root.name),
@@ -86,7 +91,7 @@ def validate_lab(raw):
     info = root.lstat()
     require(stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid()
             and stat.S_IMODE(info.st_mode) == 0o700, "Laboratório deve ser próprio e 0700.")
-    inspect_tree(root)
+    inspect_tree(root, SEALED_PRIMARY if secondary_only else ())
     require((root / "LAB.json").read_text() == json.dumps({"kind": MARKER}) + "\n",
             "Marcador de laboratório inválido.")
     return root
@@ -96,12 +101,15 @@ def verify_source(source, version):
     files = inspect_tree(source)
     wanted = expected(version)
     require(files.keys() == wanted.keys(), "Lista de arquivos diverge da massa sintética.")
+    actual = {}
     for name, path in files.items():
         require(path.stat().st_size == wanted[name]["bytes"], "Tamanho sintético divergente.")
-        require(hashlib.sha256(path.read_bytes()).hexdigest() == wanted[name]["sha256"],
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        require(digest == wanted[name]["sha256"],
                 "SHA-256 divergente da massa sintética.")
+        actual[name] = {"bytes": path.stat().st_size, "sha256": digest}
     return {"files": len(files), "bytes": sum(v["bytes"] for v in wanted.values()),
-            "sha256": "PASS"}
+            "sha256": "PASS", "manifest": actual}
 
 
 def clean_env(root):
@@ -153,31 +161,47 @@ def sizes(root):
 
 
 class Runner:
-    def __init__(self, root):
-        self.root = validate_lab(str(root))
+    def __init__(self, root, secondary_only=False):
+        self.secondary_only = secondary_only
+        self.root = validate_lab(str(root), secondary_only=secondary_only)
         self.binary = preflight()["tools"]["restic"]
         require(self.binary is not None, "BLOCKED: Restic ausente; nada instalado.")
 
     def command(self, label, repo, password, args, wrong_password=False, source=False):
-        validate_lab(str(self.root))
+        validate_lab(str(self.root), secondary_only=self.secondary_only)
         require(repo in (self.root / "primary", self.root / "secondary-computer/repository"),
                 "Repositório fora da allowlist.")
         require(password in (self.root / "primary-password",
                              self.root / "secondary-computer/recovery-password"),
                 "Credencial fora da allowlist.")
+        if self.secondary_only:
+            require(repo == self.root / "secondary-computer/repository"
+                    and password == self.root / "secondary-computer/recovery-password",
+                    "Recuperação secundária não pode acessar o primário.")
         require(stat.S_IMODE(password.stat().st_mode) == 0o600, "Credencial deve ser 0600.")
         started = time.perf_counter()
         before = sizes(repo)
-        result = subprocess.run(
-            [self.binary, "--repo", str(repo), "--password-file", str(password),
-             "--no-cache", *args], cwd=self.root / "source" if source else self.root,
-            env=clean_env(self.root),
-            stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False,
-        )
+        try:
+            result = subprocess.run(
+                [self.binary, "--repo", str(repo), "--password-file", str(password),
+                 "--no-cache", *args], cwd=self.root / "source" if source else self.root,
+                env=clean_env(self.root), timeout=COMMAND_TIMEOUT_SECONDS,
+                stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False,
+            )
+        except subprocess.TimeoutExpired:
+            save(self.root / "evidence" / (label + ".json"), {
+                "status": "FAIL", "timed_out": True, "timeout_seconds": COMMAND_TIMEOUT_SECONDS,
+                "seconds": round(time.perf_counter() - started, 6), "before": before,
+                "after": sizes(repo),
+            })
+            raise Refused(f"Timeout em {label}; preservar evidências, sem reparo automático.") from None
         elapsed = time.perf_counter() - started
         # Saídas somente de Restic sobre massa sintética; nunca registrar ambiente/senha.
         evidence = {"seconds": round(elapsed, 6), "exit_code": result.returncode,
                     "before": before, "after": sizes(repo),
+                    "operation": args[0], "secondary_only": self.secondary_only,
+                    "repository_role": "primary" if repo == self.root / "primary" else "secondary",
+                    "no_cache": True, "timeout_seconds": COMMAND_TIMEOUT_SECONDS,
                     "stdout": result.stdout, "stderr": result.stderr}
         save(self.root / "evidence" / (label + ".json"), evidence)
         if wrong_password:
@@ -239,7 +263,7 @@ def run(raw):
     credential(pw2)
     require(pw1.read_bytes() != pw2.read_bytes(), "Credenciais devem ser distintas.")
     version = subprocess.run([runner.binary, "version"], env=clean_env(root),
-                             capture_output=True, text=True, check=True)
+                             capture_output=True, text=True, check=True, timeout=10)
     save(root / "evidence/restic-version.json", {"version": version.stdout.strip()})
     runner.command("init-primary", primary, pw1, ["init", "--repository-version", "2"])
     # Permite parâmetros de chunking comuns e chaves de cifra distintas.
@@ -301,10 +325,10 @@ def run(raw):
 
 
 def recover_secondary(raw):
-    root = validate_lab(raw)
+    root = validate_lab(raw, secondary_only=True)
     require(not any((root / name).exists() for name in ("primary", "primary-password", "source")),
             "Recuperação independente exige caminhos originais do primário/origem indisponíveis.")
-    runner = Runner(root)
+    runner = Runner(root, secondary_only=True)
     repo = root / "secondary-computer/repository"
     password = root / "secondary-computer/recovery-password"
     snapshots = runner.snapshot_map(repo, password, "offline-snapshots")
@@ -312,6 +336,13 @@ def recover_secondary(raw):
             "Snapshots secundários divergentes após indisponibilidade do primário.")
     runner.command("check-secondary-offline", repo, password, ["check", "--read-data"])
     runner.restores(repo, password, snapshots, "restore-secondary-offline")
+    save(root / "evidence/offline-independence.json", {
+        "status": "PASS", "primary_repository_path_absent": not (root / "primary").exists(),
+        "primary_credential_path_absent": not (root / "primary-password").exists(),
+        "source_path_absent": not (root / "source").exists(), "cache": False,
+        "sealed_primary_traversed": False, "secondary_only": True,
+        "scope": "logical independence on same host/filesystem",
+    })
     return {"status": "PASS", "primary_paths_absent": True, "cache": False}
 
 

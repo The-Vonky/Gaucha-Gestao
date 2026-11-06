@@ -2,6 +2,7 @@
 
 import json
 import os
+import subprocess
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -121,6 +122,32 @@ class SafetyTests(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             lab.save(path, {"synthetic": False})
         self.assertTrue(json.loads(path.read_text())["synthetic"])
+
+    def test_secondary_validation_does_not_inspect_sealed_primary(self):
+        root = self.fresh()
+        sealed = root / "primary-unavailable"
+        sealed.mkdir()
+        (sealed / "inaccessible").symlink_to("/etc/passwd")
+        (root / "primary-password-unavailable").symlink_to("/etc/passwd")
+        # Até symlinks no primário selado são ignorados; não há leitura dele.
+        self.assertEqual(lab.validate_lab(str(root), secondary_only=True), root)
+        with self.assertRaises(lab.Refused):
+            lab.validate_lab(str(root))
+
+    def test_timeout_records_failure_without_cleanup(self):
+        root = self.fresh()
+        (root / "evidence").mkdir()
+        (root / "primary-password").write_text("GG02B-TEST-ONLY-NOT-A-REPOSITORY-KEY")
+        with patch.object(lab, "preflight", return_value={"tools": {"restic": "/synthetic/restic"}}):
+            runner = lab.Runner(root)
+        with patch.object(lab.subprocess, "run", side_effect=subprocess.TimeoutExpired("synthetic", 120)) as call:
+            with self.assertRaisesRegex(lab.Refused, "Timeout"):
+                runner.command("synthetic-timeout", root / "primary", root / "primary-password", ["snapshots"])
+        self.assertEqual(call.call_args.kwargs["timeout"], 120)
+        record = json.loads((root / "evidence/synthetic-timeout.json").read_text())
+        self.assertEqual(record["status"], "FAIL")
+        self.assertTrue(record["timed_out"])
+        self.assertTrue((root / "primary-password").exists())
 
 
 if __name__ == "__main__":
