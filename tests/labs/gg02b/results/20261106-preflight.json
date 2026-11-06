@@ -1,0 +1,80 @@
+{
+  "date_local": "2026-11-06",
+  "timezone": "America/Sao_Paulo",
+  "validated_code_sha": "1e1b03ac4ebe7139791cd29e8940464570e01c1c",
+  "code_sha256": {
+    "lab.py": "3cb1dc8b70269897d14b7f25b9c752e0dd1b74a30c76cdce7a5ae3350cfb53df",
+    "test_safety.py": "1c075ddf3344748b43a9055025ffb34331fc5f03cbc52b7507b9e7a203de4869"
+  },
+  "safety_tests": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 python3 tests/labs/gg02b/test_safety.py",
+    "tests": 13,
+    "exit_code": 0,
+    "status": "PASS"
+  },
+  "preflight": {
+    "exit_code": 2,
+    "result": {
+      "python": "3.14.4",
+      "tools": {
+        "restic": null,
+        "rclone": null
+      },
+      "status": "BLOCKED",
+      "rclone_required_for_local_lab": false,
+      "free_tmp_bytes": 6035599360
+    }
+  },
+  "prepared": {
+    "preflight": {
+      "python": "3.14.4",
+      "tools": {
+        "restic": null,
+        "rclone": null
+      },
+      "status": "BLOCKED",
+      "rclone_required_for_local_lab": false,
+      "free_tmp_bytes": 6136500224
+    },
+    "fixture": {
+      "files": 5,
+      "bytes": 33554555,
+      "sha256": "PASS"
+    },
+    "unique_content_bytes": 16777339
+  },
+  "initial_source_manifest": {
+    "objects/blob-a.bin": {
+      "bytes": 16777216,
+      "sha256": "6ad7bb8c8db0849ac7aad0277719a98c5409670ef31fe107effae64bbba50cf8"
+    },
+    "objects/blob-duplicate.bin": {
+      "bytes": 16777216,
+      "sha256": "6ad7bb8c8db0849ac7aad0277719a98c5409670ef31fe107effae64bbba50cf8"
+    },
+    "data/records.txt": {
+      "bytes": 32,
+      "sha256": "88862235e36bfe47bf7acf5b1e8a0dfe38f38d2a10231800dfab7154877f8e89"
+    },
+    "structure/rebuild.txt": {
+      "bytes": 51,
+      "sha256": "8a555395522a180f18b198abb0645e74c3b424140242bafbe8f6781c9750e65e"
+    },
+    "manifest.json": {
+      "bytes": 40,
+      "sha256": "6e67378499218ef42d085846322b98910ca40b035e1e616b7c8b6dbdf592dd35"
+    }
+  },
+  "source_allocated_file_bytes": 33566720,
+  "run": {
+    "exit_code": 2,
+    "result": {
+      "status": "BLOCKED",
+      "reason": "BLOCKED: Restic ausente; nada instalado."
+    }
+  },
+  "repository_or_secret_created": false,
+  "backup_measurements": null,
+  "restore_results": null,
+  "overall_backup_acceptance": "BLOCKED"
+}

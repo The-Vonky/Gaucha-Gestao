@@ -700,9 +700,13 @@ try {
     ]) {
       await page.goto(`${origin}${route}`);
       await page.locator("h1").waitFor();
-      await page
-        .getByText("Carregando", { exact: false })
-        .waitFor({ state: "hidden" });
+      // Três painéis podem exibir "Carregando evidências…" simultaneamente.
+      // Esperar o fim de TODOS os estados de carregamento, sem locator ambíguo.
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll('[role="status"]')].every(
+          (node) => !node.textContent?.includes("Carregando"),
+        ),
+      );
       assert.ok(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= window.innerWidth,

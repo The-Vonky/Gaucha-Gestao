@@ -1,0 +1,760 @@
+{
+  "date_local": "2026-11-06",
+  "timezone": "America/Sao_Paulo",
+  "validated_code_sha": "976bcc33faf91dcabd9b1cc04bd0608e1a34a8ec",
+  "code_sha256": {
+    "lab.py": "50da464c6b5442d16cdaa859e377e1121ce5db2d3f7a5fa60d38589ce1cc0d75",
+    "test_safety.py": "0827b0a7605d086c161df4469d8dde7c1c4f9b22b53b5a8e07d74c24c2e25490"
+  },
+  "laboratory": "/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3",
+  "provenance": {
+    "version": "0.19.1",
+    "release": "https://github.com/restic/restic/releases/tag/v0.19.1",
+    "asset_url": "https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_linux_amd64.bz2",
+    "checksums_url": "https://github.com/restic/restic/releases/download/v0.19.1/SHA256SUMS",
+    "asset_sha256_expected": "f415415624dcc452f2a02b8c33641791a8c6d6d3b65bbb3543fcf9a25151585c",
+    "asset_sha256_observed": "f415415624dcc452f2a02b8c33641791a8c6d6d3b65bbb3543fcf9a25151585c",
+    "binary_sha256": "20d4142678d0d95ec11a4759def1b73fd9190abc9ca19e4b62d067c0b387e639",
+    "sha256_verified": true,
+    "private_directory": "/tmp/gg-02b-tools-26a6355a74bd4c9c9afa130a026a7e83",
+    "uid": 1000,
+    "global_install": false,
+    "gpg_signature_verified": false
+  },
+  "restic_version": {
+    "version": "restic 0.19.1 compiled with go1.26.4 on linux/amd64"
+  },
+  "measurements": [
+    {
+      "tag": "initial",
+      "seconds": 1.086366,
+      "summary": {
+        "message_type": "summary",
+        "files_new": 5,
+        "files_changed": 0,
+        "files_unmodified": 0,
+        "dirs_new": 3,
+        "dirs_changed": 0,
+        "dirs_unmodified": 0,
+        "data_blobs": 12,
+        "tree_blobs": 4,
+        "data_added": 16781492,
+        "data_added_packed": 16779952,
+        "total_files_processed": 5,
+        "total_bytes_processed": 33554555,
+        "total_duration": 1.067667744,
+        "backup_start": "2026-11-06T14:07:06.837280471-03:00",
+        "backup_end": "2026-11-06T14:07:07.904948215-03:00",
+        "snapshot_id": "836abb17907ee15cffd3366da430dda9e92e1d648e67c5ae447e55ca4cd4e239"
+      },
+      "before": {
+        "logical_bytes": 613,
+        "allocated_bytes": 8192,
+        "data_pack_bytes": 0
+      },
+      "after": {
+        "logical_bytes": 16782084,
+        "allocated_bytes": 16801792,
+        "data_pack_bytes": 16780060
+      },
+      "growth_bytes": 16781471
+    },
+    {
+      "tag": "unchanged",
+      "seconds": 0.81253,
+      "summary": {
+        "message_type": "summary",
+        "files_new": 0,
+        "files_changed": 0,
+        "files_unmodified": 5,
+        "dirs_new": 0,
+        "dirs_changed": 0,
+        "dirs_unmodified": 3,
+        "data_blobs": 0,
+        "tree_blobs": 0,
+        "data_added": 0,
+        "data_added_packed": 0,
+        "total_files_processed": 5,
+        "total_bytes_processed": 33554555,
+        "total_duration": 0.770697873,
+        "backup_start": "2026-11-06T14:07:08.151813569-03:00",
+        "backup_end": "2026-11-06T14:07:08.922511342-03:00",
+        "snapshot_id": "c760701c07eb24f4abcd6a0a5989e60727a1c50aebcaf158342e420e5dd6b5f3"
+      },
+      "before": {
+        "logical_bytes": 16782084,
+        "allocated_bytes": 16801792,
+        "data_pack_bytes": 16780060
+      },
+      "after": {
+        "logical_bytes": 16782536,
+        "allocated_bytes": 16805888,
+        "data_pack_bytes": 16780060
+      },
+      "growth_bytes": 452
+    },
+    {
+      "tag": "changed",
+      "seconds": 1.922783,
+      "summary": {
+        "message_type": "summary",
+        "files_new": 1,
+        "files_changed": 2,
+        "files_unmodified": 3,
+        "dirs_new": 0,
+        "dirs_changed": 2,
+        "dirs_unmodified": 1,
+        "data_blobs": 3,
+        "tree_blobs": 3,
+        "data_added": 5426550,
+        "data_added_packed": 5424214,
+        "total_files_processed": 6,
+        "total_bytes_processed": 34603131,
+        "total_duration": 1.881708525,
+        "backup_start": "2026-11-06T14:07:09.268409923-03:00",
+        "backup_end": "2026-11-06T14:07:11.150118448-03:00",
+        "snapshot_id": "9d5f3ed4c506ed01cf26e2249631236ea6651c9213c411271d8b5b6f3942f6b4"
+      },
+      "before": {
+        "logical_bytes": 16782536,
+        "allocated_bytes": 16805888,
+        "data_pack_bytes": 16780060
+      },
+      "after": {
+        "logical_bytes": 22207786,
+        "allocated_bytes": 22241280,
+        "data_pack_bytes": 22204346
+      },
+      "growth_bytes": 5425250
+    }
+  ],
+  "savings": {
+    "initial_vs_logical_percent": 49.98750244191884,
+    "unchanged_vs_logical_percent": 99.99865293996596,
+    "changed_vs_logical_percent": 84.3215054730163,
+    "cumulative_logical_snapshot_bytes": 101712241,
+    "repository_final_bytes": 22207786,
+    "cumulative_vs_three_full_file_sets_percent": 78.16606361077031
+  },
+  "primary_restore_sha256": {
+    "initial": {
+      "files": 5,
+      "bytes": 33554555,
+      "sha256": "PASS",
+      "manifest": {
+        "manifest.json": {
+          "bytes": 40,
+          "sha256": "6e67378499218ef42d085846322b98910ca40b035e1e616b7c8b6dbdf592dd35"
+        },
+        "structure/rebuild.txt": {
+          "bytes": 51,
+          "sha256": "8a555395522a180f18b198abb0645e74c3b424140242bafbe8f6781c9750e65e"
+        },
+        "objects/blob-duplicate.bin": {
+          "bytes": 16777216,
+          "sha256": "6ad7bb8c8db0849ac7aad0277719a98c5409670ef31fe107effae64bbba50cf8"
+        },
+        "objects/blob-a.bin": {
+          "bytes": 16777216,
+          "sha256": "6ad7bb8c8db0849ac7aad0277719a98c5409670ef31fe107effae64bbba50cf8"
+        },
+        "data/records.txt": {
+          "bytes": 32,
+          "sha256": "88862235e36bfe47bf7acf5b1e8a0dfe38f38d2a10231800dfab7154877f8e89"
+        }
+      }
+    },
+    "unchanged": {
+      "files": 5,
+      "bytes": 33554555,
+      "sha256": "PASS",
+      "manifest": {
+        "manifest.json": {
+          "bytes": 40,
+          "sha256": "6e67378499218ef42d085846322b98910ca40b035e1e616b7c8b6dbdf592dd35"
+        },
+        "structure/rebuild.txt": {
+          "bytes": 51,
+          "sha256": "8a555395522a180f18b198abb0645e74c3b424140242bafbe8f6781c9750e65e"
+        },
+        "objects/blob-duplicate.bin": {
+          "bytes": 16777216,
+          "sha256": "6ad7bb8c8db0849ac7aad0277719a98c5409670ef31fe107effae64bbba50cf8"
+        },
+        "objects/blob-a.bin": {
+          "bytes": 16777216,
+          "sha256": "6ad7bb8c8db0849ac7aad0277719a98c5409670ef31fe107effae64bbba50cf8"
+        },
+        "data/records.txt": {
+          "bytes": 32,
+          "sha256": "88862235e36bfe47bf7acf5b1e8a0dfe38f38d2a10231800dfab7154877f8e89"
+        }
+      }
+    },
+    "changed": {
+      "files": 6,
+      "bytes": 34603131,
+      "sha256": "PASS",
+      "manifest": {
+        "manifest.json": {
+          "bytes": 40,
+          "sha256": "6e67378499218ef42d085846322b98910ca40b035e1e616b7c8b6dbdf592dd35"
+        },
+        "structure/rebuild.txt": {
+          "bytes": 51,
+          "sha256": "8a555395522a180f18b198abb0645e74c3b424140242bafbe8f6781c9750e65e"
+        },
+        "objects/blob-duplicate.bin": {
+          "bytes": 16777216,
+          "sha256": "6ad7bb8c8db0849ac7aad0277719a98c5409670ef31fe107effae64bbba50cf8"
+        },
+        "objects/blob-a.bin": {
+          "bytes": 16777216,
+          "sha256": "0449fc1ece66b9d1331f2a76bd43e744bd5187199ddb8204f6c8e3c0cdbb873e"
+        },
+        "objects/new.bin": {
+          "bytes": 1048576,
+          "sha256": "26e0e6a27dea4b75b79a679d155205c6c0cc75b0f320e00465ff3bcb37367c11"
+        },
+        "data/records.txt": {
+          "bytes": 32,
+          "sha256": "cc0c63814e5ac479ac21080c32356adc412ae509f017ecd106669187ce94abf9"
+        }
+      }
+    }
+  },
+  "secondary_restore_sha256": {
+    "initial": {
+      "files": 5,
+      "bytes": 33554555,
+      "sha256": "PASS",
+      "manifest": {
+        "manifest.json": {
+          "bytes": 40,
+          "sha256": "6e67378499218ef42d085846322b98910ca40b035e1e616b7c8b6dbdf592dd35"
+        },
+        "structure/rebuild.txt": {
+          "bytes": 51,
+          "sha256": "8a555395522a180f18b198abb0645e74c3b424140242bafbe8f6781c9750e65e"
+        },
+        "objects/blob-duplicate.bin": {
+          "bytes": 16777216,
+          "sha256": "6ad7bb8c8db0849ac7aad0277719a98c5409670ef31fe107effae64bbba50cf8"
+        },
+        "objects/blob-a.bin": {
+          "bytes": 16777216,
+          "sha256": "6ad7bb8c8db0849ac7aad0277719a98c5409670ef31fe107effae64bbba50cf8"
+        },
+        "data/records.txt": {
+          "bytes": 32,
+          "sha256": "88862235e36bfe47bf7acf5b1e8a0dfe38f38d2a10231800dfab7154877f8e89"
+        }
+      }
+    },
+    "unchanged": {
+      "files": 5,
+      "bytes": 33554555,
+      "sha256": "PASS",
+      "manifest": {
+        "manifest.json": {
+          "bytes": 40,
+          "sha256": "6e67378499218ef42d085846322b98910ca40b035e1e616b7c8b6dbdf592dd35"
+        },
+        "structure/rebuild.txt": {
+          "bytes": 51,
+          "sha256": "8a555395522a180f18b198abb0645e74c3b424140242bafbe8f6781c9750e65e"
+        },
+        "objects/blob-duplicate.bin": {
+          "bytes": 16777216,
+          "sha256": "6ad7bb8c8db0849ac7aad0277719a98c5409670ef31fe107effae64bbba50cf8"
+        },
+        "objects/blob-a.bin": {
+          "bytes": 16777216,
+          "sha256": "6ad7bb8c8db0849ac7aad0277719a98c5409670ef31fe107effae64bbba50cf8"
+        },
+        "data/records.txt": {
+          "bytes": 32,
+          "sha256": "88862235e36bfe47bf7acf5b1e8a0dfe38f38d2a10231800dfab7154877f8e89"
+        }
+      }
+    },
+    "changed": {
+      "files": 6,
+      "bytes": 34603131,
+      "sha256": "PASS",
+      "manifest": {
+        "manifest.json": {
+          "bytes": 40,
+          "sha256": "6e67378499218ef42d085846322b98910ca40b035e1e616b7c8b6dbdf592dd35"
+        },
+        "structure/rebuild.txt": {
+          "bytes": 51,
+          "sha256": "8a555395522a180f18b198abb0645e74c3b424140242bafbe8f6781c9750e65e"
+        },
+        "objects/new.bin": {
+          "bytes": 1048576,
+          "sha256": "26e0e6a27dea4b75b79a679d155205c6c0cc75b0f320e00465ff3bcb37367c11"
+        },
+        "objects/blob-duplicate.bin": {
+          "bytes": 16777216,
+          "sha256": "6ad7bb8c8db0849ac7aad0277719a98c5409670ef31fe107effae64bbba50cf8"
+        },
+        "objects/blob-a.bin": {
+          "bytes": 16777216,
+          "sha256": "0449fc1ece66b9d1331f2a76bd43e744bd5187199ddb8204f6c8e3c0cdbb873e"
+        },
+        "data/records.txt": {
+          "bytes": 32,
+          "sha256": "cc0c63814e5ac479ac21080c32356adc412ae509f017ecd106669187ce94abf9"
+        }
+      }
+    }
+  },
+  "independence": {
+    "status": "PASS",
+    "primary_repository_path_absent": true,
+    "primary_credential_path_absent": true,
+    "source_path_absent": true,
+    "cache": false,
+    "sealed_primary_traversed": false,
+    "secondary_only": true,
+    "scope": "logical independence on same host/filesystem"
+  },
+  "steps": {
+    "init-primary": {
+      "seconds": 2.699156,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 0,
+        "allocated_bytes": 0,
+        "data_pack_bytes": 0
+      },
+      "after": {
+        "logical_bytes": 613,
+        "allocated_bytes": 8192,
+        "data_pack_bytes": 0
+      },
+      "operation": "init",
+      "secondary_only": false,
+      "repository_role": "primary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "created restic repository ef2eae5f6f at /tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/primary\n\nPlease note that knowledge of your password is required to access\nthe repository. Losing your password means that your data is\nirrecoverably lost.\n",
+      "stderr": ""
+    },
+    "init-secondary": {
+      "seconds": 3.319266,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 0,
+        "allocated_bytes": 0,
+        "data_pack_bytes": 0
+      },
+      "after": {
+        "logical_bytes": 613,
+        "allocated_bytes": 8192,
+        "data_pack_bytes": 0
+      },
+      "operation": "init",
+      "secondary_only": false,
+      "repository_role": "secondary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "created restic repository e9c27eac56 at /tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/secondary-computer/repository\n with chunker parameters copied from secondary repository\n\nPlease note that knowledge of your password is required to access\nthe repository. Losing your password means that your data is\nirrecoverably lost.\n",
+      "stderr": ""
+    },
+    "wrong-password-primary": {
+      "seconds": 0.524109,
+      "exit_code": 12,
+      "before": {
+        "logical_bytes": 613,
+        "allocated_bytes": 8192,
+        "data_pack_bytes": 0
+      },
+      "after": {
+        "logical_bytes": 613,
+        "allocated_bytes": 8192,
+        "data_pack_bytes": 0
+      },
+      "operation": "snapshots",
+      "secondary_only": false,
+      "repository_role": "primary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "",
+      "stderr": "Fatal: wrong password or no key found\n"
+    },
+    "wrong-password-secondary": {
+      "seconds": 0.500223,
+      "exit_code": 12,
+      "before": {
+        "logical_bytes": 613,
+        "allocated_bytes": 8192,
+        "data_pack_bytes": 0
+      },
+      "after": {
+        "logical_bytes": 613,
+        "allocated_bytes": 8192,
+        "data_pack_bytes": 0
+      },
+      "operation": "snapshots",
+      "secondary_only": false,
+      "repository_role": "secondary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "",
+      "stderr": "Fatal: wrong password or no key found\n"
+    },
+    "backup-initial": {
+      "seconds": 1.086366,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 613,
+        "allocated_bytes": 8192,
+        "data_pack_bytes": 0
+      },
+      "after": {
+        "logical_bytes": 16782084,
+        "allocated_bytes": 16801792,
+        "data_pack_bytes": 16780060
+      },
+      "operation": "backup",
+      "secondary_only": false,
+      "repository_role": "primary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "{\"message_type\":\"status\",\"percent_done\":0.6011519449445836,\"total_files\":5,\"files_done\":2,\"total_bytes\":33554555,\"bytes_done\":20171386,\"current_files\":[\"/objects/blob-a.bin\",\"/objects/blob-duplicate.bin\"]}\n{\"message_type\":\"status\",\"percent_done\":1,\"total_files\":5,\"files_done\":4,\"total_bytes\":33554555,\"bytes_done\":33554555}\n{\"message_type\":\"status\",\"percent_done\":1,\"total_files\":5,\"files_done\":5,\"total_bytes\":33554555,\"bytes_done\":33554555}\n{\"message_type\":\"summary\",\"files_new\":5,\"files_changed\":0,\"files_unmodified\":0,\"dirs_new\":3,\"dirs_changed\":0,\"dirs_unmodified\":0,\"data_blobs\":12,\"tree_blobs\":4,\"data_added\":16781492,\"data_added_packed\":16779952,\"total_files_processed\":5,\"total_bytes_processed\":33554555,\"total_duration\":1.067667744,\"backup_start\":\"2026-11-06T14:07:06.837280471-03:00\",\"backup_end\":\"2026-11-06T14:07:07.904948215-03:00\",\"snapshot_id\":\"836abb17907ee15cffd3366da430dda9e92e1d648e67c5ae447e55ca4cd4e239\"}\n",
+      "stderr": ""
+    },
+    "backup-unchanged": {
+      "seconds": 0.81253,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 16782084,
+        "allocated_bytes": 16801792,
+        "data_pack_bytes": 16780060
+      },
+      "after": {
+        "logical_bytes": 16782536,
+        "allocated_bytes": 16805888,
+        "data_pack_bytes": 16780060
+      },
+      "operation": "backup",
+      "secondary_only": false,
+      "repository_role": "primary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "{\"message_type\":\"summary\",\"files_new\":0,\"files_changed\":0,\"files_unmodified\":5,\"dirs_new\":0,\"dirs_changed\":0,\"dirs_unmodified\":3,\"data_blobs\":0,\"tree_blobs\":0,\"data_added\":0,\"data_added_packed\":0,\"total_files_processed\":5,\"total_bytes_processed\":33554555,\"total_duration\":0.770697873,\"backup_start\":\"2026-11-06T14:07:08.151813569-03:00\",\"backup_end\":\"2026-11-06T14:07:08.922511342-03:00\",\"snapshot_id\":\"c760701c07eb24f4abcd6a0a5989e60727a1c50aebcaf158342e420e5dd6b5f3\"}\n",
+      "stderr": ""
+    },
+    "backup-changed": {
+      "seconds": 1.922783,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 16782536,
+        "allocated_bytes": 16805888,
+        "data_pack_bytes": 16780060
+      },
+      "after": {
+        "logical_bytes": 22207786,
+        "allocated_bytes": 22241280,
+        "data_pack_bytes": 22204346
+      },
+      "operation": "backup",
+      "secondary_only": false,
+      "repository_role": "primary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "{\"message_type\":\"status\",\"percent_done\":0.911310800170077,\"total_files\":6,\"files_done\":5,\"total_bytes\":34603131,\"bytes_done\":31534207,\"current_files\":[\"/objects/blob-a.bin\"]}\n{\"message_type\":\"status\",\"percent_done\":1,\"total_files\":6,\"files_done\":6,\"total_bytes\":34603131,\"bytes_done\":34603131}\n{\"message_type\":\"summary\",\"files_new\":1,\"files_changed\":2,\"files_unmodified\":3,\"dirs_new\":0,\"dirs_changed\":2,\"dirs_unmodified\":1,\"data_blobs\":3,\"tree_blobs\":3,\"data_added\":5426550,\"data_added_packed\":5424214,\"total_files_processed\":6,\"total_bytes_processed\":34603131,\"total_duration\":1.881708525,\"backup_start\":\"2026-11-06T14:07:09.268409923-03:00\",\"backup_end\":\"2026-11-06T14:07:11.150118448-03:00\",\"snapshot_id\":\"9d5f3ed4c506ed01cf26e2249631236ea6651c9213c411271d8b5b6f3942f6b4\"}\n",
+      "stderr": ""
+    },
+    "check-primary": {
+      "seconds": 1.173753,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 22207786,
+        "allocated_bytes": 22241280,
+        "data_pack_bytes": 22204346
+      },
+      "after": {
+        "logical_bytes": 22207786,
+        "allocated_bytes": 22241280,
+        "data_pack_bytes": 22204346
+      },
+      "operation": "check",
+      "secondary_only": false,
+      "repository_role": "primary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "create exclusive lock for repository\nload indexes\ncheck all packs\ncheck snapshots, trees and blobs\n[0:00] 100.00%  3 / 3 snapshots\nread all data\n[0:00] 100.00%  5 / 5 packs\nno errors were found\n",
+      "stderr": ""
+    },
+    "snapshots-primary": {
+      "seconds": 0.859079,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 22207786,
+        "allocated_bytes": 22241280,
+        "data_pack_bytes": 22204346
+      },
+      "after": {
+        "logical_bytes": 22207786,
+        "allocated_bytes": 22241280,
+        "data_pack_bytes": 22204346
+      },
+      "operation": "snapshots",
+      "secondary_only": false,
+      "repository_role": "primary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "[{\"time\":\"2026-11-06T14:07:06.837280471-03:00\",\"tree\":\"18993f3e57dba2b764ff2e3cac2573c3f7753a51de15d99e9aa6d02d24f61e42\",\"paths\":[\"/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source\"],\"hostname\":\"gg02b-synthetic\",\"username\":\"bernardodev\",\"uid\":1000,\"gid\":1000,\"tags\":[\"initial\"],\"program_version\":\"restic 0.19.1\",\"summary\":{\"backup_start\":\"2026-11-06T14:07:06.837280471-03:00\",\"backup_end\":\"2026-11-06T14:07:07.904948215-03:00\",\"files_new\":5,\"files_changed\":0,\"files_unmodified\":0,\"dirs_new\":3,\"dirs_changed\":0,\"dirs_unmodified\":0,\"data_blobs\":12,\"tree_blobs\":4,\"data_added\":16781492,\"data_added_packed\":16779952,\"total_files_processed\":5,\"total_bytes_processed\":33554555},\"id\":\"836abb17907ee15cffd3366da430dda9e92e1d648e67c5ae447e55ca4cd4e239\",\"short_id\":\"836abb17\"},{\"time\":\"2026-11-06T14:07:08.151813569-03:00\",\"parent\":\"836abb17907ee15cffd3366da430dda9e92e1d648e67c5ae447e55ca4cd4e239\",\"tree\":\"18993f3e57dba2b764ff2e3cac2573c3f7753a51de15d99e9aa6d02d24f61e42\",\"paths\":[\"/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source\"],\"hostname\":\"gg02b-synthetic\",\"username\":\"bernardodev\",\"uid\":1000,\"gid\":1000,\"tags\":[\"unchanged\"],\"program_version\":\"restic 0.19.1\",\"summary\":{\"backup_start\":\"2026-11-06T14:07:08.151813569-03:00\",\"backup_end\":\"2026-11-06T14:07:08.922511342-03:00\",\"files_new\":0,\"files_changed\":0,\"files_unmodified\":5,\"dirs_new\":0,\"dirs_changed\":0,\"dirs_unmodified\":3,\"data_blobs\":0,\"tree_blobs\":0,\"data_added\":0,\"data_added_packed\":0,\"total_files_processed\":5,\"total_bytes_processed\":33554555},\"id\":\"c760701c07eb24f4abcd6a0a5989e60727a1c50aebcaf158342e420e5dd6b5f3\",\"short_id\":\"c760701c\"},{\"time\":\"2026-11-06T14:07:09.268409923-03:00\",\"parent\":\"c760701c07eb24f4abcd6a0a5989e60727a1c50aebcaf158342e420e5dd6b5f3\",\"tree\":\"08925d6835446642a78dbe6c64bc7e2b904c5c72681c1634852269fba277fda5\",\"paths\":[\"/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source\"],\"hostname\":\"gg02b-synthetic\",\"username\":\"bernardodev\",\"uid\":1000,\"gid\":1000,\"tags\":[\"changed\"],\"program_version\":\"restic 0.19.1\",\"summary\":{\"backup_start\":\"2026-11-06T14:07:09.268409923-03:00\",\"backup_end\":\"2026-11-06T14:07:11.150118448-03:00\",\"files_new\":1,\"files_changed\":2,\"files_unmodified\":3,\"dirs_new\":0,\"dirs_changed\":2,\"dirs_unmodified\":1,\"data_blobs\":3,\"tree_blobs\":3,\"data_added\":5426550,\"data_added_packed\":5424214,\"total_files_processed\":6,\"total_bytes_processed\":34603131},\"id\":\"9d5f3ed4c506ed01cf26e2249631236ea6651c9213c411271d8b5b6f3942f6b4\",\"short_id\":\"9d5f3ed4\"}]\n",
+      "stderr": ""
+    },
+    "restore-primary-initial": {
+      "seconds": 0.812706,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 22207786,
+        "allocated_bytes": 22241280,
+        "data_pack_bytes": 22204346
+      },
+      "after": {
+        "logical_bytes": 22207786,
+        "allocated_bytes": 22241280,
+        "data_pack_bytes": 22204346
+      },
+      "operation": "restore",
+      "secondary_only": false,
+      "repository_role": "primary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "restoring snapshot 836abb17 of [/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source] at 2026-11-06 14:07:06.837280471 -0300 -03 by bernardodev@gg02b-synthetic to /tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/restore-primary-initial\nSummary: Restored 8 files/dirs (32.000 MiB) in 0:00\n",
+      "stderr": ""
+    },
+    "restore-primary-unchanged": {
+      "seconds": 0.833628,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 22207786,
+        "allocated_bytes": 22241280,
+        "data_pack_bytes": 22204346
+      },
+      "after": {
+        "logical_bytes": 22207786,
+        "allocated_bytes": 22241280,
+        "data_pack_bytes": 22204346
+      },
+      "operation": "restore",
+      "secondary_only": false,
+      "repository_role": "primary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "restoring snapshot c760701c of [/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source] at 2026-11-06 14:07:08.151813569 -0300 -03 by bernardodev@gg02b-synthetic to /tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/restore-primary-unchanged\nSummary: Restored 8 files/dirs (32.000 MiB) in 0:00\n",
+      "stderr": ""
+    },
+    "restore-primary-changed": {
+      "seconds": 0.879575,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 22207786,
+        "allocated_bytes": 22241280,
+        "data_pack_bytes": 22204346
+      },
+      "after": {
+        "logical_bytes": 22207786,
+        "allocated_bytes": 22241280,
+        "data_pack_bytes": 22204346
+      },
+      "operation": "restore",
+      "secondary_only": false,
+      "repository_role": "primary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "restoring snapshot 9d5f3ed4 of [/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source] at 2026-11-06 14:07:09.268409923 -0300 -03 by bernardodev@gg02b-synthetic to /tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/restore-primary-changed\nSummary: Restored 9 files/dirs (33.000 MiB) in 0:00\n",
+      "stderr": ""
+    },
+    "copy-secondary": {
+      "seconds": 1.946609,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 613,
+        "allocated_bytes": 8192,
+        "data_pack_bytes": 0
+      },
+      "after": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "operation": "copy",
+      "secondary_only": false,
+      "repository_role": "secondary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "\nsnapshot c760701c of [/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source] at 2026-11-06 14:07:08.151813569 -0300 -03 by bernardodev@gg02b-synthetic\n  copy started, this may take a while...\n[0:00] 100.00%  3 / 3 packs copied\n\nsnapshot 9d5f3ed4 of [/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source] at 2026-11-06 14:07:09.268409923 -0300 -03 by bernardodev@gg02b-synthetic\n  copy started, this may take a while...\n[0:00] 100.00%  2 / 2 packs copied\n\nsnapshot 836abb17 of [/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source] at 2026-11-06 14:07:06.837280471 -0300 -03 by bernardodev@gg02b-synthetic\n  copy started, this may take a while...\n[0:00]          0 packs copied\n\nsnapshot 68ebbb98 saved, copied from source snapshot c760701c\nsnapshot 0995590e saved, copied from source snapshot 9d5f3ed4\nsnapshot ddd1a2a5 saved, copied from source snapshot 836abb17\n",
+      "stderr": ""
+    },
+    "snapshots-secondary": {
+      "seconds": 0.735669,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "after": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "operation": "snapshots",
+      "secondary_only": false,
+      "repository_role": "secondary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "[{\"time\":\"2026-11-06T14:07:06.837280471-03:00\",\"tree\":\"18993f3e57dba2b764ff2e3cac2573c3f7753a51de15d99e9aa6d02d24f61e42\",\"paths\":[\"/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source\"],\"hostname\":\"gg02b-synthetic\",\"username\":\"bernardodev\",\"uid\":1000,\"gid\":1000,\"tags\":[\"initial\"],\"original\":\"836abb17907ee15cffd3366da430dda9e92e1d648e67c5ae447e55ca4cd4e239\",\"program_version\":\"restic 0.19.1\",\"summary\":{\"backup_start\":\"2026-11-06T14:07:06.837280471-03:00\",\"backup_end\":\"2026-11-06T14:07:07.904948215-03:00\",\"files_new\":5,\"files_changed\":0,\"files_unmodified\":0,\"dirs_new\":3,\"dirs_changed\":0,\"dirs_unmodified\":0,\"data_blobs\":12,\"tree_blobs\":4,\"data_added\":16781492,\"data_added_packed\":16779952,\"total_files_processed\":5,\"total_bytes_processed\":33554555},\"id\":\"ddd1a2a50aa8cee2ec6e6835cab5b98853293b6e064f8558c97b900f54417da4\",\"short_id\":\"ddd1a2a5\"},{\"time\":\"2026-11-06T14:07:08.151813569-03:00\",\"tree\":\"18993f3e57dba2b764ff2e3cac2573c3f7753a51de15d99e9aa6d02d24f61e42\",\"paths\":[\"/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source\"],\"hostname\":\"gg02b-synthetic\",\"username\":\"bernardodev\",\"uid\":1000,\"gid\":1000,\"tags\":[\"unchanged\"],\"original\":\"c760701c07eb24f4abcd6a0a5989e60727a1c50aebcaf158342e420e5dd6b5f3\",\"program_version\":\"restic 0.19.1\",\"summary\":{\"backup_start\":\"2026-11-06T14:07:08.151813569-03:00\",\"backup_end\":\"2026-11-06T14:07:08.922511342-03:00\",\"files_new\":0,\"files_changed\":0,\"files_unmodified\":5,\"dirs_new\":0,\"dirs_changed\":0,\"dirs_unmodified\":3,\"data_blobs\":0,\"tree_blobs\":0,\"data_added\":0,\"data_added_packed\":0,\"total_files_processed\":5,\"total_bytes_processed\":33554555},\"id\":\"68ebbb98d1039ebdb7f7f42428c167f5e7a2b0503304d96d59f29435740089b9\",\"short_id\":\"68ebbb98\"},{\"time\":\"2026-11-06T14:07:09.268409923-03:00\",\"tree\":\"08925d6835446642a78dbe6c64bc7e2b904c5c72681c1634852269fba277fda5\",\"paths\":[\"/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source\"],\"hostname\":\"gg02b-synthetic\",\"username\":\"bernardodev\",\"uid\":1000,\"gid\":1000,\"tags\":[\"changed\"],\"original\":\"9d5f3ed4c506ed01cf26e2249631236ea6651c9213c411271d8b5b6f3942f6b4\",\"program_version\":\"restic 0.19.1\",\"summary\":{\"backup_start\":\"2026-11-06T14:07:09.268409923-03:00\",\"backup_end\":\"2026-11-06T14:07:11.150118448-03:00\",\"files_new\":1,\"files_changed\":2,\"files_unmodified\":3,\"dirs_new\":0,\"dirs_changed\":2,\"dirs_unmodified\":1,\"data_blobs\":3,\"tree_blobs\":3,\"data_added\":5426550,\"data_added_packed\":5424214,\"total_files_processed\":6,\"total_bytes_processed\":34603131},\"id\":\"0995590e97de4e0b01ae5d49f608be3ff89bdca594f2a9875c77c393cdf449ee\",\"short_id\":\"0995590e\"}]\n",
+      "stderr": ""
+    },
+    "offline-snapshots": {
+      "seconds": 0.880897,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "after": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "operation": "snapshots",
+      "secondary_only": true,
+      "repository_role": "secondary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "[{\"time\":\"2026-11-06T14:07:06.837280471-03:00\",\"tree\":\"18993f3e57dba2b764ff2e3cac2573c3f7753a51de15d99e9aa6d02d24f61e42\",\"paths\":[\"/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source\"],\"hostname\":\"gg02b-synthetic\",\"username\":\"bernardodev\",\"uid\":1000,\"gid\":1000,\"tags\":[\"initial\"],\"original\":\"836abb17907ee15cffd3366da430dda9e92e1d648e67c5ae447e55ca4cd4e239\",\"program_version\":\"restic 0.19.1\",\"summary\":{\"backup_start\":\"2026-11-06T14:07:06.837280471-03:00\",\"backup_end\":\"2026-11-06T14:07:07.904948215-03:00\",\"files_new\":5,\"files_changed\":0,\"files_unmodified\":0,\"dirs_new\":3,\"dirs_changed\":0,\"dirs_unmodified\":0,\"data_blobs\":12,\"tree_blobs\":4,\"data_added\":16781492,\"data_added_packed\":16779952,\"total_files_processed\":5,\"total_bytes_processed\":33554555},\"id\":\"ddd1a2a50aa8cee2ec6e6835cab5b98853293b6e064f8558c97b900f54417da4\",\"short_id\":\"ddd1a2a5\"},{\"time\":\"2026-11-06T14:07:08.151813569-03:00\",\"tree\":\"18993f3e57dba2b764ff2e3cac2573c3f7753a51de15d99e9aa6d02d24f61e42\",\"paths\":[\"/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source\"],\"hostname\":\"gg02b-synthetic\",\"username\":\"bernardodev\",\"uid\":1000,\"gid\":1000,\"tags\":[\"unchanged\"],\"original\":\"c760701c07eb24f4abcd6a0a5989e60727a1c50aebcaf158342e420e5dd6b5f3\",\"program_version\":\"restic 0.19.1\",\"summary\":{\"backup_start\":\"2026-11-06T14:07:08.151813569-03:00\",\"backup_end\":\"2026-11-06T14:07:08.922511342-03:00\",\"files_new\":0,\"files_changed\":0,\"files_unmodified\":5,\"dirs_new\":0,\"dirs_changed\":0,\"dirs_unmodified\":3,\"data_blobs\":0,\"tree_blobs\":0,\"data_added\":0,\"data_added_packed\":0,\"total_files_processed\":5,\"total_bytes_processed\":33554555},\"id\":\"68ebbb98d1039ebdb7f7f42428c167f5e7a2b0503304d96d59f29435740089b9\",\"short_id\":\"68ebbb98\"},{\"time\":\"2026-11-06T14:07:09.268409923-03:00\",\"tree\":\"08925d6835446642a78dbe6c64bc7e2b904c5c72681c1634852269fba277fda5\",\"paths\":[\"/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source\"],\"hostname\":\"gg02b-synthetic\",\"username\":\"bernardodev\",\"uid\":1000,\"gid\":1000,\"tags\":[\"changed\"],\"original\":\"9d5f3ed4c506ed01cf26e2249631236ea6651c9213c411271d8b5b6f3942f6b4\",\"program_version\":\"restic 0.19.1\",\"summary\":{\"backup_start\":\"2026-11-06T14:07:09.268409923-03:00\",\"backup_end\":\"2026-11-06T14:07:11.150118448-03:00\",\"files_new\":1,\"files_changed\":2,\"files_unmodified\":3,\"dirs_new\":0,\"dirs_changed\":2,\"dirs_unmodified\":1,\"data_blobs\":3,\"tree_blobs\":3,\"data_added\":5426550,\"data_added_packed\":5424214,\"total_files_processed\":6,\"total_bytes_processed\":34603131},\"id\":\"0995590e97de4e0b01ae5d49f608be3ff89bdca594f2a9875c77c393cdf449ee\",\"short_id\":\"0995590e\"}]\n",
+      "stderr": ""
+    },
+    "check-secondary-offline": {
+      "seconds": 0.883015,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "after": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "operation": "check",
+      "secondary_only": true,
+      "repository_role": "secondary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "create exclusive lock for repository\nload indexes\ncheck all packs\ncheck snapshots, trees and blobs\n[0:00] 100.00%  3 / 3 snapshots\nread all data\n[0:00] 100.00%  3 / 3 packs\nno errors were found\n",
+      "stderr": ""
+    },
+    "restore-secondary-offline-initial": {
+      "seconds": 0.784322,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "after": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "operation": "restore",
+      "secondary_only": true,
+      "repository_role": "secondary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "restoring snapshot ddd1a2a5 of [/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source] at 2026-11-06 14:07:06.837280471 -0300 -03 by bernardodev@gg02b-synthetic to /tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/restore-secondary-offline-initial\nSummary: Restored 8 files/dirs (32.000 MiB) in 0:00\n",
+      "stderr": ""
+    },
+    "restore-secondary-offline-unchanged": {
+      "seconds": 0.908971,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "after": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "operation": "restore",
+      "secondary_only": true,
+      "repository_role": "secondary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "restoring snapshot 68ebbb98 of [/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source] at 2026-11-06 14:07:08.151813569 -0300 -03 by bernardodev@gg02b-synthetic to /tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/restore-secondary-offline-unchanged\nSummary: Restored 8 files/dirs (32.000 MiB) in 0:00\n",
+      "stderr": ""
+    },
+    "restore-secondary-offline-changed": {
+      "seconds": 1.150803,
+      "exit_code": 0,
+      "before": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "after": {
+        "logical_bytes": 22208322,
+        "allocated_bytes": 22233088,
+        "data_pack_bytes": 22205002
+      },
+      "operation": "restore",
+      "secondary_only": true,
+      "repository_role": "secondary",
+      "no_cache": true,
+      "timeout_seconds": 120,
+      "stdout": "restoring snapshot 0995590e of [/tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/source] at 2026-11-06 14:07:09.268409923 -0300 -03 by bernardodev@gg02b-synthetic to /tmp/gg-02b-aa2bd6bcedd645dabc5a66c593b361d3/restore-secondary-offline-changed\nSummary: Restored 9 files/dirs (33.000 MiB) in 0:00\n",
+      "stderr": ""
+    }
+  },
+  "matrix": {
+    "BAK-01": "PASS",
+    "BAK-02": "PASS",
+    "BAK-03": "PASS",
+    "BAK-04": "PASS",
+    "BAK-05": "PASS",
+    "BAK-06": "PASS",
+    "BAK-07": "PASS",
+    "BAK-08": "PASS",
+    "BAK-09": "BLOCKED"
+  },
+  "result": {
+    "status": "PASS",
+    "scope": "file-only synthetic, same host and filesystem",
+    "encryption_wrong_password": "PASS",
+    "deduplication": "PASS",
+    "historical_restore_sha256": "PASS",
+    "secondary_restore_sha256": "PASS",
+    "check_read_data_both": "PASS",
+    "physical_offsite_and_key_custody": "BLOCKED"
+  },
+  "external_command_seconds_total": 22.71346,
+  "primary_check_seconds": 1.173753,
+  "secondary_check_seconds": 0.883015,
+  "secondary_repository_final_bytes": {
+    "logical_bytes": 22208322,
+    "allocated_bytes": 22233088,
+    "data_pack_bytes": 22205002
+  },
+  "credentials_published": false,
+  "safety_tests": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 python3 tests/labs/gg02b/test_safety.py",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "test_changed_content_refused (__main__.SafetyTests.test_changed_content_refused) ... ok\ntest_evidence_cannot_be_overwritten (__main__.SafetyTests.test_evidence_cannot_be_overwritten) ... ok\ntest_fifo_refused_without_blocking_read (__main__.SafetyTests.test_fifo_refused_without_blocking_read) ... ok\ntest_hardlink_refused (__main__.SafetyTests.test_hardlink_refused) ... ok\ntest_inner_symlink_refused_before_content_read (__main__.SafetyTests.test_inner_symlink_refused_before_content_read) ... ok\ntest_missing_restic_blocks_without_creating_repositories_or_secrets (__main__.SafetyTests.test_missing_restic_blocks_without_creating_repositories_or_secrets) ... ok\ntest_no_inherited_credentials_or_remote_configuration (__main__.SafetyTests.test_no_inherited_credentials_or_remote_configuration) ... ok\ntest_operational_remote_relative_and_traversal_paths_refused (__main__.SafetyTests.test_operational_remote_relative_and_traversal_paths_refused) ... ok\ntest_original_fixture_and_manifests (__main__.SafetyTests.test_original_fixture_and_manifests) ... ok\ntest_permissions_and_marker_refused (__main__.SafetyTests.test_permissions_and_marker_refused) ... ok\ntest_root_symlink_refused (__main__.SafetyTests.test_root_symlink_refused) ... ok\ntest_secondary_recovery_refuses_primary_still_available (__main__.SafetyTests.test_secondary_recovery_refuses_primary_still_available) ... ok\ntest_secondary_validation_does_not_inspect_sealed_primary (__main__.SafetyTests.test_secondary_validation_does_not_inspect_sealed_primary) ... ok\ntest_timeout_records_failure_without_cleanup (__main__.SafetyTests.test_timeout_records_failure_without_cleanup) ... ok\ntest_unexpected_source_file_refused (__main__.SafetyTests.test_unexpected_source_file_refused) ... ok\n\n----------------------------------------------------------------------\nRan 15 tests in 1.911s\n\nOK\n"
+  }
+}
