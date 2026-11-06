@@ -114,6 +114,10 @@
 
 **Proibição:** nenhum item deste arquivo constitui GO implícito, autorização para formatar, resetar banco, provisionar produção, mover dados pessoais ou expor a API.
 
+## Adendo GG-02C — 06/11/2026
+
+O mantenedor autorizou integração Restic + Rclone em laboratório exclusivamente sintético e preparação documental do Drive. [Procedimento e próxima autorização](../operations/GG02C_RCLONE_DRIVE_20261106.md); [matriz executada](../operations/GG02C_LAB_RESULTS_20261106.md). Backend local via stdio, snapshots, integridade e recuperação secundária lógica comprovados; conta Google não conectada. OAuth/primeira operação na conta, recuperação física em outro PC e custódia externa continuam pendentes. Arquitetura de pacote completo gratuito segue confirmação do mantenedor/PR #106, sem presumir seu merge. Não encerra D02/D03/D04/D08/D12, GG-02/GG-03, O3/O4 ou autoriza C30/PROD.
+
 ## Adendo AG-01 — 23/10/2026
 
 O responsável instruiu expressamente iniciar codificação de migration, grants, RLS e testes isolados na branch reservada e abrir PR. Essa autorização atual substitui o bloqueio de início de codificação registrado em AG-00. Não equivale a parecer independente D5-A ou autorização de integração/produção. Ver [contrato implementado para revisão](../modules/room-booking/AG01_FOUNDATION.md); revisão final pelo titular conforme exceção de mantenedor único registrada em `9e20199`, sem inventar parecer independente.

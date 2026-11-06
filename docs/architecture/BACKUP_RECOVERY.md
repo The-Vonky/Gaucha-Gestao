@@ -56,6 +56,8 @@ Ver [diagrama LAB x PROD](../planning/02_RESTORE_DRILL.md#visão-visual--backup-
 
 ## Exercícios de restauração
 
+**GG-02C, 06/11/2026:** [integração sintética Restic + Rclone](../operations/GG02C_RCLONE_DRIVE_20261106.md) e [evidências locais](../operations/GG02C_LAB_RESULTS_20261106.md): backend local via stdio, três snapshots, 44 arquivos restaurados com SHA-256 e cópia secundária logicamente independente no mesmo host. Drive será o destino do **pacote completo** conforme confirmação do mantenedor na PR #106 e brief GG-02C; aquela PR permanece referência sem merge presumido. OAuth, quota/envio/restore Google e cópia física em outro PC **não executados**; conexão exige autorização separada antes da primeira operação na conta. Sem implantação C30, sem dados reais e sem fechamento de GG-03/O3/O4.
+
 Ensaiar periodicamente em ambiente isolado, verificando: banco sobe, migrations/schema coerentes, registros legíveis, arquivos e referências íntegros, Auth/configuração recuperáveis e app consegue iniciar.
 
 Registrar **data, backup, versão, resultado, falhas e ações corretivas**. Não incluir segredos e dados reais em PRs.
