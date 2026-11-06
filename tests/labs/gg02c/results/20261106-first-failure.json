@@ -1,0 +1,29 @@
+{
+  "status": "FAIL corrigido em nova execução",
+  "stage": "primeira execução local",
+  "error": "TIMEOUT: processo e filhos encerrados; laboratório preservado.",
+  "script_sha256": {
+    "lab.py": "75e350ae7fae2e554e0cda006a3239cd9af9fe41ecade8c554070b01c5a42454",
+    "fetch_tools.py": "9dcc732b2309d8d891a27485fb6d0373fc2005a679b68f3c3505fe520f2d1d28"
+  },
+  "completed_commands": [
+    {
+      "label": "init",
+      "exit_code": 0,
+      "seconds": 2.449109
+    },
+    {
+      "label": "wrong-credential",
+      "exit_code": 12,
+      "seconds": 0.528022
+    },
+    {
+      "label": "missing-remote",
+      "exit_code": 1,
+      "seconds": 0.051193
+    }
+  ],
+  "cause": "Backend indisponível induz retries prolongados; limite de 120 s interrompeu o ensaio.",
+  "correction": "Teste de destino indisponível agora tem orçamento de 10 s; timeout esperado registrado com código do runner 124, grupo de processos encerrado e check/backup posterior exigidos. Outros timeouts continuam FAIL.",
+  "preserved": true
+}

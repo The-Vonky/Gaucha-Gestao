@@ -14,6 +14,8 @@ O [inventário de 22/10](operations/C30_STAGING_AS_BUILT_20261022.md) é um **sn
 
 **Inventário de 05/11/2026:** [GG-01 — inspeção operacional da C30, estado de código/schema, riscos e passagem para GG-02](operations/C30_GG01_INVENTORY_20261105.md). Diagnóstico inicial concluído com ressalvas; backup independente, restore e GO de produção permanecem pendentes.
 
+**GG-02C, 06/11/2026:** [Restic + Rclone sintético local e procedimento Drive](operations/GG02C_RCLONE_DRIVE_20261106.md), com [matriz e evidências executadas](operations/GG02C_LAB_RESULTS_20261106.md). OAuth/conta Google exigem próxima autorização; não há backup operacional da C30 ou GO para dados reais.
+
 ## Início rápido por objetivo
 
 | Necessidade | Ponto de partida | Aprofundamento |

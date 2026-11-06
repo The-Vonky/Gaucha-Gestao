@@ -58,6 +58,8 @@ Ver [diagrama LAB x PROD](../planning/02_RESTORE_DRILL.md#visão-visual--backup-
 
 **GG-02B, 06/11/2026:** [laboratório local Restic de arquivos sintéticos](../operations/GG02B_RESTIC_LOCAL_POC_20261106.md) executado com Restic 0.19.1 portátil oficial e SHA-256 conferido: **BAK-01–08 PASS**, três snapshots, deduplicação, restaurações com SHA-256 e cópia secundária logicamente independente, com leitura integral dos dois repositórios. Não houve acesso à C30/Drive nem alteração de Docker/Supabase. **BAK-09 físico/off-site BLOCKED**: não comprova backup operacional, custódia externa de chaves ou recuperação física em outro host e não encerra O3/O4.
 
+**GG-02C, 06/11/2026:** [integração sintética Restic + Rclone](../operations/GG02C_RCLONE_DRIVE_20261106.md) e [evidências locais](../operations/GG02C_LAB_RESULTS_20261106.md): backend local via stdio, três snapshots, 44 arquivos restaurados com SHA-256 e cópia secundária logicamente independente no mesmo host. Drive será o destino do **pacote completo** conforme confirmação do mantenedor na PR #106 e brief GG-02C; essa diretriz já foi integrada à main pela PR #106. OAuth, quota/envio/restore Google e cópia física em outro PC **não executados**; conexão exige autorização separada antes da primeira operação na conta. Sem implantação C30, sem dados reais e sem fechamento de GG-03/O3/O4.
+
 Ensaiar periodicamente em ambiente isolado, verificando: banco sobe, migrations/schema coerentes, registros legíveis, arquivos e referências íntegros, Auth/configuração recuperáveis e app consegue iniciar.
 
 Registrar **data, backup, versão, resultado, falhas e ações corretivas**. Não incluir segredos e dados reais em PRs.

@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "command": "python3 tests/labs/gg02c/test_safety.py",
+  "seconds": 1.271744,
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": "test_arbitrary_path (__main__.Safety.test_arbitrary_path) ... ok\ntest_arbitrary_repository (__main__.Safety.test_arbitrary_repository) ... ok\ntest_bad_uuid (__main__.Safety.test_bad_uuid) ... ok\ntest_environment_has_no_inherited_secrets (__main__.Safety.test_environment_has_no_inherited_secrets) ... ok\ntest_exclusive_evidence (__main__.Safety.test_exclusive_evidence) ... ok\ntest_extra_or_modified_source_refused (__main__.Safety.test_extra_or_modified_source_refused) ... ok\ntest_fifo (__main__.Safety.test_fifo) ... ok\ntest_forbidden_command (__main__.Safety.test_forbidden_command) ... ok\ntest_hardlink (__main__.Safety.test_hardlink) ... ok\ntest_invalid_marker (__main__.Safety.test_invalid_marker) ... ok\ntest_marker_symlink (__main__.Safety.test_marker_symlink) ... ok\ntest_nested_symlink (__main__.Safety.test_nested_symlink) ... ok\ntest_relative_path (__main__.Safety.test_relative_path) ... ok\ntest_remote_path (__main__.Safety.test_remote_path) ... ok\ntest_root_symlink (__main__.Safety.test_root_symlink) ... ok\ntest_secondary_cannot_access_primary (__main__.Safety.test_secondary_cannot_access_primary) ... ok\ntest_timeout (__main__.Safety.test_timeout) ... ok\ntest_valid_private_lab (__main__.Safety.test_valid_private_lab) ... ok\ntest_world_readable_file (__main__.Safety.test_world_readable_file) ... ok\ntest_world_readable_root (__main__.Safety.test_world_readable_root) ... ok\n\n----------------------------------------------------------------------\nRan 20 tests in 1.086s\n\nOK\n",
+  "script_sha256": "7aac72eca85c775df957d88d48241b5a12ec5b96d54343f6d09c6007e67af050"
+}
