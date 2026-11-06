@@ -4,17 +4,19 @@
 
 ## 1. Decisão aprovada quanto ao objetivo e à arquitetura inicial
 
-Adotar como **destino primário proposto dos backups de dados** a cota gratuita do **Google Drive (até 15 GB compartilhados com outros produtos da conta)**, sem ativar Google One/teste pago/assinatura ou aceitar cobrança nesta etapa. Cota real livre, termos de uso, integração API, limites e adequação à política de proteção de dados precisam ser verificados.
+Adotar o **Google Drive gratuito como repositório principal do pacote de recuperação COMPLETA**, abrangendo **dados + estrutura + manifestos de compatibilidade e restauração**, em formato cifrado e com snapshots incrementais/deduplicados (até 15 GB de cota total compartilhada, sujeita ao espaço livre real). Isso substitui a interpretação anterior de que o Drive guardaria apenas os dados. O pacote completo pode ser composto por snapshots e metadados vinculados, sem criar duplicação física integral a cada dia. Não ativar Google One/teste pago/assinatura ou aceitar cobrança nesta etapa. Termos de uso, integração API, limites, controle da conta institucional e adequação à política de proteção de dados precisam ser verificados.
 
 A estratégia separa *três funções de recuperação*, sem obrigação de gerar três cópias físicas redundantes e independentes em toda execução:
 
 | Função | Conteúdo | Destino inicial escolhido |
 | --- | --- | --- |
-| Backup de dados | Captura consistente de PostgreSQL (negócio, Supabase Auth, papéis/roles e permissões), metadados **e bytes** de Supabase Storage, manifestos/hashes | Google Drive gratuito, **sempre criptografado antes do envio**, com snapshots incrementais e histórico adequado |
-| Backup estrutural | Código e SHA de referência, migrations e hashes, versões/imagens, Compose/overrides, unidades systemd, Caddy, documentos de reconstrução e referências seguras a segredos | GitHub versionado + **pendrive existente de 8 GB**, conforme capacidade; manter segredos protegidos |
-| Pacote de recuperação completa | Seleção compatível de dados + estrutura + manifesto de versões, integridade, chaves por canal separado e roteiro validado de recuperação | **Cópias cifradas** em notebook do mantenedor e/ou outros computadores da empresa, usados **somente para guardar**, não para executar o sistema; preferir ao menos uma cópia offline ou protegida contra alteração |
+| Backup de dados | Captura consistente de PostgreSQL (negócio, Supabase Auth, papéis/roles e permissões), metadados **e bytes** de Supabase Storage, manifestos/hashes | **Integra o pacote completo criptografado no Google Drive**, com snapshots incrementais e histórico adequado |
+| Backup estrutural | Código e SHA de referência, migrations e hashes, versões/imagens, Compose/overrides, unidades systemd, Caddy, documentos de reconstrução e referências seguras a segredos | **Integra o mesmo pacote completo criptografado no Google Drive**; cópias adicionais de código no GitHub e kit estrutural no **pendrive de 8 GB**, conforme capacidade |
+| Pacote de recuperação completa | **O conjunto principal no Drive:** dados + estrutura compatíveis + manifesto de integridade/versões + instruções de restauração. A chave de descriptografia deve ser recuperável por canal independente | **Google Drive é a fonte principal de recuperação**, enquanto notebook e/ou PCs da empresa guardam **cópia secundária cifrada e independente** dos snapshots necessários, sem executar o sistema; preferir cópia offline ou protegida contra alteração |
 
-O pendrive de 8 GB serve inicialmente para o **kit estrutural**; não presumir que comporte todos os dados. Não comprar outro pendrive/HD antes do dimensionamento. **Fase futura:** substituir preventivamente HDD envelhecido e adquirir discos externos novos para cópias completas periódicas, sem confundir RAID/disco extra com backup off-host.
+O pendrive de 8 GB serve inicialmente para o **kit estrutural**; não presumir que comporte todos os dados.
+
+**Precisão operacional (06/11/2026):** um conjunto restaurável no Drive não exige um arquivo ZIP monolítico nem a duplicação física integral em cada snapshot. A restauração deve recuperar o snapshot selecionado com todos os blocos e metadados de que ele depende, mais o kit estrutural da mesma versão. É obrigatório testar que a cópia secundária em notebook/PC recupera o conjunto **sem depender da C30 nem do acesso ao Drive**. Não armazenar a única chave de descriptografia no Drive ou no servidor de origem. Não comprar outro pendrive/HD antes do dimensionamento. **Fase futura:** substituir preventivamente HDD envelhecido e adquirir discos externos novos para cópias completas periódicas, sem confundir RAID/disco extra com backup off-host.
 
 **A seleção da arquitetura não aprova ferramentas específicas**. Restic (snapshots/deduplicação/cifra) e rclone (backend Google Drive) são candidatos a validar; outras soluções podem ser comparadas. Para PostgreSQL, criar procedimento de captura online consistente (dump/alternativa aprovada); jamais copiar PGDATA “ao vivo” como backup válido. A deduplicação de dumps inteiros não garante economia alta; medir empiricamente a taxa incremental e o crescimento de imagens. Um conjunto completo pode **referenciar** snapshots verificados e compatíveis em vez de duplicar bytes; manter capacidade de recuperação independente e offline quando possível.
 
@@ -78,3 +80,26 @@ O inventário GG-01 evidenciou até 05/11: HDD de 1 TB com aproximadamente 1,4 G
 - [GG-01 — inventário de 05/11/2026](https://github.com/The-Vonky/Gaucha-Gestao/pull/104) — PR documental separada, não presumir merge.
 
 **Esta entrega é somente registro da escolha do mantenedor.** Não envolve instalação de ferramentas, acesso a Google Drive/conta, execução de backups, acesso à C30, escrita em dados ou integração na main. Qualquer operacionalização requer proposta técnica, teste isolado e GO explícito.
+
+## 8. Confirmações do inventário e próximo trabalho (06/11/2026)
+
+**Montagens efetivas confirmadas por inspeção Docker somente leitura do mantenedor:**
+
+| Container | Mounts relevantes |
+| --- | --- |
+| PostgreSQL | /armazenamento2/gaucha-gestao/staging/postgres; /armazenamento2/gaucha-gestao/staging/db-config; três arquivos de inicialização jwt.sql, roles.sql e 99-target.sql sob /opt/gaucha-gestao/staging/infra/supabase/volumes/db/ |
+| Storage | /armazenamento2/gaucha-gestao/staging/storage |
+| Auth e REST | Nenhum bind mount retornado; serviços ainda dependem de banco/configuração de runtime |
+| Kong | kong-entrypoint.sh e kong.yml sob /opt/gaucha-gestao/staging/infra/supabase/volumes/api/ |
+
+**Tamanhos consultados com du -sh:** PostgreSQL 61 MB, Storage 139 MB, db-config 124 KB, frontend publicado 5 MB, backups históricos 1,4 MB. Total nominal das pastas ~206 MB; não confundir com backup lógico/comprimido, espaço livre real na conta Google ou taxa futura de crescimento. Não publicar conteúdo dos arquivos confidenciais de configuração.
+
+### Sequência de implementação a aprovar
+
+1. GG-02A: engenharia documental sem acesso à C30; revisar BACKUP_RECOVERY, C30_BACKUP_GAPS, 02_RESTORE_DRILL, GG-01 e esta decisão. Desenhar a captura consistente de PostgreSQL/Auth/roles + Storage sem corrida com uploads. Não presumir que dumps integrais diários deduplicam bem.
+2. Verificar espaço livre e titularidade da conta Google sem divulgar credenciais, margem de crescimento, capacidade de cópia secundária, retenção, recuperação de chave fora da origem, alertas, RPO e RTO para aprovação humana.
+3. Testar Restic + Rclone ou alternativa em ambiente local explicitamente selecionado, com dados sintéticos. Demonstrar snapshots incrementais, integridade, recuperação do Drive e recuperação offline da cópia secundária, sem tocar no ERP.
+4. Somente após autorização operacional específica, instalar/ativar mecanismos na C30, preservando containers e o ERP. Executar ensaio isolado de recuperação do conjunto real, tratando dados e credenciais como confidenciais, sem domínio público.
+5. Registrar evidências e decisões dos gates GG-02/GG-03. Piloto persistente com dados reais e PROD continuam NO-GO enquanto demais gates não forem fechados.
+
+**A escolha da arquitetura não é autorização para instalar, conectar a conta Google ou modificar a C30.**
