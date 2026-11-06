@@ -42,6 +42,8 @@ O conteúdo único teórico resulta da geração conhecida da massa e **não é 
 
 Comandos efetivamente executados:
 
+Código validado no commit `1e1b03ac4ebe7139791cd29e8940464570e01c1c`; [evidência saneada com hashes dos scripts, manifesto da origem e códigos de saída](../../tests/labs/gg02b/results/20261106-preflight.json). Os 13 testes foram repetidos nesse SHA com resultado PASS. AST Python, oito links locais do guia/relatório e `git diff --check` também passaram.
+
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 tests/labs/gg02b/test_safety.py
 python3 tests/labs/gg02b/lab.py preflight
