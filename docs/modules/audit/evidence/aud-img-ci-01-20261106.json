@@ -1,0 +1,542 @@
+{
+  "task": "AUD-IMG-CI-01",
+  "date": "2026-11-06",
+  "main_sha": "1c704f84efa0650e6fbed3354fc7ab77e75fe73f",
+  "failed_ci": {
+    "sha": "bda21d4",
+    "run": 42259464590,
+    "job": 128035273127,
+    "passed": 1116,
+    "failed": 1,
+    "limitation": "Log histórico sem mapa de IDs/timestamps; não identifica qual fixture foi retornada.",
+    "expected": "b5a5ac41-025e-4664-b5a6-eb988ec58a03",
+    "received": "edf27989-0a4a-4c66-ba51-ce67f57470f4",
+    "uuid_comparison": "expected < received; empate total apenas entre essas duas linhas escolheria expected, não received."
+  },
+  "environment": {
+    "node": "22.23.4",
+    "vitest": "5.0.4",
+    "pglite": "0.3.14",
+    "database": "PGlite em memória por processo; Auth/Storage stubs; sem AUDIT_TEST_DATABASE_URL",
+    "clock": "_emscripten_date_now=()=>Date.now() na dependência instalada; milissegundos",
+    "session": "postgres; TimeZone GMT; transação explícita; casos sequenciais"
+  },
+  "test_sha256": "5bb8d96bca973dd8c0b26479af724997f9c294c96dc1348a1351f83b93c94eff",
+  "baseline": {
+    "unmodified_isolated": {
+      "runs": 1,
+      "passed": 1
+    },
+    "console_instrumented_isolated": {
+      "runs": 10,
+      "passed": 10,
+      "limitation": "Reporter não expôs console; repetido com arquivo JSONL temporário."
+    },
+    "file_instrumented_isolated": {
+      "runs": 10,
+      "passed": 10
+    },
+    "file_instrumented_complete_file": {
+      "runs": 10,
+      "passed": 10,
+      "tests_per_run": 45
+    }
+  },
+  "controlled_reproductions": [
+    {
+      "case": "pending criado no mesmo milissegundo do corte",
+      "runs": 1,
+      "failed_old_assertion": 1,
+      "method": "vi.spyOn(Date, now).mockReturnValue(Date.now()) antes de begin(pending); mockRestore após clock_timestamp do corte; demais chamadas e SQL originais",
+      "trace": {
+        "cutoff": "2026-11-06 17:38:47.079+00",
+        "ids": {
+          "old": "abffd8f8-4d4e-4918-a016-855767e50be9",
+          "expired": "b021e71d-eba7-4740-a6bf-e8a7e4b996b8",
+          "pending": "d81db10a-5116-46f4-8b23-3a9657b0b754",
+          "a": "13736342-a1b9-41e4-8674-2820cb8d0491",
+          "b": "93e4df2e-9d3c-49fd-ba12-197e365ae9a8"
+        },
+        "queue": [
+          {
+            "id": "abffd8f8-4d4e-4918-a016-855767e50be9",
+            "evidence_created": "2026-11-06 17:38:47.019+00",
+            "job_created": "2026-11-06 17:38:47.03+00",
+            "next_attempt_at": "2026-11-06 17:38:47.03+00",
+            "state": "pending",
+            "attempts": 0,
+            "lease_until": null,
+            "evidence_in_scope": false,
+            "job_in_scope": false
+          },
+          {
+            "id": "b021e71d-eba7-4740-a6bf-e8a7e4b996b8",
+            "evidence_created": "2026-11-06 17:38:47.062+00",
+            "job_created": "2026-11-06 17:38:47.07+00",
+            "next_attempt_at": "2026-11-06 17:38:47.07+00",
+            "state": "processing",
+            "attempts": 5,
+            "lease_until": "2026-11-06 17:38:46.076+00",
+            "evidence_in_scope": false,
+            "job_in_scope": false
+          },
+          {
+            "id": "d81db10a-5116-46f4-8b23-3a9657b0b754",
+            "evidence_created": "2026-11-06 17:38:47.079+00",
+            "job_created": "2026-11-06 17:38:47.093+00",
+            "next_attempt_at": "2026-11-06 17:38:47.093+00",
+            "state": "pending",
+            "attempts": 0,
+            "lease_until": null,
+            "evidence_in_scope": true,
+            "job_in_scope": true
+          },
+          {
+            "id": "13736342-a1b9-41e4-8674-2820cb8d0491",
+            "evidence_created": "2026-11-06 17:38:47.115+00",
+            "job_created": "2026-11-06 17:38:47.123+00",
+            "next_attempt_at": "2026-11-06 17:38:47.123+00",
+            "state": "pending",
+            "attempts": 0,
+            "lease_until": null,
+            "evidence_in_scope": true,
+            "job_in_scope": true
+          },
+          {
+            "id": "93e4df2e-9d3c-49fd-ba12-197e365ae9a8",
+            "evidence_created": "2026-11-06 17:38:47.15+00",
+            "job_created": "2026-11-06 17:38:47.158+00",
+            "next_attempt_at": "2026-11-06 17:38:47.158+00",
+            "state": "pending",
+            "attempts": 0,
+            "lease_until": null,
+            "evidence_in_scope": true,
+            "job_in_scope": true
+          }
+        ],
+        "selected": "d81db10a-5116-46f4-8b23-3a9657b0b754",
+        "session": {
+          "current_user": "postgres",
+          "session_user": "postgres",
+          "timezone": "GMT",
+          "tx": "2026-11-06 17:38:46.986+00",
+          "clock": "2026-11-06 17:38:47.17+00"
+        }
+      }
+    },
+    {
+      "case": "b prioritário por next_attempt_at; created_at empatado",
+      "runs": 1,
+      "failed_old_assertion": 1,
+      "method": "UPDATE somente nos jobs a/b da fixture: created_at=cutoff; next_attempt_at=cutoff para b e cutoff+1 microsecond para a",
+      "trace": {
+        "cutoff": "2026-11-06 17:39:22.41+00",
+        "ids": {
+          "old": "0cc730d4-b3f8-427c-b51a-0c632dc7d8f2",
+          "expired": "fcffe532-8efb-4fb0-a2ec-0e6ce796ccd1",
+          "pending": "efeb0bda-423b-445b-a04d-5eb5f3c4fc3e",
+          "a": "e3c8c34d-fc4e-4def-b7a8-b535772f1a85",
+          "b": "c077c10e-9755-4d4c-950e-be89feac3740"
+        },
+        "queue": [
+          {
+            "id": "0cc730d4-b3f8-427c-b51a-0c632dc7d8f2",
+            "evidence_created": "2026-11-06 17:39:22.328+00",
+            "job_created": "2026-11-06 17:39:22.348+00",
+            "next_attempt_at": "2026-11-06 17:39:22.348+00",
+            "state": "pending",
+            "attempts": 0,
+            "lease_until": null,
+            "evidence_in_scope": false,
+            "job_in_scope": false
+          },
+          {
+            "id": "fcffe532-8efb-4fb0-a2ec-0e6ce796ccd1",
+            "evidence_created": "2026-11-06 17:39:22.381+00",
+            "job_created": "2026-11-06 17:39:22.397+00",
+            "next_attempt_at": "2026-11-06 17:39:22.397+00",
+            "state": "processing",
+            "attempts": 5,
+            "lease_until": "2026-11-06 17:39:21.399+00",
+            "evidence_in_scope": false,
+            "job_in_scope": false
+          },
+          {
+            "id": "c077c10e-9755-4d4c-950e-be89feac3740",
+            "evidence_created": "2026-11-06 17:39:22.499+00",
+            "job_created": "2026-11-06 17:39:22.41+00",
+            "next_attempt_at": "2026-11-06 17:39:22.41+00",
+            "state": "pending",
+            "attempts": 0,
+            "lease_until": null,
+            "evidence_in_scope": true,
+            "job_in_scope": true
+          },
+          {
+            "id": "e3c8c34d-fc4e-4def-b7a8-b535772f1a85",
+            "evidence_created": "2026-11-06 17:39:22.446+00",
+            "job_created": "2026-11-06 17:39:22.41+00",
+            "next_attempt_at": "2026-11-06 17:39:22.410001+00",
+            "state": "pending",
+            "attempts": 0,
+            "lease_until": null,
+            "evidence_in_scope": true,
+            "job_in_scope": true
+          },
+          {
+            "id": "efeb0bda-423b-445b-a04d-5eb5f3c4fc3e",
+            "evidence_created": "2026-11-06 17:39:22.408+00",
+            "job_created": "2026-11-06 17:39:22.416+00",
+            "next_attempt_at": "2026-11-06 17:39:22.416+00",
+            "state": "pending",
+            "attempts": 0,
+            "lease_until": null,
+            "evidence_in_scope": false,
+            "job_in_scope": true
+          }
+        ],
+        "selected": "c077c10e-9755-4d4c-950e-be89feac3740",
+        "session": {
+          "current_user": "postgres",
+          "session_user": "postgres",
+          "timezone": "GMT",
+          "tx": "2026-11-06 17:39:22.27+00",
+          "clock": "2026-11-06 17:39:22.524+00"
+        }
+      }
+    },
+    {
+      "case": "next_attempt_at e created_at empatados; UUID decide",
+      "runs": 5,
+      "failed_old_assertion": 4,
+      "passed_old_assertion": 1,
+      "method": "UPDATE somente nos jobs a/b da fixture: created_at=next_attempt_at=cutoff",
+      "representative_failure": {
+        "cutoff": "2026-11-06 17:39:44.375+00",
+        "ids": {
+          "old": "70e2d2b4-0b5f-4b1b-abc2-519f2b7cc779",
+          "expired": "3651f5a5-4547-4f75-aebe-20d637ae12fc",
+          "pending": "1cc53d34-c1d0-4ac3-85ab-4f72180e57b1",
+          "a": "fe7d5c0f-bf0a-410b-a986-0bdb5e22ea60",
+          "b": "46e7b950-c2b9-43e8-aff2-6952d7898202"
+        },
+        "queue": [
+          {
+            "id": "70e2d2b4-0b5f-4b1b-abc2-519f2b7cc779",
+            "evidence_created": "2026-11-06 17:39:44.339+00",
+            "job_created": "2026-11-06 17:39:44.347+00",
+            "next_attempt_at": "2026-11-06 17:39:44.347+00",
+            "state": "pending",
+            "attempts": 0,
+            "lease_until": null,
+            "evidence_in_scope": false,
+            "job_in_scope": false
+          },
+          {
+            "id": "3651f5a5-4547-4f75-aebe-20d637ae12fc",
+            "evidence_created": "2026-11-06 17:39:44.363+00",
+            "job_created": "2026-11-06 17:39:44.369+00",
+            "next_attempt_at": "2026-11-06 17:39:44.369+00",
+            "state": "processing",
+            "attempts": 5,
+            "lease_until": "2026-11-06 17:39:43.371+00",
+            "evidence_in_scope": false,
+            "job_in_scope": false
+          },
+          {
+            "id": "46e7b950-c2b9-43e8-aff2-6952d7898202",
+            "evidence_created": "2026-11-06 17:39:44.417+00",
+            "job_created": "2026-11-06 17:39:44.375+00",
+            "next_attempt_at": "2026-11-06 17:39:44.375+00",
+            "state": "pending",
+            "attempts": 0,
+            "lease_until": null,
+            "evidence_in_scope": true,
+            "job_in_scope": true
+          },
+          {
+            "id": "fe7d5c0f-bf0a-410b-a986-0bdb5e22ea60",
+            "evidence_created": "2026-11-06 17:39:44.396+00",
+            "job_created": "2026-11-06 17:39:44.375+00",
+            "next_attempt_at": "2026-11-06 17:39:44.375+00",
+            "state": "pending",
+            "attempts": 0,
+            "lease_until": null,
+            "evidence_in_scope": true,
+            "job_in_scope": true
+          },
+          {
+            "id": "1cc53d34-c1d0-4ac3-85ab-4f72180e57b1",
+            "evidence_created": "2026-11-06 17:39:44.374+00",
+            "job_created": "2026-11-06 17:39:44.38+00",
+            "next_attempt_at": "2026-11-06 17:39:44.38+00",
+            "state": "pending",
+            "attempts": 0,
+            "lease_until": null,
+            "evidence_in_scope": false,
+            "job_in_scope": true
+          }
+        ],
+        "selected": "46e7b950-c2b9-43e8-aff2-6952d7898202",
+        "session": {
+          "current_user": "postgres",
+          "session_user": "postgres",
+          "timezone": "GMT",
+          "tx": "2026-11-06 17:39:44.312+00",
+          "clock": "2026-11-06 17:39:44.43+00"
+        }
+      },
+      "outcomes": [
+        {
+          "run": 1,
+          "selected_fixture": "b",
+          "a": "fe7d5c0f-bf0a-410b-a986-0bdb5e22ea60",
+          "b": "46e7b950-c2b9-43e8-aff2-6952d7898202",
+          "selected": "46e7b950-c2b9-43e8-aff2-6952d7898202"
+        },
+        {
+          "run": 2,
+          "selected_fixture": "a",
+          "a": "3bc3159c-eb98-4506-817e-6982bbf2f69f",
+          "b": "8a7cc5bf-2cc0-45fc-a6f9-3a3d42f14dd2",
+          "selected": "3bc3159c-eb98-4506-817e-6982bbf2f69f"
+        },
+        {
+          "run": 3,
+          "selected_fixture": "b",
+          "a": "938ce04e-6c98-4b9d-83b4-11403b39f7f0",
+          "b": "74b79d8b-3bc3-456f-b4bb-387cf26a3c06",
+          "selected": "74b79d8b-3bc3-456f-b4bb-387cf26a3c06"
+        },
+        {
+          "run": 4,
+          "selected_fixture": "b",
+          "a": "92f26635-247c-4003-8ccf-d018f33b9e44",
+          "b": "9019eb5e-17bb-4a2a-bd9e-b2ee48c7c720",
+          "selected": "9019eb5e-17bb-4a2a-bd9e-b2ee48c7c720"
+        },
+        {
+          "run": 5,
+          "selected_fixture": "b",
+          "a": "f4ec5c73-7d46-49a4-98aa-ac64b3c17a44",
+          "b": "454f43cb-5cdb-4672-9422-c487a426257a",
+          "selected": "454f43cb-5cdb-4672-9422-c487a426257a"
+        }
+      ]
+    },
+    {
+      "case": "mutação da regressão corrigida para exigir a primeiro",
+      "runs": 1,
+      "failed_old_assertion": 1,
+      "selected_test": "acervo .ordem b",
+      "limitation": "Mutação e instrumentação removidas antes dos checks finais."
+    }
+  ],
+  "fix": "Somente fixtures/assertions; timestamps explícitos e três ordens; nenhuma migration, SQL de aplicação, grant, RLS ou runtime alterado.",
+  "limits": [
+    "Nenhum FAIL espontâneo nas 31 execuções baseline locais; reproduções de falha são controladas.",
+    "O UUID histórico da CI não pode ser atribuído a a/b/pending sem instrumentação daquele run.",
+    "PGlite não comprova disputa real entre sessões ou Storage/Auth HTTP.",
+    "PROD NO-GO."
+  ],
+  "fixed_repetitions": {
+    "results": [
+      {
+        "group": "specific",
+        "run": 1,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 2,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 3,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 4,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 5,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 6,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 7,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 8,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 9,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 10,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 11,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 12,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 13,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 14,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 15,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 16,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 17,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 18,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 19,
+        "exit": 0
+      },
+      {
+        "group": "specific",
+        "run": 20,
+        "exit": 0
+      },
+      {
+        "group": "file",
+        "run": 1,
+        "exit": 0
+      },
+      {
+        "group": "file",
+        "run": 2,
+        "exit": 0
+      },
+      {
+        "group": "file",
+        "run": 3,
+        "exit": 0
+      },
+      {
+        "group": "file",
+        "run": 4,
+        "exit": 0
+      },
+      {
+        "group": "file",
+        "run": 5,
+        "exit": 0
+      },
+      {
+        "group": "file",
+        "run": 6,
+        "exit": 0
+      },
+      {
+        "group": "file",
+        "run": 7,
+        "exit": 0
+      },
+      {
+        "group": "file",
+        "run": 8,
+        "exit": 0
+      },
+      {
+        "group": "file",
+        "run": 9,
+        "exit": 0
+      },
+      {
+        "group": "file",
+        "run": 10,
+        "exit": 0
+      }
+    ],
+    "specific_tests_per_run": 3,
+    "file_tests_per_run": 47,
+    "specific_total_passed": 60,
+    "file_total_passed": 470,
+    "automatic_retries": 0
+  },
+  "checks": {
+    "typecheck": {
+      "command": "npm run typecheck",
+      "exit": 0
+    },
+    "lint": {
+      "command": "npm run lint",
+      "exit": 0
+    },
+    "build": {
+      "command": "npm run build",
+      "exit": 0,
+      "env": "VITE_SUPABASE_URL=http://127.0.0.1:54321; VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci-build-placeholder",
+      "warning": "Chunk principal >500 kB, preexistente; sem alteração de frontend."
+    },
+    "verify_build": {
+      "command": "npm run verify:build",
+      "exit": 0
+    },
+    "audit": {
+      "command": "npm audit --audit-level=moderate",
+      "exit": 0,
+      "vulnerabilities": 0
+    },
+    "diff_check": {
+      "command": "git diff --check",
+      "exit": 0
+    },
+    "full_suite": {
+      "command": "npm test -- --maxWorkers=2 --no-color",
+      "exit": 0,
+      "files_passed": 80,
+      "tests_passed": 1119,
+      "duration_seconds": 147.42,
+      "execution": "Fora do sandbox da ferramenta para preservar isolamento Bubblewrap; sem fallback."
+    },
+    "evidence_validation": {
+      "exit": 0,
+      "scope": "SHA-256 do teste; contagens de repetições; traces controlados; desempate UUID; links locais"
+    }
+  }
+}
