@@ -1,4 +1,8 @@
+> **Estado vigente AUD-IMG-02 (05/11/2026):** [GO C executado no localhost autorizado](AUD_IMG_02_LOCAL_GO_C_20261105.md), com migrations, login mínimo e uma imagem sintética; Storage v1.72.1, miniatura `ready` e Chromium reais. Listagem recebeu 377.025 bytes frente a 5.127.003 do original (**92,6463% nesta imagem**); ampliação/download preservados. POST/upsert adicional parcial por timeout. PR #101 draft, flag versionada false e exceção temporária no `.env.local`. Descrições/ausências de medição abaixo são o **baseline histórico anterior**; MED-01 10/30/100 permanece pendente. Sem backfill, merge ou deploy. [Contrato atual](AUD_IMG_02_IMPLEMENTATION_20261104.md).
+
 # Tráfego de imagens da Auditoria — MED-01 / AUD-IMG-01–05
+
+**Automação local posterior:** [executor de terminal, polling e prova com imagens pequenas](AUD_IMG_02_LOCAL_EXECUTOR_20261105.md). Novos uploads de uma auditoria explícita são processados durante a sessão, sem backfill; JPEG 77.834 → 39.929 bytes, e 11.028 bytes com estado terminal sem ganho. O benchmark geral 10/30/100 continua pendente.
 
 Data: 04/11/2026. Brief: solicitação do mantenedor «Otimização de tráfego de evidências da Auditoria». Base revalidada: `origin/main` em `d9b47359b00fd1516bc773d696d760c1c603ed84`, posterior ao HEAD de 03/11 citado no pedido. Branch: `codex/audit-evidence-traffic`.
 

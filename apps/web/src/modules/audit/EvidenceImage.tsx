@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { privateImages } from "../../shared/privateImageCache";
-import { imageKey, loadEvidenceImage, type ImageEvidence } from "./evidenceImages";
+import { AUDIT_THUMBNAILS_ENABLED, imageKey, thumbnailKey, loadEvidenceThumbnail, loadEvidenceImage, evidenceThumbnailState, type ImageEvidence } from "./evidenceImages";
 /** Montar um critério não implica visibilidade: só o viewport (ou a ampliação explícita) carrega. */
-export function EvidenceImage({ row, name, expanded = false }: { row: ImageEvidence; name: string; expanded?: boolean }) {
+export function EvidenceImage({ row, name, expanded = false, onOpenOriginal }: { row: ImageEvidence; name: string; expanded?: boolean; onOpenOriginal?: () => void }) {
   const element = useRef<HTMLSpanElement>(null);
   const [visible, setVisible] = useState(expanded);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const key = imageKey(row);
+  const [preparing, setPreparing] = useState(false);
+  const [notSmaller, setNotSmaller] = useState(false);
+  const thumbnail = AUDIT_THUMBNAILS_ENABLED && !expanded;
+  const key = thumbnail ? thumbnailKey(row) : imageKey(row);
   const url = useSyncExternalStore(privateImages.subscribe, () => privateImages.peek(key));
   const epoch = useSyncExternalStore(privateImages.subscribe, privateImages.getAccessVersion);
   const { id, inspection_id, object_key, content_type, size_bytes, uploaded_at } = row;
@@ -23,16 +26,37 @@ export function EvidenceImage({ row, name, expanded = false }: { row: ImageEvide
   useEffect(() => {
     if (!visible) return;
     let current = true;
-    setFailed(false); setLoading(true);
-    void loadEvidenceImage({ id, inspection_id, object_key, content_type, size_bytes, uploaded_at })
-      .catch(() => { if (current) setFailed(true); })
-      .finally(() => { if (current) setLoading(false); });
-    return () => { current = false; };
-  }, [id, inspection_id, object_key, content_type, size_bytes, uploaded_at, visible, attempt, epoch]);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    setFailed(false); setLoading(true); setPreparing(false); setNotSmaller(false);
+    const refresh = async () => {
+      try {
+        if (thumbnail) {
+          const status = await evidenceThumbnailState(id);
+          if (!current) return;
+          if (status.retryable) {
+            setPreparing(true); setLoading(false);
+            timer = setTimeout(() => void refresh(), 2000);
+            return;
+          }
+          setPreparing(false);
+          if (status.state !== "ready") {
+            setNotSmaller(status.reason === "derivative_not_smaller");
+            setFailed(true); setLoading(false); return;
+          }
+        }
+        await (thumbnail ? loadEvidenceThumbnail : loadEvidenceImage)({ id, inspection_id, object_key, content_type, size_bytes, uploaded_at });
+      } catch { if (current) { setFailed(true); setPreparing(false); } }
+      finally { if (current) setLoading(false); }
+    };
+    void refresh();
+    return () => { current = false; clearTimeout(timer); };
+  }, [id, inspection_id, object_key, content_type, size_bytes, uploaded_at, visible, attempt, epoch, thumbnail]);
   return <span ref={element} className="audit-image-slot">
     {visible && url ? <img src={url} alt={name} width={expanded ? 960 : 88} height={expanded ? 720 : 72}
       loading={expanded ? "eager" : "lazy"} decoding="async" onError={() => { if (privateImages.peek(key) === url) privateImages.invalidate(key); setFailed(true); }} /> :
+      preparing ? <span role="status">Preparando miniatura…</span> :
       loading ? <span role="status">Carregando imagem…</span> :
+      failed && thumbnail ? <span className="audit-image-error" role="status">{notSmaller ? "Imagem já compacta; não foi possível reduzir a miniatura." : "Miniatura indisponível."} {onOpenOriginal && <button type="button" className="small" onClick={onOpenOriginal}>Abrir original</button>}</span> :
       failed ? <span className="audit-image-error" role="status">Imagem indisponível ou expirada. <button type="button" className="small"
         onClick={() => { setFailed(false); setAttempt(value => value + 1); }}>Tentar novamente</button></span> :
       visible ? <span className="audit-image-error" role="status">Carregar imagem <button type="button" className="small"

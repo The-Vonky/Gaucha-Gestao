@@ -1,0 +1,101 @@
+{
+  "inspection": "528d4251-3469-4841-8676-a91f79e1d1db",
+  "preparingObserved": true,
+  "items": [
+    {
+      "originalBytes": 77834,
+      "originalSha256": "6a2aba600e2dd149ee88ade87308b1def8d77175e2a260c0b36df1b8a9414bd0",
+      "expandedOriginal": true,
+      "downloadOriginal": true
+    },
+    {
+      "originalBytes": 11028,
+      "originalSha256": "e3c8ee7b3ed2392c970ec42b5b7dbaf2ae9e8030197a0341fd50b2edf244c50f",
+      "expandedOriginal": true,
+      "downloadOriginal": true
+    }
+  ],
+  "transfers": [
+    {
+      "stage": "list",
+      "bucket": "thumbnail",
+      "status": 200,
+      "bytes": 39929,
+      "sha256": "a3cf6385d7ba7787ee709163c24257e253db8647187e1df05438eaa0dd45e6b9"
+    },
+    {
+      "stage": "expanded-0",
+      "bucket": "original",
+      "status": 200,
+      "bytes": 77834,
+      "sha256": "6a2aba600e2dd149ee88ade87308b1def8d77175e2a260c0b36df1b8a9414bd0"
+    },
+    {
+      "stage": "download-0",
+      "bucket": "original",
+      "status": 200
+    },
+    {
+      "stage": "expanded-1",
+      "bucket": "original",
+      "status": 200,
+      "bytes": 11028,
+      "sha256": "e3c8ee7b3ed2392c970ec42b5b7dbaf2ae9e8030197a0341fd50b2edf244c50f"
+    },
+    {
+      "stage": "download-1",
+      "bucket": "original",
+      "status": 200
+    }
+  ],
+  "states": [
+    "pending",
+    "processing",
+    "ready",
+    "failed"
+  ],
+  "noReloadAfterUploads": true,
+  "automatic": true,
+  "technicalLoginEnabled": false,
+  "previousRowsAndObjectsPreserved": true,
+  "previousFilesPreserved": 25,
+  "results": [
+    {
+      "evidence_id": "9c8f62e0-5218-41cb-9cce-54aa458236d3",
+      "state": "failed",
+      "attempts": 5,
+      "bytes": null,
+      "width": null,
+      "height": null,
+      "error_code": "derivative_not_smaller",
+      "original_sha256": null,
+      "derived_sha256": null
+    },
+    {
+      "evidence_id": "c4f20bfb-5959-4a81-8ce4-2e522b2a6703",
+      "state": "ready",
+      "attempts": 1,
+      "bytes": 39929,
+      "width": 480,
+      "height": 252,
+      "error_code": null,
+      "original_sha256": "6a2aba600e2dd149ee88ade87308b1def8d77175e2a260c0b36df1b8a9414bd0",
+      "derived_sha256": "a3cf6385d7ba7787ee709163c24257e253db8647187e1df05438eaa0dd45e6b9"
+    }
+  ],
+  "stateAuthorization": [
+    "owner: allowed",
+    "reader: allowed",
+    "empty: denied",
+    "wrong: denied",
+    "inactive: denied",
+    "revoked: denied",
+    "anonymous: denied"
+  ],
+  "testPhoto": {
+    "source": "https://commons.wikimedia.org/wiki/File:Double-alaskan-rainbow.jpg",
+    "author": "Eric Rolph",
+    "license": "CC BY-SA 2.5",
+    "changes": "redimensionamento/recompressão para fixtures de teste"
+  }
+}

@@ -58,6 +58,13 @@ SO legado sem suporte depende de risco documentado e controles compensatórios.
 
 **Produção permanece NO-GO** até gates operacionais e autorização humana.
 
+## Login técnico de derivados — PR #101
+
+O [executor local de terminal](../modules/audit/AUD_IMG_02_LOCAL_EXECUTOR_20261105.md) foi autorizado posteriormente: habilita temporariamente o login existente e volta a NOLOGIN ao encerrar, sem grants novos ao processador. Escopo por auditoria e corte do servidor evita seleção acidental de acervo; não é autorização adicional. A RPC mínima de estado usa perfil ativo, evidência available e permissão Core na unidade; não libera manifesto/bytes/execução a leitores indevidos. O decoder mantém limites e quatro tentativas conservadoras; ausência de ganho vira estado terminal explícito, sem fallback ao original.
+
+Credencial SQL técnica não pode ler segredo global por GUC ou catálogo, herdar papel privilegiado ou executar processamento com SET ROLE administrativo. O [runtime e runbook de AUD-IMG-02](../operations/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md) separam emissor one-shot e worker isolado, vinculam lease ao session_user e restringem JWT a lease/bucket/chave/30 s, com revalidação na renovação. [GO C executado em 05/11](../modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md) somente em `gaucha-gestao-local`: GUC legado removido após inspeção/backup, login mínimo e uma evidência sintética, com login novamente NOLOGIN ao final. Não há serviço/timer instalado nem autorização de produção; POST/upsert adicional da matriz local permanece parcial por timeout.
+
+O decoder de AUD-IMG-02 é aberto pelo supervisor como subprocesso irmão em Bubblewrap sem rede/segredos, fora do namespace do worker. Pipes binários têm header até 4 KiB, entrada até 10 MiB e saída até 1 MiB. Escopo fresco de lease e conferência do hash contra o objeto autorizado precedem uma única codificação; timeout/encerramento cancela o subprocesso, sem fallback sem isolamento.
 
 ## Comunicados institucionais — GG-10 / Entrega B (05/11/2026, para revisão)
 
@@ -81,3 +88,5 @@ API nem disputa entre sessões. Migration proposta não autoriza aplicação per
 retenção/expurgo ou deploy. [Contrato](../modules/announcements/ADMINISTRATION_V1.md).
 
 GG-10: [validação real local de 05/11](../modules/announcements/LOCAL_VALIDATION_20261105.md) registra aplicação incremental autorizada, Auth/API reais, negativas, persistência e preservação de dados no gaucha-gestao-local. Nenhuma autorização para outro ambiente.
+
+Desde 06/11, o [supervisor local de desenvolvimento](../modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md) coordena frontend e executor pelo único `npm run dev`. O modo explícito `global_new` exige corte de início/confirmação dos uploads; não usa filtros nulos para selecionar o acervo. LOGIN existente tem validade de dez minutos renovada pelo supervisor enquanto ativo, com NOLOGIN ao encerrar; falhas forçadas exigem recuperação do lock/login e não retomam pendências de sessões anteriores automaticamente. Sem grants extras, credenciais no frontend ou serviço permanente.

@@ -9,7 +9,8 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "npm run dev -w apps/web",
+    "dev": "node scripts/dev.mjs",
+    "dev:thumbnails": "node scripts/audit-derivative-dev.mjs",
     "typecheck": "npm run typecheck -w apps/web",
     "build": "npm run build -w apps/web",
     "verify:build": "node scripts/verify-build.mjs",
@@ -29,6 +30,7 @@
     "pg": "8.16.3",
     "playwright": "1.62.1",
     "read-excel-file": "9.3.10",
+    "sharp": "0.35.5",
     "typescript-eslint": "^8.48.0",
     "vitest": "5.0.4"
   },

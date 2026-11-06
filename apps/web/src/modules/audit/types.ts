@@ -72,6 +72,8 @@ export type AuditDatabase = {
     Views: Record<string, never>;
     Functions: {
       checklist_evidence: { Args:{p_inspection:string;p_item_key?:string|null};Returns:ChecklistEvidence[] };
+      checklist_evidence_thumbnail:{Args:{p_evidence:string};Returns:{evidence_id:string;encoder_version:string;derived_object_key:string;mime:string;bytes:number;derived_sha256:string}[]};
+      checklist_evidence_thumbnail_state:{Args:{p_evidence:string};Returns:{state:string;reason:string|null;retryable:boolean}[]};
       checklist_evidence_pending_count:{Args:{p_inspection:string};Returns:number};
       begin_checklist_evidence_upload:{Args:{p_inspection:string;p_item_key:string;p_original_name:string;p_content_type:string;p_size:number};Returns:{evidence_id:string;object_key:string}[]};
       confirm_checklist_evidence_upload:{Args:{p_evidence:string};Returns:undefined};
