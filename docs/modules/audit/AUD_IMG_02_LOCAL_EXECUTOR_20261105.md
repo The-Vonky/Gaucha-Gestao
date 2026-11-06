@@ -1,5 +1,7 @@
 # AUD-IMG-02 — Miniaturas automáticas durante o desenvolvimento local
 
+> **Procedimento diário substituído em 06/11/2026:** usar apenas `npm run dev`, sem UUID, conforme [integração definitiva](AUD_IMG_02_INTEGRATED_DEV_20261106.md). O restante deste documento registra o ensaio histórico de 05/11 e sua recuperação restrita.
+
 **05/11/2026 · PR #101 draft.** O mantenedor autorizou executor de terminal para novas evidências, atualização automática do checklist e tratamento explícito de imagens pequenas, exclusivamente no `gaucha-gestao-local`. Não instala serviço, timer do sistema, container, banco ou porta. Não autoriza backfill, STAGING/PROD, merge ou deploy.
 
 ## Iniciar e encerrar

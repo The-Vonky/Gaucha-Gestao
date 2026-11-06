@@ -1,6 +1,8 @@
 # AUD-IMG-02 — Execução limitada do GO C local
 
-**Executor automático de desenvolvimento autorizado posteriormente:** [comando de início/parada, seleção sem backfill e resultado com JPEGs de 78/11 KB](../modules/audit/AUD_IMG_02_LOCAL_EXECUTOR_20261105.md). A execução de terminal reutiliza one-shots isolados, habilita temporariamente o mesmo login e restaura NOLOGIN ao encerrar; não instala serviço permanente. O procedimento histórico abaixo continua sendo a referência da configuração mínima.
+**Fluxo diário vigente desde 06/11:** executar somente `npm run dev`, sem UUID ou terminal adicional. Ver [integração ao desenvolvimento, credenciais e orientação de servidor](../modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md).
+
+**Registro histórico de 05/11 — executor automático de desenvolvimento autorizado posteriormente:** [comando de início/parada, seleção sem backfill e resultado com JPEGs de 78/11 KB](../modules/audit/AUD_IMG_02_LOCAL_EXECUTOR_20261105.md). A execução de terminal reutiliza one-shots isolados, habilita temporariamente o mesmo login e restaura NOLOGIN ao encerrar; não instala serviço permanente. O procedimento histórico abaixo continua sendo a referência da configuração mínima.
 
 **GO C concedido e executado em 05/11/2026**, por pedido explícito do mantenedor, exclusivamente no Supabase existente `gaucha-gestao-local`. Incluiu as duas migrations, identidade técnica mínima, remoção segura do GUC legado, uma imagem sintética, one-shot e flag temporária no frontend local. [Resultados e limitações reais](../modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md): Storage v1.72.1, `ready`, redução medida de 92,6463%, Chromium aprovado; teste adicional de POST/upsert parcial por timeout. PR #101 permanece draft. Sem merge, deploy, C30/STAGING/PROD, timer, serviço, backfill ou processamento de acervo.
 

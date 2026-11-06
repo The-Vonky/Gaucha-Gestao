@@ -105,7 +105,7 @@ export async function launchRuntime({workerConfig,signingSecret,probe=false}) {
   try{
     await channel.send({type:'init',config:{apiUrl:workerConfig.apiUrl,anonKey:workerConfig.anonKey,
       database:{host,port,database,user,password,ssl},expectedEvidence:workerConfig.expectedEvidence,
-      ...(workerConfig.queueScope?{queueScope:{inspection:workerConfig.queueScope.inspection,createdAfter:workerConfig.queueScope.createdAfter}}:{}),...(probe?{probe:workerConfig.probe}:{})}});
+      ...(workerConfig.queueScope?{queueScope:{mode:workerConfig.queueScope.mode,inspection:workerConfig.queueScope.inspection,createdAfter:workerConfig.queueScope.createdAfter}}:{}),...(probe?{probe:workerConfig.probe}:{})}});
     return await finished;
   }finally{clearTimeout(timer);channel.close();stop();await connection.end();}
 }

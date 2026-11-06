@@ -309,6 +309,43 @@ describe("Audit checklist evidence contract", { concurrent: false }, () =>{
 
 // PostgreSQL/PGlite real para SQL/RLS; Storage/Auth são stubs, não prova da API self-hosted.
 describe('AUD-IMG-02: manifesto, fila e RLS em memória', { concurrent: false }, () => {
+ it('global_new processa duas auditorias novas, recupera só leases do corte e preserva o acervo',async()=>{
+  await db.exec("reset role;begin;update audit.checklist_evidence_derivatives set state='failed',attempts=5,lease_id=null,lease_until=null");
+  const globalClaim=async()=>{await db.exec('reset role');return (await one<{job:{lease:string;evidence:{id:string}}|null}>('select audit_private.runtime_derivative_claim(null) job')).job;};
+  try{
+   const old=await png(),expired=await png();await db.exec('reset role');
+   await db.query("update audit.checklist_evidence_derivatives set state='processing',attempts=5,lease_id=gen_random_uuid(),lease_until=clock_timestamp()-interval '1 second' where evidence_id=$1",[expired.evidence_id]);
+   await login(users.unitA);const pending=await begin(old.inspection,'item-002','late.png','image/png',800);
+   await db.exec('reset role');
+   const {cutoff}=await one<{cutoff:string}>('select clock_timestamp()::text cutoff');
+   await login(users.unitA);await object(pending.object_key,users.unitA,800,'image/png');await confirm(pending.evidence_id);
+   const a=await png(),b=await png();await db.exec('reset role');
+   const before=await rows('select to_jsonb(d) value from audit.checklist_evidence_derivatives d where evidence_id=any($1::uuid[]) order by evidence_id',[[old.evidence_id,expired.evidence_id,pending.evidence_id]]);
+   await db.query("select set_config('audit_derivative.created_after',$1,true),set_config('audit_derivative.queue_mode','global_new',true)",[cutoff]);
+   const first=await globalClaim();expect(first?.evidence.id).toBe(a.evidence_id);expect(await globalClaim()).toBeNull();
+   // Crash do one-shot: só depois de expirar a lease, sem duas execuções simultâneas.
+   await db.query("update audit.checklist_evidence_derivatives set lease_until=clock_timestamp()-interval '1 second' where evidence_id=$1",[a.evidence_id]);
+   const retry=await globalClaim();expect(retry?.evidence.id).toBe(a.evidence_id);expect(retry?.lease).not.toBe(first?.lease);
+   expect(await one('select audit_private.runtime_derivative_fail($1) ok',[first?.lease])).toEqual({ok:false});
+   await db.query("select set_config('audit_derivative.failure_code','derivative_not_smaller',true)");
+   await db.query('select audit_private.runtime_derivative_fail($1)',[retry?.lease]);
+   const second=await globalClaim();expect(second?.evidence.id).toBe(b.evidence_id);
+   await db.query('select audit_private.runtime_derivative_fail($1)',[second?.lease]);expect(await globalClaim()).toBeNull();
+   expect(await rows('select to_jsonb(d) value from audit.checklist_evidence_derivatives d where evidence_id=any($1::uuid[]) order by evidence_id',[[old.evidence_id,expired.evidence_id,pending.evidence_id]])).toEqual(before);
+   // Nova sessão com outro corte não recupera pendências anteriores por inferência.
+   await db.query("select set_config('audit_derivative.created_after',clock_timestamp()::text,true)");
+   expect(await globalClaim()).toBeNull();
+  }finally{await db.exec('rollback;reset role');}
+ });
+ it('global_new exige corte explícito e rejeita filtros inválidos sem tocar a fila',async()=>{
+  for(const [mode,after,inspection] of [['global_new','',''],['global_new','infinity',''],['global_new','2099-01-01',''],['global_new','2026-01-01',A],['unknown','','']]){
+   await db.exec('reset role;begin');
+   try{
+    await db.query("select set_config('audit_derivative.queue_mode',$1,true),set_config('audit_derivative.created_after',$2,true),set_config('audit_derivative.inspection_id',$3,true)",[mode,after,inspection]);
+    await expect(claim()).rejects.toMatchObject({code:'42501'});
+   }finally{await db.exec('rollback;reset role');}
+  }
+ });
  it('executor filtra uploads novos da auditoria, preserva outras filas e termina imagens sem ganho',async()=>{
   await db.exec("reset role;begin;update audit.checklist_evidence_derivatives set state='failed',attempts=5,lease_id=null,lease_until=null");
   try{

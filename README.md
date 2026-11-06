@@ -142,6 +142,8 @@ Para diagramas maiores e arquitetura detalhada: [DIAGRAMS](docs/architecture/DIA
    npm run dev
    ~~~
 
+   O comando também inicia o executor local de miniaturas para novos uploads em qualquer auditoria, usando a configuração privada previamente provisionada no notebook. Não é necessário outro terminal nem UUID; `Ctrl+C` encerra frontend/executor e restaura NOLOGIN. Consulte [pré-requisitos, recuperação e validação](docs/modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md).
+
    Abra o endereço indicado pelo Vite (geralmente `http://localhost:5173`) e faça login com a conta **criada no seu Supabase local**. Se mudar o arquivo `.env.local`, reinicie o Vite.
 
 **Verificação rápida / solução de problemas:** “ambiente indisponível” geralmente indica URL/chave ausente, chave incorreta ou Vite não reiniciado; “login inválido” pode indicar conta inexistente **naquele banco**; “sem acesso” exige verificar grants/escopo Core, **não** desligar RLS. Portas ocupadas exigem inventário de processos/projetos antes de mudar serviços. Para trabalho remoto entre dois devs use a [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68), e **não** exponha Studio, Postgres, chaves locais padrão ou Admin API à LAN.

@@ -3,11 +3,12 @@ import {validateDevelopmentConfig,developmentLoop} from '../scripts/audit-deriva
 const inspection='11111111-1111-4111-8111-111111111111';
 const config={worker:{apiUrl:'http://127.0.0.1:54321',database:{host:'127.0.0.1',port:54322,database:'postgres',user:'audit_derivative_worker',ssl:false}}};
 describe('executor local sem efeitos de infraestrutura no teste',()=>{
- it('recusa origem/banco remotos, usuário privilegiado, escopo herdado ou auditoria ausente',()=>{
+ it('recusa origem/banco remotos, usuário privilegiado, escopo herdado ou auditoria inválida',()=>{
   expect(()=>validateDevelopmentConfig(config,inspection)).not.toThrow();
   for(const c of [{worker:{...config.worker,apiUrl:'https://remote.example'}},{worker:{...config.worker,database:{...config.worker.database,user:'postgres'}}},
    {worker:{...config.worker,database:{...config.worker.database,port:5432}}},{worker:{...config.worker,queueScope:{}}}])expect(()=>validateDevelopmentConfig(c,inspection)).toThrow();
-  expect(()=>validateDevelopmentConfig(config,undefined)).toThrow();
+  expect(()=>validateDevelopmentConfig(config,undefined)).not.toThrow();
+  expect(()=>validateDevelopmentConfig(config,'invalid')).toThrow();
  });
  it('serializa one-shots com corte imutável e encerra sem iniciar outro após sinal',async()=>{
   const stop=new AbortController(),scope=Object.freeze({inspection,createdAfter:'2026-11-05T12:00:00Z'});
@@ -15,11 +16,16 @@ describe('executor local sem efeitos de infraestrutura no teste',()=>{
   const wait=vi.fn(async()=>{stop.abort();});
   await developmentLoop({run,scope,signal:stop.signal,wait});expect(run).toHaveBeenCalledTimes(1);expect(max).toBe(1);
  });
- it('limita a duração e não repete trabalho quando já está encerrando',async()=>{
+ it('renova credenciais além de quatro horas, mantendo execução sequencial até o sinal',async()=>{
   const stop=new AbortController();let now=0;
-  const run=vi.fn(async()=>({state:'idle'}));
-  await developmentLoop({run,scope:{inspection},signal:stop.signal,clock:()=>now,wait:async()=>{now+=2000;},maxDuration:4000});
-  expect(run).toHaveBeenCalledTimes(2);stop.abort();
-  await developmentLoop({run,scope:{inspection},signal:stop.signal});expect(run).toHaveBeenCalledTimes(2);
+  const renew=vi.fn(async()=>{}),run=vi.fn(async()=>({state:'idle'}));
+  await developmentLoop({run,renew,scope:{mode:'global_new',createdAfter:'2026-11-06T12:00:00Z'},signal:stop.signal,clock:()=>now,
+   wait:async()=>{now+=60*60*1000;if(now>5*60*60*1000)stop.abort();}});
+  expect(run).toHaveBeenCalledTimes(6);expect(renew).toHaveBeenCalledTimes(6);
+  await developmentLoop({run,renew,signal:stop.signal});expect(run).toHaveBeenCalledTimes(6);
+ });
+ it('falha de renovação interrompe novas claims',async()=>{
+  const run=vi.fn();await expect(developmentLoop({run,signal:new AbortController().signal,renew:async()=>{throw Error('expired');}})).rejects.toThrow();
+  expect(run).not.toHaveBeenCalled();
  });
 });

@@ -40,8 +40,9 @@ export function runtimeRepository(connection,expectedEvidence=null,queueScope) {
       const result=await fn();await connection.query('commit');return result;
     }catch(error){await connection.query('rollback');throw error;}
   };
-  if(queueScope&&(!/^[a-f0-9-]{36}$/.test(queueScope.inspection??'')||!Number.isFinite(Date.parse(queueScope.createdAfter))))throw new Error('Invalid queue scope');
-  return {claim:()=>queueScope?scoped([['audit_derivative.created_after',queueScope.createdAfter],['audit_derivative.inspection_id',queueScope.inspection]],()=>call('claim',[expectedEvidence])):call('claim',[expectedEvidence]),
+  if(queueScope&&(!Number.isFinite(Date.parse(queueScope.createdAfter))||
+    (queueScope.mode==='global_new'?queueScope.inspection!=null:!/^[a-f0-9-]{36}$/.test(queueScope.inspection??''))))throw new Error('Invalid queue scope');
+  return {claim:()=>queueScope?scoped([['audit_derivative.created_after',queueScope.createdAfter],['audit_derivative.inspection_id',queueScope.inspection??''],['audit_derivative.queue_mode',queueScope.mode??'inspection_new']],()=>call('claim',[expectedEvidence])):call('claim',[expectedEvidence]),
     prepare:(lease,m)=>call('prepare',[lease,JSON.stringify(m)]),complete:lease=>call('complete',[lease]),
     fail:(lease,code)=>code==='derivative_not_smaller'?scoped([['audit_derivative.failure_code',code]],()=>call('fail',[lease])):call('fail',[lease]),
     scope:(lease,kind)=>call('scope',[lease,kind])};

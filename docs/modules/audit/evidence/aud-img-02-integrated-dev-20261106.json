@@ -1,0 +1,60 @@
+{
+  "singleCommand": "npm run dev",
+  "audits": 2,
+  "items": [
+    {
+      "originalBytes": 375240,
+      "originalSha256": "400648c3ff70943d0d020e6fc9fb7bd55656f7fc31d414237dfe2382ee12a962",
+      "thumbnailBytes": 23428,
+      "thumbnailSha256": "c189792abd0c67bb853d5467f391539219857667f488c7ad91f66669fb6058bf",
+      "automatic": true,
+      "preparingObserved": true,
+      "downloadIdentical": true,
+      "expandedIdentical": true
+    },
+    {
+      "originalBytes": 2577833,
+      "originalSha256": "1454fbdcda51ff2a0901d7736b117ce623cc14de1487ae062cef2509ea5c4f62",
+      "thumbnailBytes": 356510,
+      "thumbnailSha256": "def39118ffdd32b49ab3feb1bc6cb919a8c0d8451214ca26391fbdaf25147b7b",
+      "automatic": true,
+      "preparingObserved": true,
+      "downloadIdentical": true,
+      "expandedIdentical": true
+    }
+  ],
+  "originalReadsBeforeAction": 0,
+  "technicalLoginEnabled": false,
+  "preservation": {
+    "ledger": {
+      "preserved": 35,
+      "added": 1
+    },
+    "queue": {
+      "preserved": 10,
+      "added": 2
+    },
+    "evidence": {
+      "preserved": 21,
+      "added": 2
+    },
+    "objects": {
+      "preserved": 31,
+      "added": 4
+    }
+  },
+  "anonymousDenied": true,
+  "missingProfileDenied": true,
+  "readyAttempts": [
+    1,
+    1
+  ],
+  "physicalFiles": {
+    "preserved": 31,
+    "added": 4
+  },
+  "realRenewal": true,
+  "disabledLoginConnectionDenied": true,
+  "scope": "Somente gaucha-gestao-local; imagens sintéticas novas; sem backfill ou deploy",
+  "validationDate": "2026-11-06"
+}

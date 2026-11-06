@@ -88,3 +88,5 @@ API nem disputa entre sessões. Migration proposta não autoriza aplicação per
 retenção/expurgo ou deploy. [Contrato](../modules/announcements/ADMINISTRATION_V1.md).
 
 GG-10: [validação real local de 05/11](../modules/announcements/LOCAL_VALIDATION_20261105.md) registra aplicação incremental autorizada, Auth/API reais, negativas, persistência e preservação de dados no gaucha-gestao-local. Nenhuma autorização para outro ambiente.
+
+Desde 06/11, o [supervisor local de desenvolvimento](../modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md) coordena frontend e executor pelo único `npm run dev`. O modo explícito `global_new` exige corte de início/confirmação dos uploads; não usa filtros nulos para selecionar o acervo. LOGIN existente tem validade de dez minutos renovada pelo supervisor enquanto ativo, com NOLOGIN ao encerrar; falhas forçadas exigem recuperação do lock/login e não retomam pendências de sessões anteriores automaticamente. Sem grants extras, credenciais no frontend ou serviço permanente.
