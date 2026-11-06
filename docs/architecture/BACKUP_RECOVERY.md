@@ -56,6 +56,8 @@ Ver [diagrama LAB x PROD](../planning/02_RESTORE_DRILL.md#visão-visual--backup-
 
 ## Exercícios de restauração
 
+**GG-02B, 06/11/2026:** [laboratório local Restic de arquivos sintéticos](../operations/GG02B_RESTIC_LOCAL_POC_20261106.md) executado com Restic 0.19.1 portátil oficial e SHA-256 conferido: **BAK-01–08 PASS**, três snapshots, deduplicação, restaurações com SHA-256 e cópia secundária logicamente independente, com leitura integral dos dois repositórios. Não houve acesso à C30/Drive nem alteração de Docker/Supabase. **BAK-09 físico/off-site BLOCKED**: não comprova backup operacional, custódia externa de chaves ou recuperação física em outro host e não encerra O3/O4.
+
 Ensaiar periodicamente em ambiente isolado, verificando: banco sobe, migrations/schema coerentes, registros legíveis, arquivos e referências íntegros, Auth/configuração recuperáveis e app consegue iniciar.
 
 Registrar **data, backup, versão, resultado, falhas e ações corretivas**. Não incluir segredos e dados reais em PRs.
