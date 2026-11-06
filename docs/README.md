@@ -29,7 +29,7 @@ O [inventário de 22/10](operations/C30_STAGING_AS_BUILT_20261022.md) é um **sn
 | Saber o que fazer a seguir | [Mapa de execução e gates](planning/EXECUTION_MAP.md) | [Plano Diretor 2026](planning/PLANO_DIRETOR_2026.md) |
 | Ver decisões, incógnitas e impedimentos | [Registro de decisões e lacunas](planning/DECISION_REGISTER.md) | [ADRs](decisions/), [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) |
 | Consultar a prova histórica de backup e restore sintético | [Relatório DR-01–DR-09](planning/02_RESTORE_DRILL.md) | [Limites de continuidade](architecture/BACKUP_RECOVERY.md), [Issue #51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51) |
-| Preparar laboratório local de backup incremental GG-02B | [Relatório e matriz GG-02B](operations/GG02B_RESTIC_LOCAL_POC_20261106.md) | [Scripts e execução](../tests/labs/gg02b/README.md); somente sintéticos, execução Restic BLOCKED por ferramenta ausente |
+| Consultar POC local de backup incremental GG-02B | [Relatório e matriz GG-02B](operations/GG02B_RESTIC_LOCAL_POC_20261106.md) | [Scripts e execução](../tests/labs/gg02b/README.md); Restic 0.19.1 oficial, BAK-01–08 PASS sintéticos; independência física pendente |
 | Operar e recuperar com segurança | [Matriz operacional](operations/OPERATIONS_MATRIX.md) | [Backup e recuperação](architecture/BACKUP_RECOVERY.md), [Infraestrutura de laboratório](../infra/README.md) |
 | Avaliar ameaças e controle de acesso | [Modelo de ameaças](architecture/THREAT_MODEL.md) | [Segurança](architecture/SECURITY.md), [ADR-005](decisions/ADR-005-core-authorization.md) |
 | Operar e conferir a Curva ABC | [Guia ABC v1](modules/abc/OPERATOR_GUIDE_V1.md) | [Brief ABC](briefs/ABC_DOMAIN_V1.md), [Testes #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) |
