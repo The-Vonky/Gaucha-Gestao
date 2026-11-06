@@ -56,6 +56,8 @@ Ver [diagrama LAB x PROD](../planning/02_RESTORE_DRILL.md#visão-visual--backup-
 
 ## Exercícios de restauração
 
+**GG-02B, 06/11/2026:** [laboratório local Restic de arquivos sintéticos](../operations/GG02B_RESTIC_LOCAL_POC_20261106.md) preparado com controles de contenção testados; execução de snapshots, cifra, deduplicação, cópia e restore **BLOCKED por Restic ausente**. Não houve acesso à C30/Drive nem alteração de Docker/Supabase. O roteiro não comprova backup operacional, custódia externa de chaves ou recuperação física em outro host e não encerra O3/O4.
+
 Ensaiar periodicamente em ambiente isolado, verificando: banco sobe, migrations/schema coerentes, registros legíveis, arquivos e referências íntegros, Auth/configuração recuperáveis e app consegue iniciar.
 
 Registrar **data, backup, versão, resultado, falhas e ações corretivas**. Não incluir segredos e dados reais em PRs.

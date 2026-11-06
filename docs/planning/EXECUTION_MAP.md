@@ -33,6 +33,8 @@ A figura representa **dependências lógicas e gates**, não um cronograma com d
 
 ## 3. Work packages auditáveis
 
+**Adendo GG-02B, 06/11/2026:** [POC local de arquivos sintéticos](../operations/GG02B_RESTIC_LOCAL_POC_20261106.md) com scripts preparados e 13 testes de contenção PASS; snapshots/restore Restic **BLOCKED por ferramenta ausente**. Próxima dependência: disponibilização autorizada do executável e execução do roteiro local. Não altera as provas históricas abaixo, a C30 ou os gates GG-02/GG-03/O3/O4.
+
 | Frente | Responsabilidade registrada | Evidência esperada / definição de concluído | Estado nesta fotografia |
 | --- | --- | --- | --- |
 | Baseline, worktrees e CI | Dev A; [issue #47](https://github.com/The-Vonky/Gaucha-Gestao/issues/47) | SHA, branches, riscos, CI da mesma versão e rollback de alterações de código | Histórico documentado; revalidar commit candidato |
