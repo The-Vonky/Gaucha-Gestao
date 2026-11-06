@@ -1,5 +1,7 @@
 # AUD-IMG-02 — Desenvolvimento com comando único
 
+> **Estado posterior, 06/11/2026:** AUD-IMG-01/02 integradas pelas PRs #99/#101. A rodada MED-01/AUD-IMG-04 e a revisão do carregamento inicial estão no [relatório consolidado](MED01_FRONTEND_CLOSURE_20261106.md). Pendências/ausências abaixo descrevem a data e o SHA históricos deste documento; não invalidam provas posteriores. Homologação física e implantação continuam separadas.
+
 Em 06/11/2026, continuação autorizada da PR #101 draft sobre `a85d463`. Somente o Supabase existente `gaucha-gestao-local`; sem backfill, containers novos, serviço permanente, merge ou implantação. Este documento substitui o procedimento diário de [05/11](AUD_IMG_02_LOCAL_EXECUTOR_20261105.md), preservado como registro histórico.
 
 Na raiz do checkout, usar apenas:

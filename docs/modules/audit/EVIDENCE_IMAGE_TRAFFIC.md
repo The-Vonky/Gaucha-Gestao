@@ -1,14 +1,30 @@
-> **Estado vigente AUD-IMG-02 (05/11/2026):** [GO C executado no localhost autorizado](AUD_IMG_02_LOCAL_GO_C_20261105.md), com migrations, login mínimo e uma imagem sintética; Storage v1.72.1, miniatura `ready` e Chromium reais. Listagem recebeu 377.025 bytes frente a 5.127.003 do original (**92,6463% nesta imagem**); ampliação/download preservados. POST/upsert adicional parcial por timeout. PR #101 draft, flag versionada false e exceção temporária no `.env.local`. Descrições/ausências de medição abaixo são o **baseline histórico anterior**; MED-01 10/30/100 permanece pendente. Sem backfill, merge ou deploy. [Contrato atual](AUD_IMG_02_IMPLEMENTATION_20261104.md).
-
 # Tráfego de imagens da Auditoria — MED-01 / AUD-IMG-01–05
 
-**Automação local posterior:** [executor de terminal, polling e prova com imagens pequenas](AUD_IMG_02_LOCAL_EXECUTOR_20261105.md). Novos uploads de uma auditoria explícita são processados durante a sessão, sem backfill; JPEG 77.834 → 39.929 bytes, e 11.028 bytes com estado terminal sem ganho. O benchmark geral 10/30/100 continua pendente.
+## Estado consolidado — 06/11/2026
+
+[Relatório MED-01/AUD-IMG-04 e frontend](MED01_FRONTEND_CLOSURE_20261106.md) · [evidência numérica sanitizada](evidence/med01-frontend-20261106.json).
+
+| Frente | Estado real |
+| --- | --- |
+| AUD-IMG-01 | Integrada na PR #99; viewport/cache volátil preservados |
+| AUD-IMG-02 | Integrada na PR #101; miniaturas e comando único `npm run dev` já existentes, sem reimplementação |
+| MED-01 | Navegação local 10/30/100 executada: três repetições por modo, mesmos arquivos, zero pendências no bloco comparado; redução de corpo **77,47%**, meta de 80% não atingida no ruído sintético |
+| AUD-IMG-04 | Revisão HTTP local concluída: HTML/assets/Storage privado/assinaturas/ETag/304/expiração; lacunas de cache/nosniff e política futura documentadas, sem mudança de hosting |
+| Frontend | Rotas sob demanda medidas: JS inicial gzip 272.112 → 164.605 bytes (39,51%); aviso de chunk >500 kB permanece |
+| Pendências | Captura API de transições de sessão parcial; timeout de upsert negado reproduzido separadamente; AUD-IMG-03/05, backfill, restore e executor/headers no servidor continuam independentes |
+
+Originais e limites de acesso/memória preservados. Upload, processamento e download explícito não entram na redução. URLs assinadas mantêm janela residual após logout. Nenhuma migration ou alteração C30/Cloudflare/STAGING/PROD. **PROD NO-GO**; Issue #100 não encerrada.
+
+Os registros abaixo preservam o diagnóstico e as decisões de 04–05/11. Afirmações de ausência de implementação/medição naqueles SHAs não descrevem a base atual.
+
+
+**Automação local integrada pela PR #101:** [comando único e escopo global de uploads novos](AUD_IMG_02_INTEGRATED_DEV_20261106.md), sem backfill. O [executor anterior de terminal](AUD_IMG_02_LOCAL_EXECUTOR_20261105.md) e os exemplos individuais são históricos; o benchmark geral 10/30/100 foi executado no relatório de 06/11 acima.
 
 Data: 04/11/2026. Brief: solicitação do mantenedor «Otimização de tráfego de evidências da Auditoria». Base revalidada: `origin/main` em `d9b47359b00fd1516bc773d696d760c1c603ed84`, posterior ao HEAD de 03/11 citado no pedido. Branch: `codex/audit-evidence-traffic`.
 
 **Escopo:** prévias de JPG/PNG do checklist. Originais, upload, metadados, download por anexo, RPCs, RLS, cotas, auditoria e ciclo de vida existentes preservados. Planos de Ação fora da implementação. Sem migrations, buckets, serviços, migração de acervo, CDN ou alterações C30/STAGING/PROD. O Supabase local `gaucha-gestao-local` foi apenas inventariado; bucket privado com limite de 10.485.760 bytes e migration de evidências presente. Arquivos não rastreados em `supabase/snippets/` pertencem ao trabalho anterior e não integram esta entrega.
 
-## Diagnóstico e revisão restrita de E3
+## Diagnóstico e revisão restrita de E3 (histórico de 04/11)
 
 A [PR #66](https://github.com/The-Vonky/Gaucha-Gestao/pull/66), integrada pelo merge `eaffb4f`, introduziu miniatura visual e modal utilizando o original. Seu relato confirma assinatura a cada miniatura/modal. O efeito dependia da referência de `row`; fechar critérios desmontava imagens e trocar seções remontava componentes. O upload já usava `cacheControl:"0"`; o download já assinava por 60s, verificava o objeto com HEAD e preservava bytes e nome de apresentação. Não havia compressão a reimplementar.
 
@@ -49,7 +65,7 @@ flowchart LR
 
 ## MED-01 — procedimento reproduzível
 
-**Ainda não há baseline de bytes de navegação com Storage real nesta entrega.** O runtime persistente disponível não é a fixture descartável dos E2Es. Não foram criados usuários, inspeções nem objetos para medir nele. Resultados de mocks e tamanhos dos arquivos gerados não são egress medido. A redução de 80% permanece uma meta de AUD-IMG-02.
+**Registro histórico de 04/11, anterior à execução MED-01 de 06/11:** ainda não havia baseline de bytes de navegação com Storage real naquela entrega. O runtime persistente disponível não é a fixture descartável dos E2Es. Não foram criados usuários, inspeções nem objetos para medir nele. Resultados de mocks e tamanhos dos arquivos gerados não são egress medido. A redução de 80% permanece uma meta de AUD-IMG-02.
 
 Ferramentas entregues:
 
@@ -86,7 +102,7 @@ Não alternar etapa enquanto houver pedidos pendentes: o estágio de CDP corresp
 
 Modelo de resultado (preencher, sem substituir por previsão): cenário/etapa; SHA; tamanho de lote; GETs por alias; soma de wire/body bytes; assinaturas; API calls; tempo total e p50/p95 das durações; falhas; indicadores de cache; invalidações esperadas. Comparar navegação sem upload/download explícito: `1 − bytes_fotos_candidata / bytes_fotos_baseline`. Se baseline for zero ou incompleto, não calcular percentual. Comparar cold visit e revisita separadamente.
 
-## AUD-IMG-04 — cabeçalhos e aplicação
+## AUD-IMG-04 — observação histórica de 04/11 (revisão atual no relatório acima)
 
 Observação somente leitura em 04/11, no runtime local existente: HEAD `/` em `127.0.0.1:5173` retornou 200, `Cache-Control: no-cache`, ETag presente, sem `nosniff`. HEAD para chave sintética inexistente e sem assinatura no Storage local retornou 400, sem Cache-Control/ETag/nosniff. **A segunda observação é de erro, não caracteriza arquivos autorizados nem os cabeçalhos de uma URL assinada válida.** Não há avaliação concluída de assets de produção, downloads autorizados, Caddy/Cloudflare ou STAGING. Nenhuma configuração foi alterada.
 
@@ -94,7 +110,7 @@ Upload `cacheControl:"0"` é o comportamento observado no código; não equivale
 
 Documentação oficial consultada: [entrega de objetos privados e download](https://supabase.com/docs/guides/storage/serving/downloads), [bandwidth](https://supabase.com/docs/guides/storage/serving/bandwidth) e [changelog](https://supabase.com/changelog). A entrada Breaking Change de 12/10/2026 trata de cifras TLS da plataforma hospedada; não é motivo para alterar o Storage self-hosted local nesta tarefa. Cabeçalhos reais dependem do ambiente.
 
-## AUD-IMG-02 — proposta de derivados privados (NÃO IMPLEMENTADA)
+## AUD-IMG-02 — desenho histórico de derivados privados (implementado pela PR #101)
 
 Política A preservada: original probatório imutável. Derivado de visualização separado, JPEG/PNG com lado maior inicial 480px (comparar 320px), orientação aplicada corretamente e sem EXIF/GPS. Meta exploratória de 30–100KB; imagens de texto podem exigir mais bytes. Miniaturas não substituem a leitura do original. **Abrir original exige interação explícita**; modal e download do original continuam autorizados e rastreáveis nos termos atuais.
 
@@ -141,7 +157,7 @@ Executar no Chrome e Edge desktop, Android Chrome físico e iOS Safari físico, 
 6. Estresse de 30/100 arquivos e pressão de memória: evicção esperada, retry acessível, app responsiva; medir memória e bytes sem expor fotos/URLs.
 7. Originais sintéticos com texto pequeno, rótulos e códigos de barras válidos; avaliar no original, não concluir legibilidade a partir do ruído do gerador MED-01.
 
-## Validação, riscos e reversão
+## Validação, riscos e reversão (histórico da PR #99)
 
 Testes adicionados/ampliados: cache (deduplicação, TTL, LRU, limites, timeout, fila e contexto), transporte (no-store, MIME/tamanho, 401/403/404/500, retry, remoção/reconciliação), UI (viewport, referência estável, reabertura/modal, logout e controles), AuthProvider e negações SQL de imagem por inativação/unidade/grants. E2E real estendido com PNG sintético, GET contado no modal/revisita e download com comparação de bytes. O coletor também tem testes de sanitização e contagem.
 

@@ -1,5 +1,7 @@
 # AUD-IMG-02 — Miniaturas privadas: implementação para revisão
 
+> **Estado posterior, 06/11/2026:** AUD-IMG-01/02 integradas pelas PRs #99/#101. A rodada MED-01/AUD-IMG-04 e a revisão do carregamento inicial estão no [relatório consolidado](MED01_FRONTEND_CLOSURE_20261106.md). Pendências/ausências abaixo descrevem a data e o SHA históricos deste documento; não invalidam provas posteriores. Homologação física e implantação continuam separadas.
+
 **Continuação autorizada de desenvolvimento local:** [executor de terminal, estado automático no checklist e imagens pequenas](AUD_IMG_02_LOCAL_EXECUTOR_20261105.md). Nova migration incremental, sem alterar/aplicar novamente as anteriores; os cinco grants técnicos e o isolamento permanecem. Relatos abaixo são históricos das etapas de implementação.
 
 **04/11/2026 · Issue #100 · PR #101 draft · GOs A/B de código/testes concedidos pelo mantenedor no brief desta rodada.** Este documento registra a implementação e seus gates históricos. **Atualização de 05/11:** o mantenedor concedeu GO C exclusivamente no desenvolvimento local, incluindo identidade mínima e teste visual temporário; [execução real e limites](AUD_IMG_02_LOCAL_GO_C_20261105.md). Migrations aplicadas, uma miniatura `ready` e Chromium comprovados; teste adicional de escrita parcial por timeout. Backfill, serviço permanente, merge e deploy continuam sem autorização. PROD NO-GO.

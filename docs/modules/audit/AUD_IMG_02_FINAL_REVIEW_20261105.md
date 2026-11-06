@@ -1,5 +1,7 @@
 # AUD-IMG-02 — Preparação para revisão final da PR #101
 
+> **Estado posterior, 06/11/2026:** AUD-IMG-01/02 integradas pelas PRs #99/#101. A rodada MED-01/AUD-IMG-04 e a revisão do carregamento inicial estão no [relatório consolidado](MED01_FRONTEND_CLOSURE_20261106.md). Pendências/ausências abaixo descrevem a data e o SHA históricos deste documento; não invalidam provas posteriores. Homologação física e implantação continuam separadas.
+
 **05/11/2026.** Continuação autorizada a partir de `8fa62ee`. A prova funcional do GO C permanece no [relatório local](AUD_IMG_02_LOCAL_GO_C_20261105.md); esta rodada se limita à integração da main, investigação de POST/upsert e validação do HEAD resultante. PR draft; sem merge, deploy, backfill ou alteração em STAGING/PROD.
 
 ## Integração da main
