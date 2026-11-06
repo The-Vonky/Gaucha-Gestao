@@ -27,3 +27,21 @@ describe("medição sem conteúdo privado",()=>{
   await meter.close();
  });
 });
+
+describe("medição de derivados",()=>{
+ it("distingue originais, miniaturas e RPCs sem exportar chaves",async()=>{
+  const handlers=new Map<string,(event:unknown)=>void>();
+  const cdp={on:(event:string,callback:(event:unknown)=>void)=>handlers.set(event,callback),send:vi.fn(),detach:vi.fn()};
+  const page={context:()=>({newCDPSession:async()=>cdp}),on:vi.fn(),off:vi.fn()};
+  const meter=await attachAuditTraffic(page,{appOrigin:"http://localhost:5173",storageOrigin:"http://localhost:54321"});
+  for(const [index,path] of ["/storage/v1/object/sign/audit-checklist-evidence/private-key?token=secret","/storage/v1/object/sign/audit-evidence-thumbnails/private-key?token=secret","/rest/v1/rpc/checklist_evidence_thumbnail"].entries()){
+   handlers.get("Network.requestWillBeSent")!({requestId:String(index),timestamp:1,request:{url:"http://localhost:54321"+path,method:index===2?"POST":"GET"}});
+   handlers.get("Network.loadingFinished")!({requestId:String(index),timestamp:2,encodedDataLength:42});
+  }
+  const report=await meter.snapshot();
+  expect(report.requests).toMatchObject([{imageKind:"original",object:1,rpc:false},{imageKind:"thumbnail",object:2,rpc:false},{category:"api",rpc:true}]);
+  expect(report.unfinished).toBe(0);
+  expect(JSON.stringify(report)).not.toMatch(/private-key|secret|localhost/);
+  await meter.close();
+ });
+});
