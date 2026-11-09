@@ -11,9 +11,10 @@ if ($errorsFound.Count) { throw 'GG02D parse failed' }
 $functions = @(
     'Assert-Lab', 'New-File', 'New-Text', 'Assert-Entry', 'Assert-DirectoryChain',
     'Assert-PrivateRoot', 'New-PrivateRoot', 'Get-Sha', 'Get-StreamSha',
-    'Get-Manifest', 'Get-TreeEntries', 'Confirm-Fixture', 'Assert-DriveConfig',
+    'Get-Manifest', 'Get-TreeEntries', 'Confirm-Fixture', 'Assert-PrivateOAuthFile',
+    'Assert-OwnClient', 'Initialize-DriveConfig', 'Read-DriveToken', 'Confirm-DriveAccount',
     'Get-Quota', 'Get-LabFolders', 'Get-OAuthFailureReason', 'Wait-OAuthProcess',
-    'Stop-OAuthProcess', 'Assert-FreshPreflight'
+    'Stop-OAuthProcess', 'Assert-FreshPreflight', 'Assert-PreparedRevision'
 )
 $definitions = $ast.EndBlock.Statements | Where-Object {
     $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -cin $functions
@@ -57,16 +58,55 @@ $junction = Join-Path $Root 'junction'
 $null = New-Item -ItemType Junction -Path $junction -Target $source
 Expect-Blocked 'link-or-wrong-file-type' { Assert-Entry $junction -Directory }
 
-$Config = Join-Path $Root 'allowed.ini'
-New-Text $Config "[gg02d]`ntype = drive`nscope = drive.file`ntoken = fictional`nteam_drive =`n"
-Assert-DriveConfig
-Write-Output 'PASS drive-file-config'
+$Config = Join-Path $Root 'rclone.conf'
+$desktop = Join-Path $Root 'oauth-desktop.json'
+Expect-Blocked 'desktop-client-file-required' { Initialize-DriveConfig }
+New-Text $desktop '{"web":{"client_id":"fictional","client_secret":"fictional"}}'
+Expect-Blocked 'desktop-client-json-required' { Initialize-DriveConfig }
+[IO.File]::WriteAllText($desktop, '{"installed":{"client_id":"202264815644.apps.googleusercontent.com","client_secret":"fictional"}}', $Utf8)
+Expect-Blocked 'own-desktop-client-required' { Initialize-DriveConfig }
+Assert-OwnClient '123-synthetic.apps.googleusercontent.com' 'fictional'
+Expect-Blocked 'own-desktop-client-required' { Assert-OwnClient '123-synthetic.apps.googleusercontent.com' '' }
+[IO.File]::WriteAllText($desktop, '{"installed":{"client_id":"123-synthetic.apps.googleusercontent.com","client_secret":"fictional"}}', $Utf8)
+$acl = Get-Acl -LiteralPath $desktop
+$other = [Security.Principal.SecurityIdentifier]::new('S-1-1-0')
+$acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($other, 'Read', 'Allow'))
+Set-Acl -LiteralPath $desktop -AclObject $acl
+Expect-Blocked 'private-oauth-file-acl' { Initialize-DriveConfig }
+$acl.PurgeAccessRules($other)
+Set-Acl -LiteralPath $desktop -AclObject $acl
+Initialize-DriveConfig
+$seed = [IO.File]::ReadAllText($Config)
+$tokenLine = 'token = {"access_token":"synthetic-access","refresh_token":"synthetic-refresh"}'
+[IO.File]::AppendAllText($Config, "$tokenLine`n", $Utf8)
+if ((Read-DriveToken) -cne 'synthetic-access') { throw 'Expected own Desktop client and token' }
+Write-Output 'PASS drive-file-own-client-config'
+$Config = Join-Path $Root 'missing-refresh.ini'
+New-Text $Config ($seed + 'token = {"access_token":"synthetic-access"}')
+Expect-Blocked 'refresh-token-required' { Read-DriveToken }
 $Config = Join-Path $Root 'wider.ini'
-New-Text $Config "[gg02d]`ntype = drive`nscope = drive`ntoken = fictional`n"
-Expect-Blocked 'unexpected-oauth-config' { Assert-DriveConfig }
+New-Text $Config ($seed.Replace('scope = drive.file', 'scope = drive') + $tokenLine)
+Expect-Blocked 'unexpected-oauth-config' { Read-DriveToken }
 $Config = Join-Path $Root 'redirected.ini'
-New-Text $Config "[gg02d]`ntype = drive`nscope = drive.file`ntoken = fictional`nroot_folder_id = fictional`n"
-Expect-Blocked 'unexpected-oauth-config' { Assert-DriveConfig }
+New-Text $Config ($seed + "root_folder_id = fictional`n" + $tokenLine)
+Expect-Blocked 'unexpected-oauth-config' { Read-DriveToken }
+$Config = Join-Path $Root 'rclone.conf'
+function Read-Host($Prompt) { 'dedicated@example.invalid' }
+function Invoke-RestMethod {
+    [CmdletBinding()]
+    param($Method, [switch]$UseBasicParsing, $TimeoutSec, $MaximumRedirection, $Uri, $Headers)
+    if ($Headers.Authorization -cne 'Bearer synthetic-access' -or $MaximumRedirection -ne 0 -or
+        $Uri -cne 'https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)') { throw 'Unexpected account probe' }
+    if ($script:FakeAccount -eq 'error') { throw 'synthetic private response' }
+    [pscustomobject]@{ user = [pscustomobject]@{ emailAddress = $script:FakeAccount } }
+}
+$FakeAccount = 'dedicated@example.invalid'
+Confirm-DriveAccount
+Write-Output 'PASS dedicated-account-matched'
+$FakeAccount = 'other@example.invalid'
+Expect-Blocked 'dedicated-account-mismatch' { Confirm-DriveAccount }
+$FakeAccount = 'error'
+Expect-Blocked 'drive-account-check-failed' { Confirm-DriveAccount }
 
 $Remote = 'gg02d:'
 $MinimumFree = 128MB
@@ -95,6 +135,13 @@ Expect-Blocked 'preflight-already-attempted' { Assert-FreshPreflight $preflightL
 $Config = Join-Path $Root 'absent-oauth.ini'
 New-Text $preflightLog ''
 Expect-Blocked 'preflight-already-attempted' { Assert-FreshPreflight $preflightLog }
+
+$prepared = Join-Path $Root 'Prepare-result.json'
+Expect-Blocked 'prepare-current-revision-required' { Assert-PreparedRevision 'current' }
+New-Text $prepared ('{"phase":"Prepare","status":"PASS","lab":"' + $Lab + '","script_sha256":"current"}')
+Assert-PreparedRevision 'current'
+Write-Output 'PASS prepare-current-revision'
+Expect-Blocked 'prepare-current-revision-required' { Assert-PreparedRevision 'older' }
 
 $cases = @(
     @{ text = 'failed to start auth webserver: address in use'; expected = 'oauth-loopback-bind-failed' }

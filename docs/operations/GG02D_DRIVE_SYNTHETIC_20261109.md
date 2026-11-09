@@ -18,7 +18,7 @@ No código do Rclone 1.76.0, `scope=drive.file` gera o escopo OAuth por arquivo,
 
 ## Procedimento no Windows
 
-**Ponto de parada atual.** Preserve a pasta da tentativa que falhou. O próximo teste do cliente compartilhado depende de decisão do mantenedor. O fluxo com cliente próprio exige a decisão separada descrita abaixo e um ajuste posterior de configuração privada. Os passos a seguir descrevem o fluxo revisado para um novo ensaio autorizado.
+Preserve a pasta e as evidências da tentativa anterior. Para um novo ensaio, use somente o cliente Desktop próprio e um UUID gerado por `Prepare`. [Decisão do mantenedor](https://github.com/The-Vonky/Gaucha-Gestao/pull/114#issuecomment-6750171277).
 
 Use uma conta de usuário comum, uma sessão **Windows PowerShell 5.1 de 64 bits** e o navegador do próprio Windows. Abra o perfil do navegador reservado para a conta Google dedicada e deixe esse perfil pronto para o fluxo aberto pelo navegador padrão. Verifique a conta no seletor do Google antes de consentir. Caso o navegador abra em outro perfil, o consentimento mostre uma conta diferente ou o cliente seja recusado pelo Google, cancele.
 
@@ -34,7 +34,7 @@ Use uma conta de usuário comum, uma sessão **Windows PowerShell 5.1 de 64 bits
    if ($LASTEXITCODE -ne 0) { throw 'Falha ao extrair a revisao Git' }
    Expand-Archive -LiteralPath $arquivo -DestinationPath $destino
    $roteiro = Join-Path $destino 'tests\labs\gg02d\gg02d.ps1'
-   $hashEsperado = 'd8500e1d2c48e11d1ff43780a8280b989038dda37d36cc3736d74fcaa710fd58'
+   $hashEsperado = 'ef42272863dd428b3562528bcacc1fe3d72a4857ee30529e9f7561927e3b1a9f'
    if ((Get-FileHash -LiteralPath $roteiro -Algorithm SHA256).Hash -ne $hashEsperado) {
        throw 'SHA-256 divergente da revisao testada'
    }
@@ -46,7 +46,7 @@ Use uma conta de usuário comum, uma sessão **Windows PowerShell 5.1 de 64 bits
    powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "$roteiro" -Phase Prepare
    ```
 
-3. Na mesma sessão interativa do Windows PowerShell, substitua o valor de `$ensaio` pelo UUID novo e execute `Preflight`. Em caso de HTTP 400 no navegador, volte ao PowerShell e pressione **4**. Pressione **Esc** para outro cancelamento. O cancelamento encerra só o Rclone e preserva o navegador e a evidência. Confirme localmente `CONTA-PREPARADA`, autentique no navegador e confira a conta no consentimento. Após o retorno ao PowerShell, digite `CONTA-EXCLUSIVA` somente se tiver escolhido a conta dedicada. A consulta exige resposta de quota com pelo menos **128 MiB livres** e verifica que a pasta com esse nome está ausente nas pastas visíveis ao cliente. O pré-voo termina sem criar pasta no Drive e sem enviar arquivos.
+3. Na raiz privada criada por `Prepare` em `LocalApplicationData`, salve o JSON do cliente **Desktop app** como `oauth-desktop.json` com ACL exclusiva do usuário. Prefira salvar diretamente nesse diretório a partir da sessão privada do Google Cloud. O script exige a chave `installed`, recusa o cliente compartilhado e lê as credenciais do arquivo privado. Execute `Preflight` com o UUID novo e confirme `OAUTH-PRODUCAO` após verificar o projeto e a conta. No navegador, confirme a conta escolhida. Ao voltar, informe o e-mail dedicado no prompt local. O script confere o e-mail pelo Drive, exige ao menos **128 MiB livres** e confirma que o nome UUID está ausente nas pastas visíveis ao cliente. Em caso de HTTP 400 pressione **4**. Pressione **Esc** para outro cancelamento. O pré-voo preserva a evidência, sem criação de pasta nem envio.
 
    ```powershell
    $ensaio = 'GG02D-SYNTHETIC-<uuid>'
@@ -72,14 +72,11 @@ Use uma conta de usuário comum, uma sessão **Windows PowerShell 5.1 de 64 bits
 
 Um erro renderizado apenas no navegador pode chegar ao relatório pelo mantenedor. O script registra categorias fixas e mantém as saídas brutas em memória. O prazo de 180 s continua sendo o limite do subprocesso OAuth.
 
-## Cliente OAuth próprio para decisão separada
+## Cliente OAuth próprio para uso contínuo
 
-Um cliente dedicado elimina a dependência do identificador compartilhado em descontinuação e permite ao mantenedor controlar quem testa o consentimento. É a alternativa para desbloquear um ensaio sustentável, com nova validação real no Windows. A criação do cliente não confirma a causa do 400 nem a recuperabilidade do Drive. [Rclone, cliente próprio](https://rclone.org/drive/#making-your-own-client-id).
-
-1. Se aprovado, o mantenedor cria ou seleciona um projeto dedicado sob custódia institucional e confirma que está **sem conta de faturamento vinculada**, sem trial e sem cartão. Habilita apenas a **Google Drive API**. Se a interface exigir billing ou assinatura, interrompe o procedimento. A documentação do Google informa que o uso padrão da API fica sem custo adicional dentro dos limites publicados e prevê cobrança acima dos limites aplicáveis. O projeto OAuth não aumenta a quota de armazenamento da conta Drive. [Criação de projetos](https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects), [limites e preços da API](https://developers.google.com/workspace/drive/api/guides/limits).
-2. Em **Google Auth Platform**, configura **Branding** e **Audience**. Para a conta gratuita fora de uma organização Workspace confirmada, seleciona **External / Testing** e adiciona somente a conta exclusiva como testadora. Em **Data Access**, declara apenas `https://www.googleapis.com/auth/drive.file`, escopo por arquivo e não sensível. O Google documenta expiração em sete dias para refresh tokens desse tipo de app em Testing. Planeje o ensaio curto dentro dessa janela. [Consentimento e testadores](https://developers.google.com/workspace/guides/configure-oauth-consent), [escopos do Drive](https://developers.google.com/workspace/drive/api/guides/api-specific-auth), [expiração de tokens](https://developers.google.com/identity/protocols/oauth2#expiration).
-3. Em **Clients**, cria um cliente do tipo **Desktop app**, compatível com o retorno local. Mantém os dados do cliente na custódia privada do mantenedor. O script atual ainda usa o cliente compartilhado. Após a decisão, a adaptação deve receber a configuração do cliente próprio somente no Windows, com acesso restrito ao usuário, escopo fixo e nova verificação de quota. [Criação de credenciais Desktop app](https://developers.google.com/workspace/guides/create-credentials#desktop-app), [OAuth para aplicativos instalados](https://developers.google.com/identity/protocols/oauth2/native-app).
-4. Use permissões de projeto estritamente necessárias para criar o projeto, quando aplicável, habilitar a API e editar a marca, a audiência e o cliente OAuth. As permissões relevantes incluem `resourcemanager.projects.create`, `serviceusage.services.enable` e as permissões de configuração OAuth. A administração do projeto e o consentimento na conta Drive são operações distintas. A criação de contas de serviço, a delegação em domínio e a vinculação de billing ficam fora desta proposta. [Resource Manager](https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects), [Service Usage](https://docs.cloud.google.com/service-usage/docs/enable-disable), [permissões OAuth Config](https://docs.cloud.google.com/iam/docs/roles-permissions/oauthconfig).
+1. O mantenedor usa um projeto dedicado sob custódia institucional, **sem billing vinculado**, trial ou cartão, com apenas a Google Drive API. Se houver exigência de cobrança, verificação, marca/política/URL sem aprovação, ou escopo maior, registre BLOCKED e leve a exigência ao mantenedor. O projeto OAuth não aumenta a quota da conta. [Criação de projetos](https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects), [limites da API](https://developers.google.com/workspace/drive/api/guides/limits).
+2. Em Google Auth Platform configure **External / In production** e, em **Data Access**, somente `https://www.googleapis.com/auth/drive.file`, escopo não sensível por arquivo. A publicação do consentimento retira a regra de expiração em sete dias do estado Testing. O refresh token ainda pode ser revogado ou expirar em outras condições. [Consentimento e testadores](https://developers.google.com/workspace/guides/configure-oauth-consent), [escopos do Drive](https://developers.google.com/workspace/drive/api/guides/api-specific-auth), [expiração de tokens](https://developers.google.com/identity/protocols/oauth2#expiration).
+3. Em **Clients**, crie um **Desktop app** para retorno local. Mantenha o JSON e o `rclone.conf` na raiz privada do Windows, sem comandos que revelem seus valores, transcrição, sincronização ou compartilhamento de tela. A autorização real e a configuração do projeto permanecem na sessão privada do mantenedor. [Criação de credenciais](https://developers.google.com/workspace/guides/create-credentials#desktop-app), [OAuth para aplicativos instalados](https://developers.google.com/identity/protocols/oauth2/native-app).
 
 ## Procedência e isolamento
 
@@ -134,6 +131,10 @@ O modo `LocalTest` exercita o transporte stdio e a restauração no filesystem l
 
 No Windows PowerShell 5.1 amd64, `Prepare` e `LocalTest` passaram. A execução de `Preflight` com um log sintético de tentativa anterior bloqueou antes de iniciar o navegador. `Run` sem pré-voo aprovado também bloqueou. O teste de guardas passou em 30 casos, incluindo classificação, cancelamento simulado com processo local, timeout e bloqueio de configuração parcial. A regressão local repetiu os três snapshots, as leituras integrais, as recusas de senha e a conferência de 26 arquivos restaurados. A captura física das teclas no console e o novo consentimento ainda dependem do teste manual do mantenedor. [Evidência saneada da revisão OAuth](../../tests/labs/gg02d/results/20261109-oauth-revision-local.json).
 
-## Próxima decisão operacional
+## Validação local do cliente Desktop próprio
 
-Concluir a prova no Drive e a recuperação física. Usar as medições para dimensionar a captura consistente de PostgreSQL/Auth/roles e dos bytes e metadados de Storage, a margem de quota, a retenção e a custódia externa das chaves. Uma proposta operacional separada deve trazer critérios de recuperação isolada, RPO/RTO, monitoração e decisão explícita do mantenedor antes de qualquer ação na C30. [Backup e recuperação](../architecture/BACKUP_RECOVERY.md), [registro de decisões](../planning/DECISION_REGISTER.md).
+No Windows PowerShell 5.1, `Prepare` e `LocalTest` passaram com o SHA-256 indicado no roteiro. No UUID novo `GG02D-SYNTHETIC-17045bb9386048cdbcd3f596dd359201`, `Run` sem pré-voo bloqueou em `preflight-required`. O ensaio local produziu três snapshots, leu ambos os repositórios e verificou 26 arquivos em quatro restaurações. Os 41 guardas passaram, incluindo ACL, ausência do cliente compartilhado, exigência do refresh token, correspondência de conta simulada e vínculo do `Prepare` à revisão. O Rclone 1.76.0 chegou à opção de OAuth local com configuração fictícia em modo não interativo, sem navegador ou Drive.
+
+## Preparação operacional separada
+
+A [proposta operacional C30](C30_BACKUP_OPERATIONAL_PLAN.md) separa os scripts e os gates da recuperação de dados reais deste laboratório. OAuth real, quota, upload, recuperação física e autorização para operar na C30 permanecem pendentes.

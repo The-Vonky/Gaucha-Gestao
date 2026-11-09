@@ -125,3 +125,5 @@ O responsável instruiu expressamente iniciar codificação de migration, grants
 ## Adendo GG-02D — 09/11/2026
 
 A [Issue #113](https://github.com/The-Vonky/Gaucha-Gestao/issues/113) autoriza somente o [ensaio sintético no Drive dedicado](../operations/GG02D_DRIVE_SYNTHETIC_20261109.md), com OAuth interativo pelo mantenedor no Windows e escopo `drive.file`. A execução depende de quota observada, confirmação da conta e pasta UUID. O ensaio físico secundário está BLOCKED pela indisponibilidade de outro computador. D02/D03/D04/D08/D12 e GG-02/GG-03 operacionais continuam abertos.
+
+A decisão na [PR #114](https://github.com/The-Vonky/Gaucha-Gestao/pull/114#issuecomment-6750171277) direciona OAuth Desktop próprio com `drive.file` e consentimento External / In production. A [proposta operacional C30](../operations/C30_BACKUP_OPERATIONAL_PLAN.md) mantém os gates e decisões de acesso, agenda, retenção, alertas e recuperação abertos.

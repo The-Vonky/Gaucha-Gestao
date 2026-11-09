@@ -62,6 +62,8 @@ Ver [diagrama LAB x PROD](../planning/02_RESTORE_DRILL.md#visão-visual--backup-
 
 **GG-02D, 09/11/2026.** A [Issue #113](https://github.com/The-Vonky/Gaucha-Gestao/issues/113) autoriza OAuth pelo mantenedor e um [ensaio sintético delimitado](../operations/GG02D_DRIVE_SYNTHETIC_20261109.md) na conta Drive dedicada. O primeiro pré-voo no Windows foi bloqueado no OAuth. Quota, upload e restore no Drive continuam pendentes. Recuperação física permanece BLOCKED sem um segundo computador. GG-02/GG-03 operacionais, O3/O4, piloto real e PROD dependem de provas e decisões próprias.
 
+**GG-02 operacional, 09/11/2026.** [Plano de captura coerente, backup Restic e recuperação independente na C30](../operations/C30_BACKUP_OPERATIONAL_PLAN.md). A proposta separa o envio do intervalo de indisponibilidade da API e exige a identificação do projeto para preservar o ERP de Contratos. O3/O4 permanecem abertos.
+
 Ensaiar periodicamente em ambiente isolado, verificando: banco sobe, migrations/schema coerentes, registros legíveis, arquivos e referências íntegros, Auth/configuração recuperáveis e app consegue iniciar.
 
 Registrar **data, backup, versão, resultado, falhas e ações corretivas**. Não incluir segredos e dados reais em PRs.
