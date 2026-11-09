@@ -60,6 +60,8 @@ Ver [diagrama LAB x PROD](../planning/02_RESTORE_DRILL.md#visão-visual--backup-
 
 **GG-02C, 06/11/2026:** [integração sintética Restic + Rclone](../operations/GG02C_RCLONE_DRIVE_20261106.md) e [evidências locais](../operations/GG02C_LAB_RESULTS_20261106.md): backend local via stdio, três snapshots, 44 arquivos restaurados com SHA-256 e cópia secundária logicamente independente no mesmo host. Drive será o destino do **pacote completo** conforme confirmação do mantenedor na PR #106 e brief GG-02C; essa diretriz já foi integrada à main pela PR #106. OAuth, quota/envio/restore Google e cópia física em outro PC **não executados**; conexão exige autorização separada antes da primeira operação na conta. Sem implantação C30, sem dados reais e sem fechamento de GG-03/O3/O4.
 
+**GG-02D, 09/11/2026.** A [Issue #113](https://github.com/The-Vonky/Gaucha-Gestao/issues/113) autoriza OAuth pelo mantenedor e um [ensaio sintético delimitado](../operations/GG02D_DRIVE_SYNTHETIC_20261109.md) na conta Drive dedicada. Quota, upload e restore no Drive dependem do pré-voo no Windows. Recuperação física permanece BLOCKED sem um segundo computador. GG-02/GG-03 operacionais, O3/O4, piloto real e PROD dependem de provas e decisões próprias.
+
 Ensaiar periodicamente em ambiente isolado, verificando: banco sobe, migrations/schema coerentes, registros legíveis, arquivos e referências íntegros, Auth/configuração recuperáveis e app consegue iniciar.
 
 Registrar **data, backup, versão, resultado, falhas e ações corretivas**. Não incluir segredos e dados reais em PRs.
