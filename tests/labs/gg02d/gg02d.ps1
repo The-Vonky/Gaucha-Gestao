@@ -115,8 +115,65 @@ function Confirm-Tools([switch]$Download) {
     $provenance
 }
 
+function Read-OAuthAbort {
+    try {
+        if ([Console]::IsInputRedirected -or ![Console]::KeyAvailable) { return }
+        switch ([Console]::ReadKey($true).Key) {
+            'D4' { 'oauth-browser-http-400-reported' }
+            'NumPad4' { 'oauth-browser-http-400-reported' }
+            'Escape' { 'oauth-operator-cancelled' }
+        }
+    } catch [InvalidOperationException] {
+        # A host without an interactive console still has the process timeout.
+    } catch [IO.IOException] {}
+}
+
+function Get-OAuthFailureReason([string]$NativeError, [switch]$TimedOut) {
+    switch -Regex ($NativeError) {
+        'failed to start auth webserver' { return 'oauth-loopback-bind-failed' }
+        "Auth state doesn't match" { return 'oauth-loopback-state-mismatch' }
+        '\b(invalid_client|unauthorized_client|deleted_client)\b' { return 'oauth-client-rejected' }
+        '\b(access_denied|admin_policy_enforced|org_internal)\b' { return 'oauth-access-denied' }
+        '\b(invalid_request|redirect_uri_mismatch|invalid_scope)\b' { return 'oauth-request-rejected' }
+        'failed to get token' { return 'oauth-token-exchange-failed' }
+        'No code returned by remote server|Parse form error' { return 'oauth-loopback-rejected' }
+        'Failed to open browser automatically' { return 'oauth-browser-launch-failed' }
+    }
+    if ($TimedOut) {
+        if ($NativeError -match '(?m)Got code[ \t]*\r?$') { return 'oauth-after-callback-timeout' }
+        if ($NativeError -match '(?m)Waiting for code\.\.\.[ \t]*\r?$') { return 'oauth-callback-timeout' }
+        return 'oauth-process-timeout'
+    }
+    'oauth-process-failed'
+}
+
+function Wait-OAuthProcess($Process, [Diagnostics.Stopwatch]$Clock, [int]$TimeoutMs) {
+    while (!$Process.WaitForExit(200)) {
+        $abort = Read-OAuthAbort
+        if ($abort) { return $abort }
+        if ($Clock.ElapsedMilliseconds -ge $TimeoutMs) { return 'timeout' }
+    }
+    'exited'
+}
+
+function Stop-OAuthProcess($Process) {
+    if ($Process.HasExited) { return }
+    try { $Process.Kill() } catch [InvalidOperationException] {
+        if (!$Process.HasExited) { throw }
+    }
+    Assert-Lab ($Process.WaitForExit(2000)) 'oauth-process-stop-timeout'
+}
+
+function Assert-FreshPreflight([string]$Log) {
+    Assert-Lab (!(Test-Path -LiteralPath $Log) -and
+        !(Test-Path -LiteralPath $Config) -and
+        !(Test-Path -LiteralPath (Join-Path $Root 'Preflight-result.json')) -and
+        !(Test-Path -LiteralPath (Join-Path $Root 'preflight-config-sha'))) 'preflight-already-attempted'
+}
+
 function Invoke-Tool([string]$Name, [string]$Operation, [string[]]$Arguments, [int]$ExpectedExit = 0, [switch]$DriveAccess) {
     $script:Stage = $Operation
+    $isOAuth = $Operation -ceq 'oauth-local-browser'
     $start = [Diagnostics.ProcessStartInfo]::new()
     $start.FileName = Join-Path $Root "$Name.exe"
     $start.WorkingDirectory = $Root
@@ -134,7 +191,8 @@ function Invoke-Tool([string]$Name, [string]$Operation, [string[]]$Arguments, [i
     $start.EnvironmentVariables['TEMP'] = $Root
     $start.EnvironmentVariables['TMP'] = $Root
     $start.EnvironmentVariables['GOMAXPROCS'] = '4'
-    if ($Operation -ceq 'oauth-local-browser') {
+    if ($isOAuth) {
+        $start.RedirectStandardInput = $true
         $start.EnvironmentVariables['PATH'] = Join-Path $env:SystemRoot 'System32'
         $start.EnvironmentVariables['USERPROFILE'] = $env:USERPROFILE
         $start.EnvironmentVariables['APPDATA'] = $env:APPDATA
@@ -150,7 +208,22 @@ function Invoke-Tool([string]$Name, [string]$Operation, [string[]]$Arguments, [i
     try {
         $stdout = $process.StandardOutput.ReadToEndAsync()
         $stderr = $process.StandardError.ReadToEndAsync()
-        if (!$process.WaitForExit(180000)) {
+        if ($isOAuth) {
+            $process.StandardInput.Close()
+            $outcome = Wait-OAuthProcess $process $clock 180000
+            if ($outcome -cne 'exited') {
+                # End only Rclone. The browser stays available for the maintainer.
+                Stop-OAuthProcess $process
+                $reason = $outcome
+                if ($outcome -ceq 'timeout') {
+                    $nativeError = if ($stderr.Wait(1000)) { $stderr.Result } else { '' }
+                    $reason = Get-OAuthFailureReason $nativeError -TimedOut
+                }
+                Add-Evidence @{ operation = $Operation; tool = $Name; status = 'BLOCKED'; reason = $reason
+                    seconds = [Math]::Round($clock.Elapsed.TotalSeconds, 3) }
+                Assert-Lab $false $reason
+            }
+        } elseif (!$process.WaitForExit(180000)) {
             & (Join-Path $env:SystemRoot 'System32\taskkill.exe') /T /F /PID $process.Id *> $null
             Add-Evidence @{ operation = $Operation; status = 'TIMEOUT'; seconds = $clock.Elapsed.TotalSeconds }
             Assert-Lab $false 'command-timeout'
@@ -159,6 +232,12 @@ function Invoke-Tool([string]$Name, [string]$Operation, [string[]]$Arguments, [i
         $out = $stdout.Result
         $err = $stderr.Result
         $record = @{ operation = $Operation; tool = $Name; exit = $process.ExitCode; seconds = [Math]::Round($clock.Elapsed.TotalSeconds, 3) }
+        if ($isOAuth) {
+            if ($process.ExitCode -ne 0) { $record.reason = Get-OAuthFailureReason $err }
+            Add-Evidence $record
+            if ($process.ExitCode -ne 0) { Assert-Lab $false $record.reason }
+            return
+        }
         $stats = [regex]::Matches($err, '(?m)^rclone: (\{[^\r\n]+\})\r?$')
         $samples = @(foreach ($line in $stats) {
             try { $json = $line.Groups[1].Value | ConvertFrom-Json } catch { continue }
@@ -174,7 +253,10 @@ function Invoke-Tool([string]$Name, [string]$Operation, [string[]]$Arguments, [i
         }
         Assert-Lab ($process.ExitCode -eq $ExpectedExit) $reason
         $out
-    } finally { $process.Dispose() }
+    } finally {
+        try { if ($isOAuth) { Stop-OAuthProcess $process } }
+        finally { $process.Dispose() }
+    }
 }
 
 function Invoke-Drive([string]$Operation, [string[]]$Arguments) {
@@ -407,6 +489,11 @@ try {
         Assert-Lab ([IO.File]::ReadAllText($Marker) -ceq 'GG02D-SYNTHETIC-v1') 'invalid-lab-marker'
     }
     $log = Join-Path $Root "$Phase-commands.jsonl"
+    if ($Phase -eq 'Preflight') {
+        $Stage = 'verify-unused-preflight'
+        Assert-FreshPreflight $log
+    }
+    # Exclusive creation also prevents two simultaneous attempts using one UUID.
     New-Text $log ''
     $Evidence = $log
     $Result.script_sha256 = Get-Sha $PSCommandPath
@@ -430,8 +517,9 @@ try {
         $Result.recovery_and_mfa_confirmed = $true
         $null = Confirm-Fixture $Source $Manifests.initial
         Assert-Lab (!(Test-Path -LiteralPath $Config)) 'existing-oauth-config'
-        Write-Host 'No navegador, confira a conta exclusiva antes de consentir. Se houver duvida, cancele.'
-        $null = Invoke-Tool rclone 'oauth-local-browser' @('config', 'create', 'gg02d', 'drive', 'scope=drive.file', 'config_is_local=true', 'config_shared_client_id=true', 'config_change_team_drive=false', '--no-output') -DriveAccess
+        Write-Host 'No navegador, confira a conta exclusiva antes de consentir.'
+        Write-Host 'Se o navegador mostrar HTTP 400, volte ao PowerShell e pressione 4. Esc cancela por outro motivo.'
+        $null = Invoke-Tool rclone 'oauth-local-browser' @('config', 'create', 'gg02d', 'drive', 'scope=drive.file', 'config_is_local=true', 'config_shared_client_id=true', 'config_change_team_drive=false', '--no-output', '--log-level', 'NOTICE') -DriveAccess
         Assert-DriveConfig
         $Stage = 'confirm-dedicated-account'
         $confirm = Read-Host 'Confirme que selecionou a conta exclusiva. Digite CONTA-EXCLUSIVA'
@@ -564,5 +652,8 @@ try {
         try { Save-Result } catch { Write-Host 'Evidencia final indisponivel; artefatos preservados.' }
     }
     Write-Host "$($Result.status) $Phase $Lab [$Stage / $Reason]"
+    if ($Phase -eq 'Preflight') {
+        Write-Host 'Preserve este ensaio. Uma nova tentativa exige Prepare e outro UUID. Execute Run somente apos um novo Preflight PASS.'
+    }
     exit 1
 }

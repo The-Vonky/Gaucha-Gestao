@@ -12,7 +12,8 @@ $functions = @(
     'Assert-Lab', 'New-File', 'New-Text', 'Assert-Entry', 'Assert-DirectoryChain',
     'Assert-PrivateRoot', 'New-PrivateRoot', 'Get-Sha', 'Get-StreamSha',
     'Get-Manifest', 'Get-TreeEntries', 'Confirm-Fixture', 'Assert-DriveConfig',
-    'Get-Quota', 'Get-LabFolders'
+    'Get-Quota', 'Get-LabFolders', 'Get-OAuthFailureReason', 'Wait-OAuthProcess',
+    'Stop-OAuthProcess', 'Assert-FreshPreflight'
 )
 $definitions = $ast.EndBlock.Statements | Where-Object {
     $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -cin $functions
@@ -84,3 +85,59 @@ if (@(Get-LabFolders).Count -ne 1) { throw 'Expected exactly one UUID folder' }
 $FakeJson = '[{"Name":"' + $Lab + '"},{"Name":"' + $Lab + '"}]'
 if (@(Get-LabFolders).Count -ne 2) { throw 'Expected ambiguous duplicate UUID folders' }
 Write-Output 'PASS UUID-folder-selection'
+
+$Config = Join-Path $Root 'private-oauth.ini'
+$preflightLog = Join-Path $Root 'Preflight-commands.jsonl'
+Assert-FreshPreflight $preflightLog
+Write-Output 'PASS fresh-preflight'
+New-Text $Config 'synthetic partial configuration'
+Expect-Blocked 'preflight-already-attempted' { Assert-FreshPreflight $preflightLog }
+$Config = Join-Path $Root 'absent-oauth.ini'
+New-Text $preflightLog ''
+Expect-Blocked 'preflight-already-attempted' { Assert-FreshPreflight $preflightLog }
+
+$cases = @(
+    @{ text = 'failed to start auth webserver: address in use'; expected = 'oauth-loopback-bind-failed' }
+    @{ text = "Auth state doesn't match: private-sentinel"; expected = 'oauth-loopback-state-mismatch' }
+    @{ text = 'failed to get token: invalid_client private-sentinel'; expected = 'oauth-client-rejected' }
+    @{ text = 'No code returned by remote server: access_denied'; expected = 'oauth-access-denied' }
+    @{ text = 'No code returned by remote server: redirect_uri_mismatch'; expected = 'oauth-request-rejected' }
+    @{ text = 'failed to get token: 400 Bad Request private-sentinel'; expected = 'oauth-token-exchange-failed' }
+    @{ text = 'No code returned by remote server'; expected = 'oauth-loopback-rejected' }
+    @{ text = 'Failed to open browser automatically (private-sentinel)'; timeout = $true; expected = 'oauth-browser-launch-failed' }
+    @{ text = "NOTICE: Waiting for code...`r`n"; timeout = $true; expected = 'oauth-callback-timeout' }
+    @{ text = "NOTICE: Waiting for code...`r`nNOTICE: Got code`r`n"; timeout = $true; expected = 'oauth-after-callback-timeout' }
+    @{ text = '400 malformed request private-sentinel'; timeout = $true; expected = 'oauth-process-timeout' }
+    @{ text = 'unknown private-sentinel'; expected = 'oauth-process-failed' }
+)
+foreach ($case in $cases) {
+    $outcome = Get-OAuthFailureReason $case.text -TimedOut:([bool]$case['timeout'])
+    if ($outcome -cne $case.expected) { throw ('Unexpected OAuth diagnostic for ' + $case.expected) }
+    Write-Output "PASS $outcome"
+}
+
+function Read-OAuthAbort { $script:SimulatedAbort }
+
+# A native child exercises the wait and termination without OAuth, network or console input.
+foreach ($scenario in @(
+    @{ key = 'oauth-browser-http-400-reported'; command = 'Start-Sleep -Seconds 20'; ms = 10000; expected = 'oauth-browser-http-400-reported' }
+    @{ key = 'oauth-operator-cancelled'; command = 'Start-Sleep -Seconds 20'; ms = 10000; expected = 'oauth-operator-cancelled' }
+    @{ key = ''; command = 'Start-Sleep -Seconds 20'; ms = 10; expected = 'timeout' }
+    @{ key = ''; command = 'exit 0'; ms = 10000; expected = 'exited' }
+)) {
+    $script:SimulatedAbort = $scenario.key
+    $start = [Diagnostics.ProcessStartInfo]::new(
+        (Join-Path $PSHOME 'powershell.exe'), ('-NoProfile -NonInteractive -Command "' + $scenario.command + '"'))
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $process = [Diagnostics.Process]::Start($start)
+    try {
+        $outcome = Wait-OAuthProcess $process ([Diagnostics.Stopwatch]::StartNew()) $scenario.ms
+        if ($outcome -cne $scenario.expected) { throw ('Unexpected child outcome for ' + $scenario.expected) }
+        Stop-OAuthProcess $process
+        if (!$process.WaitForExit(5000)) { throw 'Synthetic child did not exit' }
+        Write-Output "PASS child-$outcome"
+    } finally {
+        try { Stop-OAuthProcess $process } finally { $process.Dispose() }
+    }
+}
