@@ -100,12 +100,14 @@ export function ActionPlanPage() {
   const scope = { unit_id: plan.unit_id, sector_id: plan.sector_id };
   const verified = !!plan.effectiveness;
   const canWrite = auth.can("action_plan.write", scope) && !verified;
+  const canExecute = auth.can("action_plan.execute", scope) && !verified;
+  const canComplete = canWrite && auth.can("action_plan.complete", scope);
   const canVerify =
     auth.can("action_plan.verify", scope) && plan.status === "completed";
   const missing = missingForExecution(plan);
   // Execution evidence follows write and freezes at verification; verification evidence
   // follows verify and only the open round (not yet recorded) can change.
-  const canExecutionEvidence = canWrite;
+  const canExecutionEvidence = canExecute;
   const canVerificationEvidence = auth.can("action_plan.verify", scope);
   const openRound = plan.verification_round + 1;
   const rows = evidence.data ?? [];
@@ -144,15 +146,21 @@ export function ActionPlanPage() {
         description={`${s.unit_name}${s.sector_name ? ` / ${s.sector_name}` : ""}`}
       >
         {/* Header actions share the page-action size used across the app. */}
-        {(canWrite || canVerify) && (
+        {(canWrite || canExecute || canVerify) && (
           <>
             {canWrite && (
               <button onClick={() => setEditing(true)}>
                 Editar planejamento
               </button>
             )}
-            {canWrite &&
-              TRANSITIONS[plan.status].map((t) => (
+            {canExecute &&
+              TRANSITIONS[plan.status]
+                .filter((t) =>
+                  t.to === "completed" || plan.status === "completed"
+                    ? canComplete
+                    : true,
+                )
+                .map((t) => (
                 <button
                   key={t.to}
                   className={t.to === "completed" ? "primary" : undefined}
@@ -204,7 +212,7 @@ export function ActionPlanPage() {
           reverificação.
         </Notice>
       )}
-      {canWrite && plan.status !== "completed" && missing.length > 0 && (
+      {canExecute && plan.status !== "completed" && missing.length > 0 && (
         <p className="muted">
           Para iniciar a execução ou concluir, preencha: {missing.join(", ")}.
         </p>
