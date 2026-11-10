@@ -2,7 +2,59 @@
 
 Melhorias aprovadas pelo responsável em 26/10/2026, na mesma PR #88 e branch `feat/ag-01-room-booking-schema-20261023`, após testes manuais do módulo. D5-B permanece vigente: administrador geral não opera gestão, mesmo com atribuição simultânea conflitante. Sem merge/deploy automático; mantenedor único revisa e decide.
 
-## Contratos de banco
+## GG-08 e GG-09 — contato e histórico de gestão
+
+### GG-08 · Contato da sala
+
+A sala ativa exibe **Responsável** e **Ramal** para quem pode consultar a agenda. Sem cadastro, a interface informa **Contato ainda não informado**. A gestora efetiva usa **Editar contato** e recebe a versão gravada sem recarregar a página. O nome é preenchido no formulário e pode diferir do nome cadastrado no Core. Informe somente o nome institucional e o ramal.
+
+| RPC pública | Capacidade efetiva | Contrato |
+|---|---|---|
+| `room_booking_contact` | `room_booking.schedule.read` | Identifica a sala ativa e devolve nome, ramal e versão. Versão 0 indica que ainda não existe contato. |
+| `room_booking_save_contact` | `room_booking.manage` | Revalida D5-B depois de travar a sala. Exige a mesma sala e a versão lida pelo formulário, inclusive na primeira gravação. Conflito retorna `40001` e a interface oferece nova consulta. |
+
+`room_booking.room_contacts` contém uma configuração por sala, com RLS de negação e sem acesso direto do cliente. O banco apara espaços nas extremidades e normaliza o nome. Aceita até 120 caracteres, com letras, espaços, ponto, apóstrofo e hífen. O ramal contém de 1 a 8 dígitos e preserva zeros iniciais. O evento `contact_save` em `core.system_audit_log` registra sala, autoria, data, versões e quais campos mudaram. O evento guarda indicadores de mudança para evitar duplicar o nome e o ramal no log. A substituta com atribuição de gestão efetiva exerce a mesma função até a revogação prevista em D6.
+
+### GG-09 · Solicitações e reservas diretas
+
+A área **Histórico do agendamento** tem abas **Solicitações** e **Reservas diretas** para gestão efetiva. A aba **Solicitações** usa a RPC `room_booking_history` e preserva os estados e os dados do contrato anterior. Horário, nome, solicitante e estado aparecem no resumo, assim como eventual cancelamento da reserva vinculada. A criação, a decisão e o motivo da recusa ficam nos detalhes.
+
+A aba **Reservas diretas** usa `room_booking_direct_history` e consulta as reservas existentes com `request_id IS NULL`, inclusive canceladas. Exibe estado gravado, responsável pela criação, registro, última atualização, cancelamento e, se houver, observações da secretaria e motivo do cancelamento. Uma reserva passada que permanece `confirmed` continua **Confirmada**. A consulta apresenta os valores persistidos e os nomes de exibição atuais do Core. A edição anterior de nome ou observações pode ter deixado somente metadados no log, de modo que o histórico da interface apresenta a última versão registrada.
+
+As duas abas filtram pelo estado do próprio registro e pelo dia de início da reunião em `America/Sao_Paulo`. Cada limite é opcional e inclusivo. Exibem até 25 itens por página, com cursor decrescente `(starts_at, id)`. Alterar um filtro ou trocar de aba retorna à primeira página. O índice parcial `bookings_direct_history_order` atende a consulta de diretas. A paginação reflete o estado consultado em cada chamada, inclusive reservas que mudaram de data ou de estado desde a página anterior.
+
+```mermaid
+flowchart LR
+    L[Leitor da agenda] --> C[Consultar contato da sala]
+    G[Gestão efetiva D5-B] --> E[Gravar contato com versão esperada]
+    E --> A[Configuração por sala e auditoria Core]
+    G --> H[Histórico do agendamento]
+    H --> P[Solicitações e situação da reserva vinculada]
+    H --> D[Reservas diretas inclusive canceladas]
+```
+
+### Reprodução dos testes de GG-08 e GG-09
+
+- `npm test -- tests/room-booking-management.test.ts tests/room-booking-ui.test.tsx tests/room-booking-experience.test.ts` cobre as permissões, gravação e conflitos de contato, auditoria, históricos, filtros e cursor em PGlite e na interface.
+- `node tests/integration/room-booking-management-local.mjs` usa exclusivamente o container local identificado no runner. Confere atividade e ausência das duas migrations, executa as novas definições e os casos sintéticos sob `ROLLBACK` com limite de espera por locks, e confirma a ausência das mudanças no schema e no ledger após o teste.
+- Para reproduzir a navegação sintética, executar `VITE_SUPABASE_URL=http://127.0.0.1:54321 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_gg0809_fixture npm run build` e então `node tests/integration/room-booking-management-browser.mjs` com Chromium do Playwright disponível. O runner intercepta o carregamento do bundle, Auth e REST. Nenhum servidor é iniciado e nenhum registro persistente é usado.
+
+Capturas com dados sintéticos do ensaio em Chromium de 10/11/2026
+
+- [GG-08 · Formulário de contato em desktop](evidence/gg08-gg09/contato-desktop.png)
+- [GG-09 · Solicitações em desktop](evidence/gg08-gg09/solicitacoes-desktop.png)
+- [GG-09 · Reservas diretas em 320 px](evidence/gg08-gg09/diretas-320.png)
+
+O ensaio no PostgreSQL confirma a releitura depois de gravar dentro da transação e a rejeição de versões antigas. A persistência após reinício de um ambiente, o fluxo integrado Auth/REST com as migrations aplicadas, a corrida entre conexões simultâneas e a homologação em dispositivo físico dependem de ambiente autorizado.
+
+### Aplicação futura em ambiente autorizado
+
+1. Inventariar destino, versão, ledger, dependências do Agendamento e volume de `bookings`. Confirmar a D5-B e a sequência das migrations. Ensaiar a duração da criação do índice com carga representativa e preservar a versão anterior do frontend.
+2. Validar backup independente e restauração antes da janela. Depois de GO específico, aplicar em ordem `20261110131044_room_booking_contact.sql` e `20261110131045_room_booking_direct_history.sql` pelo processo de release autorizado. São mudanças aditivas, sem preenchimento retroativo de contato, escrita em registros de reservas ou conversão de pedidos.
+3. Confirmar ledger e recarga do schema da API. Antes de liberar a UI, executar smoke com gestora, leitor e administrador sem gestão. Homologar nome/ramal, substituição e os dois históricos com dados autorizados.
+4. Se a UI precisar voltar, restaurar a versão anterior do frontend e preservar a configuração e o log. Após commit de migration, corrigir o banco com migration incremental revisada, preservando a configuração e os registros. Se a primeira migration concluir e a segunda falhar, adiar a nova UI, diagnosticar o lock ou erro da segunda e conferir o ledger antes de retomar.
+
+## Contratos de banco anteriores a GG-08 e GG-09
 
 Migration append-only `20261026181548_room_booking_experience.sql`, posterior às 22 migrations existentes. Aplicada uma única vez no `gaucha-gestao-local`, totalizando **23**. Comparação em transação preservou usuários, papéis, atribuições, pedidos e reservas existentes. Migrations anteriores não foram editadas.
 

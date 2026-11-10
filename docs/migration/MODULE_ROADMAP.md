@@ -148,3 +148,7 @@ perfil Gestor de Comunicados, histórico e fonte única autenticada. Migration
 aplicada somente no localhost autorizado (31→32 migrations), com barra/administração e persistência reais [validadas](../modules/announcements/LOCAL_VALIDATION_20261105.md). JSON público retirado somente
 na Entrega B. Homologação operacional, revisão e merge dependem do mantenedor.
 GG-11 permanece indisponível. GG-10 não encerrado; PROD NO-GO.
+
+## Agendamento — GG-08 e GG-09
+
+Contato institucional por sala editável pela gestão efetiva e consulta de reservas diretas separada do histórico de solicitações existente. As duas migrations incrementais integram a candidata em revisão. Aplicação persistente, homologação pela secretária e GO operacional seguem como etapas separadas. [Contrato e plano de aplicação](../modules/room-booking/EXPERIENCE_V1.md#gg-08-e-gg-09--contato-e-histórico-de-gestão).
