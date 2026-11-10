@@ -14,7 +14,24 @@
 
 **Ambiente padrão para desenvolvimento e validação manual:** reutilizar o projeto Supabase/Docker local do próprio mantenedor, atualmente identificado como `gaucha-gestao-local`. **Não criar novo container, PostgreSQL, banco, volume, porta, Compose, projeto Supabase ou worktree por rotina.** Primeiro inspecionar `git status`, `docker ps`, serviços e schema atuais; confirmar que o destino é o ambiente local pretendido. O agente pode propor/aplicar migrations **incrementais não destrutivas ao desenvolvimento local existente, após verificar estado, dependências e preservar dados**; manter resultados/reversão registrados. Não executar `supabase db reset`, `docker compose down -v`, `prune`, sobrescrita de dados, reset/seed destrutivo ou migrations em DEV de terceiros, C30/STAGING/PROD sem autorização específica. Testes unitários em memória não criam infraestrutura Docker. Se precisar de ensaio destrutivo separado, justificar antes e obter autorização em vez de provisionar automaticamente.
 
-O restante dos trechos sobre Dev A/Dev B e dois desenvolvedores descreve **período histórico**; esta seção é a instrução atual. Processo: **agente codifica → PR com evidências → mantenedor revisa → mantenedor decide merge → teste local contínuo**.
+O restante dos trechos sobre Dev A/Dev B e dois desenvolvedores descreve **período histórico**; esta seção é a instrução atual. O fluxo de homologação local antes do merge foi explicitamente atualizado pela decisão do mantenedor em 10/11/2026, descrita a seguir.
+## Fluxo vigente — entrega ao notebook para homologação ANTES do merge (10/11/2026)
+
+**Decisão explícita do mantenedor:** o notebook é o ambiente normal de **desenvolvimento e homologação local**. Após implementar uma funcionalidade destinada a teste manual, o agente deve **disponibilizar o commit da PR no checkout do notebook que realmente serve o localhost**, sempre que tiver acesso à máquina. Esta etapa faz parte da tarefa autorizada; não precisa esperar o merge na `main`, nem pedir uma aprovação de produção para atualizar o código local.
+
+**Ordem obrigatória:** issue/brief autorizado → branch da tarefa → implementação e testes automatizados → commits/push e PR → **sincronização da branch no checkout ativo do notebook** → verificação do app e, quando aplicável, banco local → **homologação do mantenedor no localhost e refinamentos na mesma PR** → CI/diff conferidos e **aceite explícito do mantenedor para merge** → merge na `main`. Somente depois, em processo separado e com GO específico, preparar eventual release para C30/STAGING/PROD.
+
+**Execução padrão:**
+1. Localizar o checkout que alimenta o app (por exemplo, `http://127.0.0.1:5173`) e inspecionar `git status`, branch, worktrees, serviços e migrations locais. Não confundir o checkout do notebook com um clone remoto/sandbox do agente.
+2. Preferir trabalhar diretamente nesse checkout, em **branch da tarefa**, quando o agente tiver acesso local e isso não conflitar com outra tarefa ativa. Se desenvolveu em outra worktree ou ambiente, fazer `fetch` e disponibilizar **a branch/commit correto no checkout usado pelo localhost**, sem merge antecipado na `main`. A troca de branch é parte normal da homologação e não requer isolar o notebook por rotina.
+3. Não usar `reset --hard`, `clean -fd`, force-push, sobreposição silenciosa ou descarte de alterações não commitadas. Havendo trabalho local incompatível, separar em commit/branch identificada ou outro método **reversível e verificável**, mantendo a sequência de homologação; só interromper e explicar a colisão concreta se realmente impedir a sincronização segura. Nunca misturar PRs pendentes sem informar o conjunto exato de commits.
+4. Reutilizar o Supabase/Docker local existente. Se a tarefa requer migrations, verificar o ledger e aplicar apenas mudanças **incrementais, compatíveis e não destrutivas** na instância local correta; registrar sucesso/impedimento e não declarar homologável um fluxo de banco que não foi aplicado. Os bloqueios de dados reais, segredos e ambientes remotos continuam.
+5. Conferir o SHA efetivamente carregado, a inicialização do frontend e um smoke test compatível com a tarefa; informar ao mantenedor **branch, SHA, checkout, endereço do localhost, estado de migrations e testes não executados**. Registrar na PR se o notebook está `PRONTO PARA HOMOLOGAÇÃO` ou `PENDENTE DE SINCRONIZAÇÃO LOCAL`, nunca presumir que a publicação no GitHub atualiza o notebook.
+6. Se o agente atuar somente no GitHub/nuvem **sem acesso efetivo ao filesystem/processos do notebook**, deve informar a limitação, fornecer um procedimento simples e específico para o mantenedor sincronizar a branch e marcar a entrega local como **NÃO EXECUTADA**. Não alegar que atualizou o notebook.
+
+**Separação de poderes:** atualizar a branch no notebook **não é** fazer merge, deploy, reset, manipular o ERP ou tocar na C30. O aceite humano continua indispensável para merge e qualquer mudança persistente no servidor. Worktree extra só por necessidade real de isolamento ou concorrência, jamais como motivo automático para deixar a versão testável fora do localhost.
+
+
 
 ## 1. Papel e fonte da verdade
 
