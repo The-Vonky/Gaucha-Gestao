@@ -64,14 +64,11 @@ describe("GG-10 — contrato público e seleção", () => {
   });
 });
 describe("GG-10 — componente e integração futura", () => {
-  it("mostra texto como texto, com região educada e ação indisponível acessível", () => {
-    const callback = vi.fn();
-    render(<InstitutionalAnnouncementBar announcement={item({ message: '<script>alert("x")</script>' })} onFeedback={callback} />);
+  it("mostra texto como texto e mantém região educada", () => {
+    render(<InstitutionalAnnouncementBar announcement={item({ message: '<script>alert("x")</script>' })} />);
     expect(screen.getByRole("status").getAttribute("aria-live")).toBe("polite");
     expect(screen.getByText('<script>alert("x")</script>')).toBeTruthy();
     expect(document.querySelector("script")).toBeNull();
-    expect(screen.queryByRole("button", { name: /Relatar problema/ })).toBeNull();
-    expect(callback).not.toHaveBeenCalled();
   });
   it("abre a leitura completa com categoria e datas e fecha por controle ou Escape", () => {
     render(<InstitutionalAnnouncementBar announcement={item({ startsAt: "2026-11-04T12:00:00Z", endsAt: "2026-11-05T12:00:00Z" })} />);
@@ -86,16 +83,17 @@ describe("GG-10 — componente e integração futura", () => {
     fireEvent.click(trigger); fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
-  it("JSON sozinho não ativa GG-11 e callback oficial recebe o aviso quando integrado", () => {
+  it("configuração legada de relatos não oferece atalho no aviso compacto ou expandido", () => {
     const announcement = item({ action: { type: "feedback", label: "Relatar problema", enabled: true } });
-    const view = render(<InstitutionalAnnouncementBar announcement={announcement} />);
-    expect(screen.queryByRole("button", { name: "Relatar problema" })).toBeNull();
-    const onFeedback = vi.fn(); view.rerender(<InstitutionalAnnouncementBar announcement={announcement} onFeedback={onFeedback} />);
-    fireEvent.click(screen.getByRole("button", { name: "Relatar problema" })); expect(onFeedback).toHaveBeenCalledWith(announcement);
+    render(<InstitutionalAnnouncementBar announcement={announcement} />);
+    expect(screen.queryByRole("button", { name: /^Relatar/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Ler comunicado/ }));
+    expect(screen.getByRole("dialog", { name: announcement.title })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Relatar/ })).toBeNull();
   });
-  it("permite ocultar ícone e ação e mantém mesma estrutura nas categorias", () => {
+  it("permite ocultar o ícone e mantém a mesma estrutura nas categorias", () => {
     const view = render(<InstitutionalAnnouncementBar announcement={item({ action: null, showIcon: false })} />);
-    expect(screen.queryByRole("button", { name: /Relatar/ })).toBeNull(); expect(view.container.querySelector(".institutional-announcement > svg")).toBeNull();
+    expect(view.container.querySelector(".institutional-announcement > svg")).toBeNull();
     for (const type of ["testing", "maintenance", "information", "critical"] as const) {
       view.rerender(<InstitutionalAnnouncementBar announcement={item({ type })} />);
       expect(screen.getByRole("region", { name: "Aviso institucional" }).classList.contains(`announcement-${type}`)).toBe(true);

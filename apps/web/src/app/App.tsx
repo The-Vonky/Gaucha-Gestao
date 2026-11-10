@@ -81,9 +81,9 @@ function Boundary() {
     );
   if (!auth.session) return <Login />;
   if (!auth.profile?.active || auth.error) return <AnnouncementLayout loadConfig={noPublishedNotices}><AuthenticatedBoundary /></AnnouncementLayout>;
-  return <FeedbackEntry key={auth.session.user.id}>{open => (
-    <AnnouncementLayout loadConfig={loadPublishedNotices} onFeedback={open}><AuthenticatedBoundary /></AnnouncementLayout>
-  )}</FeedbackEntry>;
+  return <FeedbackEntry key={auth.session.user.id}>
+    <AnnouncementLayout loadConfig={loadPublishedNotices}><AuthenticatedBoundary /></AnnouncementLayout>
+  </FeedbackEntry>;
 }
 function AuthenticatedBoundary() {
   const auth = useAuth();

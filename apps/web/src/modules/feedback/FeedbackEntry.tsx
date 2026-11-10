@@ -6,21 +6,19 @@ import "./feedback.css";
 
 const FeedbackContext = createContext<(() => void) | null>(null);
 
-export function FeedbackEntry({ children }: {
-  children: (open: () => void) => ReactNode;
-}) {
+export function FeedbackEntry({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [origin, setOrigin] = useState<Module | null>(null);
   const open = () => setOrigin(originModule(location.pathname));
   return <FeedbackContext.Provider value={open}>
-    {children(open)}
+    {children}
     {origin && <FeedbackForm origin={origin} onClose={() => setOrigin(null)} />}
   </FeedbackContext.Provider>;
 }
 
 export function FeedbackButton() {
   const open = useContext(FeedbackContext);
-  return open && <button type="button" className="feedback-launch" aria-label={feedbackLabel} aria-haspopup="dialog" onClick={open}>Relatar</button>;
+  return open && <button type="button" className="feedback-launch" aria-haspopup="dialog" onClick={open}>Relatar problema ou melhoria</button>;
 }
 
 function FeedbackForm({ origin, onClose }: { origin: Module; onClose: () => void }) {

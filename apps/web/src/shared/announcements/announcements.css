@@ -46,16 +46,6 @@
 .announcement-read strong, .announcement-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .announcement-summary { flex: 1; }
 .announcement-read > .icon { flex: none; width: 1rem; height: 1rem; margin-left: auto; }
-.announcement-action { flex: none; }
-.announcement-action button {
-  min-height: var(--touch-target);
-  padding: var(--space-1) var(--space-2);
-  background: transparent;
-  border-color: var(--announcement-border);
-  color: inherit;
-  font: inherit;
-  font-weight: 600;
-}
 .announcement-detail { overflow-wrap: anywhere; }
 .announcement-message { white-space: pre-wrap; }
 @media (max-width: 767px) {

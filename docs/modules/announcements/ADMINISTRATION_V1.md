@@ -18,8 +18,9 @@ ajuste ou desative explicitamente um aviso pela administração antes de reaplic
 
 Todas as categorias aceitam os cinco presets Elo. A categoria governa o texto
 e o ícone. O preset determina a apresentação. A barra sticky continua com
-relógio do servidor e reconsulta na próxima fronteira. Se a opção do aviso
-estiver habilitada, **Relatar** abre o [formulário GG-11](../feedback/FEEDBACK_V1.md).
+relógio do servidor e reconsulta na próxima fronteira. O acesso ao
+[formulário GG-11](../feedback/FEEDBACK_V1.md) fica exclusivamente na barra de
+navegação, independentemente do valor de `show_feedback` no comunicado.
 
 As seções seguintes são o registro histórico da Entrega B.
 

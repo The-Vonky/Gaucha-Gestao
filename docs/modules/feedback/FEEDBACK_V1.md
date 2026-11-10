@@ -4,8 +4,8 @@ Em revisão para homologação. A autorização para o piloto depende do mantene
 
 ## Fluxo e autorização
 
-O perfil ativo abre o formulário pela ação permanente **Relatar** no cabeçalho
-ou pelo botão de um comunicado habilitado. Seleciona problema ou sugestão,
+O perfil ativo abre o formulário por **Relatar problema ou melhoria**, à direita
+na barra de navegação, com ou sem comunicado ativo. Seleciona problema ou sugestão,
 módulo/tela e descrição de 10 a 4.000 caracteres. O formulário orienta a
 ocultar dados pessoais e confidenciais antes de anexar uma imagem. O servidor
 deriva o autor de `auth.uid()` e o horário de recebimento do PostgreSQL. O

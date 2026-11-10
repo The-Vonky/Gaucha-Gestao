@@ -1,4 +1,16 @@
-.feedback-launch { flex: none; margin-inline-start: auto; }
+.feedback-launch {
+  min-inline-size: 0;
+  max-inline-size: 45%;
+  min-height: var(--touch-target);
+  margin-inline-start: auto;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 599px) {
+  .feedback-launch {
+    padding-inline: var(--space-1);
+    font-size: 0.8125rem;
+  }
+}
 .feedback-actions { flex-wrap: wrap; }
 .feedback-filters {
   display: flex;
