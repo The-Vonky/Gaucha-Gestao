@@ -608,7 +608,10 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
   border-radius: var(--radius-2xl);
   background: var(--domain-bg);
 }
-.domain[data-group="Qualidade"] {
+/* Alternância das áreas na ordem institucional: verde, laranja, verde, laranja, verde. */
+.domain[data-group="Qualidade"],
+.domain[data-group="Administrativo"],
+.domain[data-group="Transporte"] {
   --domain-bg: linear-gradient(
     115deg,
     var(--brand-green-100) 0%,
