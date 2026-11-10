@@ -1,0 +1,6 @@
+[Unit]
+Description=Alerta local de falha do backup Gaúcha Gestão
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/logger --priority daemon.err --tag gaucha-backup -- "Falha em %I. Conferir journal e estado da retomada da Gaúcha Gestão."

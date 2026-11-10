@@ -16,6 +16,10 @@ O [inventário de 22/10](operations/C30_STAGING_AS_BUILT_20261022.md) é um **sn
 
 **GG-02C, 06/11/2026:** [Restic + Rclone sintético local e procedimento Drive](operations/GG02C_RCLONE_DRIVE_20261106.md), com [matriz e evidências executadas](operations/GG02C_LAB_RESULTS_20261106.md). OAuth/conta Google exigem próxima autorização; não há backup operacional da C30 ou GO para dados reais.
 
+**GG-02D, 09/11/2026.** A Issue #113 autorizou o [ensaio sintético cifrado no Drive dedicado](operations/GG02D_DRIVE_SYNTHETIC_20261109.md). Pré-voo no Windows bloqueado no OAuth e recuperação física pendente. Piloto com dados reais e PROD seguem NO-GO.
+
+**GG-02 operacional, 09/11/2026.** [Proposta C30 e scripts de backup](operations/C30_BACKUP_OPERATIONAL_PLAN.md), com inventário operacional, ativação e restore independente pendentes.
+
 ## Início rápido por objetivo
 
 | Necessidade | Ponto de partida | Aprofundamento |

@@ -1,0 +1,16 @@
+{
+  "approved": false,
+  "machine_id": "FILL_AFTER_INVENTORY",
+  "instance_id": "FILL_AFTER_INVENTORY",
+  "release": "FILL_AFTER_INVENTORY",
+  "images": {
+    "db": "FILL_AFTER_INVENTORY",
+    "auth": "FILL_AFTER_INVENTORY",
+    "rest": "FILL_AFTER_INVENTORY",
+    "storage": "FILL_AFTER_INVENTORY",
+    "kong": "FILL_AFTER_INVENTORY"
+  },
+  "drive_folder_id": "FILL_AFTER_PRIVATE_PREFLIGHT",
+  "disk_reserve_bytes": 2147483648,
+  "drive_reserve_bytes": 2147483648
+}
