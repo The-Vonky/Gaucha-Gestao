@@ -1,6 +1,10 @@
-# Mapa de execução — engenharia, dependências, owners e gates
+# Mapa de execução — planejamento histórico da antiga equipe (arquivado)
 
-**Documento de coordenação; não substitui o [Plano Diretor 2026 v1.3](PLANO_DIRETOR_2026.md).** Fotografia reconciliada: main após PR #69 (`fed0e0f`, **20/10/2026**); pendências operacionais exigem evidência. **PROD: NO-GO**. Não contém promessa de prazo/custo.
+**ARQUIVADO em 10/11/2026 — não é plano de trabalho vigente.** Este mapa documenta a organização anterior de **Dev A / Dev B**, encerrada após a saída do segundo desenvolvedor. **As frentes e responsabilidades aqui registradas não constituem tarefas abertas, pendências atribuídas, obrigações de handover ou entregas a concluir/encerrar no fluxo atual.** Não atualizar estas linhas para `ABERTO`, `PENDENTE` nem `CONCLUÍDO`; o quadro histórico perdeu sua função de acompanhamento, sem que isso represente conclusão ou cancelamento técnico de cada requisito. Não solicitar trabalho ao antigo Dev B nem condicionar entregas à existência de outro desenvolvedor.
+
+**Fluxo atual:** um único desenvolvedor/mantenedor humano, agentes de IA executores por delegação, homologação no notebook **antes do merge**, e plano de prioridades em [Guia Mestre — GG-01 a GG-15](GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md), [protocolo atualizado](../development/PARALLEL_AGENT_WORKFLOW.md), PRs e decisões posteriores. Os controles de segurança, backup, restauração e implantação da C30 permanecem definidos em documentos canônicos vigentes e devem ser reavaliados por evidências atuais; arquivar este mapa **não** os dispensa.
+
+**Contexto preservado:** fotografia da `main` após PR #69 (`fed0e0f`, 20/10/2026), sem promessa de prazo/custo e sem evidência implícita de implantação. Os campos e tabelas abaixo são registros históricos, não instruções operacionais atuais.
 
 ## 1. Resultado desejado e definição de pronto
 
@@ -35,22 +39,22 @@ A figura representa **dependências lógicas e gates**, não um cronograma com d
 
 **Adendo GG-02B, 06/11/2026:** [POC local de arquivos sintéticos](../operations/GG02B_RESTIC_LOCAL_POC_20261106.md) executada com Restic 0.19.1 oficial verificado: **15 testes de contenção e BAK-01–08 PASS**; três versões recuperadas também do secundário, sem primário/cache. Próximas dependências: independência física/custódia externa de senha (BAK-09 BLOCKED), captura consistente de banco/objetos e integração remota autorizada. Não altera as provas históricas abaixo, a C30 ou os gates GG-02/GG-03/O3/O4.
 
-| Frente | Responsabilidade registrada | Evidência esperada / definição de concluído | Estado nesta fotografia |
-| --- | --- | --- | --- |
-| Baseline, worktrees e CI | Dev A; [issue #47](https://github.com/The-Vonky/Gaucha-Gestao/issues/47) | SHA, branches, riscos, CI da mesma versão e rollback de alterações de código | Histórico documentado; revalidar commit candidato |
-| Preservação C30 / HD / ERP | Dev A + Matheus; [#48](https://github.com/The-Vonky/Gaucha-Gestao/issues/48) | Inventário somente leitura, classificação de todos os discos/volumes, backup/restore de dados essenciais, autorização explícita para descarte | **ABERTO**; sem permissão implícita para formatar |
-| Restore sintético | Dev A; [#51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51), [PR #62](https://github.com/The-Vonky/Gaucha-Gestao/pull/62) e [relatório de evidências](02_RESTORE_DRILL.md) | DB/Auth/objetos restaurados em stack independente, integridade, RLS negativas, tempos e limites do ensaio | **Em curso**: issue relata ensaio sintético a frio PASS parcial; evidências no relatório com 8 PASS/1 PARCIAL (DR-08); versão histórica com 17 migrations, sem ABC; ainda não substitui backup PROD/PITR |
-| Identity Boundary | Dev A + parecer independente; [#49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) | ADR substituto ou decisão NO-GO, testes de GoTrue/locks/último admin, GO humano antes de migrations/runtime | **P0 BLOQUEADO**; PR #24 encerrado sem merge |
-| Gate C30 e provisioning | Dev A + Matheus; [#52](https://github.com/The-Vonky/Gaucha-Gestao/issues/52) | Laudo, preservação, aprovação, Ubuntu/Compose com medições reais/rollback | **ABERTO**; trilha B isolada permitida |
-| Curva ABC v1 | [PR #69](https://github.com/The-Vonky/Gaucha-Gestao/pull/69) e [Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) | Código integrado; testar amostras ERP, concorrência, arquivos originais, RLS e usuários distintos | **INTEGRADO AO REPOSITÓRIO**; homologação pendente |
-| DEV compartilhado | [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) | Acesso de dois operadores, autoria/RLS/firewall e reinício seguro | Funcional conforme Issue; pendências abertas |
-| Setup, fluxos e testes Qualidade | Dev B; [#54](https://github.com/The-Vonky/Gaucha-Gestao/issues/54), [#55](https://github.com/The-Vonky/Gaucha-Gestao/issues/55), [#56](https://github.com/The-Vonky/Gaucha-Gestao/issues/56) | Reproduzir stack, mapa de fluxo e evidência de testes/RLS reais | **ABERTO** |
-| Regressões de testes | Dev B; [#57](https://github.com/The-Vonky/Gaucha-Gestao/issues/57) | CI, reprodução/triagem do CHECK_FAILED e correções rastreáveis | **ABERTO**; não interpretar fechamento de issue antiga como correção |
-| Homologação física | Dev B; [#58](https://github.com/The-Vonky/Gaucha-Gestao/issues/58) | P1–P9 executados em Android Chrome e iOS Safari com dispositivo/versão/evidência | **PENDENTE** |
-| Handover e operação | Dev A, Dev B; [#53](https://github.com/The-Vonky/Gaucha-Gestao/issues/53), [#59](https://github.com/The-Vonky/Gaucha-Gestao/issues/59) | Handover independente, runbooks, permissões e resposta a incidentes | **ABERTO** |
-| PROD limpo | Responsável humano; [01_DADOS_LIMPOS](01_DADOS_LIMPOS.md) | Sem dados de laboratório, migrar somente o autorizado; bootstrap singular após GO de identidade | **POLÍTICA PROPOSTA**, não provisionada |
+| Frente da época | Responsabilidade histórica (sem atribuição vigente) | Evidência planejada na época |
+| --- | --- | --- |
+| Baseline, worktrees e CI | Dev A; [issue #47](https://github.com/The-Vonky/Gaucha-Gestao/issues/47) | SHA, branches, riscos, CI da mesma versão e rollback de alterações de código |
+| Preservação C30 / HD / ERP | Dev A + Matheus; [#48](https://github.com/The-Vonky/Gaucha-Gestao/issues/48) | Inventário somente leitura, classificação de todos os discos/volumes, backup/restore de dados essenciais, autorização explícita para descarte |
+| Restore sintético | Dev A; [#51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51), [PR #62](https://github.com/The-Vonky/Gaucha-Gestao/pull/62) e [relatório de evidências](02_RESTORE_DRILL.md) | DB/Auth/objetos restaurados em stack independente, integridade, RLS negativas, tempos e limites do ensaio |
+| Identity Boundary | Dev A + parecer independente; [#49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) | ADR substituto ou decisão NO-GO, testes de GoTrue/locks/último admin, GO humano antes de migrations/runtime |
+| Gate C30 e provisioning | Dev A + Matheus; [#52](https://github.com/The-Vonky/Gaucha-Gestao/issues/52) | Laudo, preservação, aprovação, Ubuntu/Compose com medições reais/rollback |
+| Curva ABC v1 | [PR #69](https://github.com/The-Vonky/Gaucha-Gestao/pull/69) e [Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) | Código integrado; testar amostras ERP, concorrência, arquivos originais, RLS e usuários distintos |
+| DEV compartilhado | [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) | Acesso de dois operadores, autoria/RLS/firewall e reinício seguro |
+| Setup, fluxos e testes Qualidade | Dev B; [#54](https://github.com/The-Vonky/Gaucha-Gestao/issues/54), [#55](https://github.com/The-Vonky/Gaucha-Gestao/issues/55), [#56](https://github.com/The-Vonky/Gaucha-Gestao/issues/56) | Reproduzir stack, mapa de fluxo e evidência de testes/RLS reais |
+| Regressões de testes | Dev B; [#57](https://github.com/The-Vonky/Gaucha-Gestao/issues/57) | CI, reprodução/triagem do CHECK_FAILED e correções rastreáveis |
+| Homologação física | Dev B; [#58](https://github.com/The-Vonky/Gaucha-Gestao/issues/58) | P1–P9 executados em Android Chrome e iOS Safari com dispositivo/versão/evidência |
+| Handover e operação | Dev A, Dev B; [#53](https://github.com/The-Vonky/Gaucha-Gestao/issues/53), [#59](https://github.com/The-Vonky/Gaucha-Gestao/issues/59) | Handover independente, runbooks, permissões e resposta a incidentes |
+| PROD limpo | Responsável humano; [01_DADOS_LIMPOS](01_DADOS_LIMPOS.md) | Sem dados de laboratório, migrar somente o autorizado; bootstrap singular após GO de identidade |
 
-A divisão Dev A / Dev B / Matheus foi extraída das issues; **não implica aceitação de responsabilidades fora das issues**. A proteção técnica de main está adiada por decisão registrada; revisão humana, PR e CI permanecem controles manuais obrigatórios.
+A divisão Dev A / Dev B / Matheus foi extraída das issues **daquele período**. O segundo desenvolvedor saiu e essa divisão está encerrada; nenhuma atribuição ou situação desta tabela deve ser reativada sem nova decisão expressa do mantenedor. As condições de revisão, CI e proteção de `main` são regidas pelas normas atuais, não por esta fotografia.
 
 ## 4. Sequência por entregáveis e critérios de aceite
 
