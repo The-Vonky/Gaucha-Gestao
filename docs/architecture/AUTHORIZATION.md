@@ -168,6 +168,8 @@ Negar: usuário inativo, sem papel, sem permissão, unidade incorreta, setor inc
 
 Catálogo `room_booking.schedule.read`, `room_booking.request.create`, `room_booking.request.read_own` e `room_booking.manage`; solicitante e administrador recebem as três primeiras; gestor recebe as quatro, condicionado à ausência de atribuição administrativa ativa conflitante (D5-B, 26/10/2026). Papéis novos `global_only`, sem atribuição automática. Schema privado e tabelas sem acesso direto, RLS restritiva; RPCs autorizadas e leitura saneada somente em AG-02. Ver [contrato AG-01](../modules/room-booking/AG01_FOUNDATION.md). Implementação autorizada para revisão em 23/10; revisão do titular e merge continuam pendentes, conforme exceção de mantenedor único registrada em `9e20199` (sem parecer independente).
 
+GG-08 permite ler o contato da sala com `room_booking.schedule.read` e exige `room_booking.manage` efetivo para gravá-lo com versão otimista e auditoria. GG-09 exige gestão efetiva para consultar tanto solicitações quanto reservas diretas. As três RPCs novas usam a autorização existente do Agendamento, sem grants diretos sobre as tabelas. D5-B se aplica inclusive ao administrador com atribuição conflitante e D6 segue a atribuição efetiva da substituta. [Contratos do Agendamento](../modules/room-booking/EXPERIENCE_V1.md#gg-08-e-gg-09--contato-e-histórico-de-gestão).
+
 
 ## Agendamento — API AG-02 e interface AG-03 (PR #88)
 
@@ -202,3 +204,16 @@ e registro versionado até o commit. Histórico é exclusivo da gestão. Usuári
 comuns ativos recebem somente comunicados globais publicados dentro do período,
 sem rascunhos/futuros/autoria. Não há segmentação por unidade/setor nesta versão.
 Aplicada somente no Supabase local autorizado em 05/11/2026; negativas e persistência reais [validadas](../modules/announcements/LOCAL_VALIDATION_20261105.md). [Contrato e decisões](../modules/announcements/ADMINISTRATION_V1.md).
+
+## Relatos e sugestões — GG-11
+
+`feedback.report.read` pertence à atribuição global ativa de
+`platform_administrator`. Um trigger em `core.role_permissions` rejeita
+delegação a outros papéis e a checagem de domínio exige a relação vigente com
+o papel. O menu e a rota usam a projeção Core. Listagem, detalhes e download
+autenticado reavaliam a sessão, o perfil e a atribuição no servidor.
+
+O envio está disponível a perfis ativos com sessão vigente e vincula a autoria
+a `auth.uid()`. O funcionário pode repetir o próprio envio para obter o recibo.
+A tabela privada tem RLS restritiva e as RPCs de leitura administrativa são
+separadas das de recebimento. [Contrato GG-11](../modules/feedback/FEEDBACK_V1.md).

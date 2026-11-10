@@ -309,32 +309,56 @@ describe("Audit checklist evidence contract", { concurrent: false }, () =>{
 
 // PostgreSQL/PGlite real para SQL/RLS; Storage/Auth são stubs, não prova da API self-hosted.
 describe('AUD-IMG-02: manifesto, fila e RLS em memória', { concurrent: false }, () => {
- it('global_new processa duas auditorias novas, recupera só leases do corte e preserva o acervo',async()=>{
+ it.each(['a','b','uuid'] as const)('global_new processa duas auditorias novas, recupera só leases do corte e preserva o acervo (ordem %s)',async(order)=>{
   await db.exec("reset role;begin;update audit.checklist_evidence_derivatives set state='failed',attempts=5,lease_id=null,lease_until=null");
   const globalClaim=async()=>{await db.exec('reset role');return (await one<{job:{lease:string;evidence:{id:string}}|null}>('select audit_private.runtime_derivative_claim(null) job')).job;};
   try{
    const old=await png(),expired=await png();await db.exec('reset role');
    await db.query("update audit.checklist_evidence_derivatives set state='processing',attempts=5,lease_id=gen_random_uuid(),lease_until=clock_timestamp()-interval '1 second' where evidence_id=$1",[expired.evidence_id]);
    await login(users.unitA);const pending=await begin(old.inspection,'item-002','late.png','image/png',800);
-   await db.exec('reset role');
-   const {cutoff}=await one<{cutoff:string}>('select clock_timestamp()::text cutoff');
-   await login(users.unitA);await object(pending.object_key,users.unitA,800,'image/png');await confirm(pending.evidence_id);
+   await object(pending.object_key,users.unitA,800,'image/png');await confirm(pending.evidence_id);
    const a=await png(),b=await png();await db.exec('reset role');
-   const before=await rows('select to_jsonb(d) value from audit.checklist_evidence_derivatives d where evidence_id=any($1::uuid[]) order by evidence_id',[[old.evidence_id,expired.evidence_id,pending.evidence_id]]);
+   const archive=[old.evidence_id,expired.evidence_id,pending.evidence_id];
+   const fresh=[a.evidence_id,b.evidence_id];
+   // Tempos sintéticos explícitos: chamadas sequenciais podem cair no mesmo ms no PGlite.
+   // O corte SQL é inclusivo. Acervo fica 1 µs antes; uploads novos ficam exatamente no corte.
+   const {cutoff}=await one<{cutoff:string}>("select (clock_timestamp()-interval '1 minute')::text cutoff");
+   await db.exec('alter table audit.checklist_evidence disable trigger guard_checklist_evidence');
+   try{
+    await db.query("update audit.checklist_evidence set created_at=$1::timestamptz-case when id=any($2::uuid[]) then interval '1 microsecond' else interval '0' end where id=any($3::uuid[])",[cutoff,archive,[...archive,...fresh]]);
+   }finally{await db.exec('alter table audit.checklist_evidence enable trigger guard_checklist_evidence');}
+   await db.query("update audit.checklist_evidence_derivatives set created_at=$1::timestamptz-interval '1 microsecond' where evidence_id=any($2::uuid[])",[cutoff,[old.evidence_id,expired.evidence_id]]);
+   // A confirmação tardia cria job no corte, mas o início anterior deve excluí-lo.
+   await db.query("update audit.checklist_evidence_derivatives set created_at=$1::timestamptz where evidence_id=$2",[cutoff,pending.evidence_id]);
+   const expectedFirst=order==='uuid'?[...fresh].sort()[0]:order==='a'?a.evidence_id:b.evidence_id;
+   const expectedSecond=fresh.find(id=>id!==expectedFirst)!;
+   // Duas prioridades possíveis e empate total com desempate por UUID; nenhum FIFO implícito.
+   await db.query("update audit.checklist_evidence_derivatives set created_at=$1::timestamptz,next_attempt_at=$1::timestamptz+case when $2::boolean and evidence_id=$3::uuid then interval '1 microsecond' else interval '0' end where evidence_id=any($4::uuid[])",[cutoff,order!=='uuid',expectedSecond,fresh]);
+   const archiveRows=()=>rows('select to_jsonb(d) value from audit.checklist_evidence_derivatives d where evidence_id=any($1::uuid[]) order by evidence_id',[archive]);
+   const originals=()=>rows('select to_jsonb(e) value from audit.checklist_evidence e where id=any($1::uuid[]) order by id',[[...archive,...fresh]]);
+   const objects=()=>rows('select to_jsonb(o) value from storage.objects o order by id');
+   const before=await archiveRows(),originalsBefore=await originals(),objectsBefore=await objects();
    await db.query("select set_config('audit_derivative.created_after',$1,true),set_config('audit_derivative.queue_mode','global_new',true)",[cutoff]);
-   const first=await globalClaim();expect(first?.evidence.id).toBe(a.evidence_id);expect(await globalClaim()).toBeNull();
+   const first=await globalClaim();expect(first?.evidence.id).toBe(expectedFirst);expect(await globalClaim()).toBeNull();
    // Crash do one-shot: só depois de expirar a lease, sem duas execuções simultâneas.
-   await db.query("update audit.checklist_evidence_derivatives set lease_until=clock_timestamp()-interval '1 second' where evidence_id=$1",[a.evidence_id]);
-   const retry=await globalClaim();expect(retry?.evidence.id).toBe(a.evidence_id);expect(retry?.lease).not.toBe(first?.lease);
+   await db.query("update audit.checklist_evidence_derivatives set lease_until=clock_timestamp()-interval '1 second' where evidence_id=$1",[expectedFirst]);
+   const retry=await globalClaim();expect(retry?.evidence.id).toBe(expectedFirst);expect(retry?.lease).not.toBe(first?.lease);
    expect(await one('select audit_private.runtime_derivative_fail($1) ok',[first?.lease])).toEqual({ok:false});
+   expect(await one('select attempts from audit.checklist_evidence_derivatives where evidence_id=$1',[expectedFirst])).toEqual({attempts:2});
    await db.query("select set_config('audit_derivative.failure_code','derivative_not_smaller',true)");
-   await db.query('select audit_private.runtime_derivative_fail($1)',[retry?.lease]);
-   const second=await globalClaim();expect(second?.evidence.id).toBe(b.evidence_id);
-   await db.query('select audit_private.runtime_derivative_fail($1)',[second?.lease]);expect(await globalClaim()).toBeNull();
-   expect(await rows('select to_jsonb(d) value from audit.checklist_evidence_derivatives d where evidence_id=any($1::uuid[]) order by evidence_id',[[old.evidence_id,expired.evidence_id,pending.evidence_id]])).toEqual(before);
-   // Nova sessão com outro corte não recupera pendências anteriores por inferência.
-   await db.query("select set_config('audit_derivative.created_after',clock_timestamp()::text,true)");
+   expect(await one('select audit_private.runtime_derivative_fail($1) ok',[retry?.lease])).toEqual({ok:true});
+   const second=await globalClaim();expect(second?.evidence.id).toBe(expectedSecond);
+   expect(new Set([first?.evidence.id,second?.evidence.id])).toEqual(new Set(fresh));
+   expect(await one('select attempts from audit.checklist_evidence_derivatives where evidence_id=$1',[expectedSecond])).toEqual({attempts:1});
+   expect(await one('select audit_private.runtime_derivative_fail($1) ok',[second?.lease])).toEqual({ok:true});expect(await globalClaim()).toBeNull();
+   expect(await rows("select state,attempts,error_code,lease_id,lease_until from audit.checklist_evidence_derivatives where evidence_id=any($1::uuid[])",[fresh])).toEqual(fresh.map(()=>({state:'failed',attempts:5,error_code:'derivative_not_smaller',lease_id:null,lease_until:null})));
+   expect(await archiveRows()).toEqual(before);expect(await originals()).toEqual(originalsBefore);expect(await objects()).toEqual(objectsBefore);
+   // Job elegível para o corte original permanece excluído por uma sessão com corte posterior.
+   await db.query("update audit.checklist_evidence_derivatives set state='pending',attempts=0,error_code=null where evidence_id=$1",[expectedFirst]);
+   await db.query("select set_config('audit_derivative.created_after',($1::timestamptz+interval '2 microseconds')::text,true)",[cutoff]);
    expect(await globalClaim()).toBeNull();
+   await db.query("select set_config('audit_derivative.created_after',$1,true)",[cutoff]);
+   expect((await globalClaim())?.evidence.id).toBe(expectedFirst);
   }finally{await db.exec('rollback;reset role');}
  });
  it('global_new exige corte explícito e rejeita filtros inválidos sem tocar a fila',async()=>{
@@ -406,11 +430,12 @@ describe('AUD-IMG-02: manifesto, fila e RLS em memória', { concurrent: false },
  it('claim serial, lease expirada, retry/backoff e CAS obsoleto',async()=>{
   await db.exec("reset role;begin;update audit.checklist_evidence_derivatives set state='failed',attempts=5,lease_id=null,lease_until=null");try{
    // Outros testes históricos confirmam só PDFs; este conjunto contém os únicos jobs JPEG/PNG.
-   const e=await png();const second=await png();const first=await claim();expect(first?.evidence.id).toBe(e.evidence_id);
+   const e=await png();const first=await claim();expect(first?.evidence.id).toBe(e.evidence_id);
    expect(await claim()).toBeNull();
    await db.query("update audit.checklist_evidence_derivatives set lease_until=clock_timestamp()-interval '1 second' where evidence_id=$1",[e.evidence_id]);
    const retry=await claim();expect(retry?.lease).not.toBe(first?.lease);
    expect(await complete(first!.lease)).toEqual({ok:false});
+   const second=await png();await db.exec('reset role');
    expect(await one('select audit_private.fail_evidence_derivative($1) ok',[retry!.lease])).toEqual({ok:true});
    expect(await one("select state,attempts,next_attempt_at>clock_timestamp() backoff from audit.checklist_evidence_derivatives where evidence_id=$1",[e.evidence_id])).toMatchObject({state:'failed',attempts:2,backoff:true});
    const other=await claim();expect(other?.evidence.id).toBe(second.evidence_id);

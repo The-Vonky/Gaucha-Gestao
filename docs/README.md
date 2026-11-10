@@ -14,6 +14,12 @@ O [inventário de 22/10](operations/C30_STAGING_AS_BUILT_20261022.md) é um **sn
 
 **Inventário de 05/11/2026:** [GG-01 — inspeção operacional da C30, estado de código/schema, riscos e passagem para GG-02](operations/C30_GG01_INVENTORY_20261105.md). Diagnóstico inicial concluído com ressalvas; backup independente, restore e GO de produção permanecem pendentes.
 
+**GG-02C, 06/11/2026:** [Restic + Rclone sintético local e procedimento Drive](operations/GG02C_RCLONE_DRIVE_20261106.md), com [matriz e evidências executadas](operations/GG02C_LAB_RESULTS_20261106.md). OAuth/conta Google exigem próxima autorização; não há backup operacional da C30 ou GO para dados reais.
+
+**GG-02D, 09/11/2026.** A Issue #113 autorizou o [ensaio sintético cifrado no Drive dedicado](operations/GG02D_DRIVE_SYNTHETIC_20261109.md). Pré-voo no Windows bloqueado no OAuth e recuperação física pendente. Piloto com dados reais e PROD seguem NO-GO.
+
+**GG-02 operacional, 09/11/2026.** [Proposta C30 e scripts de backup](operations/C30_BACKUP_OPERATIONAL_PLAN.md), com inventário operacional, ativação e restore independente pendentes.
+
 ## Início rápido por objetivo
 
 | Necessidade | Ponto de partida | Aprofundamento |
@@ -26,14 +32,15 @@ O [inventário de 22/10](operations/C30_STAGING_AS_BUILT_20261022.md) é um **sn
 | Compreender como cada stack se conecta | [Integração das stacks](architecture/STACK_INTEGRATION.md) | [ADR-004](decisions/ADR-004-platform-stack.md), [ADR-006](decisions/ADR-006-infra-v1-reused-hardware.md), [ADR-008](decisions/ADR-008-production-host-thinkstation-c30.md) |
 | Entender os fluxos reais de negócio | [Fluxos ponta a ponta](architecture/WORKFLOWS.md) | [Fonte da verdade de Auditorias](modules/audit/AUDIT_SOURCE_OF_TRUTH.md), [Action Plans brief](briefs/ACTION_PLAN_DOMAIN_V1.md) |
 | Relacionar funcionalidades com código | [Mapa de implementação](architecture/IMPLEMENTATION_MAP.md) | [Modelo de dados](architecture/DATA_MODEL.md), [Autorização](architecture/AUTHORIZATION.md) |
-| Saber o que fazer a seguir | [Mapa de execução e gates](planning/EXECUTION_MAP.md) | [Plano Diretor 2026](planning/PLANO_DIRETOR_2026.md) |
+| Saber o que fazer a seguir | [Guia Mestre GG-01–GG-15](planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md) | [Plano Diretor 2026](planning/PLANO_DIRETOR_2026.md), [mapa de execução arquivado](planning/EXECUTION_MAP.md) |
 | Ver decisões, incógnitas e impedimentos | [Registro de decisões e lacunas](planning/DECISION_REGISTER.md) | [ADRs](decisions/), [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) |
 | Consultar a prova histórica de backup e restore sintético | [Relatório DR-01–DR-09](planning/02_RESTORE_DRILL.md) | [Limites de continuidade](architecture/BACKUP_RECOVERY.md), [Issue #51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51) |
+| Consultar POC local de backup incremental GG-02B | [Relatório e matriz GG-02B](operations/GG02B_RESTIC_LOCAL_POC_20261106.md) | [Scripts e execução](../tests/labs/gg02b/README.md); Restic 0.19.1 oficial, BAK-01–08 PASS sintéticos; independência física pendente |
 | Operar e recuperar com segurança | [Matriz operacional](operations/OPERATIONS_MATRIX.md) | [Backup e recuperação](architecture/BACKUP_RECOVERY.md), [Infraestrutura de laboratório](../infra/README.md) |
 | Avaliar ameaças e controle de acesso | [Modelo de ameaças](architecture/THREAT_MODEL.md) | [Segurança](architecture/SECURITY.md), [ADR-005](decisions/ADR-005-core-authorization.md) |
 | Operar e conferir a Curva ABC | [Guia ABC v1](modules/abc/OPERATOR_GUIDE_V1.md) | [Brief ABC](briefs/ABC_DOMAIN_V1.md), [Testes #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) |
 | Medir e reduzir tráfego de fotos do checklist | [MED-01 / AUD-IMG-01–05](modules/audit/EVIDENCE_IMAGE_TRAFFIC.md) | [Consolidação de 06/11](modules/audit/MED01_FRONTEND_CLOSURE_20261106.md): 10/30/100 reais locais, 77,47% neste lote; HTTP revisado, JS inicial gzip −39,51%; meta de 80% não atingida; sem homologação/deploy |
-| Configurar avisos institucionais GG-10 | [Contrato e operação local](ui/GG10_INSTITUTIONAL_ANNOUNCEMENTS.md) | [Refinamento compacto e evidências](ui/GG10_COMPACT_VALIDATION_20261105.md); [Administração v1](modules/announcements/ADMINISTRATION_V1.md) e [validação real local](modules/announcements/LOCAL_VALIDATION_20261105.md), em PR separada; GG-11 futuro |
+| Configurar Comunicados GG-10 e consultar Relatos GG-11 | [Administração de Comunicados](modules/announcements/ADMINISTRATION_V1.md) e [Relatos e sugestões](modules/feedback/FEEDBACK_V1.md) | Integrados na PR #117. [Contrato da barra](ui/GG10_INSTITUTIONAL_ANNOUNCEMENTS.md) e [evidência local da Entrega B](modules/announcements/LOCAL_VALIDATION_20261105.md) |
 | Usar o módulo de Qualidade | [Guia do operador (pré-homologação)](modules/audit/OPERATOR_GUIDE_V1.md) | [Aceite da Qualidade](modules/audit/QUALITY_ACCEPTANCE_V1.md) |
 | Aceitar a primeira entrega | [Qualidade P1–P9 / O1–O8](modules/audit/QUALITY_ACCEPTANCE_V1.md) | [Matriz de conclusão](modules/audit/QUALITY_COMPLETION_V1.md) |
 | Experimentar Agendamento de Salas local (PR #88) | [Contrato e validação AG-02/03](modules/room-booking/AG02_AG03_LOCAL.md) | [Brief](briefs/ROOM_BOOKING_V1.md), [Critérios de aceite](modules/room-booking/ACCEPTANCE_V1.md) |

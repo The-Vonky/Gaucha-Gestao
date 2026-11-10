@@ -1,5 +1,7 @@
 # Teste manual da Fundação Core v2 (PC e Android via USB)
 
+> **Nota de escopo — 10/11/2026:** o exemplo abaixo de worktree própria/porta 5174 foi usado para a **baseline histórica do Core v2 em outubro**, e não é a instrução vigente para novas PRs. O notebook é o checkout padrão de homologação, atualizado **antes do merge**, conforme [AGENTS.md](../../AGENTS.md) e [PARALLEL_AGENT_WORKFLOW.md](PARALLEL_AGENT_WORKFLOW.md). Preservar os resultados e comandos do ensaio antigo, mas não os impor como rotina.
+
 Status: **testes manuais concluídos conforme declaração do responsável em 2026-10-13**, mas sem relatório detalhado anexado nesta etapa; **NÃO homologado e NÃO implantado em produção**.
 Baseline de consolidação: `integration/core-foundation-v2-wave2` @ `14900b63cacfab79d5bb398c9d9a8d6bfe3deab2` (snapshot anterior à atualização documental). PRs #25–#33, #35 e #36 estão integrados apenas nessa branch. CI do HEAD combinado precisa ser confirmada separadamente.
 A confirmação dos testes foi comunicada pelo responsável; **não foram informados/validados independentemente modelo de dispositivo, perfis usados, URL/porta de banco local ou capturas sem dados pessoais**. Registrar na [Issue #34](https://github.com/The-Vonky/Gaucha-Gestao/issues/34) se houver evidências. Não tratar esta confirmação como homologação completa P1–P9/O1–O8.

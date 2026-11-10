@@ -4,6 +4,8 @@
 
 Plano diretor técnico, financeiro e de implantação · **Versão 1.3** · 15 de outubro de 2026
 
+> **Atualização de governança — 10/11/2026:** há **um único desenvolvedor/mantenedor humano**; o antigo segundo desenvolvedor saiu da equipe. O plano de cinco dias e a divisão **Dev A/Dev B** da seção 8 pertencem à versão histórica 1.3 e **não atribuem tarefas, revisões, handovers ou pendências atualmente**. As prioridades atuais estão no [Guia Mestre GG-01–GG-15](GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md), e o fluxo de homologação pré-merge está em [AGENTS.md](../../AGENTS.md). Este esclarecimento não declara os antigos itens concluídos, não altera por inferência gates de segurança ou autoriza operações na C30.
+
 > Fonte canônica: este arquivo. As versões .docx 1.0 e 1.1, distribuídas fora do repositório, ficam superadas. Mudanças entram por PR, com registro na seção 12.
 
 Escopo: Qualidade v1 como primeira entrega operacional; expansão progressiva para os demais sistemas corporativos. Hipótese econômica: desenvolvimento por equipe interna e reaproveitamento do hardware já disponível.
@@ -149,7 +151,7 @@ Limiares propostos: alertar em 60%/80% do tier gratuito; migrar automaticamente 
 
 Datas e responsáveis por etapa: pendentes de definição pelo responsável do projeto. A ordem acima registra dependências, não prazos.
 
-**Coordenação dos cinco dias (issues #46–#59):** Dev A (`The-Vonky`) — Core/arquitetura/infra, backup/restore e decisões; Dev B — Qualidade v1, P1–P9, regressões e evidências; Matheus — avaliação e montagem física da C30/HD HPE, sem autorização destrutiva presumida. Revisões cruzadas, atualização diária por evidência e limite de uma frente escritora por pessoa são a proposta operacional; horário de revisão até 16h e identidade GitHub de Dev B ainda precisam de confirmação. Proteger a `main` é atividade da fase final, não da etapa 2.
+**REGISTRO HISTÓRICO, NÃO VIGENTE (15/10/2026) — Coordenação dos cinco dias (issues #46–#59):** Dev A (`The-Vonky`) — Core/arquitetura/infra, backup/restore e decisões; Dev B — Qualidade v1, P1–P9, regressões e evidências; Matheus — avaliação e montagem física da C30/HD HPE, sem autorização destrutiva presumida. Revisões cruzadas, atualização diária por evidência e limite de uma frente escritora por pessoa são a proposta operacional; horário de revisão até 16h e identidade GitHub de Dev B ainda precisam de confirmação. Proteger a `main` é atividade da fase final, não da etapa 2.
 
 ## 9. Checklist operacional obrigatório
 
@@ -246,5 +248,7 @@ Resumo de docs/modules/audit/QUALITY_ACCEPTANCE_V1.md; status conforme a matriz 
 ## Acompanhamento de tráfego de evidências — 04/11/2026
 
 **Continuação local autorizada em 05/11:** [executor temporário e atualização automática do checklist](../modules/audit/AUD_IMG_02_LOCAL_EXECUTOR_20261105.md), limitado a novos uploads de uma auditoria explícita. Migration incremental e mesmos grants técnicos; NOLOGIN ao encerrar. Prova Chromium: JPEG 77.834 → 39.929 bytes; JPEG 11.028 bytes sem redução viável, estado terminal claro e original preservado. Sem serviço permanente/backfill/deploy; a pendência HTTP de escrita negada anterior não foi declarada resolvida.
+
+O [GO C local de 05/11](../modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md) registrou duas migrations, uma imagem sintética `ready` e redução de 92,6463% para aquela imagem. Em 06/11, a [integração ao `npm run dev`](../modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md) registrou a prova em duas auditorias. Esses ensaios antecedem o lote MED-01.
 
 [MED-01 / AUD-IMG-01–05](../modules/audit/EVIDENCE_IMAGE_TRAFFIC.md): AUD-IMG-01/02 integradas nas PRs #99/#101, com Política A e exceção restrita E3 autorizadas. `npm run dev` processa somente uploads novos após o corte da sessão, sem backfill. A [consolidação de 06/11](../modules/audit/MED01_FRONTEND_CLOSURE_20261106.md) executou 10/30/100 com três repetições equivalentes por modo: redução de corpo **77,47%** neste lote sintético, sem presumir a meta de 80%. Revisão HTTP local concluída; headers/cache na borda ainda exigem validação/implantação autorizada. Rotas sob demanda reduziram JS inicial gzip de 272.112 para 164.605 bytes (39,51%); aviso de chunk >500 kB preservado. Captura API de transições de sessão e POST/upsert negado pelo gateway permanecem parciais; negação/timeout não confundidos. AUD-IMG-03/05, dispositivos físicos, backfill, restore e executor no servidor seguem separados; Issue #100 não encerrada. Sem migration/deploy/C30/STAGING/PROD nesta rodada, Políticas B/C não aprovadas e nenhum gate produtivo encerrado.

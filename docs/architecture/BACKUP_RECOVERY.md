@@ -56,6 +56,14 @@ Ver [diagrama LAB x PROD](../planning/02_RESTORE_DRILL.md#visão-visual--backup-
 
 ## Exercícios de restauração
 
+**GG-02B, 06/11/2026:** [laboratório local Restic de arquivos sintéticos](../operations/GG02B_RESTIC_LOCAL_POC_20261106.md) executado com Restic 0.19.1 portátil oficial e SHA-256 conferido: **BAK-01–08 PASS**, três snapshots, deduplicação, restaurações com SHA-256 e cópia secundária logicamente independente, com leitura integral dos dois repositórios. Não houve acesso à C30/Drive nem alteração de Docker/Supabase. **BAK-09 físico/off-site BLOCKED**: não comprova backup operacional, custódia externa de chaves ou recuperação física em outro host e não encerra O3/O4.
+
+**GG-02C, 06/11/2026:** [integração sintética Restic + Rclone](../operations/GG02C_RCLONE_DRIVE_20261106.md) e [evidências locais](../operations/GG02C_LAB_RESULTS_20261106.md): backend local via stdio, três snapshots, 44 arquivos restaurados com SHA-256 e cópia secundária logicamente independente no mesmo host. Drive será o destino do **pacote completo** conforme confirmação do mantenedor na PR #106 e brief GG-02C; essa diretriz já foi integrada à main pela PR #106. OAuth, quota/envio/restore Google e cópia física em outro PC **não executados**; conexão exige autorização separada antes da primeira operação na conta. Sem implantação C30, sem dados reais e sem fechamento de GG-03/O3/O4.
+
+**GG-02D, 09/11/2026.** A [Issue #113](https://github.com/The-Vonky/Gaucha-Gestao/issues/113) autoriza OAuth pelo mantenedor e um [ensaio sintético delimitado](../operations/GG02D_DRIVE_SYNTHETIC_20261109.md) na conta Drive dedicada. O primeiro pré-voo no Windows foi bloqueado no OAuth. Quota, upload e restore no Drive continuam pendentes. Recuperação física permanece BLOCKED sem um segundo computador. GG-02/GG-03 operacionais, O3/O4, piloto real e PROD dependem de provas e decisões próprias.
+
+**GG-02 operacional, 09/11/2026.** [Plano de captura coerente, backup Restic e recuperação independente na C30](../operations/C30_BACKUP_OPERATIONAL_PLAN.md). A proposta separa o envio do intervalo de indisponibilidade da API e exige a identificação do projeto para preservar o ERP de Contratos. O3/O4 permanecem abertos.
+
 Ensaiar periodicamente em ambiente isolado, verificando: banco sobe, migrations/schema coerentes, registros legíveis, arquivos e referências íntegros, Auth/configuração recuperáveis e app consegue iniciar.
 
 Registrar **data, backup, versão, resultado, falhas e ações corretivas**. Não incluir segredos e dados reais em PRs.

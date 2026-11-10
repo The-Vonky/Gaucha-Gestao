@@ -1,0 +1,21 @@
+{
+    "phase":  "Run",
+    "status":  "BLOCKED",
+    "script_sha256":  "e202b89e8f09310284323618d9e759e430fdd489c95daf45f3dd13b31705428d",
+    "tools":  {
+                  "restic":  {
+                                 "version":  "0.19.1",
+                                 "url":  "https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_windows_amd64.zip",
+                                 "zip_sha256":  "da948ad707ed690426473aaba2046cd61f8f90f6f0e7dab6be0d5796531de67d",
+                                 "exe_sha256":  "b0dd1fd21eea5d8fe1325f55f7118213c21f36de8a261e04c0624a5ab9fd7830"
+                             },
+                  "rclone":  {
+                                 "version":  "1.76.0",
+                                 "url":  "https://github.com/rclone/rclone/releases/download/v1.76.0/rclone-v1.76.0-windows-amd64.zip",
+                                 "zip_sha256":  "8b4fd2737ade4e70c057ef4a49deb7cffe94b0fb9d7587c189d149823f21a1dc",
+                                 "exe_sha256":  "acd80683e23151e93bbe0d6ffa74d26e542ec510332f630beecb9944f8d1a623"
+                             }
+              },
+    "stage":  "verify-preflight",
+    "reason":  "preflight-required"
+}

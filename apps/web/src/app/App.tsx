@@ -11,6 +11,7 @@ import { client } from "../core/client";
 import { AuthProvider, useAuth } from "../core/auth/AuthProvider";
 import { Login } from "../core/auth/Login";
 import { loadPublishedNotices, noPublishedNotices } from "../modules/announcements/api";
+import { FeedbackButton, FeedbackEntry } from "../modules/feedback/FeedbackEntry";
 import { BrandMark, Loader } from "../shared/brand";
 import { Icon } from "../shared/icons";
 import { Drawer, EmptyState, IconButton, Notice } from "../shared/ui";
@@ -23,6 +24,7 @@ import {
 } from "./navigation";
 import { AnnouncementLayout } from "./AnnouncementLayout";
 import "./shell.css";
+
 const OrganizationPage = lazy(() => import("../core/admin/OrganizationPage").then(module => ({ default: module.OrganizationPage })));
 const UsersPage = lazy(() => import("../core/admin/UsersPage").then(module => ({ default: module.UsersPage })));
 const RolesPage = lazy(() => import("../core/admin/RolesPage").then(module => ({ default: module.RolesPage })));
@@ -33,6 +35,7 @@ const ActionPlansModule = lazy(() => import("../modules/action-plans/ActionPlans
 const RoomsPage = lazy(() => import("../modules/rooms/RoomsPage").then(module => ({ default: module.RoomsPage })));
 const AbcModule = lazy(() => import("../modules/abc/AbcModule").then(module => ({ default: module.AbcModule })));
 const AnnouncementsPage = lazy(() => import("../modules/announcements/AnnouncementsPage").then(module => ({ default: module.AnnouncementsPage })));
+const FeedbackPage = lazy(() => import("../modules/feedback/FeedbackPage").then(module => ({ default: module.FeedbackPage })));
 const SalesModule = lazy(() => import("../modules/sales/SalesModule").then(module => ({ default: module.SalesModule })));
 
 function Logout({ compact = false }: { compact?: boolean }) {
@@ -79,7 +82,10 @@ function Boundary() {
       </main>
     );
   if (!auth.session) return <Login />;
-  return <AnnouncementLayout key={`${auth.session.user.id}:${!!auth.profile?.active}:${!!auth.error}`} loadConfig={auth.profile?.active && !auth.error ? loadPublishedNotices : noPublishedNotices}><AuthenticatedBoundary /></AnnouncementLayout>;
+  if (!auth.profile?.active || auth.error) return <AnnouncementLayout loadConfig={noPublishedNotices}><AuthenticatedBoundary /></AnnouncementLayout>;
+  return <FeedbackEntry key={auth.session.user.id}>
+    <AnnouncementLayout loadConfig={loadPublishedNotices}><AuthenticatedBoundary /></AnnouncementLayout>
+  </FeedbackEntry>;
 }
 function AuthenticatedBoundary() {
   const auth = useAuth();
@@ -515,6 +521,7 @@ function Shell() {
     "/action-plans": <ActionPlansModule />,
     "/abc": <AbcModule />,
     "/rooms": <RoomsPage />,
+    "/admin/feedback": <FeedbackPage />,
     "/admin/announcements": <AnnouncementsPage key={auth.session?.user.id} />,
     "/admin/users": <UsersPage />,
     "/admin/roles": <RolesPage />,
@@ -561,6 +568,7 @@ function Shell() {
             </span>
           </Link>
           <Breadcrumbs current={current} />
+          <FeedbackButton />
           <span className="topbar-avatar">
             <Avatar name={auth.profile?.display_name} />
           </span>

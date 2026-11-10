@@ -1,0 +1,21 @@
+[Unit]
+Description=Captura local coerente do STAGING Gaúcha Gestão
+Requisite=docker.service
+After=docker.service
+OnFailure=gaucha-backup-alert@%n.service
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+TimeoutStartSec=7min
+TimeoutStopSec=3min
+KillMode=control-group
+ExecStart=/usr/bin/python3 /opt/gaucha-backup/backup.py capture
+ExecStartPost=/usr/bin/python3 /opt/gaucha-backup/backup.py thaw
+ExecStopPost=/usr/bin/python3 /opt/gaucha-backup/backup.py thaw
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/gaucha-backup

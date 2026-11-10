@@ -24,6 +24,7 @@ const required = {
     "confirm_evidence_upload",
     "action-plan-evidence",
   ],
+  "Relatos e sugestões": ["feedback_prepare", "feedback_receive", "feedback_list", "feedback-attachments"],
   "Core administration": ["save_role", "my_access"],
   "Core unit covers": [
     "unit_covers",

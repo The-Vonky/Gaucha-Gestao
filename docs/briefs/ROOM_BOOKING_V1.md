@@ -2,6 +2,8 @@
 
 **Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).
 
+**GG-08 e GG-09:** contato por sala com nome institucional e ramal mantidos pela gestão efetiva, melhoria do histórico existente e consulta separada de reservas diretas. [Contrato](../modules/room-booking/EXPERIENCE_V1.md#gg-08-e-gg-09--contato-e-histórico-de-gestão) e [critérios de aceite](../modules/room-booking/ACCEPTANCE_V1.md#aceite-de-gg-08-e-gg-09).
+
 **Decisão vigente — 26/10/2026:** D5-A revogada pelo responsável em 26/10/2026. D5-B adotada: o administrador geral não administra reservas; a gestão cabe ao papel `room_booking_manager`, com provisionamento administrativo restrito e auditado. Atribuição administrativa ativa conflitante nega gestão mesmo com papel adicional. D1–D4, D6–D11 e F2 permanecem aprovadas. Os registros de 23/10 abaixo são históricos.
 
 

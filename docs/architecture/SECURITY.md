@@ -77,9 +77,9 @@ referências de autorização; leitura comum exige perfil ativo e período publi
 
 Cada escrita usa UUID+versão esperada, trava linha e registra snapshot imutável
 no domínio. Core recebe somente id/estado/versão, sem texto institucional.
-Datas, tamanho, prioridade, categoria e presets são validados no SQL; tags HTML
-são rejeitadas. Crítico só danger; não há CSS livre, serviço privilegiado ou
-segredo no frontend. A aplicação usa fonte RPC única e invalida dados por identidade;
+O SQL valida datas, tamanho, categoria e presets Elo independentes e rejeita
+tags HTML. No refinamento GG-10/GG-11, uma constraint de exclusão protege a
+agenda e novas escritas gravam prioridade zero por compatibilidade. A aplicação usa fonte RPC única e invalida dados por identidade;
 JSON público foi retirado, sem fallback/exportação de dados internos.
 
 Teste real adicional usa o stack já descartável do action-plans-integration e
@@ -90,3 +90,13 @@ retenção/expurgo ou deploy. [Contrato](../modules/announcements/ADMINISTRATION
 GG-10: [validação real local de 05/11](../modules/announcements/LOCAL_VALIDATION_20261105.md) registra aplicação incremental autorizada, Auth/API reais, negativas, persistência e preservação de dados no gaucha-gestao-local. Nenhuma autorização para outro ambiente.
 
 Desde 06/11, o [supervisor local de desenvolvimento](../modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md) coordena frontend e executor pelo único `npm run dev`. O modo explícito `global_new` exige corte de início/confirmação dos uploads; não usa filtros nulos para selecionar o acervo. LOGIN existente tem validade de dez minutos renovada pelo supervisor enquanto ativo, com NOLOGIN ao encerrar; falhas forçadas exigem recuperação do lock/login e não retomam pendências de sessões anteriores automaticamente. Sem grants extras, credenciais no frontend ou serviço permanente.
+
+
+## Relatos dos funcionários — GG-11
+
+O banco registra autoria e horário de recebimento. A trilha sistêmica guarda
+o evento de recepção e o identificador do relato. O conteúdo e o nome do
+arquivo original ficam fora da auditoria. O download reavalia a autorização
+atual e usa o bucket privado com operações limitadas a envio reservado e
+download autenticado. A UI trata os bytes como conteúdo não confiável e entrega
+o arquivo como download. [Contrato e limites GG-11](../modules/feedback/FEEDBACK_V1.md).
