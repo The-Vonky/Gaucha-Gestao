@@ -61,7 +61,9 @@ Expect-Blocked 'link-or-wrong-file-type' { Assert-Entry $junction -Directory }
 $Config = Join-Path $Root 'rclone.conf'
 $desktop = Join-Path $Root 'oauth-desktop.json'
 Expect-Blocked 'desktop-client-file-required' { Initialize-DriveConfig }
-New-Text $desktop '{"web":{"client_id":"fictional","client_secret":"fictional"}}'
+New-Text $desktop '{malformed'
+Expect-Blocked 'desktop-client-json-required' { Initialize-DriveConfig }
+[IO.File]::WriteAllText($desktop, '{"web":{"client_id":"fictional","client_secret":"fictional"}}', $Utf8)
 Expect-Blocked 'desktop-client-json-required' { Initialize-DriveConfig }
 [IO.File]::WriteAllText($desktop, '{"installed":{"client_id":"202264815644.apps.googleusercontent.com","client_secret":"fictional"}}', $Utf8)
 Expect-Blocked 'own-desktop-client-required' { Initialize-DriveConfig }
@@ -75,17 +77,25 @@ Set-Acl -LiteralPath $desktop -AclObject $acl
 Expect-Blocked 'private-oauth-file-acl' { Initialize-DriveConfig }
 $acl.PurgeAccessRules($other)
 Set-Acl -LiteralPath $desktop -AclObject $acl
-Initialize-DriveConfig
+$desktopClient = Initialize-DriveConfig
 $seed = [IO.File]::ReadAllText($Config)
 $tokenLine = 'token = {"access_token":"synthetic-access","refresh_token":"synthetic-refresh"}'
+Expect-Blocked 'refresh-token-required' { Read-DriveToken $desktopClient }
 [IO.File]::AppendAllText($Config, "$tokenLine`n", $Utf8)
-if ((Read-DriveToken) -cne 'synthetic-access') { throw 'Expected own Desktop client and token' }
+$accessToken = Read-DriveToken $desktopClient
+if ($accessToken -cne 'synthetic-access') { throw 'Expected own Desktop client and token' }
 Write-Output 'PASS drive-file-own-client-config'
+$Config = Join-Path $Root 'changed-client.ini'
+New-Text $Config ($seed.Replace('123-synthetic.', '456-synthetic.') + $tokenLine)
+Expect-Blocked 'oauth-desktop-client-changed' { Read-DriveToken $desktopClient }
+$Config = Join-Path $Root 'changed-secret.ini'
+New-Text $Config ($seed.Replace('fictional', 'different-secret') + $tokenLine)
+Expect-Blocked 'oauth-desktop-client-changed' { Read-DriveToken $desktopClient }
 $Config = Join-Path $Root 'missing-refresh.ini'
 New-Text $Config ($seed + 'token = {"access_token":"synthetic-access"}')
 Expect-Blocked 'refresh-token-required' { Read-DriveToken }
 $Config = Join-Path $Root 'wider.ini'
-New-Text $Config ($seed.Replace('scope = drive.file', 'scope = drive') + $tokenLine)
+New-Text $Config ($seed.Replace('scope = drive.file', 'scope = drive.file,drive') + $tokenLine)
 Expect-Blocked 'unexpected-oauth-config' { Read-DriveToken }
 $Config = Join-Path $Root 'redirected.ini'
 New-Text $Config ($seed + "root_folder_id = fictional`n" + $tokenLine)
@@ -101,12 +111,12 @@ function Invoke-RestMethod {
     [pscustomobject]@{ user = [pscustomobject]@{ emailAddress = $script:FakeAccount } }
 }
 $FakeAccount = 'dedicated@example.invalid'
-Confirm-DriveAccount
+Confirm-DriveAccount $accessToken
 Write-Output 'PASS dedicated-account-matched'
 $FakeAccount = 'other@example.invalid'
-Expect-Blocked 'dedicated-account-mismatch' { Confirm-DriveAccount }
+Expect-Blocked 'dedicated-account-mismatch' { Confirm-DriveAccount $accessToken }
 $FakeAccount = 'error'
-Expect-Blocked 'drive-account-check-failed' { Confirm-DriveAccount }
+Expect-Blocked 'drive-account-check-failed' { Confirm-DriveAccount $accessToken }
 
 $Remote = 'gg02d:'
 $MinimumFree = 128MB

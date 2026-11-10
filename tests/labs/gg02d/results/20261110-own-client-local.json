@@ -1,0 +1,58 @@
+{
+  "lab": "GG02D-SYNTHETIC-407f4335ea1b4325a3525685fb825ae3",
+  "powershell": "5.1.26100.9711",
+  "script_sha256": "a888de97470771d46618d1037310be82cfcf484bc0ab2709d4ede486d515a9ec",
+  "prepare": "PASS",
+  "run_guard": {
+    "status": "BLOCKED",
+    "stage": "verify-preflight",
+    "reason": "preflight-required"
+  },
+  "local_test": {
+    "status": "PASS",
+    "primary_snapshots": {
+      "initial": "e8316ead625697e824733b15c0dbc014b03a4ad65bbd6db9b70daaa39d470c72",
+      "unchanged": "f874ba25bdee9e6755c00d610c56c266b163e65084374a32ff9a04878a8040d9",
+      "changed": "5ea112e90239fd1dbfd7459b408e318c02e1dfdad3be1edc6c32fd2c5b7f6ac4"
+    },
+    "secondary_snapshots": {
+      "initial": "d6edfecd2a00cc049098fc3836522447af908c2c49db7135466478bf541cc74d",
+      "unchanged": "785ef3fbaa717146e3b5e2d3f2ac83ff6be501f0c70efaf859be7eead2d846c4",
+      "changed": "b9306199535dc2ed003d655275b581a2ed8d53aa7a66add517f1f68466e6cd8f"
+    },
+    "unchanged_data_blobs": 0,
+    "restore_statuses": [
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS"
+    ],
+    "restored_files": 26,
+    "repository_checks": [
+      {
+        "operation": "primary-check-read-data",
+        "exit": 0
+      },
+      {
+        "operation": "primary-rejects-wrong-password",
+        "exit": 12
+      },
+      {
+        "operation": "secondary-check-read-data",
+        "exit": 0
+      },
+      {
+        "operation": "secondary-rejects-primary-password",
+        "exit": 12
+      }
+    ]
+  },
+  "guards": {
+    "sha256": "ecc16d953bc2c6e9de52af8b2947a73660686b73a1cd73bad07eb5fd1c0f07f8",
+    "passed": 46
+  },
+  "rclone_loopback": [
+    "rclone-own-client-drive-file-only-loopback",
+    "rclone-denied-callback-no-token"
+  ]
+}

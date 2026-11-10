@@ -309,7 +309,8 @@ function Initialize-DriveConfig {
     $clientPath = Join-Path $Root 'oauth-desktop.json'
     Assert-Lab (Test-Path -LiteralPath $clientPath -PathType Leaf) 'desktop-client-file-required'
     Assert-PrivateOAuthFile $clientPath
-    $document = [IO.File]::ReadAllText($clientPath) | ConvertFrom-Json
+    try { $document = [IO.File]::ReadAllText($clientPath) | ConvertFrom-Json }
+    catch { Assert-Lab $false 'desktop-client-json-required' }
     Assert-Lab ($null -ne $document -and $document.PSObject.Properties['installed'] -and
         !$document.PSObject.Properties['web'] -and $null -ne $document.installed -and
         $document.installed.PSObject.Properties['client_id'] -and
@@ -317,9 +318,10 @@ function Initialize-DriveConfig {
     $client = $document.installed
     Assert-OwnClient $client.client_id $client.client_secret
     New-Text $Config "[gg02d]`ntype = drive`nscope = drive.file`nclient_id = $($client.client_id)`nclient_secret = $($client.client_secret)`n"
+    $client
 }
 
-function Read-DriveToken {
+function Read-DriveToken($ExpectedClient) {
     Assert-PrivateOAuthFile $Config
     $section = ''
     $values = @{}
@@ -335,19 +337,24 @@ function Read-DriveToken {
         $values[$Matches[1]] = $Matches[2]
     }
     Assert-Lab ($values['type'] -ceq 'drive' -and $values['scope'] -ceq 'drive.file' -and
-        $values['token'] -and !$values['team_drive']) 'unexpected-oauth-config'
+        !$values['team_drive']) 'unexpected-oauth-config'
     Assert-OwnClient $values['client_id'] $values['client_secret']
-    $token = $values['token'] | ConvertFrom-Json
+    if ($ExpectedClient) {
+        Assert-Lab ($values['client_id'] -ceq $ExpectedClient.client_id -and
+            $values['client_secret'] -ceq $ExpectedClient.client_secret) 'oauth-desktop-client-changed'
+    }
+    Assert-Lab ($values['token']) 'refresh-token-required'
+    try { $token = $values['token'] | ConvertFrom-Json }
+    catch { Assert-Lab $false 'refresh-token-required' }
     Assert-Lab ($null -ne $token -and $token.PSObject.Properties['refresh_token'] -and
         $token.PSObject.Properties['access_token'] -and $token.access_token -cmatch '^[A-Za-z0-9._~-]+$' -and
         $token.refresh_token -cmatch '^[A-Za-z0-9._~/-]+$') 'refresh-token-required'
     $token.access_token
 }
 
-function Confirm-DriveAccount {
+function Confirm-DriveAccount([string]$AccessToken) {
     $expected = (Read-Host 'Informe o e-mail da conta Drive exclusiva para verificacao local').Trim()
     Assert-Lab ($expected -match '^[^\s@]+@[^\s@]+$') 'dedicated-account-unconfirmed'
-    $accessToken = Read-DriveToken
     try {
         $account = Invoke-RestMethod -Method Get -UseBasicParsing -TimeoutSec 30 -MaximumRedirection 0 `
             -Uri 'https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)' `
@@ -578,15 +585,16 @@ try {
         $Result.production_controls_attested = $true
         $null = Confirm-Fixture $Source $Manifests.initial
         $Stage = 'load-private-desktop-client'
-        Initialize-DriveConfig
+        $desktopClient = Initialize-DriveConfig
         Write-Host 'No navegador, confira a conta exclusiva antes de consentir.'
         Write-Host 'Se o navegador mostrar HTTP 400, volte ao PowerShell e pressione 4. Esc cancela por outro motivo.'
-        $null = Invoke-Tool rclone 'oauth-local-browser' @('config', 'update', 'gg02d', 'config_is_local=true', 'config_change_team_drive=false', '--no-output', '--log-level', 'NOTICE') -DriveAccess
-        $null = Read-DriveToken
-        $Result.quota = Get-Quota 'quota-preflight' -BeforeWrite
+        $null = Invoke-Tool rclone 'oauth-local-browser' @('config', 'update', 'gg02d', 'config_is_local=true', 'config_shared_client_id=false', 'config_change_team_drive=false', '--no-output', '--log-level', 'NOTICE') -DriveAccess
+        $Stage = 'verify-own-client-and-token'
+        $accessToken = Read-DriveToken $desktopClient
         $Stage = 'confirm-dedicated-account'
-        Confirm-DriveAccount
+        Confirm-DriveAccount $accessToken
         $Result.dedicated_account_confirmed = $true
+        $Result.quota = Get-Quota 'quota-preflight' -BeforeWrite
         $Result.oauth_client = 'own-desktop'
         Assert-Lab (@(Get-LabFolders).Count -eq 0) 'remote-folder-already-exists'
         $Result.remote_folder = $Lab

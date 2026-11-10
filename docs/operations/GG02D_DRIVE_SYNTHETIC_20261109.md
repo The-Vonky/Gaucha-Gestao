@@ -2,11 +2,11 @@
 
 **Escopo:** conta gratuita dedicada da Gaúcha Gestão, OAuth no Windows pelo mantenedor e somente dados gerados pelo laboratório. A [Issue #113](https://github.com/The-Vonky/Gaucha-Gestao/issues/113) registra a autorização. **Piloto com dados reais e PROD permanecem NO-GO.**
 
-| Prova | Estado em 09/11/2026 |
+| Prova | Estado em 10/11/2026 |
 | --- | --- |
 | Recuperação da conta e verificação em duas etapas | Confirmadas pelo mantenedor, sem detalhes sensíveis |
 | Windows, backend local e cópia lógica | **PASS**, três snapshots, leitura integral e quatro restaurações conferidas |
-| OAuth, quota, pasta, três snapshots, leitura integral e restaurações do Drive | **BLOCKED**, após HTTP 400 no navegador e timeout do primeiro pré-voo |
+| OAuth, quota, pasta, três snapshots, leitura integral e restaurações do Drive | Cliente Desktop publicado pelo mantenedor. Primeiro pré-voo bloqueado com o cliente compartilhado. Novo pré-voo manual pendente. |
 | Cópia secundária física com restauração sem Drive | **BLOCKED**, mantenedor confirmou que ainda não há segundo computador autorizado |
 | Backup operacional e recuperação da C30 | Fora da autorização da Issue #113 |
 
@@ -18,7 +18,7 @@ No código do Rclone 1.76.0, `scope=drive.file` gera o escopo OAuth por arquivo,
 
 ## Procedimento no Windows
 
-Preserve a pasta e as evidências da tentativa anterior. Para um novo ensaio, use somente o cliente Desktop próprio e um UUID gerado por `Prepare`. [Decisão do mantenedor](https://github.com/The-Vonky/Gaucha-Gestao/pull/114#issuecomment-6750171277).
+Preserve a pasta e as evidências da tentativa anterior. Para o novo ensaio, use o cliente Desktop do projeto **Gaucha Gestao Backup** e um UUID gerado por `Prepare`. O mantenedor confirmou a publicação do consentimento, a ativação da Drive API e a configuração de `drive.file`. Confira o estado de billing na sua sessão antes de autorizar o pré-voo. [Marco confirmado pelo mantenedor](https://github.com/The-Vonky/Gaucha-Gestao/pull/114#issuecomment-6766680181).
 
 Use uma conta de usuário comum, uma sessão **Windows PowerShell 5.1 de 64 bits** e o navegador do próprio Windows. Abra o perfil do navegador reservado para a conta Google dedicada e deixe esse perfil pronto para o fluxo aberto pelo navegador padrão. Verifique a conta no seletor do Google antes de consentir. Caso o navegador abra em outro perfil, o consentimento mostre uma conta diferente ou o cliente seja recusado pelo Google, cancele.
 
@@ -30,11 +30,11 @@ Use uma conta de usuário comum, uma sessão **Windows PowerShell 5.1 de 64 bits
    $destino = Join-Path ([IO.Path]::GetTempPath()) ('GG02D-script-' + [Guid]::NewGuid().ToString('N'))
    $null = New-Item -ItemType Directory -Path $destino
    $arquivo = Join-Path $destino 'script.zip'
-   git archive --format=zip -o "$arquivo" FETCH_HEAD tests/labs/gg02d/gg02d.ps1
+   git -c core.autocrlf=false archive --format=zip -o "$arquivo" FETCH_HEAD tests/labs/gg02d/gg02d.ps1
    if ($LASTEXITCODE -ne 0) { throw 'Falha ao extrair a revisao Git' }
    Expand-Archive -LiteralPath $arquivo -DestinationPath $destino
    $roteiro = Join-Path $destino 'tests\labs\gg02d\gg02d.ps1'
-   $hashEsperado = 'ef42272863dd428b3562528bcacc1fe3d72a4857ee30529e9f7561927e3b1a9f'
+   $hashEsperado = 'a888de97470771d46618d1037310be82cfcf484bc0ab2709d4ede486d515a9ec'
    if ((Get-FileHash -LiteralPath $roteiro -Algorithm SHA256).Hash -ne $hashEsperado) {
        throw 'SHA-256 divergente da revisao testada'
    }
@@ -46,16 +46,23 @@ Use uma conta de usuário comum, uma sessão **Windows PowerShell 5.1 de 64 bits
    powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "$roteiro" -Phase Prepare
    ```
 
-3. Na raiz privada criada por `Prepare` em `LocalApplicationData`, salve o JSON do cliente **Desktop app** como `oauth-desktop.json` com ACL exclusiva do usuário. Prefira salvar diretamente nesse diretório a partir da sessão privada do Google Cloud. O script exige a chave `installed`, recusa o cliente compartilhado e lê as credenciais do arquivo privado. Execute `Preflight` com o UUID novo e confirme `OAUTH-PRODUCAO` após verificar o projeto e a conta. No navegador, confirme a conta escolhida. Ao voltar, informe o e-mail dedicado no prompt local. O script confere o e-mail pelo Drive, exige ao menos **128 MiB livres** e confirma que o nome UUID está ausente nas pastas visíveis ao cliente. Em caso de HTTP 400 pressione **4**. Pressione **Esc** para outro cancelamento. O pré-voo preserva a evidência, sem criação de pasta nem envio.
+3. Abra a raiz privada criada por `Prepare`. Na sessão privada do Google Cloud, em **Google Auth Platform → Clients**, selecione o cliente **Desktop app** já criado e salve o JSON diretamente nessa raiz com o nome `oauth-desktop.json`. Use a opção de escolher onde salvar do navegador, fora de pastas sincronizadas. Mantenha o JSON sob sua custódia e o conteúdo fora do terminal. O script exige a chave `installed` e confere a ACL exclusiva do arquivo antes de lê-lo.
 
    ```powershell
    $ensaio = 'GG02D-SYNTHETIC-<uuid>'
+   $raiz = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) $ensaio
+   explorer.exe "$raiz"
+   ```
+
+4. Execute `Preflight` com o UUID novo e confirme `OAUTH-PRODUCAO` após verificar o projeto e a conta. No navegador, confira a conta exclusiva e o aplicativo antes de consentir. Ao voltar, informe o e-mail dedicado no prompt local. O script confere o par de credenciais após o OAuth e valida o e-mail pelo Drive antes de consultar a quota. Exige ao menos **128 MiB livres** e verifica que o nome UUID está ausente nas pastas visíveis ao cliente. Em caso de HTTP 400 pressione **4** no console. Pressione **Esc** para outro cancelamento. O pré-voo preserva a evidência, sem criação de pasta nem envio.
+
+   ```powershell
    powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "$roteiro" -Phase Preflight -Lab $ensaio
    ```
 
-4. **Pare antes de `Run`.** Informe `PASS` com o nome sintético e os bytes livres, ou `BLOCKED` com o motivo exibido. Preserve os arquivos privados da sessão. Uma nova tentativa exige outro `Prepare` e outro UUID. A criação exclusiva do log marca o início do pré-voo, inclusive se houver interrupção sem resultado final.
+5. **Pare antes de `Run`.** Informe `PASS` com o nome sintético e os bytes livres, ou `BLOCKED` com o motivo exibido. Preserve os arquivos privados da sessão. Uma nova tentativa exige outro `Prepare` e outro UUID. A criação exclusiva do log marca o início do pré-voo, inclusive se houver interrupção sem resultado final.
 
-5. Após a conferência do pré-voo, execute `Run` na mesma conta Windows. Confirme digitando o nome exato do ensaio no prompt, após revisar o destino `GG02D-SYNTHETIC-<uuid>/repository`. O script confere o resultado do pré-voo, a versão do próprio script, a configuração OAuth vinculada e a quota novamente antes do `mkdir`. Em caso de falha, preserve o laboratório e reporte o código mostrado. Repetir requer um novo UUID gerado por `Prepare`.
+6. Após a conferência do pré-voo, execute `Run` na mesma conta Windows. Confirme digitando o nome exato do ensaio no prompt, após revisar o destino `GG02D-SYNTHETIC-<uuid>/repository`. O script confere o resultado do pré-voo, a versão do próprio script, a configuração OAuth vinculada e a quota novamente antes do `mkdir`. Em caso de falha, preserve o laboratório e reporte o código mostrado. Repetir requer um novo UUID gerado por `Prepare`.
 
    ```powershell
    powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "$roteiro" -Phase Run -Lab $ensaio
@@ -68,6 +75,8 @@ Use uma conta de usuário comum, uma sessão **Windows PowerShell 5.1 de 64 bits
 | `oauth-loopback-bind-failed`, `oauth-browser-launch-failed` | O Rclone relatou falha ao abrir o callback local ou iniciar o navegador. |
 | `oauth-client-rejected`, `oauth-access-denied`, `oauth-request-rejected` | A saída do Rclone trouxe um código OAuth reconhecido. |
 | `oauth-callback-timeout`, `oauth-after-callback-timeout`, `oauth-process-timeout` | Tempo esgotado, classificado pelos marcos observáveis do subprocesso. |
+| `desktop-client-file-required`, `desktop-client-json-required`, `private-oauth-file-acl` | O JSON Desktop está ausente, tem formato inválido ou ACL incompatível. |
+| `own-desktop-client-required`, `oauth-desktop-client-changed`, `refresh-token-required` | A configuração ficou sem cliente próprio, divergiu do par fornecido ou ficou sem token válido para continuidade. |
 | `preflight-already-attempted` | O UUID contém vestígio de pré-voo e exige um novo `Prepare`. |
 
 Um erro renderizado apenas no navegador pode chegar ao relatório pelo mantenedor. O script registra categorias fixas e mantém as saídas brutas em memória. O prazo de 180 s continua sendo o limite do subprocesso OAuth.
@@ -77,6 +86,8 @@ Um erro renderizado apenas no navegador pode chegar ao relatório pelo mantenedo
 1. O mantenedor usa um projeto dedicado sob custódia institucional, **sem billing vinculado**, trial ou cartão, com apenas a Google Drive API. Se houver exigência de cobrança, verificação, marca/política/URL sem aprovação, ou escopo maior, registre BLOCKED e leve a exigência ao mantenedor. O projeto OAuth não aumenta a quota da conta. [Criação de projetos](https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects), [limites da API](https://developers.google.com/workspace/drive/api/guides/limits).
 2. Em Google Auth Platform configure **External / In production** e, em **Data Access**, somente `https://www.googleapis.com/auth/drive.file`, escopo não sensível por arquivo. A publicação do consentimento retira a regra de expiração em sete dias do estado Testing. O refresh token ainda pode ser revogado ou expirar em outras condições. [Consentimento e testadores](https://developers.google.com/workspace/guides/configure-oauth-consent), [escopos do Drive](https://developers.google.com/workspace/drive/api/guides/api-specific-auth), [expiração de tokens](https://developers.google.com/identity/protocols/oauth2#expiration).
 3. Em **Clients**, crie um **Desktop app** para retorno local. Mantenha o JSON e o `rclone.conf` na raiz privada do Windows, sem comandos que revelem seus valores, transcrição, sincronização ou compartilhamento de tela. A autorização real e a configuração do projeto permanecem na sessão privada do mantenedor. [Criação de credenciais](https://developers.google.com/workspace/guides/create-credentials#desktop-app), [OAuth para aplicativos instalados](https://developers.google.com/identity/protocols/oauth2/native-app).
+
+Em 10/11/2026, as páginas públicas de início, privacidade e termos responderam por HTTPS e a navegação entre elas funcionou. Os textos descrevem `drive.file`, quota, criptografia antes do envio, revogação e o estágio de validação. A política de privacidade ainda pode explicitar que o `Preflight` lê o e-mail retornado pelo Drive para compará-lo localmente com a conta dedicada e mantém esse dado fora da evidência. [Início](https://backup.gauchagestao.online/), [privacidade](https://backup.gauchagestao.online/privacidade/), [termos](https://backup.gauchagestao.online/termos/).
 
 ## Procedência e isolamento
 
@@ -131,9 +142,18 @@ O modo `LocalTest` exercita o transporte stdio e a restauração no filesystem l
 
 No Windows PowerShell 5.1 amd64, `Prepare` e `LocalTest` passaram. A execução de `Preflight` com um log sintético de tentativa anterior bloqueou antes de iniciar o navegador. `Run` sem pré-voo aprovado também bloqueou. O teste de guardas passou em 30 casos, incluindo classificação, cancelamento simulado com processo local, timeout e bloqueio de configuração parcial. A regressão local repetiu os três snapshots, as leituras integrais, as recusas de senha e a conferência de 26 arquivos restaurados. A captura física das teclas no console e o novo consentimento ainda dependem do teste manual do mantenedor. [Evidência saneada da revisão OAuth](../../tests/labs/gg02d/results/20261109-oauth-revision-local.json).
 
-## Validação local do cliente Desktop próprio
+## Validação local do cliente Desktop próprio — 09/11/2026
 
-No Windows PowerShell 5.1, `Prepare` e `LocalTest` passaram com o SHA-256 indicado no roteiro. No UUID novo `GG02D-SYNTHETIC-17045bb9386048cdbcd3f596dd359201`, `Run` sem pré-voo bloqueou em `preflight-required`. O ensaio local produziu três snapshots, leu ambos os repositórios e verificou 26 arquivos em quatro restaurações. Os 41 guardas passaram, incluindo ACL, ausência do cliente compartilhado, exigência do refresh token, correspondência de conta simulada e vínculo do `Prepare` à revisão. O Rclone 1.76.0 chegou à opção de OAuth local com configuração fictícia em modo não interativo, sem navegador ou Drive.
+No Windows PowerShell 5.1, `Prepare` e `LocalTest` passaram com o SHA-256 histórico `ef42272863dd428b3562528bcacc1fe3d72a4857ee30529e9f7561927e3b1a9f`. No UUID novo `GG02D-SYNTHETIC-17045bb9386048cdbcd3f596dd359201`, `Run` sem pré-voo bloqueou em `preflight-required`. O ensaio local produziu três snapshots, leu ambos os repositórios e verificou 26 arquivos em quatro restaurações. O Rclone 1.76.0 chegou à opção de OAuth local com configuração fictícia em modo não interativo, sem navegador ou Drive.
+
+## Revalidação local — 10/11/2026
+
+- Windows PowerShell 5.1 amd64. `Prepare` e `LocalTest` passaram em novo UUID. `Run` sem pré-voo aprovado bloqueou em `preflight-required`. A regressão criou três snapshots em cada repositório, conferiu 26 arquivos por SHA-256 em quatro restaurações, leu os dois repositórios integralmente e verificou as duas recusas de senha.
+- Os 46 casos de `test_guards.ps1` passaram. A revisão cobre JSON inválido, ACL, troca de ID ou segredo, escopo adicional, refresh token ausente, conta divergente, cancelamento e timeout. A captura física das teclas no console continua pendente do teste manual.
+- O Rclone 1.76.0 oficial recebeu um JSON fictício e a configuração do `Preflight`. A inspeção do redirect local, com navegador desativado e sem seguir o redirect, confirmou o ID fictício, somente `drive.file`, retorno em `127.0.0.1` e solicitação de acesso offline. O callback de recusa simulado encerrou o Rclone com `oauth-access-denied` e deixou a configuração sem token. Essa verificação não chamou o Google.
+- Os sete testes sintéticos de `scripts/ops/c30-backup` passaram. O próximo marco é `Preflight` pelo mantenedor, seguido da conferência antes de `Run`. Quota, upload e restore no Drive, recuperação em outro PC e operação C30 exigem evidências próprias.
+
+[Resultado saneado da revalidação](../../tests/labs/gg02d/results/20261110-own-client-local.json).
 
 ## Preparação operacional separada
 
