@@ -15,6 +15,8 @@ export const groupDescriptions: Partial<
   Qualidade:
     "Auditorias do checklist geral e o ciclo das ações corretivas, da execução à verificação de eficácia.",
   Custos: "Consumo valorizado por unidade e competência, com a Curva ABC do ERP e a calculada.",
+  Administrativo:
+    "Organize as atividades administrativas da empresa, consulte agendas, acompanhe solicitações e acesse os serviços internos em um só lugar.",
   Comercial: "Lançamentos e acompanhamento gerencial de vendas por unidade e competência.",
   Administração: "Acessos, estrutura organizacional e registros do sistema.",
 };
