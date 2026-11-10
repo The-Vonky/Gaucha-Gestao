@@ -352,3 +352,110 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.room-history h2,
+.room-history h3,
+.room-history p {
+  margin: 0 0 0.65rem;
+}
+.room-history h3 {
+  font-size: 1rem;
+}
+.room-history-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  border-bottom: 1px solid #dbe5dc;
+  margin: 1rem 0;
+  padding-bottom: 0.4rem;
+}
+.room-history-tabs [aria-selected="true"] {
+  background: #173e34;
+  border-color: #173e34;
+  color: white;
+}
+.room-history-filters > label,
+.room-history-filters input {
+  min-width: 0;
+}
+.room-history .room-history-hint,
+.room-history-entry p {
+  font-size: 0.875rem;
+}
+.room-history-list > li {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) auto;
+  gap: 0.4rem 1rem;
+  align-items: start;
+  padding: 0.85rem 0;
+}
+.room-history-entry p {
+  margin: 0.2rem 0 0;
+}
+.room-history-status {
+  justify-self: start;
+  font-weight: 600;
+}
+.room-history-status.is-pending {
+  background: #fff3cd;
+  color: #614710;
+}
+.room-history-status.is-approved,
+.room-history-status.is-confirmed {
+  background: #e0f3e7;
+  color: #1b5738;
+}
+.room-history-status.is-rejected {
+  background: #fce8e6;
+  color: #84262a;
+}
+.room-history-details {
+  grid-column: 2 / -1;
+  font-size: 0.875rem;
+}
+.room-history-details summary {
+  width: fit-content;
+  cursor: pointer;
+  color: #235444;
+  font-weight: 600;
+}
+.room-history-details[open] {
+  padding-bottom: 0.25rem;
+}
+.room-history-pagination {
+  align-items: center;
+  margin-top: 1rem;
+}
+@media (max-width: 600px) {
+  .room-history-tabs {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  }
+  .room-history-tabs button,
+  .room-history-pagination > button {
+    min-width: 0;
+    padding-inline: 0.3rem;
+    font-size: 0.85rem;
+  }
+  .room-history-pagination {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    font-size: 0.875rem;
+  }
+  .room-history-list > li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 0.8rem;
+    border: 1px solid #e0e8e1;
+    border-radius: 12px;
+    margin-bottom: 0.65rem;
+  }
+  .room-history-entry .room-time,
+  .room-history-details {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 360px) {
+  .room-history-list > li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
