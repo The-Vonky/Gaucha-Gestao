@@ -136,7 +136,7 @@ Além do piloto, exige fechamento dos gates do Plano Diretor, aceite físico/ope
 | **GG-08** | Agendamento: contato da responsável | **P1** | Regra de exibição e dado institucional definido | Nome/ramal visíveis para usuários autorizados e atualizáveis por processo definido. |
 | **GG-09** | Agendamento: histórico completo de gestão | **P1** | Contratos do módulo; D5-B | Histórico existente revisado; reservas diretas consultáveis sem pedidos artificiais; filtros e permissões testados. |
 | **GG-10** | Aviso de testes | **P1** | Política de ambiente | Aviso claro, não intrusivo e configurável; não confunde STAGING com PROD. |
-| **GG-11** | Canal de bugs e sugestões com evidências | **P1** | Contrato de dados, Storage e envio seguro | Relato persistido, anexos privados e notificação por e-mail; erro de e-mail não perde o relato. |
+| **GG-11** | Canal de bugs e sugestões com evidências | **P1** | Contrato de dados, Storage e recebimento interno | Relato persistido, anexos privados e consulta exclusiva do Platform Administrator. |
 | **GG-12** | Ajustes de cores e descrição de Administrativo | **P2** | Revisão visual | Descrição incorporada; cores e contrastes revisados em desktop/celular. |
 | **GG-13** | Cloudflare Turnstile e endurecimento da borda | **P1/P2 conforme ameaça** | Verificar self-hosted Auth e regras Cloudflare | Testes de login, falha/expiração/validação, ausência de bloqueio indevido de APIs. |
 | **GG-14** | Monitoramento e observabilidade | **P0 para operação real** | Host e arquitetura alvo | Alertas para host, disco, serviços, banco, storage, túnel e falha do backup; responsáveis sabem como reagir. |
@@ -213,20 +213,18 @@ Manter escopo **global/unidade** conforme grants efetivos, nunca transformar um 
 
 ### GG-10 e GG-11 — aviso de testes e coleta de feedback
 
-**Objetivo:** funcionário autorizado informa erro ou melhoria diretamente no aplicativo sem depender de mensagens dispersas, e o responsável recebe aviso no e-mail corporativo.
+O funcionário ativo relata um problema ou sugere uma melhoria pela barra de
+comunicados ou pela ação permanente no cabeçalho. O fluxo interno confirma o
+identificador após persistência. O Platform Administrator consulta a fila e os
+anexos em **Administração > Relatos e sugestões**.
 
-**Fluxo proposto:** botão/entrada “Relatar problema ou sugerir melhoria” → tipo (erro/sugestão) → módulo/tela → descrição → anexos opcionais, como print → confirmação com identificador → notificação por e-mail.
+O aviso institucional mantém categoria e cor independentes e reserva um único
+período de publicação por instante. A fila usa Storage privado e registra
+contexto mínimo. A retenção depende de política do mantenedor.
 
-**Requisitos técnicos:**
-
-- Persistir o relato e referência aos anexos **antes** de tentar a notificação. E-mail é canal de aviso, **não** única cópia da evidência.
-- Buckets privados, checagem de usuário, limitação de tamanho/tipo, controles de upload, permissões de leitura administrativa e política de retenção/exclusão.
-- Coletar contexto útil (rota, versão, horário, navegador quando adequado), **sem** guardar automaticamente JWT, token, senha, segredo, dados financeiros ou fotografia sensível desnecessária.
-- Exibir instrução para ocultar informações pessoais/sensíveis de capturas quando possível e limitar o acesso aos relatos.
-- Tratar envio duplicado, falta de rede, falha de e-mail, estado “recebido” e possibilidade de encaminhamento manual.
-- Tornar aviso de testes e ponto de feedback configuráveis por ambiente; remover o aviso em eventual PROD sem destruir histórico útil.
-
-**Critério de aceite:** erro de e-mail não perde relato; acesso indevido a anexos é negado; responsável pode localizar o registro e a evidência; usuário obtém confirmação clara.
+Consulte os contratos de [Comunicados](../modules/announcements/ADMINISTRATION_V1.md)
+e [Relatos e sugestões](../modules/feedback/FEEDBACK_V1.md) para os critérios de
+aceite e a validação da release candidata.
 
 ### GG-12 — tela inicial
 

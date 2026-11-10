@@ -22,6 +22,6 @@ it.each([{...published,serverNow:'invalid'},{...published,announcements:[{type:'
 });
 it('escrita envia somente parâmetros de domínio com versão esperada; erro do servidor é propagado',async()=>{
  transport.rpc.mockResolvedValue({data:null,error:{code:'40001'}});
- await expect(saveNotice({title:'Título',message:'Mensagem',category:'information',tone:'info',priority:0,starts_at:null,ends_at:null,state:'published',show_feedback:false},null)).rejects.toMatchObject({code:'40001'});
+ await expect(saveNotice({title:'Título',message:'Mensagem',category:'information',tone:'info',starts_at:null,ends_at:null,state:'published',show_feedback:false},null)).rejects.toMatchObject({code:'40001'});
  expect(transport.rpc).toHaveBeenCalledWith('announcements_notice_save',expect.objectContaining({p_id:null,p_expected_version:null,p_state:'published',p_show_feedback:false}));
 });

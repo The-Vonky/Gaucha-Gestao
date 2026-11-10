@@ -109,22 +109,29 @@ describe("GG-10 — autorização e persistência",()=>{
  it.each([
   {p_title:''},{p_title:'x'.repeat(121)},{p_message:'x'.repeat(1601)},
   {p_message:'<script>alert(1)</script>'},{p_title:'<img onerror=alert(1)>'},
-  {p_category:'unknown'},{p_tone:'red'},{p_category:'critical',p_tone:'success'},
-  {p_category:'maintenance',p_tone:'neutral'},{p_category:'success',p_tone:'info'},
-  {p_priority:10001},{p_state:'unknown'},{p_starts_at:'infinity'},
+  {p_category:'unknown'},{p_tone:'red'},{p_state:'unknown'},{p_starts_at:'infinity'},
   {p_starts_at:'2026-11-06T12:00:00Z',p_ends_at:'2026-11-06T12:00:00Z'},
  ])("rejeita entrada inválida %j",async changes=>{await login(2);await denied(save(changes),'23514');});
- it("agendamento, expiração, prioridade e leitura comum sem vazamento de rascunhos/futuros/histórico",async()=>{
-  await login(2);const draft=await save({p_title:'Rascunho secreto'});
-  const scheduled=await save({p_title:'Futuro secreto',p_state:'published',p_starts_at:'2099-01-01T00:00:00Z'});expect(scheduled.status).toBe('scheduled');
-  const expired=await save({p_state:'published',p_ends_at:'2000-01-01T00:00:00Z'});expect(expired.status).toBe('expired');
-  const low=await save({p_state:'published',p_priority:10000,p_category:'success',p_tone:'success'});
-  const high=await save({p_state:'published',p_priority:-10000,p_category:'critical',p_tone:'danger'});
-  await login(3);const published=await feed();expect(published.announcements.map(n=>n.id)).toEqual([high.id,low.id]);
+ it("ordena antes da paginação, aceita adjacência e rejeita conflitos em criação ou edição",async()=>{
+  await login(2);
+  const expired=await save({p_state:'published',p_ends_at:'2000-01-01T00:00:00Z'});
+  const active=await save({p_state:'published',p_starts_at:'2000-01-01T00:00:00Z',
+   p_ends_at:'2099-01-01T00:00:00Z',p_priority:10000,p_category:'critical',p_tone:'neutral'});
+  const scheduled=await save({p_title:'Futuro reservado',p_state:'published',
+   p_starts_at:'2099-01-01T00:00:00Z',p_category:'maintenance',p_tone:'info'});
+  for(let i=0;i<21;i++) await save({p_title:'Rascunho reservado'});
+  expect(expired.status).toBe('expired');
+  expect(scheduled.status).toBe('scheduled');
+  expect(active).toMatchObject({status:'active',priority:0,tone:'neutral'});
+  expect((await rpc<{items:Row[]}>('manage_list',[20,0])).items[0].id).toBe(active.id);
+  expect((await rpc<{items:Row[]}>('manage_list',[20,20])).items.some(n=>n.id===active.id)).toBe(false);
+  await denied(save({p_state:'published'}),'23P01');
+  await denied(edit(scheduled,{p_state:'published',p_starts_at:'2098-01-01T00:00:00Z'}),'23P01');
+  await login(3);
+  const published=await feed();expect(published.announcements.map(n=>n.id)).toEqual([active.id]);
   expect(published.nextRefreshAt).toBeTruthy();
-  expect(JSON.stringify(published)).not.toMatch(/Rascunho secreto|Futuro secreto|created_by|updated_by|before_data/);
-  for(const row of [draft,scheduled,expired]) expect(published.announcements.some(n=>n.id===row.id)).toBe(false);
-  await denied(rpc('notice_history',[high.id]));
+  expect(JSON.stringify(published)).not.toMatch(/Rascunho reservado|Futuro reservado|created_by|updated_by|before_data/);
+  await denied(rpc('notice_history',[active.id]));
  });
  it("paginação é limitada e schema/funções não expõem privilégios",async()=>{
   await login(2);await denied(rpc('manage_list',[101,0]),'23514');await denied(rpc('notice_history',[uid(99),20,-1]),'23514');

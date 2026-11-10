@@ -56,7 +56,6 @@
   font: inherit;
   font-weight: 600;
 }
-.announcement-action button:disabled { opacity: 1; color: inherit; }
 .announcement-detail { overflow-wrap: anywhere; }
 .announcement-message { white-space: pre-wrap; }
 @media (max-width: 767px) {
@@ -70,6 +69,10 @@
   .announcement-read strong { white-space: normal; overflow-wrap: anywhere; }
 }
 
+.institutional-announcement:is(.announcement-tone-neutral,.announcement-tone-info,.announcement-tone-warning,.announcement-tone-success) {
+  --announcement-bg: var(--color-surface-subtle);
+  --announcement-fg: var(--color-text);
+}
 .announcement-tone-neutral { --announcement-border: var(--neutral); }
 .announcement-tone-info { --announcement-border: var(--info); }
 .announcement-tone-warning { --announcement-border: var(--warning); }

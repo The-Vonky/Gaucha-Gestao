@@ -55,8 +55,8 @@ describe("GG-10 — contrato público e seleção", () => {
     expect(select(config([item({ endsAt: "2026-11-04T15:00:00Z" })]))).toBeNull();
     expect(select(config([item({ endsAt: "2026-11-04T15:00:01Z" })]))?.id).toBe("testing");
   });
-  it("prioriza categoria, número e id, independentemente da ordem de entrada", () => {
-    const items = [item({ priority: 10000 }), item({ id: "maintenance", type: "maintenance", priority: -10000 }), item({ id: "critical-z", type: "critical", priority: 1 }), item({ id: "critical-b", type: "critical", priority: 2 }), item({ id: "critical-a", type: "critical", priority: 2 })];
+  it("usa categoria e id, ignorando prioridade legada, independentemente da ordem de entrada", () => {
+    const items = [item({ priority: 10000 }), item({ id: "maintenance", type: "maintenance", priority: -10000 }), item({ id: "critical-z", type: "critical", priority: 100 }), item({ id: "critical-b", type: "critical", priority: 2 }), item({ id: "critical-a", type: "critical", priority: 2 })];
     expect(select(config(items))?.id).toBe("critical-a");
     expect(select(config([...items].reverse()))?.id).toBe("critical-a");
     expect(select(config(items.slice(0, 2)))?.id).toBe("maintenance");
@@ -70,10 +70,8 @@ describe("GG-10 — componente e integração futura", () => {
     expect(screen.getByRole("status").getAttribute("aria-live")).toBe("polite");
     expect(screen.getByText('<script>alert("x")</script>')).toBeTruthy();
     expect(document.querySelector("script")).toBeNull();
-    const button = screen.getByRole("button", { name: /Relatar problema/ }) as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    expect(document.getElementById(button.getAttribute("aria-describedby")!)?.textContent).toContain("indisponível");
-    fireEvent.click(button); expect(callback).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: /Relatar problema/ })).toBeNull();
+    expect(callback).not.toHaveBeenCalled();
   });
   it("abre a leitura completa com categoria e datas e fecha por controle ou Escape", () => {
     render(<InstitutionalAnnouncementBar announcement={item({ startsAt: "2026-11-04T12:00:00Z", endsAt: "2026-11-05T12:00:00Z" })} />);
@@ -91,7 +89,7 @@ describe("GG-10 — componente e integração futura", () => {
   it("JSON sozinho não ativa GG-11 e callback oficial recebe o aviso quando integrado", () => {
     const announcement = item({ action: { type: "feedback", label: "Relatar problema", enabled: true } });
     const view = render(<InstitutionalAnnouncementBar announcement={announcement} />);
-    expect((screen.getByRole("button", { name: "Relatar problema" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: "Relatar problema" })).toBeNull();
     const onFeedback = vi.fn(); view.rerender(<InstitutionalAnnouncementBar announcement={announcement} onFeedback={onFeedback} />);
     fireEvent.click(screen.getByRole("button", { name: "Relatar problema" })); expect(onFeedback).toHaveBeenCalledWith(announcement);
   });
@@ -163,8 +161,9 @@ describe("GG-10 — atualização em runtime e ciclo de vida", () => {
     await act(() => vi.advanceTimersByTimeAsync(2000));
     expect(screen.queryByRole("region")).toBeNull(); expect(fetchMock).not.toHaveBeenCalled();
   });
-  it("rejeita aparência de sucesso em crítico e aceita presets separados da categoria", () => {
-    expect(parseAnnouncementConfig(config([item({ type: "critical", tone: "success" })]))).toBeNull();
+  it("aceita presets separados da categoria e rejeita cores fora da paleta", () => {
+    expect(parseAnnouncementConfig(config([item({ type: "critical", tone: "success" })]))).not.toBeNull();
+    expect(parseAnnouncementConfig({ ...config([]), announcements: [{ ...item(), tone: "#ff0000" }] })).toBeNull();
     expect(parseAnnouncementConfig(config([item({ type: "information", tone: "neutral" })]))).not.toBeNull();
     expect(parseAnnouncementConfig(config([item({ type: "success", tone: "success" })]))).not.toBeNull();
   });
