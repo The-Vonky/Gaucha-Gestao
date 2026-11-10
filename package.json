@@ -11,11 +11,15 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:thumbnails": "node scripts/audit-derivative-dev.mjs",
+    "ds:dev": "npm run ds:dev -w apps/web",
     "typecheck": "npm run typecheck -w apps/web",
     "build": "npm run build -w apps/web",
     "verify:build": "node scripts/verify-build.mjs",
+    "verify": "node scripts/verify.mjs",
+    "ds:build": "npm run ds:build -w apps/web",
     "test": "vitest run",
     "test:rls": "vitest run tests/database.test.ts",
+    "test:ds-browser": "node tests/integration/design-system-browser.mjs",
     "lint": "eslint ."
   },
   "devDependencies": {

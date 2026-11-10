@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 // The Gaúcha "elos": two open loops (orange/gold and green/lime), each closed by
 // a "plate", touching in the middle. Used as the mark (small) and as the
 // structural motif of brand surfaces (architectural scale).
@@ -60,10 +60,10 @@ export function BrandMark({
     </svg>
   );
 }
-export function Loader({ label }: { label: string }) {
+export function Loader({ label, mark }: { label: string; mark?: ReactNode }) {
   return (
     <div className="loader" role="status">
-      <BrandMark className="loader-mark" />
+      {mark ?? <BrandMark className="loader-mark" />}
       <span>{label}</span>
     </div>
   );

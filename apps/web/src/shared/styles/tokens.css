@@ -108,6 +108,14 @@
   --color-border-control: var(--neutral-400);
   --color-link: var(--brand-green-700);
   --color-link-hover: var(--brand-green-800);
+  /* Roles that components used to read from primitives (same values). Themes
+     such as shared/theme/theme.css redefine them per mode. */
+  --color-text-control: var(--neutral-800);
+  --color-icon-strong: var(--neutral-700);
+  --color-border-control-hover: var(--neutral-600);
+  --color-input-disabled-bg: var(--neutral-100);
+  --color-selection-bg: var(--brand-green-100);
+  --color-backdrop: rgb(10 39 21 / 0.45);
 
   /* Interactive (brand green) */
   --color-action: var(--brand-green-600);
@@ -119,6 +127,8 @@
   --color-hover-bg: var(--neutral-100);
   --color-pressed-bg: var(--neutral-200);
   --color-focus: var(--brand-green-600); /* ≥3:1 on light surfaces; --on-brand-accent on brand */
+  --color-action-disabled-bg: var(--brand-green-200);
+  --color-action-disabled-text: var(--brand-green-900);
 
   /* ---------- Semantic status (independent from brand) ---------- */
   --success: #1c7c43;

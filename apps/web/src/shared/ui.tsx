@@ -88,15 +88,18 @@ export function EmptyState({
   title,
   children,
   actions,
+  mark,
 }: {
   title: string;
   children: ReactNode;
   actions?: ReactNode;
+  /** Organization mark for white-label themes; defaults to the Gaúcha elos. */
+  mark?: ReactNode;
 }) {
   return (
     <section className="empty-state">
       <span className="empty-halo">
-        <BrandMark className="empty-mark" />
+        {mark ?? <BrandMark className="empty-mark" />}
       </span>
       <div className="empty-body">
         <h2>{title}</h2>
@@ -334,10 +337,10 @@ export function Pager({
   );
 }
 /** Page-level loading: the brand loader, centered in the content area. */
-export function LoadingState({ label }: { label: string }) {
+export function LoadingState({ label, mark }: { label: string; mark?: ReactNode }) {
   return (
     <div className="loading-state">
-      <Loader label={label} />
+      <Loader label={label} mark={mark} />
     </div>
   );
 }

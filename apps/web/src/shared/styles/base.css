@@ -71,7 +71,7 @@ a:hover {
   outline-offset: 2px;
 }
 ::selection {
-  background: var(--brand-green-100);
+  background: var(--color-selection-bg);
 }
 
 /* ---------- Buttons ---------- */
@@ -102,7 +102,7 @@ button,
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-control);
   background: var(--color-surface);
-  color: var(--neutral-800);
+  color: var(--color-text-control);
   font: var(--text-label);
   font-size: 0.875rem;
   line-height: 1.2;
@@ -122,8 +122,8 @@ button,
 button:hover:not(:disabled),
 .button-link:hover {
   background: var(--color-hover-bg);
-  border-color: var(--neutral-400);
-  color: var(--neutral-900);
+  border-color: var(--color-border-control);
+  color: var(--color-text);
 }
 button:active:not(:disabled) {
   background: var(--color-pressed-bg);
@@ -165,9 +165,9 @@ button.primary:focus-visible,
   box-shadow: var(--focus-ring);
 }
 button.primary:disabled {
-  background: var(--brand-green-200);
-  border-color: var(--brand-green-200);
-  color: var(--brand-green-900);
+  background: var(--color-action-disabled-bg);
+  border-color: var(--color-action-disabled-bg);
+  color: var(--color-action-disabled-text);
   box-shadow: none;
 }
 button.danger {
@@ -196,7 +196,7 @@ button.small {
   flex-shrink: 0;
 }
 .icon-button.ghost {
-  color: var(--neutral-700);
+  color: var(--color-icon-strong);
 }
 .icon {
   width: 1.25em;
@@ -215,7 +215,7 @@ label {
   gap: var(--space-2);
   margin-bottom: var(--space-4);
   font: var(--text-label);
-  color: var(--neutral-800);
+  color: var(--color-text-control);
 }
 input,
 select,
@@ -241,7 +241,7 @@ textarea::placeholder {
 input:hover:not(:disabled),
 select:hover:not(:disabled),
 textarea:hover:not(:disabled) {
-  border-color: var(--neutral-600);
+  border-color: var(--color-border-control-hover);
 }
 input:focus-visible,
 select:focus-visible,
@@ -253,9 +253,9 @@ textarea:focus-visible {
 input:disabled,
 select:disabled,
 textarea:disabled {
-  background: var(--neutral-100);
+  background: var(--color-input-disabled-bg);
   color: var(--color-text-tertiary);
-  border-color: var(--neutral-300);
+  border-color: var(--color-border-strong);
   border-style: dashed;
   box-shadow: none;
 }
@@ -389,7 +389,7 @@ fieldset {
   border: 1px solid var(--info-border);
   border-left-width: 3px;
   background: var(--info-bg);
-  color: var(--neutral-900);
+  color: var(--color-text);
   border-radius: var(--radius-control);
   overflow-wrap: anywhere;
 }
@@ -675,7 +675,7 @@ dialog[open] {
   animation: dialog-in var(--duration-slow) var(--ease-elo);
 }
 dialog::backdrop {
-  background: rgb(10 39 21 / 0.45);
+  background: var(--color-backdrop);
   backdrop-filter: blur(2px);
 }
 .dialog-head {
@@ -782,7 +782,7 @@ dialog::backdrop {
   background: var(--color-surface);
   box-shadow:
     0 0 0 1px var(--color-border),
-    0 0 0 6px var(--neutral-50),
+    0 0 0 6px var(--color-bg),
     0 0 0 7px var(--color-border);
 }
 .empty-state .empty-mark {

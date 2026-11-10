@@ -7,7 +7,10 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
-    "poc:build": "vite build --mode ui-poc"
+    "poc:build": "vite build --mode ui-poc",
+    "ds:dev": "vite --open /design-system/",
+    "ds:build": "tsc --noEmit && vite build --mode design-system",
+    "ds:preview": "vite preview --mode design-system --outDir dist/design-system --open /design-system/"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",

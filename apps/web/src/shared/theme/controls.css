@@ -1,0 +1,197 @@
+/* Design System v1 controls. Semantic tokens only (see theme.css). */
+
+/* ---------- Organization mark (monogram) ---------- */
+.org-mark {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--color-action);
+  color: var(--color-action-text);
+  font: 700 1rem/1 var(--font-display);
+  letter-spacing: 0.02em;
+}
+.org-mark.sm {
+  width: 28px;
+  height: 28px;
+  font-size: 0.8125rem;
+  border-radius: var(--radius-sm);
+}
+.org-mark.lg {
+  width: 40px;
+  height: 40px;
+  font-size: 1.125rem;
+}
+
+/* As a loader mark: a gentle pulse, paused under reduced motion. */
+.loader .org-mark {
+  animation: org-mark-pulse 1.1s ease-in-out infinite;
+}
+@keyframes org-mark-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader .org-mark {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* ---------- Segmented control (radio group) ---------- */
+.segmented {
+  min-width: 0;
+}
+.segmented legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font: var(--text-label);
+  color: var(--color-text-control);
+}
+.segmented-track {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+}
+.segmented-option {
+  position: relative;
+  flex-direction: row;
+  margin: 0;
+  gap: 0;
+}
+.segmented-option input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.segmented-option span {
+  display: inline-flex;
+  align-items: center;
+  min-height: calc(var(--control-height) - 8px);
+  padding: 0 var(--space-3);
+  border-radius: calc(var(--radius-control) - 3px);
+  color: var(--color-text-secondary);
+  font: var(--text-label);
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+.segmented-option:hover span {
+  color: var(--color-text);
+}
+.segmented-option input:checked + span {
+  background: var(--color-surface);
+  color: var(--color-selected-text);
+  box-shadow: 0 0 0 1px var(--color-border-strong), var(--shadow-xs);
+}
+.segmented-option input:focus-visible + span {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+/* Touch and narrow screens: each option is a full 44px target. */
+@media (pointer: coarse), (max-width: 1023px) {
+  .segmented-option span {
+    min-height: var(--touch-target);
+  }
+}
+
+/* ---------- Tabs ---------- */
+.tab-list {
+  display: flex;
+  gap: var(--space-1);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+  scrollbar-width: thin;
+}
+button.tab {
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+button.tab:hover:not(:disabled) {
+  background: var(--color-hover-bg);
+  border-color: transparent;
+  color: var(--color-text);
+}
+button.tab[aria-selected="true"],
+button.tab[aria-selected="true"]:hover {
+  border-bottom-color: var(--color-action);
+  color: var(--color-selected-text);
+}
+button.tab:focus-visible {
+  outline-offset: -2px;
+}
+.tab-panel {
+  padding: var(--space-4) 0 0;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Breadcrumbs ---------- */
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--text-body-sm);
+  color: var(--color-text-secondary);
+}
+.breadcrumbs li + li::before {
+  content: "/";
+  margin-right: var(--space-2);
+  color: var(--color-text-tertiary);
+}
+.breadcrumbs [aria-current="page"] {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* ---------- Field (label + control + hint/error) ---------- */
+.field {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.field > label {
+  margin: 0;
+}
+.field-hint {
+  color: var(--color-text-secondary);
+}
+.field-error {
+  color: var(--danger);
+  font-weight: 600;
+}
+.field.invalid input,
+.field.invalid select,
+.field.invalid textarea {
+  border-color: var(--danger);
+}
+.field-error::before {
+  content: "! ";
+}

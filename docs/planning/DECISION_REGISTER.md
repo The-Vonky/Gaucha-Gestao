@@ -48,6 +48,7 @@
 | D17 | Curva ABC (D5): exportação em planilha (e se exige `abc.report.export`) | Decisão de governança sobre exportação | Só impressão/PDF pelo navegador nos Relatórios |
 | D18 | Curva ABC (D6): comparação entre unidades | Confirmação de que o código ERP identifica o mesmo produto em todas as filiais; leitura das duas unidades | Comparação somente dentro de uma unidade |
 | D19 | Curva ABC (D7): repetir "período fechado" na RPC de publicação | Aprovação de migration pequena | Regra aplicada só na prévia do navegador |
+| D20 | White-label: modelo de tenant, identidade padrão (Elo/Gaúcha vs. Hub neutro) e persistência de marca por organização ([ADR-009 — Proposto](../decisions/ADR-009-white-label-design-tokens.md)) | Aceite do ADR-009, decisão sobre tenant no Core, plano de migração por tela com evidência claro/escuro | Tema white-label existe só na galeria `/design-system/`; telas operacionais seguem no Elo; sem tabela de marca/tenant |
 
 **Registro de decisão:** cada Dnn exige uma issue/ADR ou ata referenciável contendo autor, data, alternativas, impacto, aprovação, SHA e requisitos de testes. Apenas a existência de exemplo de env, diagrama ou PR Draft **não resolve** o item.
 

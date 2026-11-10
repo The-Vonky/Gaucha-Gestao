@@ -1,0 +1,240 @@
+/*
+ * Hub white-label theme — Enterprise Modern (ADR-009, proposta).
+ *
+ * Three layers:
+ *  1. Primitives (`--hub-*`): raw scales, never used by components directly.
+ *  2. Brand (`--brand-primary-*`, `--brand-accent-*`): 11-step scales supplied
+ *     by the organization, set inline by <ThemeRoot> from validated data.
+ *  3. Semantic (`--color-*`, `--success*`, `--shadow-*`, …): the names the
+ *     existing components in shared/styles/base.css already consume, mapped
+ *     per mode under `.hub-theme[data-theme]`.
+ *
+ * Custom properties are resolved where they are declared, so every semantic
+ * token that depends on another token is redeclared here, not only the leaves.
+ * Status colours never come from the brand. Contrast is checked in
+ * tests/design-system-tokens.test.ts for every brand and mode.
+ */
+:root {
+  /* ---------- Primitive: cool enterprise greys ---------- */
+  --hub-gray-0: #ffffff;
+  --hub-gray-25: #f9fafb;
+  --hub-gray-50: #f3f5f7;
+  --hub-gray-100: #eaedf1;
+  --hub-gray-200: #dde2e8;
+  --hub-gray-300: #c8cfd8;
+  --hub-gray-400: #7d8899;
+  --hub-gray-500: #626d7e;
+  --hub-gray-600: #4e5969;
+  --hub-gray-700: #3b4553;
+  --hub-gray-800: #29313c;
+  --hub-gray-850: #1f2630;
+  --hub-gray-900: #171c24;
+  --hub-gray-925: #12161d;
+  --hub-gray-950: #0c0f14;
+
+  /* ---------- Primitive: status (independent from any brand) ---------- */
+  --hub-green-50: #e8f5ed;
+  --hub-green-200: #b9e2c6;
+  --hub-green-300: #5fcf8e;
+  --hub-green-700: #18743a;
+  --hub-green-900: #1d4d30;
+  --hub-green-950: #0f2a1b;
+  --hub-amber-50: #fff4dd;
+  --hub-amber-200: #f0d08f;
+  --hub-amber-300: #f2b65c;
+  --hub-amber-700: #8a5300;
+  --hub-amber-900: #5a4214;
+  --hub-amber-950: #2d2009;
+  --hub-red-50: #fdecea;
+  --hub-red-100: #ffd4cf;
+  --hub-red-200: #f4c1bc;
+  --hub-red-300: #ff8f85;
+  --hub-red-700: #b42318;
+  --hub-red-800: #7a1a12;
+  --hub-red-900: #6b2a22;
+  --hub-red-950: #341410;
+  --hub-sky-50: #e7f1f8;
+  --hub-sky-200: #b8d4e8;
+  --hub-sky-300: #7fc2ee;
+  --hub-sky-700: #1d5f8c;
+  --hub-sky-900: #1f4a66;
+  --hub-sky-950: #0d2233;
+
+  --hub-font-display:
+    "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system,
+    BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ---------- Mode-independent semantics ---------- */
+.hub-theme {
+  --font-display: var(--hub-font-display);
+  --text-display: 650 3rem/1.05 var(--hub-font-display);
+  --text-page-title: 650 1.75rem/1.2 var(--hub-font-display);
+  --text-section-title: 600 1.1875rem/1.3 var(--hub-font-display);
+  --text-card-title: 600 1.0625rem/1.3 var(--hub-font-display);
+  --text-overline: 600 0.6875rem/1.3 var(--font-sans);
+  --text-kpi: 650 2rem/1.05 var(--hub-font-display);
+  --tracking-overline: 0.08em;
+
+  /* Brand surface (navigation): deep primary in both modes. */
+  --color-surface-brand: var(--brand-primary-950);
+  --on-brand: #ffffff;
+  --on-brand-secondary: var(--brand-primary-200);
+  --on-brand-muted: var(--brand-primary-300);
+  --on-brand-accent: var(--brand-accent-300); /* focus and highlight on the brand surface */
+  --brand-surface-line: rgb(255 255 255 / 0.1);
+  --brand-surface-hover: rgb(255 255 255 / 0.07);
+  --brand-surface-active: rgb(255 255 255 / 0.13);
+
+  --focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-focus);
+  --focus-ring-input: 0 0 0 1px var(--color-focus), 0 0 0 4px var(--color-focus-halo);
+
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: var(--text-body);
+}
+
+/* ---------- Light ---------- */
+.hub-theme[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: var(--hub-gray-50);
+  --color-surface: var(--hub-gray-0);
+  --color-surface-subtle: var(--hub-gray-25);
+  --color-surface-sunken: var(--hub-gray-100);
+  --color-surface-header: rgb(243 245 247 / 0.88);
+  --color-text: var(--hub-gray-900);
+  --color-text-control: var(--hub-gray-800);
+  --color-text-secondary: var(--hub-gray-600);
+  --color-text-tertiary: var(--hub-gray-500);
+  --color-text-disabled: var(--hub-gray-500);
+  --color-text-inverse: var(--hub-gray-0);
+  --color-icon: var(--hub-gray-500);
+  --color-icon-strong: var(--hub-gray-700);
+  --color-input-bg: var(--hub-gray-0);
+  --color-input-disabled-bg: var(--hub-gray-100);
+  --color-border: var(--hub-gray-200);
+  --color-border-strong: var(--hub-gray-300);
+  --color-border-control: var(--hub-gray-400);
+  --color-border-control-hover: var(--hub-gray-600);
+  --color-hover-bg: var(--hub-gray-100);
+  --color-pressed-bg: var(--hub-gray-200);
+  --color-backdrop: rgb(12 15 20 / 0.5);
+
+  --color-link: var(--brand-primary-700);
+  --color-link-hover: var(--brand-primary-800);
+  --color-action: var(--brand-primary-600);
+  --color-action-hover: var(--brand-primary-700);
+  --color-action-active: var(--brand-primary-800);
+  --color-action-text: #ffffff;
+  --color-action-disabled-bg: var(--brand-primary-100);
+  --color-action-disabled-text: var(--brand-primary-800);
+  --color-selected-bg: var(--brand-primary-50);
+  --color-selected-text: var(--brand-primary-800);
+  --color-selection-bg: var(--brand-primary-100);
+  --color-focus: var(--brand-primary-600);
+  --color-focus-halo: rgb(12 15 20 / 0.08);
+
+  --success: var(--hub-green-700);
+  --success-bg: var(--hub-green-50);
+  --success-border: var(--hub-green-200);
+  --success-solid: var(--hub-green-700);
+  --warning: var(--hub-amber-700);
+  --warning-bg: var(--hub-amber-50);
+  --warning-border: var(--hub-amber-200);
+  --warning-solid: var(--hub-amber-700);
+  --danger: var(--hub-red-700);
+  --danger-text: var(--hub-red-800);
+  --danger-bg: var(--hub-red-50);
+  --danger-border: var(--hub-red-200);
+  --danger-solid: var(--hub-red-700);
+  --info: var(--hub-sky-700);
+  --info-bg: var(--hub-sky-50);
+  --info-border: var(--hub-sky-200);
+  --info-solid: var(--hub-sky-700);
+  --neutral: var(--hub-gray-600);
+  --neutral-bg: var(--hub-gray-100);
+  --neutral-border: var(--hub-gray-300);
+  --neutral-solid: var(--hub-gray-600);
+
+  --shadow-xs: 0 1px 2px rgb(12 15 20 / 0.05);
+  --shadow-sm: 0 1px 2px rgb(12 15 20 / 0.04), 0 2px 6px rgb(12 15 20 / 0.04);
+  --shadow-md: 0 1px 2px rgb(12 15 20 / 0.04), 0 8px 20px -6px rgb(12 15 20 / 0.1);
+  --shadow-lg: 0 24px 56px -12px rgb(12 15 20 / 0.28);
+  --shadow-input: inset 0 1px 1px rgb(12 15 20 / 0.04);
+  --shadow-action: 0 1px 2px rgb(12 15 20 / 0.12);
+  --shadow-action-hover: 0 2px 6px rgb(12 15 20 / 0.16);
+}
+
+/* ---------- Dark ---------- */
+.hub-theme[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: var(--hub-gray-950);
+  --color-surface: var(--hub-gray-900);
+  --color-surface-subtle: var(--hub-gray-850);
+  --color-surface-sunken: var(--hub-gray-925);
+  --color-surface-header: rgb(12 15 20 / 0.86);
+  --color-text: var(--hub-gray-25);
+  --color-text-control: var(--hub-gray-100);
+  --color-text-secondary: var(--hub-gray-300);
+  --color-text-tertiary: var(--hub-gray-400);
+  --color-text-disabled: var(--hub-gray-400);
+  --color-text-inverse: var(--hub-gray-950);
+  --color-icon: var(--hub-gray-400);
+  --color-icon-strong: var(--hub-gray-200);
+  --color-input-bg: var(--hub-gray-925);
+  --color-input-disabled-bg: var(--hub-gray-850);
+  --color-border: var(--hub-gray-800);
+  --color-border-strong: var(--hub-gray-700);
+  --color-border-control: #6f7a8b; /* 3.9:1 on surface, 4.2:1 on input */
+  --color-border-control-hover: var(--hub-gray-300);
+  --color-hover-bg: var(--hub-gray-850);
+  --color-pressed-bg: var(--hub-gray-800);
+  --color-backdrop: rgb(0 0 0 / 0.6);
+
+  /* Dark actions are light fills with deep text: avoids glowing saturated blocks. */
+  --color-link: var(--brand-primary-300);
+  --color-link-hover: var(--brand-primary-200);
+  --color-action: var(--brand-primary-400);
+  --color-action-hover: var(--brand-primary-300);
+  --color-action-active: var(--brand-primary-200);
+  --color-action-text: var(--brand-primary-950);
+  --color-action-disabled-bg: var(--hub-gray-800);
+  --color-action-disabled-text: var(--hub-gray-300);
+  --color-selected-bg: var(--brand-primary-950);
+  --color-selected-text: var(--brand-primary-200);
+  --color-selection-bg: var(--brand-primary-800);
+  --color-focus: var(--brand-primary-400);
+  --color-focus-halo: rgb(255 255 255 / 0.08);
+
+  --success: var(--hub-green-300);
+  --success-bg: var(--hub-green-950);
+  --success-border: var(--hub-green-900);
+  --success-solid: var(--hub-green-300);
+  --warning: var(--hub-amber-300);
+  --warning-bg: var(--hub-amber-950);
+  --warning-border: var(--hub-amber-900);
+  --warning-solid: var(--hub-amber-300);
+  --danger: var(--hub-red-300);
+  --danger-text: var(--hub-red-100);
+  --danger-bg: var(--hub-red-950);
+  --danger-border: var(--hub-red-900);
+  --danger-solid: var(--hub-red-300);
+  --info: var(--hub-sky-300);
+  --info-bg: var(--hub-sky-950);
+  --info-border: var(--hub-sky-900);
+  --info-solid: var(--hub-sky-300);
+  --neutral: var(--hub-gray-300);
+  --neutral-bg: var(--hub-gray-850);
+  --neutral-border: var(--hub-gray-700);
+  --neutral-solid: var(--hub-gray-300);
+
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 6px rgb(0 0 0 / 0.25);
+  --shadow-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 20px -6px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 24px 56px -12px rgb(0 0 0 / 0.7);
+  --shadow-input: none;
+  --shadow-action: none;
+  --shadow-action-hover: none;
+}

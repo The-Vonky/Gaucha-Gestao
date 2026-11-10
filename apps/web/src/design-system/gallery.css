@@ -1,0 +1,356 @@
+/* Gallery layout only. Components are styled by base.css, theme.css and controls.css. */
+html:has(.hub-theme[data-theme="dark"]) {
+  background: var(--hub-gray-950);
+  color-scheme: dark;
+}
+html:has(.hub-theme[data-theme="light"]) {
+  background: var(--hub-gray-50);
+}
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+.ds-layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+/* ---------- Sidebar: the navigation component on the brand surface ---------- */
+.ds-sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 100dvh;
+  padding: var(--space-5) var(--space-3);
+  overflow-y: auto;
+  background: var(--color-surface-brand);
+  color: var(--on-brand);
+}
+.ds-sidebar :focus-visible {
+  outline-color: var(--on-brand-accent);
+}
+.ds-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-2);
+}
+/* On the deep brand surface the mark reads as a light plate. */
+.ds-brand .org-mark {
+  background: var(--on-brand);
+  color: var(--brand-primary-800);
+}
+.ds-brand strong {
+  display: block;
+  font: var(--text-card-title);
+}
+.ds-brand span {
+  font: var(--text-caption);
+  color: var(--on-brand-secondary);
+}
+.ds-fictitious {
+  align-self: flex-start;
+  margin: 0 var(--space-2);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--brand-surface-line);
+  border-radius: var(--radius-sm);
+  color: var(--on-brand-secondary);
+  font: var(--text-caption);
+  font-weight: 600;
+}
+.ds-sidebar ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ds-sidebar a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--on-brand-secondary);
+  font: var(--text-label);
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.ds-sidebar a:hover {
+  background: var(--brand-surface-hover);
+  color: var(--on-brand);
+}
+.ds-sidebar a[aria-current] {
+  background: var(--brand-surface-active);
+  color: var(--on-brand);
+}
+.ds-sidebar a[aria-current]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: var(--radius-full);
+  background: var(--on-brand-accent);
+}
+
+/* ---------- Content ---------- */
+.ds-content {
+  min-width: 0;
+  width: 100%;
+  max-width: 1200px;
+  padding: var(--space-8) var(--space-8) var(--space-16);
+}
+.ds-content > main:focus {
+  outline: none;
+}
+.ds-toolbar {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.ds-heading h1 {
+  margin-bottom: var(--space-1);
+}
+.ds-heading p:last-child {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+.ds-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-8);
+}
+.ds-current {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: var(--text-body-sm);
+}
+.ds-current strong {
+  color: var(--color-text);
+}
+
+.ds-section {
+  padding-top: var(--space-8);
+  margin-top: var(--space-8);
+  border-top: 1px solid var(--color-border);
+  scroll-margin-top: var(--space-4);
+}
+.ds-section > header p {
+  margin: 0 0 var(--space-5);
+  color: var(--color-text-secondary);
+}
+.ds-section h3 {
+  margin: var(--space-5) 0 var(--space-3);
+}
+.ds-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.ds-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+.ds-stack > .notice {
+  margin: 0;
+}
+.ds-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+}
+.ds-grid > .card {
+  min-width: 0;
+}
+.ds-fieldset legend {
+  margin-bottom: var(--space-2);
+  font: var(--text-label);
+}
+
+/* ---------- Foundations ---------- */
+.ds-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ds-swatches li {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ds-swatch {
+  display: block;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 1px rgb(127 127 127 / 0.25);
+}
+.ds-swatch-step {
+  font: var(--text-label);
+}
+.ds-swatches code,
+.ds-semantic code {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+}
+.ds-semantic {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ds-semantic li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.ds-semantic .ds-swatch {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+}
+.ds-type p {
+  margin-bottom: var(--space-3);
+}
+.ds-type p:last-child {
+  margin-bottom: 0;
+}
+.ds-type-page {
+  font: var(--text-page-title);
+}
+.ds-type-section {
+  font: var(--text-section-title);
+}
+.ds-type-kpi {
+  font: var(--text-kpi);
+}
+
+/* ---------- Cards ---------- */
+.ds-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.ds-card-head h2,
+.ds-card-head h3 {
+  margin: 0 0 var(--space-2);
+}
+.ds-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  margin: var(--space-3) 0 0;
+}
+.ds-meta dt {
+  font: var(--text-caption);
+  color: var(--color-text-secondary);
+}
+.ds-meta dd {
+  margin: 0;
+  font-weight: 600;
+}
+.ds-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
+}
+.ds-card-link:hover {
+  color: inherit;
+  border-color: var(--color-border-control);
+  box-shadow: var(--shadow-md);
+}
+.ds-card-cta {
+  color: var(--color-link);
+  font: var(--text-label);
+}
+
+.ds-metrics {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+}
+
+.ds-drawer {
+  padding: var(--space-5);
+}
+.ds-facts {
+  margin: 0 0 var(--space-4);
+  padding-left: var(--space-5);
+}
+.ds-facts li + li {
+  margin-top: var(--space-1);
+}
+kbd {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  font: 600 0.75rem/1.6 var(--font-mono);
+}
+.ds-contrast-summary {
+  margin: 0;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1023px) {
+  .ds-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ds-sidebar {
+    position: static;
+    height: auto;
+    padding: var(--space-4);
+  }
+  .ds-sidebar ul {
+    display: flex;
+    gap: var(--space-1);
+    overflow-x: auto;
+    padding-bottom: var(--space-1);
+    scrollbar-width: thin;
+  }
+  .ds-sidebar a {
+    white-space: nowrap;
+  }
+  .ds-sidebar a[aria-current]::before {
+    top: auto;
+    bottom: 0;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    height: 3px;
+  }
+  .ds-content {
+    padding: var(--space-6) var(--space-5) var(--space-12);
+  }
+}
+@media (max-width: 599px) {
+  .ds-content {
+    padding: var(--space-5) var(--space-4) var(--space-12);
+  }
+  .ds-controls {
+    flex-direction: column;
+  }
+}
