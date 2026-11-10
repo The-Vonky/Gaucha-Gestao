@@ -31,7 +31,7 @@ async function blocked(waiter,blocker){
  while(Date.now()<until){const result=await db.query('select $2::int=any(pg_blocking_pids($1::int)) blocked',[waiter,blocker]);if(result.rows[0].blocked)return;await new Promise(resolve=>setTimeout(resolve,25));}
  assert.fail('Bloqueio concorrente não observado');
 }
-const sqlSave=(row)=>({text:"select public.announcements_notice_save($1,$2,'Edição concorrente','Texto seguro','information','info',1,null,null,'published',true) result",values:[row.id,row.version]});
+const sqlSave=(row)=>({text:"select public.announcements_notice_save($1,$2,'Edição concorrente','Texto seguro','information','info',1,'2098-01-01T00:00:00Z','2098-01-02T00:00:00Z','published',true) result",values:[row.id,row.version]});
 async function begin(connection){await connection.query('begin');await connection.query("set local statement_timeout='12s'");await connection.query("select set_config('request.jwt.claim.sub',$1,true)",[users.manager]);await connection.query('set local role authenticated');}
 let phase='setup';
 try{
