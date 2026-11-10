@@ -1,4 +1,4 @@
-// Opt-in para o Supabase persistente autorizado do mantenedor; nunca aplica migrations/reset.
+// Validação histórica da Entrega B anterior ao refinamento GG-10/GG-11. Opt-in para o Supabase persistente autorizado do mantenedor; nunca aplica migrations/reset.
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
@@ -57,6 +57,8 @@ const pageErrors=[];
 try{
  await db.connect();assert.ok((await db.query("select pg_try_advisory_lock(hashtext('gg10-local-fixtures')) locked")).rows[0].locked);
  assert.equal((await db.query("select count(*)::int n from supabase_migrations.schema_migrations where version='20261105131548'")).rows[0].n,1,'Aplicar migration autorizada antes do ensaio');
+ const refined=(await db.query("select exists(select 1 from pg_constraint where conname='notices_published_period_exclusion' and conrelid='announcements.notices'::regclass) enabled")).rows[0].enabled;
+ assert.equal(refined,false,'Ensaio histórico; use a matriz atual de CI para o refinamento GG-10/GG-11');
  manifest.before={profiles:(await db.query('select count(*)::int n from core.profiles')).rows[0].n,notices:(await db.query('select count(*)::int n from announcements.notices')).rows[0].n};receipt();
  for(const [name,role] of [['admin','platform_administrator'],['manager','announcement_manager'],['common',null]])await auth(name,role);
  const anon=createClient(config.API_URL,config.PUBLISHABLE_KEY??config.ANON_KEY,opts);clients.push(anon);

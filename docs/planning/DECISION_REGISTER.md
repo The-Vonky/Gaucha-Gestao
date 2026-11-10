@@ -121,3 +121,9 @@ O mantenedor autorizou integração Restic + Rclone em laboratório exclusivamen
 ## Adendo AG-01 — 23/10/2026
 
 O responsável instruiu expressamente iniciar codificação de migration, grants, RLS e testes isolados na branch reservada e abrir PR. Essa autorização atual substitui o bloqueio de início de codificação registrado em AG-00. Não equivale a parecer independente D5-A ou autorização de integração/produção. Ver [contrato implementado para revisão](../modules/room-booking/AG01_FOUNDATION.md); revisão final pelo titular conforme exceção de mantenedor único registrada em `9e20199`, sem inventar parecer independente.
+
+## Adendo GG-02D — 09/11/2026
+
+A [Issue #113](https://github.com/The-Vonky/Gaucha-Gestao/issues/113) autoriza somente o [ensaio sintético no Drive dedicado](../operations/GG02D_DRIVE_SYNTHETIC_20261109.md), com OAuth interativo pelo mantenedor no Windows e escopo `drive.file`. A execução depende de quota observada, confirmação da conta e pasta UUID. O ensaio físico secundário está BLOCKED pela indisponibilidade de outro computador. D02/D03/D04/D08/D12 e GG-02/GG-03 operacionais continuam abertos.
+
+A decisão na [PR #114](https://github.com/The-Vonky/Gaucha-Gestao/pull/114#issuecomment-6750171277) direciona OAuth Desktop próprio com `drive.file` e consentimento External / In production. A [proposta operacional C30](../operations/C30_BACKUP_OPERATIONAL_PLAN.md) mantém os gates e decisões de acesso, agenda, retenção, alertas e recuperação abertos.

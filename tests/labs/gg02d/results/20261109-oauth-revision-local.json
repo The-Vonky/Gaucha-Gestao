@@ -1,0 +1,210 @@
+{
+  "environment": "Windows PowerShell 5.1 amd64 via WSL bridge",
+  "script_sha256": "d8500e1d2c48e11d1ff43780a8280b989038dda37d36cc3736d74fcaa710fd58",
+  "test_guards_sha256": "5b93ded97469dc458ab4da2f02012d83dfe38a15d62244c1a93b44f7289a2c6d",
+  "prepare": "PASS",
+  "tools": {
+    "restic": {
+      "version": "0.19.1",
+      "url": "https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_windows_amd64.zip",
+      "zip_sha256": "da948ad707ed690426473aaba2046cd61f8f90f6f0e7dab6be0d5796531de67d",
+      "exe_sha256": "b0dd1fd21eea5d8fe1325f55f7118213c21f36de8a261e04c0624a5ab9fd7830"
+    },
+    "rclone": {
+      "version": "1.76.0",
+      "url": "https://github.com/rclone/rclone/releases/download/v1.76.0/rclone-v1.76.0-windows-amd64.zip",
+      "zip_sha256": "8b4fd2737ade4e70c057ef4a49deb7cffe94b0fb9d7587c189d149823f21a1dc",
+      "exe_sha256": "acd80683e23151e93bbe0d6ffa74d26e542ec510332f630beecb9944f8d1a623"
+    }
+  },
+  "preflight_with_existing_attempt_log": {
+    "status": "BLOCKED",
+    "stage": "verify-unused-preflight",
+    "reason": "preflight-already-attempted"
+  },
+  "run_without_successful_preflight": {
+    "status": "BLOCKED",
+    "stage": "verify-preflight",
+    "reason": "preflight-required"
+  },
+  "local_test": {
+    "status": "PASS",
+    "backend": "local filesystem via Rclone stdio; no Google Drive",
+    "primary_snapshots": {
+      "initial": "097dc68dd979c4168c0b484ad798e4a9d0ffe587bcd13bc3461080d9e916af03",
+      "unchanged": "5808483a0361c7ce316ab69a228d95c5915053f191fa7be4e6824a6e656fb429",
+      "changed": "e670b473de0659bc08f47ee037ccab2b7c00fda1f63d7ceeccd8a6083a24e00b"
+    },
+    "secondary_snapshots": {
+      "initial": "72738dd07fc6b0a49d0ef0afec598d0c6badcc80d53f7fb131d2df0a92123b3f",
+      "unchanged": "5b4bf479884ce87425c12f0889820d32c4a09cde0ad0dbc02c257e1782e5c157",
+      "changed": "64a96d0c38ba33634237709204be7fa10342823026b0eed56c9205ed10b4eae7"
+    },
+    "restored": {
+      "primary": {
+        "initial": {
+          "files": 6,
+          "size_and_sha256_match": true
+        },
+        "changed": {
+          "files": 7,
+          "size_and_sha256_match": true
+        }
+      },
+      "secondary": {
+        "initial": {
+          "files": 6,
+          "size_and_sha256_match": true
+        },
+        "changed": {
+          "files": 7,
+          "size_and_sha256_match": true
+        }
+      }
+    },
+    "commands": [
+      {
+        "operation": "restic-version",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 0.062
+      },
+      {
+        "operation": "rclone-version",
+        "tool": "rclone",
+        "exit": 0,
+        "seconds": 0.145
+      },
+      {
+        "operation": "primary-init",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 2.826
+      },
+      {
+        "operation": "primary-backup-initial",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 1.078
+      },
+      {
+        "operation": "primary-backup-unchanged",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 1.037
+      },
+      {
+        "operation": "primary-backup-changed",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 1.175
+      },
+      {
+        "operation": "primary-snapshots",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 0.754
+      },
+      {
+        "operation": "primary-check-read-data",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 0.8
+      },
+      {
+        "operation": "primary-restore-initial",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 0.993
+      },
+      {
+        "operation": "primary-restore-changed",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 1.206
+      },
+      {
+        "operation": "primary-rejects-wrong-password",
+        "tool": "restic",
+        "exit": 12,
+        "seconds": 0.717
+      },
+      {
+        "operation": "secondary-init",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 2.938
+      },
+      {
+        "operation": "secondary-copy",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 2.029
+      },
+      {
+        "operation": "secondary-snapshots",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 0.653
+      },
+      {
+        "operation": "secondary-check-read-data",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 0.73
+      },
+      {
+        "operation": "secondary-rejects-primary-password",
+        "tool": "restic",
+        "exit": 12,
+        "seconds": 0.814
+      },
+      {
+        "operation": "secondary-restore-initial",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 0.786
+      },
+      {
+        "operation": "secondary-restore-changed",
+        "tool": "restic",
+        "exit": 0,
+        "seconds": 0.821
+      }
+    ]
+  },
+  "guard_tests": [
+    "PASS exact-synthetic-fixture",
+    "PASS unexpected-fixture-directory",
+    "PASS fixture-sha256-mismatch",
+    "PASS link-or-wrong-file-type",
+    "PASS drive-file-config",
+    "PASS unexpected-oauth-config",
+    "PASS unexpected-oauth-config",
+    "PASS quota-numeric",
+    "PASS quota-unavailable",
+    "PASS insufficient-quota",
+    "PASS UUID-folder-selection",
+    "PASS fresh-preflight",
+    "PASS preflight-already-attempted",
+    "PASS preflight-already-attempted",
+    "PASS oauth-loopback-bind-failed",
+    "PASS oauth-loopback-state-mismatch",
+    "PASS oauth-client-rejected",
+    "PASS oauth-access-denied",
+    "PASS oauth-request-rejected",
+    "PASS oauth-token-exchange-failed",
+    "PASS oauth-loopback-rejected",
+    "PASS oauth-browser-launch-failed",
+    "PASS oauth-callback-timeout",
+    "PASS oauth-after-callback-timeout",
+    "PASS oauth-process-timeout",
+    "PASS oauth-process-failed",
+    "PASS child-oauth-browser-http-400-reported",
+    "PASS child-oauth-operator-cancelled",
+    "PASS child-timeout",
+    "PASS child-exited"
+  ],
+  "google_oauth": "NOT EXECUTED",
+  "remote_quota_and_restore": "NOT EXECUTED"
+}

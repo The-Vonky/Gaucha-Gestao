@@ -21,6 +21,8 @@ import { RoomsPage } from "../modules/rooms/RoomsPage";
 import { AbcModule } from "../modules/abc/AbcModule";
 import { AnnouncementsPage } from "../modules/announcements/AnnouncementsPage";
 import { loadPublishedNotices, noPublishedNotices } from "../modules/announcements/api";
+import { FeedbackButton, FeedbackEntry } from "../modules/feedback/FeedbackEntry";
+import { FeedbackPage } from "../modules/feedback/FeedbackPage";
 import { SalesModule } from "../modules/sales/SalesModule";
 import { BrandMark, Loader } from "../shared/brand";
 import { Icon } from "../shared/icons";
@@ -78,7 +80,10 @@ function Boundary() {
       </main>
     );
   if (!auth.session) return <Login />;
-  return <AnnouncementLayout key={`${auth.session.user.id}:${!!auth.profile?.active}:${!!auth.error}`} loadConfig={auth.profile?.active && !auth.error ? loadPublishedNotices : noPublishedNotices}><AuthenticatedBoundary /></AnnouncementLayout>;
+  if (!auth.profile?.active || auth.error) return <AnnouncementLayout loadConfig={noPublishedNotices}><AuthenticatedBoundary /></AnnouncementLayout>;
+  return <FeedbackEntry key={auth.session.user.id}>
+    <AnnouncementLayout loadConfig={loadPublishedNotices}><AuthenticatedBoundary /></AnnouncementLayout>
+  </FeedbackEntry>;
 }
 function AuthenticatedBoundary() {
   const auth = useAuth();
@@ -514,6 +519,7 @@ function Shell() {
     "/action-plans": <ActionPlansModule />,
     "/abc": <AbcModule />,
     "/rooms": <RoomsPage />,
+    "/admin/feedback": <FeedbackPage />,
     "/admin/announcements": <AnnouncementsPage key={auth.session?.user.id} />,
     "/admin/users": <UsersPage />,
     "/admin/roles": <RolesPage />,
@@ -560,6 +566,7 @@ function Shell() {
             </span>
           </Link>
           <Breadcrumbs current={current} />
+          <FeedbackButton />
           <span className="topbar-avatar">
             <Avatar name={auth.profile?.display_name} />
           </span>

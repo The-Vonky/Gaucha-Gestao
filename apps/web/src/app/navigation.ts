@@ -15,6 +15,8 @@ export const groupDescriptions: Partial<
   Qualidade:
     "Auditorias do checklist geral e o ciclo das ações corretivas, da execução à verificação de eficácia.",
   Custos: "Consumo valorizado por unidade e competência, com a Curva ABC do ERP e a calculada.",
+  Administrativo:
+    "Organize as atividades administrativas da empresa, consulte agendas, acompanhe solicitações e acesse os serviços internos em um só lugar.",
   Comercial: "Lançamentos e acompanhamento gerencial de vendas por unidade e competência.",
   Administração: "Acessos, estrutura organizacional e registros do sistema.",
 };
@@ -104,10 +106,19 @@ export const destinations: Destination[] = [
   {
     path: "/admin/announcements",
     label: "Comunicados",
-    description: "Publicação, agendamento e histórico de comunicados institucionais.",
+    description: "Publicação e agendamento de comunicados institucionais.",
     icon: "info",
     group: "Administração",
     permissions: ["announcements.notice.manage"],
+    scope: "global",
+  },
+  {
+    path: "/admin/feedback",
+    label: "Relatos e sugestões",
+    description: "Consulta interna de problemas e sugestões da equipe.",
+    icon: "logs",
+    group: "Administração",
+    permissions: ["feedback.report.read"],
     scope: "global",
   },
   {

@@ -1,5 +1,29 @@
 # GG-10 — Proposta técnica e contrato administrativo v1
 
+## Contrato vigente na branch GG-10/GG-11 — 10/11/2026
+
+A administração ordena pelo status derivado `active` antes de paginar, seguido
+de `updated_at DESC, id`. O card destaca **ATIVO** e oferece **Editar**. O
+histórico de domínio permanece imutável e a RPC existente segue restrita à
+gerência para compatibilidade técnica. O editor e a listagem omitem prioridade.
+A assinatura anterior recebe `p_priority` por compatibilidade e grava zero.
+Registros legados mantêm o valor histórico até a próxima edição.
+
+O PostgreSQL exclui interseções de `tstzrange(starts_at, ends_at, '[)')` para
+linhas publicadas, inclusive na edição e em transações concorrentes. Limites
+ausentes são ilimitados. Períodos adjacentes são válidos. O SQL retorna
+`23P01` para conflito. Rascunhos, inativos e arquivados não reservam período.
+Na instalação, conflitos legados bloqueiam a transação. Identifique os pares e
+ajuste ou desative explicitamente um aviso pela administração antes de reaplicar.
+
+Todas as categorias aceitam os cinco presets Elo. A categoria governa o texto
+e o ícone. O preset determina a apresentação. A barra sticky continua com
+relógio do servidor e reconsulta na próxima fronteira. O acesso ao
+[formulário GG-11](../feedback/FEEDBACK_V1.md) fica exclusivamente na barra de
+navegação, independentemente do valor de `show_feedback` no comunicado.
+
+As seções seguintes são o registro histórico da Entrega B.
+
 ## Estado local atual — 05/11/2026
 
 O mantenedor autorizou posteriormente desenvolvimento real e aplicação incremental

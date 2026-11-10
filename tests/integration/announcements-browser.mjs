@@ -5,21 +5,26 @@ import { chromium, expect } from "playwright/test";
 import { salesLocalWeb } from "./sales-local-web.mjs";
 
 const base = "http://127.0.0.1:5173", api = "http://127.0.0.1:54321";
+const built = process.env.GG10_BROWSER_BUILD === "1";
 const directory = process.env.GG10_ARTIFACT_DIR ?? "tmp/gg10";
 mkdirSync(directory, { recursive: true });
 const original = JSON.parse(readFileSync("tests/fixtures/announcements.json", "utf8"));
+original.announcements[0].action.enabled = true;
+const label = original.announcements[0].action.label;
 let config = structuredClone(original), unavailable = false, reads = 0;
 const user = { id: "00000000-0000-4000-8000-000000000099", email: "gg10@example.test", aud: "authenticated" };
 const expires = Math.floor(Date.now() / 1000) + 3600;
 const token = [Buffer.from('{"alg":"HS256"}').toString("base64url"), Buffer.from(JSON.stringify({ sub: user.id, exp: expires, role: "authenticated" })).toString("base64url"), "synthetic"].join(".");
 const session = { access_token: token, refresh_token: "synthetic", expires_at: expires, expires_in: 3600, token_type: "bearer", user };
-const grants = ["audit.inspection.read", "audit.inspection.create", "action_plan.read", "announcements.notice.manage"].map(permission => ({ permission, scope_type: "global", unit_id: null, sector_id: null }));
+const grants = ["audit.inspection.read", "audit.inspection.create", "action_plan.read", "announcements.notice.manage", "feedback.report.read"].map(permission => ({ permission, scope_type: "global", unit_id: null, sector_id: null }));
 const errors = [], checks = [], contrasts = [];
 const notices = [];
 let noticeVersion = 0;
+let report, refuseReceipt = true;
+const attempts = [];
 let server, browser;
 try {
-  server = await salesLocalWeb({ API_URL: api, ANON_KEY: "sb_publishable_gg10_fixture" });
+  if (!built) server = await salesLocalWeb({ API_URL: api, ANON_KEY: "sb_publishable_gg10_fixture" });
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, locale: "pt-BR", reducedMotion: "reduce" });
   await context.route("**/*", async route => {
@@ -28,7 +33,11 @@ try {
       reads++;
       return unavailable ? route.fulfill({ status: 404, body: "" }) : route.fulfill({ json: { ...config, serverNow: new Date().toISOString(), nextRefreshAt: null }, headers: { "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*" } });
     }
-    if (url.origin === base) return route.continue();
+    if (url.origin === base) {
+      if (!built) return route.continue();
+      const file = path.startsWith("/assets/") || /\.[a-z0-9]+$/i.test(path) ? path : "/index.html";
+      return route.fulfill({ path: `apps/web/dist${file}` });
+    }
     assert.equal(url.origin, api, "Proibido acessar destinos diferentes do transporte local interceptado");
     const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" };
     if (route.request().method() === "OPTIONS") return route.fulfill({ status: 200, headers });
@@ -49,7 +58,19 @@ try {
         created_by: user.id, updated_by: user.id, created_at: now, updated_at: now };
       notices.splice(0, notices.length, row); return json(row);
     }
-    if (path.endsWith("/announcements_notice_history")) return json({items: notices.map(row=>({notice_id:row.id,version:row.version,actor_user_id:user.id,occurred_at:row.updated_at,before_data:null,after_data:row})),total:notices.length});
+    if (path.endsWith("/feedback_prepare")) {
+      const data = route.request().postDataJSON();
+      attempts.push(data.p_id);
+      report = { id: data.p_id, kind: data.p_kind, module: data.p_module, origin: data.p_origin,
+        description: data.p_description, display_name: "Pessoa sintética", received_at: new Date().toISOString() };
+      return json({ id: report.id, attachmentKey: null, receivedAt: null });
+    }
+    if (path.endsWith("/feedback_receive")) {
+      if (refuseReceipt) return route.abort();
+      return json({ id: report.id, receivedAt: report.received_at });
+    }
+    if (path.endsWith("/feedback_list")) return json(report ? [{ ...report, summary: report.description }] : []);
+    if (path.endsWith("/feedback_detail")) return json(report);
     if (["/units", "/inspection_summaries", "/plan_summaries"].some(p => path.endsWith(p))) return json([]);
     throw new Error(`Endpoint não previsto: ${path}`);
   });
@@ -62,8 +83,16 @@ try {
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   const banner = page.getByRole("region", { name: "Aviso institucional" });
   await expect(page.getByRole("heading", { name: "Áreas de trabalho" })).toBeVisible(); await expect(banner).toBeVisible();
-  await expect(banner.getByRole("button", { name: "Relatar problema ou sugerir melhoria" })).toBeDisabled();
-  checks.push("Login real da UI com resposta sintética: sem aviso/fetch antes da sessão, aviso após autenticação; GG-11 indisponível");
+  const feedback = page.getByRole("dialog", { name: label, exact: true });
+  const launchLabel = "Relatar problema ou melhoria";
+  const launch = page.locator(".topbar").getByRole("button", { name: launchLabel, exact: true });
+  await expect(page.getByRole("button", { name: /^Relatar/ })).toHaveCount(1);
+  await expect(launch).toHaveText(launchLabel);
+  await launch.click();
+  await expect(feedback).toBeVisible();
+  await feedback.getByRole("button", { name: "Cancelar" }).click();
+  await expect(launch).toBeFocused();
+  checks.push("Login com transporte sintético, sem aviso antes da sessão e com acesso único ao relato no cabeçalho após autenticação");
 
   const geometry = async width => {
     await expect.poll(async () => page.evaluate(() => {
@@ -82,6 +111,22 @@ try {
         sidebar: getComputedStyle(sidebar).display === "none" ? null : rect(".sidebar") };
     });
     assert.equal(result.overflow, false, `Overflow externo ${width}`);
+    assert.ok(await launch.evaluate(button => {
+      const header = button.closest(".topbar");
+      const breadcrumb = header.querySelector(".crumbs");
+      const brand = header.querySelector(".topbar-brand");
+      const avatar = header.querySelector(".topbar-avatar");
+      const bounds = button.getBoundingClientRect();
+      const label = document.createRange();
+      label.selectNodeContents(button);
+      const text = label.getBoundingClientRect();
+      return bounds.height >= 44 && bounds.right <= header.getBoundingClientRect().right &&
+        text.left >= bounds.left && text.right <= bounds.right &&
+        text.top >= bounds.top && text.bottom <= bounds.bottom &&
+        (getComputedStyle(brand).display === "none" || brand.getBoundingClientRect().right <= bounds.left) &&
+        (getComputedStyle(avatar).display === "none" || bounds.right <= avatar.getBoundingClientRect().left) &&
+        (getComputedStyle(breadcrumb).display === "none" || breadcrumb.getBoundingClientRect().right <= bounds.left);
+    }), `Botão de relatos legível e sem sobreposição ${width}`);
     assert.ok(Math.abs(result.bar.top) < 1, `Topo persistente ${width}`);
     if (result.sidebar) {
       assert.ok(Math.abs(result.sidebar.top - result.bar.bottom) < 1, JSON.stringify({ width, ...result }));
@@ -117,7 +162,7 @@ try {
   };
   config.announcements[0].message = "Mensagem longa para leitura em telas estreitas. ".repeat(30);
   await update(config); await expect(banner).toContainText("Mensagem longa");
-  for (const [width, height] of [[1440, 1000], [1024, 768], [768, 1000], [360, 800], [375, 812], [320, 568]]) {
+  for (const [width, height] of [[1440, 1000], [1024, 768], [768, 1000], [600, 800], [360, 800], [375, 812], [320, 568]]) {
     await page.setViewportSize({ width, height }); await page.evaluate(() => window.scrollTo(0, 0));
     await geometry(width);
     // Torna a página longa sem criar registros ou tocar em módulos.
@@ -129,6 +174,7 @@ try {
     await trigger.focus(); await page.keyboard.press("Enter");
     const detail = page.getByRole("dialog", { name: original.announcements[0].title, exact: true });
     await expect(detail).toBeVisible();
+    await expect(detail.getByRole("button", { name: /^Relatar/ })).toHaveCount(0);
     await expect(detail).toContainText(config.announcements[0].message);
     assert.ok(await detail.evaluate(element => element.matches(":modal")));
     assert.equal((await banner.boundingBox()).height, collapsed.height);
@@ -143,15 +189,15 @@ try {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: `${directory}/long-${width}.png`, fullPage: false, animations: "disabled" });
   }
-  await page.setViewportSize({ width: 375, height: 812 });
+  await page.setViewportSize({ width: 600, height: 800 });
   await page.locator("#main").evaluate(element => {
     const section = document.createElement("div"); section.className = "audit-section-bar";
     section.textContent = "Seção sintética de inspeção"; element.prepend(section);
   });
-  await page.evaluate(() => window.scrollTo(0, 700)); await geometry(375);
+  await page.evaluate(() => window.scrollTo(0, 700)); await geometry(600);
   await expect.poll(() => page.evaluate(() => Math.abs(document.querySelector(".audit-section-bar").getBoundingClientRect().top - document.querySelector(".topbar").getBoundingClientRect().bottom))).toBeLessThan(1);
   await page.locator(".audit-section-bar").evaluate(element => element.remove());
-  checks.push("1440/1024/768/360/375/320: barra 44–56px, mensagem longa no modal, Escape e retorno do foco, sem overflow externo; barra/header/sidebar medidos ao rolar; drawers na top layer e seletor sticky de Auditoria sob cabeçalho");
+  checks.push("1440/1024/768/600/360/375/320: botão de relatos legível e sem sobreposição, barra 44–56px, mensagem longa no modal, Escape e retorno do foco, sem overflow externo; barra/header/sidebar medidos ao rolar; drawers na top layer e seletor sticky de Auditoria sob cabeçalho");
 
   // O índice desktop também precisa caber abaixo do conjunto barra+cabeçalho.
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -185,22 +231,22 @@ try {
   checks.push("Reflow equivalente a 200% (640×450) e ampliação de texto 200%; zoom nativo e aparelhos físicos pendentes");
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  // Contraste usa cores CSS realmente computadas em cada categoria, inclusive botão indisponível.
-  for (const type of ["testing", "maintenance", "information", "critical", "success", "general"]) {
-    const next = structuredClone(original); next.announcements[0].type = type; await update(next);
+  // Contraste usa cores CSS computadas para categorias e presets independentes.
+  for (const [type,tone] of [["testing","success"],["maintenance","info"],["information","success"],["critical","neutral"],["success","danger"],["general","warning"]]) {
+    const next = structuredClone(original); Object.assign(next.announcements[0], { type, tone }); await update(next);
     await expect(banner).toHaveClass(new RegExp(`announcement-${type}`));
     const ratio = await banner.evaluate(element => {
       const rgb = value => value.match(/\d+(?:\.\d+)?/g).slice(0, 3).map(Number).map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4);
       const lum = value => { const [r, g, b] = rgb(value); return .2126 * r + .7152 * g + .0722 * b; };
       const styles = getComputedStyle(element), background = lum(styles.backgroundColor);
-      return [styles.color, getComputedStyle(element.querySelector("button")).color].map(color => {
+      return [styles.color, getComputedStyle(element.querySelector(".announcement-read")).color].map(color => {
         const foreground = lum(color); return (Math.max(background, foreground) + .05) / (Math.min(background, foreground) + .05);
       });
     });
-    assert.ok(ratio.every(value => value >= 4.5), `Contraste WCAG AA ${type}: ${ratio}`); contrasts.push({ type, text: ratio[0], button: ratio[1] });
+    assert.ok(ratio.every(value => value >= 4.5), `Contraste WCAG AA ${type}: ${ratio}`); contrasts.push({ type, tone, text: ratio[0], button: ratio[1] });
     await page.screenshot({ path: `${directory}/${type}-1440.png`, animations: "disabled" });
   }
-  checks.push("Contraste computado texto/botão ≥4.5:1 nas quatro categorias, aria-live polite sem rotação");
+  checks.push("Contraste computado texto/botão ≥4.5:1 nas seis combinações, aria-live polite sem rotação");
 
   // Foco e âncoras respeitam a soma medida barra+cabeçalho.
   await page.evaluate(() => {
@@ -210,11 +256,14 @@ try {
   const focus = await page.getByRole("button", { name: "Alvo de foco sintético" }).boundingBox();
   const header = await page.locator(".topbar").boundingBox(); assert.ok(focus.y >= header.y + header.height, "Foco fora da obstrução sticky");
   await update({ ...original, enabled: false }); await expect(banner).toHaveCount(0);
+  await expect(launch).toBeVisible();
   await expect.poll(() => page.locator(".announcement-slot").evaluate(element => element.getBoundingClientRect().height)).toBe(0);
   await page.evaluate(() => window.scrollTo(0, 0));
   assert.equal((await page.locator(".topbar").boundingBox()).y, 0);
   await update(original); await expect(banner).toBeVisible();
   unavailable = true; await page.clock.runFor(60010); await expect(banner).toHaveCount(0);
+  await launch.click(); await expect(feedback).toBeVisible();
+  await page.keyboard.press("Escape"); await expect(launch).toBeFocused();
   unavailable = false; await update(original); await expect(banner).toBeVisible();
   checks.push("Refresh em página aberta, foco/scroll-padding, desativação sem espaço vazio, 404 oculta e recuperação exibe");
   await page.locator(".sidebar").getByRole("button", { name: "Administração", exact: true }).click();
@@ -225,8 +274,9 @@ try {
   await editor.getByLabel("Assunto", { exact: true }).fill("Manutenção programada — demonstração");
   await editor.getByLabel("Mensagem completa", { exact: true }).fill("Mensagem sintética para prévia administrativa. ".repeat(12));
   await editor.getByLabel(/^Categoria/).selectOption("critical");
-  await expect(editor.getByRole("radio")).toHaveCount(1);
-  await expect(editor.getByRole("radio", { name: "Vermelho · crítico" })).toBeChecked();
+  await expect(editor.getByRole("radio")).toHaveCount(5);
+  await expect(editor.getByRole("radio", { name: "Azul" })).toBeChecked();
+  await editor.getByRole("radio", { name: "Neutro" }).check();
   for (const [width,height] of [[1440,1000],[1024,768],[768,1000],[375,812],[320,568]]) {
     await page.setViewportSize({width,height});
     await expect(editor).toBeVisible();
@@ -242,13 +292,42 @@ try {
   await page.getByRole("button",{name:"Editar Manutenção programada — demonstração",exact:true}).click();
   const edit = page.getByRole("dialog",{name:"Editar comunicado",exact:true});
   await edit.getByRole("button",{name:"Publicar comunicado",exact:true}).click();await expect(edit).toHaveCount(0);
-  await expect(page.getByText("Ativo",{exact:true})).toBeVisible();
-  await page.getByRole("button",{name:"Histórico de Manutenção programada — demonstração",exact:true}).click();
-  const history = page.getByRole("dialog",{name:"Histórico: Manutenção programada — demonstração",exact:true});
-  await expect(history).toContainText("Versão 2");await page.keyboard.press("Escape");
-  await expect(page.getByRole("button",{name:"Histórico de Manutenção programada — demonstração",exact:true})).toBeFocused();
+  await expect(page.getByText("ATIVO",{exact:true})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Editar Manutenção programada — demonstração",exact:true})).toHaveText("Editar");
+  await expect(page.getByRole("button",{name:/Histórico de/})).toHaveCount(0);
   await page.screenshot({path:`${directory}/admin-list-1440.png`,animations:"disabled"});
-  checks.push("Administração Chromium sintética: lista, rascunho/publicação com resposta de transporte, histórico sob demanda, vermelho obrigatório para crítico, formulário sem overflow 1440/1024/768/375/320 e prévia mobile");
+  checks.push("Administração Chromium: rascunho, publicação, ATIVO, Editar e editor com cores independentes em 1440/1024/768/375/320");
+  await update({ ...original, announcements: [] }); await expect(banner).toHaveCount(0);
+  await page.setViewportSize({width:320,height:568});
+  await expect(page.getByRole("button", { name: /^Relatar/ })).toHaveCount(1);
+  await launch.click();
+  await expect(feedback).toBeVisible();
+  assert.ok(await feedback.evaluate(element=>element.scrollWidth<=element.clientWidth+1));
+  await feedback.getByLabel("Tipo").selectOption("suggestion");
+  await feedback.getByLabel("Descrição detalhada").fill("Descrição inteiramente sintética do navegador.");
+  await feedback.getByLabel("Anexo opcional").setInputFiles({name:"invalido.png",mimeType:"image/png",buffer:Buffer.from("inválido")});
+  await feedback.getByRole("button",{name:"Enviar relato"}).click();
+  await expect(feedback.getByRole("alert")).toContainText("PNG ou JPEG válida");
+  assert.equal(attempts.length,0);
+  await feedback.getByLabel("Anexo opcional").setInputFiles([]);
+  await feedback.getByRole("button",{name:"Enviar relato"}).click();
+  await expect(feedback.getByRole("alert")).toContainText("ainda não foi confirmado");
+  await expect(feedback.getByText("Relato recebido.")).toHaveCount(0);
+  refuseReceipt=false;
+  await feedback.getByRole("button",{name:"Tentar novamente"}).click();
+  await expect(feedback.getByText(report.id,{exact:true})).toBeVisible();
+  assert.deepEqual(attempts,[report.id,report.id]);
+  await feedback.getByRole("button",{name:"Concluir"}).click();
+  await page.goto(`${base}/admin/feedback`);
+  await expect(page.getByRole("heading",{name:"Relatos e sugestões"})).toBeVisible();
+  await page.getByRole("button",{name:/^Ler relato/}).click();
+  const received=page.getByRole("dialog",{name:"Detalhes do relato"});
+  await expect(received).toContainText(report.description);
+  assert.ok(await received.evaluate(element=>element.scrollWidth<=element.clientWidth+1));
+  await page.keyboard.press("Escape");
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.setViewportSize({width:1440,height:1000});
+  checks.push("GG-11 em Chromium a 320px, acesso sem aviso, rejeição de imagem falsa, falha sem recibo, reenvio com o mesmo UUID e consulta administrativa");
   const beforeLogout = reads;
   await page.locator(".sidebar").getByRole("button", { name: "Sair", exact: true }).click();
   await expect(page.getByRole("button", { name: "Entrar", exact: true })).toBeVisible(); await expect(banner).toHaveCount(0);

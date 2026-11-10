@@ -4,13 +4,13 @@ import { announcementTones, type AnnouncementType } from "../../shared/announcem
 import { announcementCategories, InstitutionalAnnouncementBar } from "../../shared/announcements/InstitutionalAnnouncementBar";
 import { PageTitle, Notice, Modal, Confirm, EmptyState } from "../../shared/ui";
 import { useResource } from "../../shared/useResource";
-import { listNotices, noticeHistory, saveNotice, noticeError, noticeStatuses, toneLabels, previewAnnouncement, type NoticeInput, type NoticeRecord, type NoticeState } from "./api";
+import { listNotices, saveNotice, noticeError, noticeStatuses, toneLabels, previewAnnouncement, type NoticeInput, type NoticeRecord, type NoticeState } from "./api";
 import "./announcements-admin.css";
-const empty: NoticeInput = { title: "", message: "", category: "information", tone: "info", priority: 0, starts_at: null, ends_at: null, state: "draft", show_feedback: true };
+const empty: NoticeInput = { title: "", message: "", category: "information", tone: "info", starts_at: null, ends_at: null, state: "draft", show_feedback: true };
 function localDate(value: string | null) {
   if (!value) return "";
   const date = new Date(value);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}T${String(date.getHours()).padStart(2,"0")}:${String(date.getMinutes()).padStart(2,"0")}:${String(date.getSeconds()).padStart(2,"0")}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}T${String(date.getHours()).padStart(2,"0")}:${String(date.getMinutes()).padStart(2,"0")}:${String(date.getSeconds()).padStart(2,"0")}.${String(date.getMilliseconds()).padStart(3,"0")}`;
 }
 const dateText = (value: string | null) => value ? new Date(value).toLocaleString("pt-BR") : "Sem limite";
 /** Capacidade global Core, nunca nome do papel. O SQL revalida todas as operações. */
@@ -24,7 +24,6 @@ function Manager() {
   const load = useCallback(() => listNotices(offset), [offset]);
   const resource = useResource(load);
   const [editing, setEditing] = useState<NoticeRecord | "new" | null>(null);
-  const [history, setHistory] = useState<NoticeRecord | null>(null);
   const [success, setSuccess] = useState("");
   return <>
     <PageTitle eyebrow="Administração" title="Comunicados" description="Prepare, agende e publique mensagens para todas as pessoas ativas na plataforma.">
@@ -36,12 +35,10 @@ function Manager() {
     {resource.loading && <p role="status">Carregando comunicados…</p>}
     {resource.data && <>
       {!resource.data.items.length ? <EmptyState title="Nenhum comunicado">Crie um rascunho para preparar a próxima comunicação institucional.</EmptyState> :
-        <div className="announcement-records">{resource.data.items.map(row => <article key={row.id} className="announcement-record">
-          <div><h2>{row.title}</h2><p>{announcementCategories[row.category]} · <strong>{noticeStatuses[row.status]}</strong></p>
-            <p>Prioridade {row.priority} · Versão {row.version}</p>
+        <div className="announcement-records">{resource.data.items.map(row => <article key={row.id} className="announcement-record" data-active={row.status === "active"}>
+          <div><h2>{row.title}</h2><p>{announcementCategories[row.category]} · <strong>{row.status === "active" ? "ATIVO" : noticeStatuses[row.status]}</strong></p>
             <p>Início: {dateText(row.starts_at)} · Término: {dateText(row.ends_at)}</p></div>
-          <div className="actions"><button disabled={row.state === "archived"} onClick={() => { setSuccess(""); setEditing(row); }}>Editar {row.title}</button>
-            <button onClick={() => setHistory(row)}>Histórico de {row.title}</button></div>
+          <div className="actions"><button aria-label={`Editar ${row.title}`} disabled={row.state === "archived"} onClick={() => { setSuccess(""); setEditing(row); }}>Editar</button></div>
         </article>)}</div>}
       <div className="actions" aria-label="Paginação de comunicados"><button disabled={!offset} onClick={() => setOffset(n => Math.max(0,n-20))}>Anterior</button>
         <span>{resource.data.total} comunicados · Página {offset / 20 + 1}</span><button disabled={offset + 20 >= resource.data.total} onClick={() => setOffset(n=>n+20)}>Próxima</button>
@@ -50,7 +47,6 @@ function Manager() {
     {editing && <Editor key={editing === "new" ? "new" : `${editing.id}:${editing.version}`} previous={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => {
       setEditing(null); setSuccess("Comunicado salvo no servidor."); resource.reload(); window.dispatchEvent(new Event("announcements:refresh"));
     }} />}
-    {history && <History row={history} onClose={() => setHistory(null)} />}
   </>;
 }
 function Editor({ previous, onClose, onSaved }: { previous: NoticeRecord | null; onClose: () => void; onSaved: () => void }) {
@@ -94,19 +90,16 @@ function Editor({ previous, onClose, onSaved }: { previous: NoticeRecord | null;
       <fieldset disabled={busy}><legend>Conteúdo e apresentação</legend>
         <label>Assunto<input required maxLength={120} value={form.title} onChange={e=>update("title",e.target.value)} /></label>
         <label>Mensagem completa<textarea required maxLength={1600} rows={5} value={form.message} onChange={e=>update("message",e.target.value)} /></label>
-        <div className="announcement-fields"><label>Categoria<select value={form.category} onChange={e=>{
-          const category=e.target.value as AnnouncementType;
-          setForm(f=>({...f, category, tone:announcementTones[category][0]}));
-        }}>{Object.entries(announcementCategories).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
-        <label>Prioridade<input type="number" required min={-10000} max={10000} step={1} value={form.priority} onChange={e=>update("priority",Number(e.target.value))}/></label></div>
-        <fieldset className="announcement-presets"><legend>Cor semântica</legend>
-          {announcementTones[form.category].map(tone=><label key={tone} className="announcement-preset"><input type="radio" name="tone" checked={form.tone===tone} onChange={()=>update("tone",tone)} />
+        <label>Categoria<select value={form.category} onChange={e=>update("category", e.target.value as AnnouncementType)}>
+          {Object.entries(announcementCategories).map(([key,label])=><option key={key} value={key}>{label}</option>)}
+        </select></label>
+        <fieldset className="announcement-presets"><legend>Cor</legend>
+          {announcementTones.map(tone=><label key={tone} className="announcement-preset"><input type="radio" name="tone" checked={form.tone===tone} onChange={()=>update("tone",tone)} />
             <span className={`announcement-swatch announcement-swatch-${tone}`} aria-hidden="true" />{toneLabels[tone]}</label>)}
         </fieldset>
-        <p>A categoria determina a prioridade semântica e as cores permitidas. Comunicado crítico sempre usa vermelho.</p>
-        <div className="announcement-fields"><label>Início da exibição<input type="datetime-local" step={1} min="0001-01-01T00:00" max="9999-12-31T23:59:59" value={form.starts_at ?? ""} onChange={e=>update("starts_at",e.target.value || null)} /></label>
-          <label>Término da exibição<input type="datetime-local" step={1} min="0001-01-01T00:00" max="9999-12-31T23:59:59" value={form.ends_at ?? ""} onChange={e=>update("ends_at",e.target.value || null)} /></label></div>
-        <label className="announcement-checkbox"><input type="checkbox" checked={form.show_feedback} onChange={e=>update("show_feedback",e.target.checked)} />Exibir ação de feedback (GG-11 indisponível nesta versão)</label>
+        <div className="announcement-fields"><label>Início da exibição<input type="datetime-local" step="any" min="0001-01-01T00:00" max="9999-12-31T23:59:59.999" value={form.starts_at ?? ""} onChange={e=>update("starts_at",e.target.value || null)} /></label>
+          <label>Término da exibição<input type="datetime-local" step="any" min="0001-01-01T00:00" max="9999-12-31T23:59:59.999" value={form.ends_at ?? ""} onChange={e=>update("ends_at",e.target.value || null)} /></label></div>
+        <label className="announcement-checkbox"><input type="checkbox" checked={form.show_feedback} onChange={e=>update("show_feedback",e.target.checked)} />Exibir botão Relatar no comunicado</label>
         <div className="actions"><button type="button" aria-pressed={previewMode==="desktop"} onClick={()=>setPreviewMode("desktop")}>Prévia desktop</button><button type="button" aria-pressed={previewMode==="mobile"} onClick={()=>setPreviewMode("mobile")}>Prévia mobile</button>
           <button type="button" onClick={()=>setPreview(true)}>Ler prévia completa</button></div>
         <div className={`announcement-preview announcement-preview-${previewMode}`} inert aria-hidden="true"><InstitutionalAnnouncementBar announcement={previewAnnouncement(form)} /></div>
@@ -124,22 +117,6 @@ function Editor({ previous, onClose, onSaved }: { previous: NoticeRecord | null;
     {preview && <Modal title={form.title || "Prévia do comunicado"} onClose={()=>setPreview(false)}>
       <p>Categoria: {announcementCategories[form.category]}</p><p className="announcement-message">{form.message || "Mensagem do comunicado"}</p>
       <p>Início: {dateText(form.starts_at)} · Término: {dateText(form.ends_at)}</p>
-      {form.show_feedback && <p>Canal de feedback em breve — indisponível nesta versão.</p>}
     </Modal>}
-  </Modal>;
-}
-function History({ row, onClose }: { row: NoticeRecord; onClose: () => void }) {
-  const [offset,setOffset]=useState(0);
-  const load=useCallback(()=>noticeHistory(row.id,offset),[row.id,offset]);const resource=useResource(load);
-  return <Modal title={`Histórico: ${row.title}`} onClose={onClose} wide>
-    {resource.loading && <p role="status">Carregando histórico…</p>}
-    {resource.error && <Notice error>{noticeError(null)} <button onClick={resource.reload}>Tentar novamente</button></Notice>}
-    {resource.data && <><ol className="announcement-history">{resource.data.items.map(h=><li key={h.version}>
-      <h3>Versão {h.version} · {dateText(h.occurred_at)}</h3><p>Autor: {h.actor_user_id}</p>
-      <p>{h.before_data ? `${noticeStatuses[h.before_data.state]} → ` : "Criação · "}{noticeStatuses[h.after_data.state]}</p>
-      <details><summary>Conferir conteúdo desta versão</summary><p><strong>{h.after_data.title}</strong></p><p className="announcement-message">{h.after_data.message}</p>
-        <p>{announcementCategories[h.after_data.category]} · {toneLabels[h.after_data.tone]} · Prioridade {h.after_data.priority}</p>
-        <p>Início: {dateText(h.after_data.starts_at)} · Término: {dateText(h.after_data.ends_at)}</p></details>
-    </li>)}</ol><div className="actions"><button disabled={!offset} onClick={()=>setOffset(n=>Math.max(0,n-20))}>Versões mais recentes</button><button disabled={offset+20>=resource.data.total} onClick={()=>setOffset(n=>n+20)}>Versões anteriores</button></div></>}
   </Modal>;
 }

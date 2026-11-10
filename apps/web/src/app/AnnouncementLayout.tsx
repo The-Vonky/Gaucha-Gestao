@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { InstitutionalAnnouncementBar, type AnnouncementFeedback } from "../shared/announcements/InstitutionalAnnouncementBar";
+import { InstitutionalAnnouncementBar } from "../shared/announcements/InstitutionalAnnouncementBar";
 import { useAnnouncement, type AnnouncementLoader } from "../shared/announcements/useAnnouncement";
 
 /** Montado na fronteira autenticada, fora das rotas de módulos e do Core Auth. */
-export function AnnouncementLayout({ children, onFeedback, loadConfig }: { children: ReactNode; onFeedback?: AnnouncementFeedback; loadConfig?: AnnouncementLoader }) {
+export function AnnouncementLayout({ children, loadConfig }: { children: ReactNode; loadConfig?: AnnouncementLoader }) {
   const announcement = useAnnouncement(loadConfig);
   const root = useRef<HTMLDivElement>(null);
   const slot = useRef<HTMLDivElement>(null);
@@ -36,7 +36,7 @@ export function AnnouncementLayout({ children, onFeedback, loadConfig }: { child
   }, [announcement, children]);
   return <div ref={root} className="authenticated-application" data-announcement={!!announcement}>
     <div className="announcement-slot" ref={slot}>
-      {announcement && <InstitutionalAnnouncementBar announcement={announcement} onFeedback={onFeedback} />}
+      {announcement && <InstitutionalAnnouncementBar announcement={announcement} />}
     </div>
     {children}
   </div>;

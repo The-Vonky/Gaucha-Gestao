@@ -1,10 +1,7 @@
 /** Contrato público GG-10: somente texto; nenhum destino ou código executável. */
 export type AnnouncementType = "testing" | "maintenance" | "information" | "critical" | "success" | "general";
 export type AnnouncementTone = "danger" | "warning" | "success" | "info" | "neutral";
-export const announcementTones: Record<AnnouncementType, readonly AnnouncementTone[]> = {
-  critical: ["danger"], maintenance: ["warning"], success: ["success"],
-  information: ["info", "neutral"], testing: ["neutral", "info"], general: ["neutral", "info"],
-};
+export const announcementTones = ["danger", "warning", "success", "info", "neutral"] as const;
 export interface Announcement {
   id: string;
   type: AnnouncementType;
@@ -64,7 +61,7 @@ export function parseAnnouncementConfig(value: unknown): AnnouncementConfig | nu
       (item.startsAt !== null && item.endsAt !== null && Date.parse(item.endsAt) <= Date.parse(item.startsAt)) ||
       (item.showIcon !== undefined && typeof item.showIcon !== "boolean")) return null;
     const category = item.type as AnnouncementType;
-    if (item.tone !== undefined && !announcementTones[category].includes(item.tone as AnnouncementTone)) return null;
+    if (item.tone !== undefined && !announcementTones.includes(item.tone as AnnouncementTone)) return null;
     let action: Announcement["action"] = null;
     if (item.action !== undefined && item.action !== null) {
       if (!record(item.action) || item.action.type !== "feedback" || !text(item.action.label, 100) || typeof item.action.enabled !== "boolean") return null;
@@ -85,7 +82,7 @@ export function selectAnnouncement(config: AnnouncementConfig | null, now: numbe
   return config.announcements.filter(item => item.enabled &&
     (item.startsAt === null || now >= Date.parse(item.startsAt)) &&
     (item.endsAt === null || now < Date.parse(item.endsAt)))
-    .sort((a, b) => ranks[b.type] - ranks[a.type] || b.priority - a.priority || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0] ?? null;
+    .sort((a, b) => ranks[b.type] - ranks[a.type] || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0] ?? null;
 }
 /** Fonte substituível por um adaptador administrativo futuro, mantendo o contrato. */
 export async function loadAnnouncementConfig(signal: AbortSignal): Promise<AnnouncementConfig | null> {

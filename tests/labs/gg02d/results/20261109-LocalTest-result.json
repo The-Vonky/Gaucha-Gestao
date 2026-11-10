@@ -1,0 +1,303 @@
+{
+    "phase":  "LocalTest",
+    "status":  "PASS",
+    "script_sha256":  "e202b89e8f09310284323618d9e759e430fdd489c95daf45f3dd13b31705428d",
+    "tools":  {
+                  "restic":  {
+                                 "version":  "0.19.1",
+                                 "url":  "https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_windows_amd64.zip",
+                                 "zip_sha256":  "da948ad707ed690426473aaba2046cd61f8f90f6f0e7dab6be0d5796531de67d",
+                                 "exe_sha256":  "b0dd1fd21eea5d8fe1325f55f7118213c21f36de8a261e04c0624a5ab9fd7830"
+                             },
+                  "rclone":  {
+                                 "version":  "1.76.0",
+                                 "url":  "https://github.com/rclone/rclone/releases/download/v1.76.0/rclone-v1.76.0-windows-amd64.zip",
+                                 "zip_sha256":  "8b4fd2737ade4e70c057ef4a49deb7cffe94b0fb9d7587c189d149823f21a1dc",
+                                 "exe_sha256":  "acd80683e23151e93bbe0d6ffa74d26e542ec510332f630beecb9944f8d1a623"
+                             }
+              },
+    "backend":  "local filesystem via Rclone stdio; no Google Drive",
+    "repository_empty_bytes":  616,
+    "backups":  {
+                    "initial":  {
+                                    "snapshot":  "85eb132c0baac249a2745c742c13bef1a4385da5e289431015ebb2d01bd43f41",
+                                    "logical_bytes":  16778004,
+                                    "data_blobs":  9,
+                                    "data_added_packed":  8393221,
+                                    "repository_bytes":  8395273,
+                                    "new_persisted_payload_bytes":  8394657
+                                },
+                    "unchanged":  {
+                                      "snapshot":  "7196fd504b4e69e1836a2b88e997d4c8506b60605bee84496b86c9a5e8b7aef2",
+                                      "logical_bytes":  16778004,
+                                      "data_blobs":  0,
+                                      "data_added_packed":  0,
+                                      "repository_bytes":  8395763,
+                                      "new_persisted_payload_bytes":  490
+                                  },
+                    "changed":  {
+                                    "snapshot":  "473efeb5b925bf40a13fbc0dc6bd35d8d185645645610a9330f4c9b792a1cde0",
+                                    "logical_bytes":  17826697,
+                                    "data_blobs":  5,
+                                    "data_added_packed":  2101249,
+                                    "repository_bytes":  10498221,
+                                    "new_persisted_payload_bytes":  2102458
+                                }
+                },
+    "snapshots":  {
+                      "initial":  "85eb132c0baac249a2745c742c13bef1a4385da5e289431015ebb2d01bd43f41",
+                      "unchanged":  "7196fd504b4e69e1836a2b88e997d4c8506b60605bee84496b86c9a5e8b7aef2",
+                      "changed":  "473efeb5b925bf40a13fbc0dc6bd35d8d185645645610a9330f4c9b792a1cde0"
+                  },
+    "primary_restored":  {
+                             "initial":  {
+                                             "snapshot":  "85eb132c0baac249a2745c742c13bef1a4385da5e289431015ebb2d01bd43f41",
+                                             "expected":  {
+                                                              "data/objects/a.bin":  {
+                                                                                         "bytes":  8388608,
+                                                                                         "sha256":  "a349a2795eef615946ce795d020efa8b3f508f24b8070130d737fb0d0e156bd1"
+                                                                                     },
+                                                              "data/objects/duplicate.bin":  {
+                                                                                                 "bytes":  8388608,
+                                                                                                 "sha256":  "a349a2795eef615946ce795d020efa8b3f508f24b8070130d737fb0d0e156bd1"
+                                                                                             },
+                                                              "data/records.txt":  {
+                                                                                       "bytes":  36,
+                                                                                       "sha256":  "6ded9f2326b7ee525cd355e578f68066116f0a867c14aca473c527963a4d7a80"
+                                                                                   },
+                                                              "structure/rebuild.txt":  {
+                                                                                            "bytes":  43,
+                                                                                            "sha256":  "3821ccdccd62a99376548e02ab5aaac931837732c41ed2f63912c163300f8288"
+                                                                                        },
+                                                              "recovery/instructions.txt":  {
+                                                                                                "bytes":  52,
+                                                                                                "sha256":  "3bbb3661b365c2f588ce604054858feab6ba745d0277f03121c5f9fef47ea918"
+                                                                                            },
+                                                              "manifest.json":  {
+                                                                                    "bytes":  657,
+                                                                                    "sha256":  "2515197685345eb2c02650ec18ea8adac99e3625d47cb5480dcd4bb33232512e"
+                                                                                }
+                                                          },
+                                             "restored":  {
+                                                              "data/objects/a.bin":  {
+                                                                                         "bytes":  8388608,
+                                                                                         "sha256":  "a349a2795eef615946ce795d020efa8b3f508f24b8070130d737fb0d0e156bd1"
+                                                                                     },
+                                                              "data/objects/duplicate.bin":  {
+                                                                                                 "bytes":  8388608,
+                                                                                                 "sha256":  "a349a2795eef615946ce795d020efa8b3f508f24b8070130d737fb0d0e156bd1"
+                                                                                             },
+                                                              "data/records.txt":  {
+                                                                                       "bytes":  36,
+                                                                                       "sha256":  "6ded9f2326b7ee525cd355e578f68066116f0a867c14aca473c527963a4d7a80"
+                                                                                   },
+                                                              "recovery/instructions.txt":  {
+                                                                                                "bytes":  52,
+                                                                                                "sha256":  "3bbb3661b365c2f588ce604054858feab6ba745d0277f03121c5f9fef47ea918"
+                                                                                            },
+                                                              "structure/rebuild.txt":  {
+                                                                                            "bytes":  43,
+                                                                                            "sha256":  "3821ccdccd62a99376548e02ab5aaac931837732c41ed2f63912c163300f8288"
+                                                                                        },
+                                                              "manifest.json":  {
+                                                                                    "bytes":  657,
+                                                                                    "sha256":  "2515197685345eb2c02650ec18ea8adac99e3625d47cb5480dcd4bb33232512e"
+                                                                                }
+                                                          },
+                                             "status":  "PASS"
+                                         },
+                             "changed":  {
+                                             "snapshot":  "473efeb5b925bf40a13fbc0dc6bd35d8d185645645610a9330f4c9b792a1cde0",
+                                             "expected":  {
+                                                              "data/objects/a.bin":  {
+                                                                                         "bytes":  8388608,
+                                                                                         "sha256":  "acb68577a5d277395fbdea576c3453b3d5b58acbfada95d5a5eec07465a6c926"
+                                                                                     },
+                                                              "data/objects/duplicate.bin":  {
+                                                                                                 "bytes":  8388608,
+                                                                                                 "sha256":  "a349a2795eef615946ce795d020efa8b3f508f24b8070130d737fb0d0e156bd1"
+                                                                                             },
+                                                              "data/records.txt":  {
+                                                                                       "bytes":  36,
+                                                                                       "sha256":  "162640867579289df2a2323190d864cec1b9f302ce214de1ccbbf394e68a521a"
+                                                                                   },
+                                                              "structure/rebuild.txt":  {
+                                                                                            "bytes":  43,
+                                                                                            "sha256":  "3821ccdccd62a99376548e02ab5aaac931837732c41ed2f63912c163300f8288"
+                                                                                        },
+                                                              "recovery/instructions.txt":  {
+                                                                                                "bytes":  52,
+                                                                                                "sha256":  "3bbb3661b365c2f588ce604054858feab6ba745d0277f03121c5f9fef47ea918"
+                                                                                            },
+                                                              "data/objects/new.bin":  {
+                                                                                           "bytes":  1048576,
+                                                                                           "sha256":  "8ea259a5a7ce3cb0c0e9609adb2a3acdcdaec0cb00b3f7c13ad53855f651202d"
+                                                                                       },
+                                                              "manifest.json":  {
+                                                                                    "bytes":  774,
+                                                                                    "sha256":  "7ab35c08e5c8f87ce31a5f664cf210fb82ace9b619581f66d4dd6af936f1b936"
+                                                                                }
+                                                          },
+                                             "restored":  {
+                                                              "data/objects/a.bin":  {
+                                                                                         "bytes":  8388608,
+                                                                                         "sha256":  "acb68577a5d277395fbdea576c3453b3d5b58acbfada95d5a5eec07465a6c926"
+                                                                                     },
+                                                              "data/objects/duplicate.bin":  {
+                                                                                                 "bytes":  8388608,
+                                                                                                 "sha256":  "a349a2795eef615946ce795d020efa8b3f508f24b8070130d737fb0d0e156bd1"
+                                                                                             },
+                                                              "data/objects/new.bin":  {
+                                                                                           "bytes":  1048576,
+                                                                                           "sha256":  "8ea259a5a7ce3cb0c0e9609adb2a3acdcdaec0cb00b3f7c13ad53855f651202d"
+                                                                                       },
+                                                              "data/records.txt":  {
+                                                                                       "bytes":  36,
+                                                                                       "sha256":  "162640867579289df2a2323190d864cec1b9f302ce214de1ccbbf394e68a521a"
+                                                                                   },
+                                                              "recovery/instructions.txt":  {
+                                                                                                "bytes":  52,
+                                                                                                "sha256":  "3bbb3661b365c2f588ce604054858feab6ba745d0277f03121c5f9fef47ea918"
+                                                                                            },
+                                                              "structure/rebuild.txt":  {
+                                                                                            "bytes":  43,
+                                                                                            "sha256":  "3821ccdccd62a99376548e02ab5aaac931837732c41ed2f63912c163300f8288"
+                                                                                        },
+                                                              "manifest.json":  {
+                                                                                    "bytes":  774,
+                                                                                    "sha256":  "7ab35c08e5c8f87ce31a5f664cf210fb82ace9b619581f66d4dd6af936f1b936"
+                                                                                }
+                                                          },
+                                             "status":  "PASS"
+                                         }
+                         },
+    "wrong_password":  "PASS (Restic exit 12)",
+    "secondary_snapshots":  {
+                                "initial":  "5ad0fbd34cba24d0a54c0d10a20eae0385170a786256f6d208f0c5b4bbdf2bee",
+                                "unchanged":  "be55b88303ebf98dfa02e6b7c920bcc4bbf891952a11bf375850dad78b2fb68b",
+                                "changed":  "1fb30776dee94ecdd5b3263841b6111ec65943f8915bc1cdc349655ec0fecb33"
+                            },
+    "secondary_restored":  {
+                               "initial":  {
+                                               "snapshot":  "5ad0fbd34cba24d0a54c0d10a20eae0385170a786256f6d208f0c5b4bbdf2bee",
+                                               "expected":  {
+                                                                "data/objects/a.bin":  {
+                                                                                           "bytes":  8388608,
+                                                                                           "sha256":  "a349a2795eef615946ce795d020efa8b3f508f24b8070130d737fb0d0e156bd1"
+                                                                                       },
+                                                                "data/objects/duplicate.bin":  {
+                                                                                                   "bytes":  8388608,
+                                                                                                   "sha256":  "a349a2795eef615946ce795d020efa8b3f508f24b8070130d737fb0d0e156bd1"
+                                                                                               },
+                                                                "data/records.txt":  {
+                                                                                         "bytes":  36,
+                                                                                         "sha256":  "6ded9f2326b7ee525cd355e578f68066116f0a867c14aca473c527963a4d7a80"
+                                                                                     },
+                                                                "structure/rebuild.txt":  {
+                                                                                              "bytes":  43,
+                                                                                              "sha256":  "3821ccdccd62a99376548e02ab5aaac931837732c41ed2f63912c163300f8288"
+                                                                                          },
+                                                                "recovery/instructions.txt":  {
+                                                                                                  "bytes":  52,
+                                                                                                  "sha256":  "3bbb3661b365c2f588ce604054858feab6ba745d0277f03121c5f9fef47ea918"
+                                                                                              },
+                                                                "manifest.json":  {
+                                                                                      "bytes":  657,
+                                                                                      "sha256":  "2515197685345eb2c02650ec18ea8adac99e3625d47cb5480dcd4bb33232512e"
+                                                                                  }
+                                                            },
+                                               "restored":  {
+                                                                "data/objects/a.bin":  {
+                                                                                           "bytes":  8388608,
+                                                                                           "sha256":  "a349a2795eef615946ce795d020efa8b3f508f24b8070130d737fb0d0e156bd1"
+                                                                                       },
+                                                                "data/objects/duplicate.bin":  {
+                                                                                                   "bytes":  8388608,
+                                                                                                   "sha256":  "a349a2795eef615946ce795d020efa8b3f508f24b8070130d737fb0d0e156bd1"
+                                                                                               },
+                                                                "data/records.txt":  {
+                                                                                         "bytes":  36,
+                                                                                         "sha256":  "6ded9f2326b7ee525cd355e578f68066116f0a867c14aca473c527963a4d7a80"
+                                                                                     },
+                                                                "recovery/instructions.txt":  {
+                                                                                                  "bytes":  52,
+                                                                                                  "sha256":  "3bbb3661b365c2f588ce604054858feab6ba745d0277f03121c5f9fef47ea918"
+                                                                                              },
+                                                                "structure/rebuild.txt":  {
+                                                                                              "bytes":  43,
+                                                                                              "sha256":  "3821ccdccd62a99376548e02ab5aaac931837732c41ed2f63912c163300f8288"
+                                                                                          },
+                                                                "manifest.json":  {
+                                                                                      "bytes":  657,
+                                                                                      "sha256":  "2515197685345eb2c02650ec18ea8adac99e3625d47cb5480dcd4bb33232512e"
+                                                                                  }
+                                                            },
+                                               "status":  "PASS"
+                                           },
+                               "changed":  {
+                                               "snapshot":  "1fb30776dee94ecdd5b3263841b6111ec65943f8915bc1cdc349655ec0fecb33",
+                                               "expected":  {
+                                                                "data/objects/a.bin":  {
+                                                                                           "bytes":  8388608,
+                                                                                           "sha256":  "acb68577a5d277395fbdea576c3453b3d5b58acbfada95d5a5eec07465a6c926"
+                                                                                       },
+                                                                "data/objects/duplicate.bin":  {
+                                                                                                   "bytes":  8388608,
+                                                                                                   "sha256":  "a349a2795eef615946ce795d020efa8b3f508f24b8070130d737fb0d0e156bd1"
+                                                                                               },
+                                                                "data/records.txt":  {
+                                                                                         "bytes":  36,
+                                                                                         "sha256":  "162640867579289df2a2323190d864cec1b9f302ce214de1ccbbf394e68a521a"
+                                                                                     },
+                                                                "structure/rebuild.txt":  {
+                                                                                              "bytes":  43,
+                                                                                              "sha256":  "3821ccdccd62a99376548e02ab5aaac931837732c41ed2f63912c163300f8288"
+                                                                                          },
+                                                                "recovery/instructions.txt":  {
+                                                                                                  "bytes":  52,
+                                                                                                  "sha256":  "3bbb3661b365c2f588ce604054858feab6ba745d0277f03121c5f9fef47ea918"
+                                                                                              },
+                                                                "data/objects/new.bin":  {
+                                                                                             "bytes":  1048576,
+                                                                                             "sha256":  "8ea259a5a7ce3cb0c0e9609adb2a3acdcdaec0cb00b3f7c13ad53855f651202d"
+                                                                                         },
+                                                                "manifest.json":  {
+                                                                                      "bytes":  774,
+                                                                                      "sha256":  "7ab35c08e5c8f87ce31a5f664cf210fb82ace9b619581f66d4dd6af936f1b936"
+                                                                                  }
+                                                            },
+                                               "restored":  {
+                                                                "data/objects/a.bin":  {
+                                                                                           "bytes":  8388608,
+                                                                                           "sha256":  "acb68577a5d277395fbdea576c3453b3d5b58acbfada95d5a5eec07465a6c926"
+                                                                                       },
+                                                                "data/objects/duplicate.bin":  {
+                                                                                                   "bytes":  8388608,
+                                                                                                   "sha256":  "a349a2795eef615946ce795d020efa8b3f508f24b8070130d737fb0d0e156bd1"
+                                                                                               },
+                                                                "data/objects/new.bin":  {
+                                                                                             "bytes":  1048576,
+                                                                                             "sha256":  "8ea259a5a7ce3cb0c0e9609adb2a3acdcdaec0cb00b3f7c13ad53855f651202d"
+                                                                                         },
+                                                                "data/records.txt":  {
+                                                                                         "bytes":  36,
+                                                                                         "sha256":  "162640867579289df2a2323190d864cec1b9f302ce214de1ccbbf394e68a521a"
+                                                                                     },
+                                                                "recovery/instructions.txt":  {
+                                                                                                  "bytes":  52,
+                                                                                                  "sha256":  "3bbb3661b365c2f588ce604054858feab6ba745d0277f03121c5f9fef47ea918"
+                                                                                              },
+                                                                "structure/rebuild.txt":  {
+                                                                                              "bytes":  43,
+                                                                                              "sha256":  "3821ccdccd62a99376548e02ab5aaac931837732c41ed2f63912c163300f8288"
+                                                                                          },
+                                                                "manifest.json":  {
+                                                                                      "bytes":  774,
+                                                                                      "sha256":  "7ab35c08e5c8f87ce31a5f664cf210fb82ace9b619581f66d4dd6af936f1b936"
+                                                                                  }
+                                                            },
+                                               "status":  "PASS"
+                                           }
+                           },
+    "physical_recovery":  "BLOCKED until separately verified on an authorized offline computer"
+}
