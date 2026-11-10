@@ -163,3 +163,19 @@ Implementação autorizada expressamente pelo responsável em 23/10/2026, após 
 | S-HIST | Histórico somente gestão, inclusive passados e estados terminais, nomes Core/decisão/reserva vinculada; filtros e cursor consistente, sem mutações ou pedidos artificiais |
 
 Evidências automatizadas e locais no contrato ligado acima; aceite humano destas melhorias continua a cargo do mantenedor.
+
+## Aceite de GG-08 e GG-09
+
+| ID | Critério verificável |
+|---|---|
+| GG08-01 | Gestora lê o estado inicial, informa nome e ramal, vê a confirmação sem recarregar e encontra a configuração após nova sessão. O leitor autorizado consulta os mesmos valores e o zero inicial do ramal é preservado. |
+| GG08-02 | Banco recusa nome ou ramal inválido e versões obsoletas, inclusive duas tentativas de primeiro cadastro. O conflito oferece nova consulta na UI. |
+| GG08-03 | Solicitante, administrador isolado ou em conflito D5-B, revogada, inativa e anônimo não gravam pela RPC. Somente leitor efetivo consulta. Substituta efetiva grava enquanto autorizada. A tabela permanece sem acesso direto. |
+| GG08-04 | Auditoria registra autoria, data, sala, versões e campos alterados. As tentativas rejeitadas não geram gravação. |
+| GG09-01 | Solicitações anteriores e seus estados continuam consultáveis, com decisão, recusa e cancelamento da reserva vinculada quando registrados. |
+| GG09-02 | Diretas criadas, editadas ou canceladas aparecem somente na aba correspondente, com a autoria e os dados persistidos. Reservas vinculadas permanecem na aba de solicitações. |
+| GG09-03 | Filtros por estado e datas civis inclusivas em São Paulo, paginação em múltiplas páginas e empate de horário resolvido pelo cursor composto. Datas exibidas em Brasília em navegador com outro fuso. |
+| GG09-04 | Solicitante, administrador sem gestão, anônimo, revogada e inativa não obtêm histórico privado. A interface tem estados de espera, erro e vazio, abas por teclado e cartões sem overflow no celular. |
+| GG09-05 | Regressão de criação, aprovação, recusa, edição e cancelamento. Homologar em desktop e celular real com a secretária antes de liberar. |
+
+[Contratos e plano de aplicação](EXPERIENCE_V1.md#gg-08-e-gg-09--contato-e-histórico-de-gestão).

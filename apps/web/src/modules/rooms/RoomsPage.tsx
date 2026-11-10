@@ -9,6 +9,7 @@ import { useAuth } from "../../core/auth/AuthProvider";
 import { can } from "../../core/auth/permissions";
 import { Notice } from "../../shared/ui";
 import { RequestHistory } from "./RequestHistory";
+import { RoomContact } from "./RoomContact";
 import { RoomPhoto } from "./RoomPhoto";
 import { RoomHeroBanner } from "./RoomHeroBanner";
 import {
@@ -218,6 +219,7 @@ export function RoomsPage() {
           Atualizar agenda
         </button>
       </div>
+      {read && <RoomContact key={auth.profile?.id} manage={manage} />}
       {error && <Notice error>{error}</Notice>}
       {success && <Notice>{success}</Notice>}
       <div className={`room-columns${manage ? " room-columns-manager" : ""}`}>

@@ -168,6 +168,8 @@ Negar: usuário inativo, sem papel, sem permissão, unidade incorreta, setor inc
 
 Catálogo `room_booking.schedule.read`, `room_booking.request.create`, `room_booking.request.read_own` e `room_booking.manage`; solicitante e administrador recebem as três primeiras; gestor recebe as quatro, condicionado à ausência de atribuição administrativa ativa conflitante (D5-B, 26/10/2026). Papéis novos `global_only`, sem atribuição automática. Schema privado e tabelas sem acesso direto, RLS restritiva; RPCs autorizadas e leitura saneada somente em AG-02. Ver [contrato AG-01](../modules/room-booking/AG01_FOUNDATION.md). Implementação autorizada para revisão em 23/10; revisão do titular e merge continuam pendentes, conforme exceção de mantenedor único registrada em `9e20199` (sem parecer independente).
 
+GG-08 permite ler o contato da sala com `room_booking.schedule.read` e exige `room_booking.manage` efetivo para gravá-lo com versão otimista e auditoria. GG-09 exige gestão efetiva para consultar tanto solicitações quanto reservas diretas. As três RPCs novas usam a autorização existente do Agendamento, sem grants diretos sobre as tabelas. D5-B se aplica inclusive ao administrador com atribuição conflitante e D6 segue a atribuição efetiva da substituta. [Contratos do Agendamento](../modules/room-booking/EXPERIENCE_V1.md#gg-08-e-gg-09--contato-e-histórico-de-gestão).
+
 
 ## Agendamento — API AG-02 e interface AG-03 (PR #88)
 

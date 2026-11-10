@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RoomsPage } from "../apps/web/src/modules/rooms/RoomsPage";
 import { dateTime, instant, time } from "../apps/web/src/modules/rooms/api";
@@ -123,7 +129,10 @@ it("nega navegação sem concessão global e limpa agenda após erro de autoriza
       .flatMap((g) => g.destinations)
       .some((d) => d.path === "/rooms"),
   ).toBe(false);
-  state.rpc.mockRejectedValue({ code: "42501" });
+  state.rpc.mockImplementation(async (name) => {
+    if (name === "schedule") throw { code: "42501" };
+    return null;
+  });
   render(<RoomsPage />);
   await waitFor(() =>
     expect(screen.getByRole("alert").textContent).toContain(
@@ -278,5 +287,186 @@ it("histórico apresenta estados, decisão e reserva cancelada, pagina por curso
         p_before_start: null,
       }),
     ),
+  );
+});
+
+it("gestora configura contato e vê o valor salvo; leitor só consulta após remontar", async () => {
+  state.permissions = ["schedule.read", "manage"];
+  let contact = {
+    room_id: "sala-sintética",
+    responsible_name: null as string | null,
+    extension: null as string | null,
+    version: 0,
+  };
+  const fallback = state.rpc.getMockImplementation()!;
+  state.rpc.mockImplementation(async (name, args) => {
+    if (name === "contact") return contact;
+    if (name === "save_contact") {
+      contact = {
+        ...contact,
+        responsible_name: args.p_responsible_name,
+        extension: args.p_extension,
+        version: 1,
+      };
+      return contact;
+    }
+    return fallback(name, args);
+  });
+  const { unmount } = render(<RoomsPage />);
+  await screen.findByText("Contato ainda não informado.");
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Editar contato" }));
+  expect(document.activeElement).toBe(
+    screen.getByLabelText("Nome da responsável"),
+  );
+  await user.type(
+    screen.getByLabelText("Nome da responsável"),
+    "Nome Institucional",
+  );
+  await user.type(screen.getByLabelText(/^Ramal/), "0012");
+  await user.click(screen.getByRole("button", { name: "Salvar contato" }));
+  expect(await screen.findByText("Contato atualizado.")).toBeTruthy();
+  expect(screen.getByText("Nome Institucional")).toBeTruthy();
+  expect(state.rpc).toHaveBeenCalledWith("save_contact", {
+    p_room_id: "sala-sintética",
+    p_responsible_name: "Nome Institucional",
+    p_extension: "0012",
+    p_version: 0,
+  });
+
+  unmount();
+  state.permissions = ["schedule.read"];
+  render(<RoomsPage />);
+  expect(await screen.findByText("0012")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Editar contato" })).toBeNull();
+  expect(
+    screen.queryByRole("tablist", { name: "Tipo de histórico" }),
+  ).toBeNull();
+});
+
+it("conflito de contato impede nova gravação até consultar a versão atual", async () => {
+  state.permissions = ["schedule.read", "manage"];
+  const fallback = state.rpc.getMockImplementation()!;
+  let version = 1;
+  state.rpc.mockImplementation(async (name, args) => {
+    if (name === "contact")
+      return {
+        room_id: "sala-sintética",
+        responsible_name:
+          version === 1
+            ? "Contato inicial"
+            : "Contato atualizado por outra sessão",
+        extension: "0012",
+        version,
+      };
+    if (name === "save_contact") {
+      version = 2;
+      throw { code: "40001" };
+    }
+    return fallback(name, args);
+  });
+
+  render(<RoomsPage />);
+  const user = userEvent.setup();
+  const contact = screen.getByRole("region", { name: "Contato da sala" });
+  await user.click(
+    await within(contact).findByRole("button", { name: "Editar contato" }),
+  );
+  const save = within(contact).getByRole<HTMLButtonElement>("button", {
+    name: "Salvar contato",
+  });
+  await user.click(save);
+  expect((await within(contact).findByRole("alert")).textContent).toContain(
+    "O contato mudou",
+  );
+  expect(save.disabled).toBe(true);
+  await user.click(
+    within(contact).getByRole("button", {
+      name: "Consultar contato atualizado",
+    }),
+  );
+  await within(contact).findByText("Contato atualizado por outra sessão");
+  expect(
+    within(contact).queryByRole("button", { name: "Salvar contato" }),
+  ).toBeNull();
+});
+
+it("aba de diretas usa RPC própria, cursor e filtros sem misturar as origens", async () => {
+  state.permissions = ["schedule.read", "manage"];
+  const direct = {
+    id: "D1",
+    booked_for: "Reserva direta sintética",
+    status: "cancelled",
+    starts_at: "2020-01-03T02:40:00Z",
+    ends_at: "2020-01-03T02:59:00Z",
+    created_at: "2019-12-20T12:00:00Z",
+    updated_at: "2019-12-22T12:00:00Z",
+    created_by_name: "Gestora sintética",
+    cancelled_at: "2019-12-22T12:00:00Z",
+    cancelled_by_name: "Substituta sintética",
+    cancel_reason: "Motivo sintético",
+    secretary_notes: "<b>Somente texto</b>",
+  };
+  const fallback = state.rpc.getMockImplementation()!;
+  state.rpc.mockImplementation(async (name, args) =>
+    name === "direct_history"
+      ? args.p_before_id
+        ? {
+            items: [{ ...direct, id: "D2", booked_for: "Página seguinte" }],
+            has_more: false,
+          }
+        : { items: [direct], has_more: true }
+      : fallback(name, args),
+  );
+
+  const { container } = render(<RoomsPage />);
+  expect(
+    await screen.findByText("Nenhuma solicitação encontrada."),
+  ).toBeTruthy();
+  expect(state.rpc.mock.calls.some(([name]) => name === "direct_history")).toBe(
+    false,
+  );
+  const user = userEvent.setup();
+  await user.tab();
+  screen.getByRole("tab", { name: "Solicitações" }).focus();
+  await user.keyboard("{ArrowRight}");
+  const tab = screen.getByRole("tab", {
+    name: "Reservas diretas",
+    selected: true,
+  });
+  expect(document.activeElement).toBe(tab);
+  const panel = within(
+    screen.getByRole("tabpanel", { name: "Reservas diretas" }),
+  );
+  await panel.findByText("Reserva direta sintética");
+  expect(panel.getByText("02/01/2020, 23:40")).toBeTruthy();
+  await user.click(panel.getByText("Detalhes da reserva"));
+  expect(
+    panel.getByText("Observações da secretaria: <b>Somente texto</b>"),
+  ).toBeTruthy();
+  expect(container.querySelector(".room-history-details b")).toBeNull();
+
+  await user.click(panel.getByRole("button", { name: "Próxima" }));
+  await panel.findByText("Página seguinte");
+  expect(panel.getByText("Página 2")).toBeTruthy();
+  expect(state.rpc).toHaveBeenLastCalledWith(
+    "direct_history",
+    expect.objectContaining({
+      p_before_start: direct.starts_at,
+      p_before_id: direct.id,
+    }),
+  );
+  await user.selectOptions(
+    panel.getByLabelText("Status da reserva"),
+    "cancelled",
+  );
+  await panel.findByText("Reserva direta sintética");
+  expect(panel.getByText("Página 1")).toBeTruthy();
+  expect(state.rpc).toHaveBeenLastCalledWith(
+    "direct_history",
+    expect.objectContaining({
+      p_status: "cancelled",
+      p_before_id: null,
+    }),
   );
 });
