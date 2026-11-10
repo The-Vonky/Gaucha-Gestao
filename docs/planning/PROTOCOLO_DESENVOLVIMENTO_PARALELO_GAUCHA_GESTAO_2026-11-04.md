@@ -44,6 +44,12 @@ Se não houver acesso ao GitHub ou ao ambiente necessário naquele momento, decl
 - A existência de trabalho em outro chat **não equivale a autorização** para integrar, mesclar, publicar ou alterar ambientes compartilhados.
 - O mantenedor humano decide merges, mudanças privilegiadas, janela de implantação, liberação para testes com funcionários e GO produtivo. Não inventar revisão humana independente.
 
+## 4.1. Adendo operacional — homologação no notebook antes de merge (10/11/2026)
+
+**Decisão posterior à versão 1.0 deste protocolo:** o mantenedor definiu o notebook como ambiente ativo de desenvolvimento e homologação. A entrega de funcionalidades testáveis inclui **disponibilizar o HEAD da PR no checkout do notebook que serve o localhost, antes de pedir aceite ou merge**. Não se deve manter código apenas no clone/worktree do agente por excesso de isolamento. A sequência vigente está em [`AGENTS.md`](../../AGENTS.md) e no [`PARALLEL_AGENT_WORKFLOW.md`](../development/PARALLEL_AGENT_WORKFLOW.md).
+
+Essa sincronização **não equivale** a merge na `main`, deploy, migration na C30 ou liberação de produção. O agente com acesso local deve atualizar e verificar o checkout, reutilizando o Supabase/Docker local com migrations incrementais seguras quando aplicável. Alterações não commitadas requerem tratamento reversível e identificação, não reset/limpeza indiscriminados. Quando houver conflito real, declarar o impeditivo específico. Se o agente só dispõe de GitHub/nuvem, registrar `PENDENTE DE SINCRONIZAÇÃO LOCAL`, apresentar instruções aplicáveis e **não fingir que atualizou o notebook**. O mantenedor valida no localhost, solicita ajustes na mesma PR e só então decide o merge.
+
 ## 5. Segurança operacional e distinção dos estados
 
 Manter separados, em toda avaliação:
