@@ -204,3 +204,16 @@ e registro versionado até o commit. Histórico é exclusivo da gestão. Usuári
 comuns ativos recebem somente comunicados globais publicados dentro do período,
 sem rascunhos/futuros/autoria. Não há segmentação por unidade/setor nesta versão.
 Aplicada somente no Supabase local autorizado em 05/11/2026; negativas e persistência reais [validadas](../modules/announcements/LOCAL_VALIDATION_20261105.md). [Contrato e decisões](../modules/announcements/ADMINISTRATION_V1.md).
+
+## Relatos e sugestões — GG-11
+
+`feedback.report.read` pertence à atribuição global ativa de
+`platform_administrator`. Um trigger em `core.role_permissions` rejeita
+delegação a outros papéis e a checagem de domínio exige a relação vigente com
+o papel. O menu e a rota usam a projeção Core. Listagem, detalhes e download
+autenticado reavaliam a sessão, o perfil e a atribuição no servidor.
+
+O envio está disponível a perfis ativos com sessão vigente e vincula a autoria
+a `auth.uid()`. O funcionário pode repetir o próprio envio para obter o recibo.
+A tabela privada tem RLS restritiva e as RPCs de leitura administrativa são
+separadas das de recebimento. [Contrato GG-11](../modules/feedback/FEEDBACK_V1.md).
