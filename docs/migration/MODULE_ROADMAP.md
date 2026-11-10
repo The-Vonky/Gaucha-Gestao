@@ -148,3 +148,13 @@ perfil Gestor de Comunicados, histórico e fonte única autenticada. Migration
 aplicada somente no localhost autorizado (31→32 migrations), com barra/administração e persistência reais [validadas](../modules/announcements/LOCAL_VALIDATION_20261105.md). JSON público retirado somente
 na Entrega B. Homologação operacional, revisão e merge dependem do mantenedor.
 GG-11 permanece indisponível. GG-10 não encerrado; PROD NO-GO.
+
+
+### Refinamento de Comunicados e canal interno — GG-10/GG-11
+
+Candidatos em revisão conjunta. As migrations acrescentam agenda exclusiva,
+cores Elo independentes e recebimento de relatos com anexo privado. O
+Platform Administrator consulta o canal pelo menu Administração. A release
+candidata depende da validação das migrations, do CI de Auth/PostgREST/Storage e
+da homologação do mantenedor. [Contrato GG-10](../modules/announcements/ADMINISTRATION_V1.md)
+e [contrato GG-11](../modules/feedback/FEEDBACK_V1.md).

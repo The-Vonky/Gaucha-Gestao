@@ -106,10 +106,19 @@ export const destinations: Destination[] = [
   {
     path: "/admin/announcements",
     label: "Comunicados",
-    description: "Publicação, agendamento e histórico de comunicados institucionais.",
+    description: "Publicação e agendamento de comunicados institucionais.",
     icon: "info",
     group: "Administração",
     permissions: ["announcements.notice.manage"],
+    scope: "global",
+  },
+  {
+    path: "/admin/feedback",
+    label: "Relatos e sugestões",
+    description: "Consulta interna de problemas e sugestões da equipe.",
+    icon: "logs",
+    group: "Administração",
+    permissions: ["feedback.report.read"],
     scope: "global",
   },
   {

@@ -4,6 +4,16 @@ Implementação local autorizada em 04/11/2026. Responsável por revisão e merg
 mantenedor único. Fonte do escopo: brief GG-10 fornecido pelo mantenedor nesta tarefa;
 nenhuma issue GG-10 encontrada na consulta inicial. **PROD NO-GO; sem implantação.**
 
+## Barra e administração após o refinamento GG-10/GG-11
+
+A fonte autenticada `announcements_published` fornece o único aviso ativo, o
+horário SQL e a próxima fronteira. A barra mantém o comportamento sticky e
+permite abrir o aviso completo pelo teclado. A categoria permanece disponível
+em texto na leitura, e cada preset Elo pode ser escolhido independentemente.
+O [contrato administrativo](../modules/announcements/ADMINISTRATION_V1.md)
+descreve publicação e agendamento. Quando habilitado, **Relatar** abre o
+[canal interno](../modules/feedback/FEEDBACK_V1.md), também disponível no cabeçalho.
+
 ## Evolução administrativa — Entrega B, 05/11/2026
 
 Na branch administrativa, a composição autenticada usa somente RPC PostgreSQL.

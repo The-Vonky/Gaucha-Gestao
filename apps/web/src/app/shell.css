@@ -491,6 +491,7 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
 }
 .crumbs ol {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   list-style: none;
@@ -498,7 +499,7 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
   padding: 0;
   font: var(--text-body-sm);
   color: var(--color-text-secondary);
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .crumbs li {
   display: flex;
@@ -872,6 +873,7 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
   }
   .topbar-brand {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     gap: var(--space-2);
     text-decoration: none;
@@ -925,6 +927,9 @@ main#main > :is(.page-title, .launch-head, .audit-hero) + * {
   }
 }
 @media (max-width: 599px) {
+  .topbar {
+    gap: var(--space-1);
+  }
   .crumbs {
     display: none;
   }
