@@ -4,6 +4,8 @@
 
 Plano diretor técnico, financeiro e de implantação · **Versão 1.3** · 15 de outubro de 2026
 
+> **Atualização de governança — 10/11/2026:** há **um único desenvolvedor/mantenedor humano**; o antigo segundo desenvolvedor saiu da equipe. O plano de cinco dias e a divisão **Dev A/Dev B** da seção 8 pertencem à versão histórica 1.3 e **não atribuem tarefas, revisões, handovers ou pendências atualmente**. As prioridades atuais estão no [Guia Mestre GG-01–GG-15](GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md), e o fluxo de homologação pré-merge está em [AGENTS.md](../../AGENTS.md). Este esclarecimento não declara os antigos itens concluídos, não altera por inferência gates de segurança ou autoriza operações na C30.
+
 > Fonte canônica: este arquivo. As versões .docx 1.0 e 1.1, distribuídas fora do repositório, ficam superadas. Mudanças entram por PR, com registro na seção 12.
 
 Escopo: Qualidade v1 como primeira entrega operacional; expansão progressiva para os demais sistemas corporativos. Hipótese econômica: desenvolvimento por equipe interna e reaproveitamento do hardware já disponível.
@@ -149,7 +151,7 @@ Limiares propostos: alertar em 60%/80% do tier gratuito; migrar automaticamente 
 
 Datas e responsáveis por etapa: pendentes de definição pelo responsável do projeto. A ordem acima registra dependências, não prazos.
 
-**Coordenação dos cinco dias (issues #46–#59):** Dev A (`The-Vonky`) — Core/arquitetura/infra, backup/restore e decisões; Dev B — Qualidade v1, P1–P9, regressões e evidências; Matheus — avaliação e montagem física da C30/HD HPE, sem autorização destrutiva presumida. Revisões cruzadas, atualização diária por evidência e limite de uma frente escritora por pessoa são a proposta operacional; horário de revisão até 16h e identidade GitHub de Dev B ainda precisam de confirmação. Proteger a `main` é atividade da fase final, não da etapa 2.
+**REGISTRO HISTÓRICO, NÃO VIGENTE (15/10/2026) — Coordenação dos cinco dias (issues #46–#59):** Dev A (`The-Vonky`) — Core/arquitetura/infra, backup/restore e decisões; Dev B — Qualidade v1, P1–P9, regressões e evidências; Matheus — avaliação e montagem física da C30/HD HPE, sem autorização destrutiva presumida. Revisões cruzadas, atualização diária por evidência e limite de uma frente escritora por pessoa são a proposta operacional; horário de revisão até 16h e identidade GitHub de Dev B ainda precisam de confirmação. Proteger a `main` é atividade da fase final, não da etapa 2.
 
 ## 9. Checklist operacional obrigatório
 

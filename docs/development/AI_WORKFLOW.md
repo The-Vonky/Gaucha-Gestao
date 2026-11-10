@@ -9,8 +9,9 @@ Usar agentes para implementar trabalho de engenharia **aprovado**, reduzindo lei
 | Etapa | Quem decide / executa | Resultado |
 | --- | --- | --- |
 | Planejamento e arquitetura | Responsável humano, com apoio técnico | Requisitos, decisão de produto, ADR/segurança, UX, brief, fora de escopo, aceite |
-| Implementação | Agente/desenvolvedor autorizado | Código, migration nova quando aplicável, testes, documentação canônica, commits focalizados |
-| Revisão | Mantenedor humano único, com análise técnica do agente quando útil | Examina diff, evidências, riscos e CI, registrando decisão de merge; ausência de segundo revisor tratada como risco assumido |
+| Implementação | Agente/desenvolvedor autorizado | Código, migrations novas quando aplicáveis, testes, documentação canônica, commits focalizados e PR |
+| Homologação local pré-merge | Agente com acesso ao notebook disponibiliza o HEAD da branch no checkout do localhost; mantenedor testa e aceita | Branch/commit testável no notebook, resultado de smoke e aceite ou ajustes na mesma PR |
+| Revisão e merge | Mantenedor humano único, com análise técnica do agente quando útil | Após homologação local, examina diff, evidências, riscos e CI e decide merge; ausência de segundo revisor tratada como risco assumido |
 | Operação persistente / produção | Responsável operacional explicitamente autorizado | Inventário, preservação, validações e registro do GO; nunca inferido de CI verde |
 
 Uma sessão de implementação **não** substitui a aprovação do responsável e não deve redesenhar a plataforma opportunisticamente.
@@ -29,17 +30,18 @@ AGENTS.md
 
 Evite instruções vagas como «leia todo o projeto e melhore tudo». Se a tarefa for uma auditoria de todo o acervo, declare explicitamente o escopo amplo e identifique primeiro inventário/riscos antes de editar.
 
-Um brief útil registra: objetivo, comportamento atual, escopo e exclusões, módulo e proprietário dos dados, mudança de schema, RLS/Storage, UI, compatibilidade, validação, ambiente isolado, responsável humano e evidências exigidas. **Não copie toda a arquitetura** para cada brief: referencie a fonte canônica.
+Um brief útil registra: objetivo, comportamento atual, escopo e exclusões, módulo e proprietário dos dados, mudança de schema, RLS/Storage, UI, compatibilidade, validação, checkout do notebook usado na homologação (ou isolamento excepcional), responsável humano e evidências exigidas. **Não copie toda a arquitetura** para cada brief: referencie a fonte canônica.
 
 ## Passagem entre agentes ou modelos
 
 O **repositório** (branch, commits, diff, issue e brief) é a fonte do trabalho, não a memória do modelo nem a conversa anterior.
 
-1. Branch/worktree própria quando houver escrita, derivada de `origin/main`; preservar worktrees existentes.
+1. Branch própria quando houver escrita, derivada de `origin/main`; **preferir o checkout do notebook que serve o localhost**. Worktree extra só por necessidade real de concorrência/isolamento, nunca como requisito rotineiro para a entrega.
 2. Commits atômicos em checkpoints estáveis; mudanças não commitadas devem ser pequenas e conscientes.
 3. Registrar na issue/PR o que foi feito, o que faltou, riscos e testes com SHA e resultado.
-4. O próximo agente verifica `AGENTS.md`, o brief/issue, `git status`, diff e commits recentes **antes** de editar.
-5. Não refazer tarefas concluídas nem transferir íntegra de conversas ou credenciais para outra ferramenta.
+4. Quando a tarefa exigir teste manual, **sincronizar o HEAD da branch no checkout ativo do notebook ANTES do merge**, se houver acesso local; confirmar que o frontend usa essa versão e informar o estado de migrations no Supabase local. O mantenedor homologa e solicita ajustes na mesma PR antes de aceitar o merge.
+5. O próximo agente verifica `AGENTS.md`, o brief/issue, `git status`, diff e commits recentes **antes** de editar.
+6. Não refazer tarefas concluídas nem transferir íntegra de conversas ou credenciais para outra ferramenta.
 
 Exemplo de retomada:
 
@@ -55,7 +57,7 @@ execute validações pertinentes e relate os resultados reais em pt-BR.
 
 - Faça busca focalizada antes de abrir arquivos grandes; leia somente módulos/contratos usados pela tarefa.
 - Limpe contexto quando mudar para uma frente não relacionada; evite prompts e resumos duplicados.
-- Mais de um agente com escrita só quando o benefício justificar custos e conflitos; cada um com área de arquivos, branch e **runtime Docker/Supabase isolado**.
+- Mais de um agente com escrita só quando o benefício justificar custos e conflitos; cada um com área/branch identificada, **reutilizando por padrão o runtime Docker/Supabase local existente**, com execuções sequenciais. Isolamento adicional é excepcional e precisa de justificativa.
 - Não use o mesmo banco persistente, volume ou migration para tarefas paralelas. A [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) descreve DEV compartilhado que **não é descartável**.
 - A divisão de Core/migrations/CI deve ter um só escritor coordenado. Consulte o [protocolo paralelo](PARALLEL_AGENT_WORKFLOW.md).
 
@@ -70,6 +72,8 @@ execute validações pertinentes e relate os resultados reais em pt-BR.
 
 ## Relatório de conclusão
 
-Use formato breve, factual e verificável: **arquivos modificados; migrations; checks com resultado e SHA; limitações; riscos; PR/commit; próxima decisão humana**. Não declare validações que não executou. Pare diante de ação destrutiva ou privilégio indefinido.
+Use formato breve, factual e verificável: **arquivos modificados; migrations; checks com resultado e SHA; checkout/branch/SHA realmente disponíveis no localhost (ou PENDENTE DE SINCRONIZAÇÃO LOCAL); limitações; riscos; PR/commit; próxima decisão humana**. Não declare validações que não executou. Pare diante de ação destrutiva ou privilégio indefinido.
+
+**Regra de execução:** agente que só possui acesso ao GitHub/nuvem não consegue sincronizar o filesystem do notebook: registrar essa limitação e fornecer passos exatos para sincronização; não afirmar instalação local. Não fazer merge na `main` como substituto de homologação local. Nunca usar reset/limpeza destrutiva para trocar branch. Código local para teste não implica GO para C30/STAGING/PROD.
 
 Para orientações de produto, arquitetura e prioridades, consulte [README](../../README.md), [documentação integrada](../README.md), [ADRs](../decisions/) e [Plano Diretor](../planning/PLANO_DIRETOR_2026.md).
