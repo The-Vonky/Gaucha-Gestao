@@ -34,9 +34,9 @@
 - Branch e SHA entregues para teste:
 - URL local e smoke test executado (ou **NÃO EXECUTADO**):
 - Banco/migrations locais: aplicado e verificado / não necessário / bloqueado (motivo):
-- [ ] Agente com acesso ao notebook sincronizou o HEAD da PR no checkout usado pelo localhost e comprovou o SHA.
-- [ ] Se não houve acesso ao notebook, foi registrado **PENDENTE DE SINCRONIZAÇÃO LOCAL** e fornecido procedimento específico; não declarar pronto para homologação.
-- [ ] Mantenedor homologou a funcionalidade no localhost **antes** da autorização de merge (registrar aceite ou pendências).
+- [ ] Para entrega que exige teste manual e **com acesso local**, agente sincronizou o HEAD da PR no checkout usado pelo localhost e comprovou o SHA (**N/A motivado** se não aplicável).
+- [ ] Quando **sem acesso ao notebook**, foi registrado **PENDENTE DE SINCRONIZAÇÃO LOCAL** e fornecido procedimento específico, sem declarar pronto para homologação (**N/A motivado** quando sincronizado).
+- [ ] Para funcionalidade testável, o mantenedor homologou no localhost **antes** da autorização de merge; registrar aceite ou pendências (**N/A motivado** para alteração apenas documental).
 
 ## Revisão e integração
 
