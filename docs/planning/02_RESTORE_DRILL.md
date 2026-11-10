@@ -4,6 +4,8 @@
 **Estado atualizado em 19/10/2026: ENSAIO SINTÉTICO EXECUTADO, ACEITE DOCUMENTAL PARCIAL.** O relatório da seção 9 registra as evidências fornecidas pelo operador; tarefas e nomes na seção 10 são históricos de preparação (16/10), não o inventário atual. A Issue #51 continua aberta por evidências operacionais incompletas; incorporar este relato ao repositório **não** altera os resultados do ensaio nem fecha automaticamente DR-08.  
 **Base inicial do documento:** `main` `f016b3c2711a54775a470a7f01bb5c8c27dc2dd1` (PR #61). **Execução real documentada:** `1e818a45449c0720f7b5af5398e04e0a89c9b3ff` em 19/10, com **17 migrations** no snapshot. **Baseline de revisão:** `main` `f7f5dddbcc748c8fabf192b031ad658cfb57a8f5`, 21/10, com **18 SQL migrations**, incluindo Curva ABC. Estes estados **não foram submetidos ao mesmo teste de restore**.
 
+> **Nota de governança — 10/11/2026:** as referências a **Dev A/Dev B**, inclusive à futura demonstração para Dev B, descrevem a equipe da época do ensaio. O segundo desenvolvedor saiu; essa entrega a ele não é uma tarefa atual, não precisa ser mantida aberta nem marcada como concluída. O ensaio e seus resultados permanecem como evidência histórica, sem substituir os requisitos atuais de backup/restauração definidos no Guia Mestre e nos runbooks operacionais.
+
 ## 1. Objetivo e limite da prova
 
 Demonstrar que uma instalação **exclusivamente sintética** de cinco serviços (PostgreSQL 17, GoTrue/Auth, PostgREST, Storage API e Kong) pode ser copiada para um **segundo projeto Docker Compose isolado** e recuperar:
