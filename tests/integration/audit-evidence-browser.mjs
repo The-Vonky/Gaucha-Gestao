@@ -329,7 +329,7 @@ export async function runBrowser() {
         });
         const original=Buffer.from(png);
         await input.setInputFiles({name:"sintetica.png",mimeType:"image/png",buffer:original});
-        const imageFile=section.locator(".file-item").filter({has:page.getByRole("button",{name:"Ampliar Evidência 3.png",exact:true})});
+        const imageFile=section.locator(".file-item").filter({has:page.getByText("Evidência 3.png",{exact:true})});
         const image=imageFile.getByRole("img");
         await imageFile.scrollIntoViewIfNeeded();await image.waitFor();
         await image.evaluate(element=>element.decode());
