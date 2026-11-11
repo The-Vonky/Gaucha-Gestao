@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { privateImages } from "../../shared/privateImageCache";
-import { AUDIT_THUMBNAILS_ENABLED, imageKey, thumbnailKey, loadEvidenceThumbnail, loadEvidenceImage, evidenceThumbnailState, type ImageEvidence } from "./evidenceImages";
+import { AUDIT_STORAGE_TRANSFORMS, AUDIT_THUMBNAILS_ENABLED, imageKey, thumbnailKey, loadStorageThumbnail, loadEvidenceThumbnail, loadEvidenceImage, evidenceThumbnailState, type ImageEvidence } from "./evidenceImages";
 /** Montar um critério não implica visibilidade: só o viewport (ou a ampliação explícita) carrega. */
 export function EvidenceImage({ row, name, expanded = false, onOpenOriginal }: { row: ImageEvidence; name: string; expanded?: boolean; onOpenOriginal?: () => void }) {
   const element = useRef<HTMLSpanElement>(null);
@@ -10,7 +10,7 @@ export function EvidenceImage({ row, name, expanded = false, onOpenOriginal }: {
   const [attempt, setAttempt] = useState(0);
   const [preparing, setPreparing] = useState(false);
   const [notSmaller, setNotSmaller] = useState(false);
-  const thumbnail = AUDIT_THUMBNAILS_ENABLED && !expanded;
+  const thumbnail = (AUDIT_STORAGE_TRANSFORMS || AUDIT_THUMBNAILS_ENABLED) && !expanded;
   const key = thumbnail ? thumbnailKey(row) : imageKey(row);
   const url = useSyncExternalStore(privateImages.subscribe, () => privateImages.peek(key));
   const epoch = useSyncExternalStore(privateImages.subscribe, privateImages.getAccessVersion);
@@ -30,6 +30,11 @@ export function EvidenceImage({ row, name, expanded = false, onOpenOriginal }: {
     setFailed(false); setLoading(true); setPreparing(false); setNotSmaller(false);
     const refresh = async () => {
       try {
+        const evidence = { id, inspection_id, object_key, content_type, size_bytes, uploaded_at };
+        if (thumbnail && AUDIT_STORAGE_TRANSFORMS) {
+          await loadStorageThumbnail(evidence);
+          return;
+        }
         if (thumbnail) {
           const status = await evidenceThumbnailState(id);
           if (!current) return;
@@ -44,7 +49,7 @@ export function EvidenceImage({ row, name, expanded = false, onOpenOriginal }: {
             setFailed(true); setLoading(false); return;
           }
         }
-        await (thumbnail ? loadEvidenceThumbnail : loadEvidenceImage)({ id, inspection_id, object_key, content_type, size_bytes, uploaded_at });
+        await (thumbnail ? loadEvidenceThumbnail : loadEvidenceImage)(evidence);
       } catch { if (current) { setFailed(true); setPreparing(false); } }
       finally { if (current) setLoading(false); }
     };
