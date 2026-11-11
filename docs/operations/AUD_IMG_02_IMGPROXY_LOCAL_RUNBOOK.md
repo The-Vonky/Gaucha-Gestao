@@ -29,7 +29,7 @@ Auth, REST, Studio, PostgreSQL, rede existente, volume e dados históricos ficam
 
 **Executar somente após autorização específica do mantenedor para a troca de Storage e Kong no notebook.** Os comandos abaixo pressupõem uma sessão local, a raiz do repositório, Docker Engine no socket Unix padrão e o `snapshot` gerado no pré-voo. Executar por etapa, interromper se algum comando falhar e manter o trace de shell desligado.
 
-1. Preparar os dois containers candidatos **parados**. A resposta da API do Docker fica suprimida. A cópia para o Kong mantém dono e modo dos três arquivos no archive. O comando original do Kong recria seu template Nginx na partida.
+1. Preparar os dois containers candidatos **parados**. A resposta da API do Docker fica suprimida. Usar `PUT /containers/{id}/archive` com `copyUIDGID=false` para aplicar os UID/GID do tar. O `docker cp -a` para dentro do Kong aplica o usuário e o grupo do container, que no notebook substituíram `0:0` por `100:65533`. O comando original do Kong recria seu template Nginx na partida. [Extração de archives no Docker Engine](https://github.com/moby/moby/blob/master/daemon/archive_unix.go#L783).
 
    ```bash
    storage=supabase_storage_gaucha-gestao-local
@@ -40,12 +40,17 @@ Auth, REST, Studio, PostgreSQL, rede existente, volume e dados históricos ficam
      -H 'Content-Type: application/json' --data-binary "@$snapshot/storage-create.json" "$engine?name=${storage}-imgproxy-candidate"
    curl --silent --show-error --fail --output /dev/null --unix-socket /var/run/docker.sock \
      -H 'Content-Type: application/json' --data-binary "@$snapshot/kong-create.json" "$engine?name=${kong}-imgproxy-candidate"
-   docker cp -a - "${kong}-imgproxy-candidate:/home/kong" < "$snapshot/kong-files.tar"
+   kong_candidate_id="$(docker inspect --format '{{.Id}}' "${kong}-imgproxy-candidate")" || exit 1
+   curl --silent --show-error --fail --output /dev/null --unix-socket /var/run/docker.sock \
+     --request PUT -H 'Content-Type: application/x-tar' --data-binary "@$snapshot/kong-files.tar" \
+     "http://localhost/containers/${kong_candidate_id}/archive?path=/home/kong&copyUIDGID=false&noOverwriteDirNonDir=true" || exit 1
+   python3 infra/local/prepare-audit-imgproxy.py verify-kong "$snapshot" "$kong_candidate_id" || exit 1
    ```
 
-2. Reler os IDs de Storage e Kong e compará-los com `$snapshot/container-ids`. Parar Kong e Storage nessa ordem. Renomear os originais para preservação e liberar os nomes do CLI. Colocar os candidatos nos nomes originais e iniciar somente o novo Storage.
+2. Reler os IDs de Storage e Kong e compará-los com `$snapshot/container-ids`. Repetir a conferência do Kong candidato antes da primeira parada. A verificação lê os três arquivos do container por ID e compara SHA-256, UID, GID e modo com o tar privado. Qualquer divergência ou erro de leitura interrompe a troca. O SHA-256 de `kong.yml` tem como referência o declarativo candidato com o plugin `response-transformer`. Após a validação, parar Kong e Storage nessa ordem, renomear os originais para preservação, colocar os candidatos nos nomes originais e iniciar somente o novo Storage.
 
    ```bash
+   python3 infra/local/prepare-audit-imgproxy.py verify-kong "$snapshot" "$kong_candidate_id" || exit 1
    docker stop "$kong"
    docker stop "$storage"
    docker rename "$kong" "${kong}-before-imgproxy"

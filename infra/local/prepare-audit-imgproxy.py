@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Prepara o snapshot e os payloads locais em /tmp. Só faz leituras no Docker."""
+"""Prepara o snapshot local em /tmp e verifica o Kong candidato. Só lê o Docker."""
 
+import hashlib
 import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -21,6 +23,10 @@ KONG = f"supabase_kong_{PROJECT}"
 STORAGE_IMAGE = "sha256:105a2584129c9600aebed6f5ac49ca4371c92b996ecd1af7179750333e9e2120"
 KONG_DIR = "/home/kong"
 KONG_FILES = ("kong.yml", "localhost.crt", "localhost.key")
+
+
+class KongVerificationError(ValueError):
+    """Falha de validação com mensagem segura para o operador."""
 
 
 def docker(*args):
@@ -60,6 +66,44 @@ def no_store_on_storage(declarative):
             "add": {"headers": ["Cache-Control:private, no-store"]},
         },
     })
+
+
+def kong_file_signature(archive, name):
+    entries = [entry for entry in archive.getmembers() if entry.name == name]
+    if len(entries) != 1 or not entries[0].isfile():
+        raise KongVerificationError(f"{name}: esperado um único arquivo regular.")
+    entry = entries[0]
+    with archive.extractfile(entry) as contents:
+        digest = hashlib.sha256(contents.read()).hexdigest()
+    return {"SHA-256": digest, "UID": entry.uid, "GID": entry.gid, "modo": entry.mode}
+
+
+def verify_kong(snapshot, candidate_id):
+    if not re.fullmatch(r"[0-9a-f]{64}", candidate_id):
+        raise KongVerificationError("Informe o ID completo do Kong candidato.")
+    candidate, = json.loads(docker("inspect", "--type", "container", candidate_id))
+    if (candidate["Name"] != f"/{KONG}-imgproxy-candidate"
+            or candidate["State"]["Status"] != "created"
+            or candidate["Config"]["Labels"].get("com.supabase.cli.project") != PROJECT):
+        raise KongVerificationError("O ID não identifica o Kong candidato ainda parado.")
+
+    with tarfile.open(snapshot / "kong-files.tar", "r:") as expected:
+        for name in KONG_FILES:
+            expected_signature = kong_file_signature(expected, name)
+            url = f"http://localhost/containers/{candidate_id}/archive?path={KONG_DIR}/{name}"
+            try:
+                data = subprocess.check_output(
+                    ["curl", "--silent", "--fail", "--unix-socket", "/var/run/docker.sock", url],
+                    stderr=subprocess.DEVNULL, timeout=10,
+                )
+            except subprocess.SubprocessError:
+                raise KongVerificationError(f"{name}: falha ao ler o arquivo do candidato.") from None
+            with tarfile.open(fileobj=io.BytesIO(data), mode="r:") as actual:
+                actual_signature = kong_file_signature(actual, name)
+            differences = [field for field in expected_signature
+                           if expected_signature[field] != actual_signature[field]]
+            if differences:
+                raise KongVerificationError(f"{name}: divergência em {', '.join(differences)}.")
 
 
 def prepare():
@@ -119,9 +163,20 @@ def prepare():
 
 
 if __name__ == "__main__":
-    try:
-        # Inspeções, declarativo e certificados podem conter credenciais.
-        os.umask(0o077)
-        print(prepare())
-    except Exception:
-        sys.exit("Pré-voo interrompido. Confira Docker, PyYAML e a correspondência com o inventário local.")
+    # Inspeções, declarativo e certificados podem conter credenciais.
+    os.umask(0o077)
+    if len(sys.argv) == 1:
+        try:
+            print(prepare())
+        except Exception:
+            sys.exit("Pré-voo interrompido. Confira Docker, PyYAML e a correspondência com o inventário local.")
+    elif len(sys.argv) == 4 and sys.argv[1] == "verify-kong":
+        try:
+            verify_kong(Path(sys.argv[2]), sys.argv[3])
+        except KongVerificationError as error:
+            sys.exit(f"Troca bloqueada. {error}")
+        except Exception:
+            sys.exit("Troca bloqueada. Não foi possível validar os arquivos do Kong candidato.")
+        print("Kong candidato validado. SHA-256, UID, GID e modo conferidos nos três arquivos.")
+    else:
+        sys.exit(f"Uso: {Path(sys.argv[0]).name} [verify-kong SNAPSHOT ID_CANDIDATO]")
