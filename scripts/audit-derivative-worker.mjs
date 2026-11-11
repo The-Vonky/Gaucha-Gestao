@@ -2,6 +2,11 @@ import { createHash } from 'node:crypto';
 import { originalIsEligible, derivativeObjectKey, DERIVATIVE_ENCODER_VERSION,
   DERIVATIVE_MAX_ORIGINAL_BYTES, DERIVATIVE_MAX_OUTPUT_BYTES } from './audit-derivative-protocol.mjs';
 import { isolatedEncoder } from './audit-derivative-encoder.mjs';
+const terminalFailure = new Map([
+  ['DECODER_NOT_SMALLER', 'derivative_not_smaller'],
+  ['DECODER_DIMENSIONS', 'derivative_dimensions_exceeded'],
+  ['DECODER_INVALID_IMAGE', 'derivative_invalid_image'],
+]);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 
 // One-shot: uma única claim, sem daemon, sem identidade implícita ou credenciais criadas.
@@ -33,7 +38,8 @@ export async function runOneShot({ repository, storage, encoder = isolatedEncode
     return { state: 'ready' };
   } catch (error) {
     // Se o banco falhar, a lease expira; nunca logar exceções privadas nem alterar o original.
-    try { await repository.fail(job.lease,...(error?.code==='DECODER_NOT_SMALLER'?['derivative_not_smaller']:[])); } catch { /* recuperação por lease */ }
+    const reason = terminalFailure.get(error?.code);
+    try { await repository.fail(job.lease, ...(reason ? [reason] : [])); } catch { /* recuperação por lease */ }
     return { state: 'failed' };
   }
 }

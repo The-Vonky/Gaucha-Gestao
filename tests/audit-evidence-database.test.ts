@@ -361,6 +361,24 @@ describe('AUD-IMG-02: manifesto, fila e RLS em memória', { concurrent: false },
    expect((await globalClaim())?.evidence.id).toBe(expectedFirst);
   }finally{await db.exec('rollback;reset role');}
  });
+ it.each(['derivative_dimensions_exceeded','derivative_invalid_image'])('encerra %s pela lease atual e preserva RLS',async(reason)=>{
+  await db.exec("reset role;begin;update audit.checklist_evidence_derivatives set state='failed',attempts=5,lease_id=null,lease_until=null");
+  try{
+   const fresh=await png();
+   await db.exec('reset role');
+   const {job}=await one<{job:{lease:string;evidence:{id:string}}}>('select audit_private.runtime_derivative_claim(null) job');
+   expect(job.evidence.id).toBe(fresh.evidence_id);
+   expect(await one('select attempts from audit.checklist_evidence_derivatives where evidence_id=$1',[fresh.evidence_id])).toEqual({attempts:1});
+   await db.query("select set_config('audit_derivative.failure_code',$1,true)",[reason]);
+   expect(await one('select audit_private.runtime_derivative_fail($1) ok',[uid(999)])).toEqual({ok:false});
+   expect(await one('select audit_private.runtime_derivative_fail($1) ok',[job.lease])).toEqual({ok:true});
+   expect(await one('select audit_private.runtime_derivative_claim(null) job')).toEqual({job:null});
+   await login(users.reader);
+   expect(await rows('select * from audit.checklist_evidence_thumbnail_state($1)',[fresh.evidence_id])).toEqual([{state:'failed',reason,retryable:false}]);
+   await login(users.inactive);
+   expect(await rows('select * from audit.checklist_evidence_thumbnail_state($1)',[fresh.evidence_id])).toEqual([]);
+  }finally{await db.exec('rollback;reset role');}
+ });
  it('global_new exige corte explícito e rejeita filtros inválidos sem tocar a fila',async()=>{
   for(const [mode,after,inspection] of [['global_new','',''],['global_new','infinity',''],['global_new','2099-01-01',''],['global_new','2026-01-01',A],['unknown','','']]){
    await db.exec('reset role;begin');

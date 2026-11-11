@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { privateImages } from "../../shared/privateImageCache";
 import { AUDIT_THUMBNAILS_ENABLED, imageKey, thumbnailKey, loadEvidenceThumbnail, loadEvidenceImage, evidenceThumbnailState, SMALL_ORIGINAL_PREVIEW_BYTES, THUMBNAIL_WAIT_MS, type ImageEvidence } from "./evidenceImages";
+const thumbnailMessages = {
+  delayed: "A miniatura está demorando.",
+  failed: "Miniatura indisponível.",
+  "not-smaller": "Imagem já compacta; não foi possível reduzir a miniatura.",
+  dimensions: "A resolução da imagem excede o limite da miniatura.",
+  invalid: "A imagem tem um formato incompatível com a miniatura.",
+};
+type ThumbnailStatus = keyof typeof thumbnailMessages;
 /** Montar um critério não implica visibilidade: só o viewport (ou a ampliação explícita) carrega. */
 export function EvidenceImage({ row, name, expanded = false, onOpenOriginal }: { row: ImageEvidence; name: string; expanded?: boolean; onOpenOriginal?: () => void }) {
   const element = useRef<HTMLSpanElement>(null);
   const [visible, setVisible] = useState(expanded);
-  const [status, setStatus] = useState<"idle" | "loading" | "preparing" | "delayed" | "failed" | "not-smaller">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "preparing" | ThumbnailStatus>("idle");
   const [attempt, setAttempt] = useState(0);
   const [smallOriginal, setSmallOriginal] = useState<{ key: string; epoch: number }>();
   const thumbnail = AUDIT_THUMBNAILS_ENABLED && !expanded;
@@ -59,7 +67,9 @@ export function EvidenceImage({ row, name, expanded = false, onOpenOriginal }: {
             await loadEvidenceImage(evidence);
             if (current && epoch === privateImages.getAccessVersion()) setSmallOriginal({ key: originalKey, epoch });
           } else {
-            setStatus(notSmaller ? "not-smaller" : "failed");
+            setStatus(notSmaller ? "not-smaller"
+              : result.reason === "derivative_dimensions_exceeded" ? "dimensions"
+              : result.reason === "derivative_invalid_image" ? "invalid" : "failed");
             return;
           }
         }
@@ -75,20 +85,28 @@ export function EvidenceImage({ row, name, expanded = false, onOpenOriginal }: {
     return () => { current = false; controller.abort(); clearTimeout(poll); clearTimeout(deadline); };
   }, [id, inspection_id, object_key, content_type, size_bytes, uploaded_at, originalKey, visible, attempt, epoch, thumbnail]);
 
-  return <span ref={element} className="audit-image-slot">
-    {visible && url ? <img src={url} alt={name} width={expanded ? 960 : 88} height={expanded ? 720 : 72}
-      loading={expanded ? "eager" : "lazy"} decoding="async" onError={() => { if (privateImages.peek(key) === url) privateImages.invalidate(key); setStatus("failed"); }} /> :
+  const thumbnailMessage = thumbnail ? thumbnailMessages[status as ThumbnailStatus] : undefined;
+  const preview = !expanded && Boolean(url);
+  return <span ref={element} className={preview ? "audit-image-slot audit-evidence-thumbnail" : "audit-image-slot"}>
+    {visible && url ? <>
+      <img src={url} alt={name} width={expanded ? 960 : 88} height={expanded ? 720 : 72}
+        loading={expanded ? "eager" : "lazy"} decoding="async"
+        onError={() => { if (privateImages.peek(key) === url) privateImages.invalidate(key); setStatus("failed"); }} />
+      {onOpenOriginal && <button type="button" className="audit-evidence-enlarge" aria-label={`Ampliar ${name}`} onClick={onOpenOriginal} />}
+    </> :
       status === "preparing" ? <span role="status">Preparando miniatura…</span> :
       status === "loading" ? <span role="status">Carregando imagem…</span> :
-      thumbnail && ["failed", "delayed", "not-smaller"].includes(status) ? <span className="audit-image-error" role="status">
-        {status === "delayed" ? "A miniatura está demorando." : status === "not-smaller" ? "Imagem já compacta; não foi possível reduzir a miniatura." : "Miniatura indisponível."}
-        {" "}{onOpenOriginal && <button type="button" className="small" onClick={onOpenOriginal}>Abrir original</button>}
-        {status === "delayed" && <> <button type="button" className="small" onClick={() => setAttempt(value => value + 1)}>Consultar novamente</button></>}
+      thumbnailMessage ? <span className="audit-image-error">
+        <span role="status">{thumbnailMessage}</span>
+        <span className="audit-image-actions">
+          {onOpenOriginal && <button type="button" className="small" onClick={onOpenOriginal}>Abrir original</button>}
+          {status === "delayed" && <button type="button" className="small" onClick={() => setAttempt(value => value + 1)}>Consultar novamente</button>}
+        </span>
       </span> :
-      status === "failed" ? <span className="audit-image-error" role="status">Imagem indisponível ou expirada. <button type="button" className="small"
+      status === "failed" ? <span className="audit-image-error"><span role="status">Imagem indisponível ou expirada.</span> <button type="button" className="small"
         onClick={() => setAttempt(value => value + 1)}>Tentar novamente</button></span> :
-      visible ? <span className="audit-image-error" role="status">Carregar imagem <button type="button" className="small"
-        onClick={() => setAttempt(value => value + 1)}>Tentar novamente</button></span> :
+      visible ? <span className="audit-image-error"><button type="button" className="small"
+        onClick={() => setAttempt(value => value + 1)}>Carregar imagem</button></span> :
       <span className="audit-image-error"><button type="button" className="small" onClick={() => setVisible(true)}>Carregar imagem</button></span>}
   </span>;
 }

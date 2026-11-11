@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import sharp from 'sharp';
 import { createHash } from 'node:crypto';
+import { texturedJpeg, withSefTrailer } from './fixtures/audit-derivative-images.mjs';
 import { encodeIsolated } from '../scripts/audit-derivative-encoder.mjs';
 import { runOneShot, storageApiAdapter, authorizedStorageTransport } from '../scripts/audit-derivative-worker.mjs';
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
@@ -41,6 +42,51 @@ describe('encoder real em subprocesso Linux (sem Storage)', () => {
     expect([result.width,result.height]).toEqual(width>height?[480,360]:[360,480]);
     expect(result.bytes.length).toBeLessThan(input.length);
   });
+  it('gera miniatura de JPEG de cerca de 840 KiB com trailer SEF delimitado', async () => {
+    const jpeg = await texturedJpeg(1080, 2340, 33);
+    const original = withSefTrailer(jpeg);
+    const before = digest(original);
+    const plain = await encodeIsolated({bytes: jpeg, contentType: 'image/jpeg'});
+    const result = await encodeIsolated({bytes: original, contentType: 'image/jpeg'});
+    expect(original.length).toBeGreaterThan(800 * 1024);
+    expect(original.length).toBeLessThan(880 * 1024);
+    expect([result.width, result.height]).toEqual([222, 480]);
+    expect(result.bytes).toEqual(plain.bytes);
+    expect(digest(original)).toBe(before);
+  });
+
+  it('gera derivado para JPEG de 5 MB dentro do limite de pixels', async () => {
+    const bytes = await texturedJpeg(4000, 3000, 55);
+    expect(bytes.length).toBeGreaterThan(5_000_000);
+    expect(bytes.length).toBeLessThan(5_500_000);
+    const result = await encodeIsolated({bytes, contentType: 'image/jpeg'});
+    expect([result.width, result.height]).toEqual([480, 360]);
+    expect(result.bytes.length).toBeLessThan(1_048_576);
+  });
+
+  it('recusa resolução acima do limite de pixels ou de lado, mesmo em JPEG pequeno', async () => {
+    for (const [width, height] of [[8640, 5760], [8300, 80], [5000, 4000]]) {
+      const bytes = await image('jpeg', width, height);
+      await expect(encodeIsolated({bytes, contentType: 'image/jpeg'})).rejects.toMatchObject({code:'DECODER_DIMENSIONS'});
+    }
+  });
+
+  it('rejeita trailer não reconhecido, diretório inválido e EOI falso', async () => {
+    const jpeg = await image();
+    const invalidDirectory = withSefTrailer(jpeg);
+    invalidDirectory.writeUInt32LE(37, invalidDirectory.length - 8);
+    const overlap = withSefTrailer(jpeg);
+    overlap.writeUInt32LE(130, overlap.length - 12);
+    for (const bytes of [
+      Buffer.concat([jpeg, Buffer.from('unknown'), Buffer.from([0xff, 0xd9])]),
+      withSefTrailer(jpeg.subarray(0, -2)),
+      invalidDirectory,
+      overlap,
+    ]) {
+      await expect(encodeIsolated({bytes, contentType: 'image/jpeg'})).rejects.toMatchObject({code:'DECODER_INVALID_IMAGE'});
+    }
+  });
+
   it('não amplia imagens pequenas', async () => {
     const input=await sharp(await image('png',80,40)).withMetadata().toBuffer();
     const result = await encodeIsolated({ bytes: input, contentType: 'image/png' });
@@ -92,6 +138,20 @@ describe('one-shot com repositório/Storage fake e encoder real', () => {
     expect(await runOneShot(e)).toEqual({ state: 'failed' });
     expect(e.repository.complete).not.toHaveBeenCalled(); expect(e.repository.fail).toHaveBeenCalledWith('lease');
     expect(digest(e.bytes)).toBe(before);
+  });
+  it.each([
+    ['DECODER_DIMENSIONS','derivative_dimensions_exceeded'],
+    ['DECODER_INVALID_IMAGE','derivative_invalid_image'],
+    ['DECODER_NOT_SMALLER','derivative_not_smaller'],
+    ['DECODER_TIMEOUT',undefined],
+    ['DECODER_MEMORY',undefined],
+    ['DECODER_FAILED',undefined],
+  ])('registra %s com o contrato de falha apropriado, sem publicar objeto', async (code, reason) => {
+    const e = await environment();
+    const encoder = {encode:vi.fn().mockRejectedValue(Object.assign(new Error('private'),{code}))};
+    expect(await runOneShot({...e,encoder})).toEqual({state:'failed'});
+    expect(e.repository.fail).toHaveBeenCalledExactlyOnceWith('lease', ...(reason ? [reason] : []));
+    expect(e.storage.putDerived).not.toHaveBeenCalled();
   });
   it('nega read-back divergente; lease obsoleta deixa órfão, sem exclusão', async () => {
     const e = await environment(); e.storage.readDerived.mockResolvedValueOnce(Buffer.from('wrong'));

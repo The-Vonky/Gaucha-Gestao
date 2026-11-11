@@ -75,6 +75,23 @@ describe('lista de miniaturas com backend mockado',()=>{
   await vi.advanceTimersByTimeAsync(10000);expect(backend.rpc).toHaveBeenCalledTimes(count);
   vi.useRealTimers();
  });
+ it.each([
+  ['derivative_dimensions_exceeded','A resolução da imagem excede o limite da miniatura.'],
+  ['derivative_invalid_image','A imagem tem um formato incompatível com a miniatura.'],
+ ])('mostra %s fora da caixa da imagem e exige abertura explícita', async (reason,message) => {
+  backend.rpc.mockResolvedValue({data:[{state:'failed',reason,retryable:false}],error:null});
+  const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
+  const open=vi.fn();
+  render(<EvidenceImage row={row} name="Evidência" onOpenOriginal={open}/>);
+  act(()=>visible([{isIntersecting:true}]));
+  await screen.findByText(message);
+  const button=screen.getByRole('button',{name:'Abrir original'});
+  expect(button.closest('.audit-evidence-thumbnail')).toBeNull();
+  expect(screen.queryByRole('button',{name:'Consultar novamente'})).toBeNull();
+  expect(backend.original).not.toHaveBeenCalled();
+  expect(backend.rpc).toHaveBeenCalledOnce();
+  fireEvent.click(button);expect(open).toHaveBeenCalledOnce();
+ });
  it.each([11_138, 65_536])('exibe original privado com %s bytes somente após o estado compacto autorizado', async size_bytes => {
   backend.rpc.mockResolvedValue({data:[{state:'failed',reason:'derivative_not_smaller',retryable:false}],error:null});
   vi.stubGlobal('fetch',vi.fn(async()=>new Response(new Uint8Array(size_bytes),{headers:{'content-type':'image/png'}})));

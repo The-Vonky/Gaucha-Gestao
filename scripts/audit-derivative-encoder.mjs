@@ -55,7 +55,7 @@ export function encodeIsolated({ bytes, contentType, version = DERIVATIVE_ENCODE
       if (rejected) return;
       if (code !== 0) {
         const error=denied();
-        error.code=code===3?'DECODER_NOT_SMALLER':code===4?'DECODER_DIMENSIONS':/not permitted|namespace|permission denied/i.test(diagnostic)?'DECODER_ISOLATION_FAILED':'DECODER_FAILED';
+        error.code=code===3?'DECODER_NOT_SMALLER':code===4?'DECODER_DIMENSIONS':code===5?'DECODER_INVALID_IMAGE':/not permitted|namespace|permission denied/i.test(diagnostic)?'DECODER_ISOLATION_FAILED':'DECODER_FAILED';
         return reject(error);
       }
       try {

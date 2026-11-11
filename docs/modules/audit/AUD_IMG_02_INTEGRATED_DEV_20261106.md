@@ -62,6 +62,20 @@ flowchart LR
 
 O Chromium autenticado no localhost renderizou o derivado de 480 × 360 e o PNG compacto original. A lista não transferiu o JPEG original. O encerramento de `npm run dev` restaurou NOLOGIN. O ensaio reutilizou o `gaucha-gestao-local` com o ledger vigente. Nenhuma migration foi criada ou aplicada nesta correção. A homologação física de celular segue pendente.
 
+### Continuação da homologação em 11/11/2026
+
+| Caso do mantenedor | Causa confirmada | Comportamento da correção |
+| --- | --- | --- |
+| JPEG de 11.138 bytes | `derivative_not_smaller` | Original privado exibido no notebook e no celular na homologação relatada pelo mantenedor. |
+| JPEG de 859.843 bytes, 1080 × 2340 | Trailer Samsung SEF de 211 bytes após o primeiro EOI. O decoder exigia EOI no fim do arquivo e rejeitava a imagem antes do Sharp. | O decoder isolado validou o diretório e produziu derivado de 39.312 bytes em 222 × 480 a partir do arquivo real, em ensaio somente leitura. |
+| JPEG de 5.223.270 bytes, 8640 × 5760 | 49.766.400 pixels e um lado acima de 8192. | `DECODER_DIMENSIONS` permanece. Em novos jobs, o estado terminal informa que a resolução excede o limite e permite abrir o original autorizado. |
+
+O decoder aceita um único JPEG seguido por trailer Samsung SEF de até 64 KiB. O primeiro EOI é localizado pela estrutura de marcadores, e o trailer precisa ter diretório completo e blocos contíguos dentro do intervalo após EOI. Somente o JPEG principal entra no Sharp. O original continua íntegro e os limites de pixels, lado, bytes, CPU, RSS e timeout permanecem. Os blocos do trailer são descartados sem interpretação. [Formato SEF em ExifTool](https://github.com/exiftool/exiftool/blob/master/lib/Image/ExifTool/Samsung.pm) · [Opções de validação do Sharp](https://sharp.pixelplumbing.com/api-constructor/)
+
+A migration incremental `20261111125540` estende a lista de erros e o wrapper de falha existente. `derivative_dimensions_exceeded` e `derivative_invalid_image` encerram a lease na primeira falha estrutural. O campo `attempts=5` representa orçamento esgotado, conforme o contrato existente. Timeouts, falhas de memória e erros não classificados continuam com backoff e teto de cinco tentativas. A alteração de schema preserva os jobs anteriores, ACLs e RLS. Os jobs históricos esgotados mantêm seus registros originais.
+
+As mensagens e ações de erro ocupam uma linha de largura disponível no cartão. A caixa de 88 × 72 fica reservada às imagens exibidas. A ação explícita continua passando pela assinatura do original. A nova rodada física em Android/iOS cabe ao mantenedor.
+
 ## Prova histórica executada em 06/11 no notebook
 
 Migration aplicada incrementalmente apenas no local após dump custom de banco, roles, bytes Storage e snapshot de ledger/fila/evidências/objetos, em `tmp/aud-img-integrated-20261106/` (0700/0600, ignorado pelo Git). O ledger tinha 35 registros, todos preservados; adicionou-se somente esta migration. Sem reset, seed, atualização/restart de serviços ou restore sobre dados persistentes. Reversão funcional: parar o supervisor e manter NOLOGIN; eventual mudança SQL deve usar migration posterior, sem editar migrations aplicadas.
