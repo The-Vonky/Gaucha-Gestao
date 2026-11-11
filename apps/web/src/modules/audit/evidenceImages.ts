@@ -5,10 +5,12 @@ import { downloadUrl } from "./evidence";
 import { client } from "../../core/client";
 import { db } from "./api";
 export const AUDIT_THUMBNAILS_ENABLED = import.meta.env.VITE_AUDIT_EVIDENCE_THUMBNAILS === "true";
+export const SMALL_ORIGINAL_PREVIEW_BYTES = 64 * 1024;
+export const THUMBNAIL_WAIT_MS = 15_000;
 export const THUMBNAIL_VERSION = "img-480-v1";
 export type ImageEvidence = Pick<ChecklistEvidence, "id" | "inspection_id" | "object_key" | "content_type" | "size_bytes" | "uploaded_at">;
-export async function evidenceThumbnailState(id: string) {
-  const { data, error } = await db().rpc("checklist_evidence_thumbnail_state", { p_evidence: id });
+export async function evidenceThumbnailState(id: string, signal: AbortSignal) {
+  const { data, error } = await db().rpc("checklist_evidence_thumbnail_state", { p_evidence: id }).abortSignal(signal);
   const row = data?.[0];
   if (error) throw new Error("Estado da miniatura indisponível.");
   if (!row) return { state: "absent", reason: null, retryable: false };

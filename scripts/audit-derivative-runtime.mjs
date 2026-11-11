@@ -73,12 +73,12 @@ export async function launchRuntime({workerConfig,signingSecret,probe=false}) {
   for(const file of files)args.push('--ro-bind',scripts+file,'/app/scripts/'+file);
   args.push('--chdir','/app','/runtime/node','--max-old-space-size=96','/app/scripts/'+entry);
   const child=spawn('/usr/bin/bwrap',args,{env:{PATH:'/usr/bin:/bin'},stdio:['pipe','pipe','ignore']});
-  let result,authorizedLease;let active=false;let requests=0;
+  let result,authorizedLease;let active=false;let requests=0;let timedOut=false;
   const stop=()=>{abort.abort();child.kill('SIGKILL');child.stdin.destroy();child.stdout.destroy();};
-  const timer=setTimeout(stop,110_000);
+  const timer=setTimeout(()=>{timedOut=true;stop();},110_000);
   const finished=new Promise((resolve,reject)=>{
-    child.on('error',()=>{stop();reject(new Error('Worker unavailable'));});
-    child.on('close',code=>{abort.abort();if(code===0&&result)resolve(result);else reject(Object.assign(new Error('Isolated worker failed'),{phase:result?.phase,code:result?.code}));});
+    child.on('error',()=>{stop();reject(Object.assign(new Error('Worker unavailable'),{code:'WORKER_UNAVAILABLE'}));});
+    child.on('close',code=>{abort.abort();if(code===0&&result)resolve(result);else reject(Object.assign(new Error('Isolated worker failed'),{phase:result?.phase,code:timedOut?'WORKER_TIMEOUT':result?result.code:'WORKER_UNAVAILABLE'}));});
   });
   void finished.catch(()=>{}); // O envio inicial também pode falhar antes do await.
   const channel=new FrameChannel({input:child.stdout,output:child.stdin,onError:stop,onEnd:()=>{},onFrame:(m,body)=>{
@@ -86,7 +86,10 @@ export async function launchRuntime({workerConfig,signingSecret,probe=false}) {
       if(active||result||!['idle','ready','stale','failed','orphan',...(probe?['probed']:[])].includes(m.result?.state)){stop();return;}
       result={state:m.result.state};
       if(probe)for(const flag of ['sqlLogin','sqlDenials','isolated','exactKey','expiry','renewal','closedLease'])result[flag]=m.result[flag]===true;
-      if(/^[a-zA-Z0-9 /:.-]{1,100}$/.test(m.result.phase??''))result.phase=m.result.phase;
+      const phaseAllowed=probe
+        ? /^[a-zA-Z0-9 /:.-]{1,100}$/.test(m.result.phase??'')
+        : ['sql claim','sql prepare','sql complete','read source','upload derived','read derived','encode','worker runtime'].includes(m.result.phase);
+      if(phaseAllowed)result.phase=m.result.phase;
       if(/^[A-Z0-9_]{1,32}$/.test(m.result.code??''))result.code=m.result.code;
       return;
     }

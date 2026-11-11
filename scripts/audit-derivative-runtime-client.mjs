@@ -65,7 +65,7 @@ export async function workerBoot() {
   const config=await initialized;
   const request=(type,payload,body,timeout)=>new Promise((resolve,reject)=>{
     const id=++next;
-    const wait=setTimeout(()=>{pending.delete(id);reject(new Error('Supervisor timeout'));fail();channel.close();process.stdin.destroy();},timeout);
+    const wait=setTimeout(()=>{pending.delete(id);reject(Object.assign(new Error('Supervisor timeout'),{code:type==='encode'?'ENCODE_REQUEST_TIMEOUT':'TOKEN_REQUEST_TIMEOUT'}));fail();channel.close();process.stdin.destroy();},timeout);
     pending.set(id,{resolve,reject,timer:wait,type});
     void channel.send({type,id,...payload},body).catch(()=>{fail();channel.close();});
   });

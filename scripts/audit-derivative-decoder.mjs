@@ -31,12 +31,18 @@ try {
     unlimited: false, animated: false };
   const metadata = await sharp(input, options).metadata();
   if (!['jpeg','png'].includes(metadata.format) || (metadata.pages ?? 1) !== 1 ||
-      metadata.width > 8192 || metadata.height > 8192) throw new Error('dimensions');
+      metadata.width > 8192 || metadata.height > 8192) {
+    process.exitCode = 4;
+    throw new Error('dimensions');
+  }
   // rotate() aplica EXIF; saída padrão do Sharp descarta EXIF/XMP/ICC/GPS.
   // Tentativas limitadas; sem ampliar nem reduzir além de 320 px para forçar ganho.
   // PNG continua lossless e JPEG preserva 4:4:4, com qualidade mínima 80.
   let result;
-  for(const [side,quality] of [[480,86],[480,82],[384,82],[320,80]]){
+  const sizes = png
+    ? [...new Set([480,384,320].map(side => Math.min(side,Math.max(metadata.width,metadata.height))))].map(side => [side,0])
+    : [[480,86],[480,82],[384,82],[320,80]];
+  for(const [side,quality] of sizes){
     let pipeline=sharp(input,options).rotate().resize({width:side,height:side,fit:'inside',withoutEnlargement:true});
     pipeline=png?pipeline.png({compressionLevel:9}):pipeline.jpeg({quality,chromaSubsampling:'4:4:4'});
     const candidate=await pipeline.toBuffer({resolveWithObject:true});
@@ -45,7 +51,7 @@ try {
   if(!result){process.exitCode=3;}else{
     process.stdout.write(JSON.stringify({mime,width:result.info.width,height:result.info.height,bytes:result.data.toString('base64')}));
   }
-} catch {
-  // Erros do decoder não expõem bytes/metadata/caminhos.
-  process.exitCode = 1;
+} catch (error) {
+  // O erro nativo nunca sai do subprocesso. Código 4 indica o limite físico.
+  if (!process.exitCode) process.exitCode = error.message === 'Input image exceeds pixel limit' ? 4 : 1;
 }

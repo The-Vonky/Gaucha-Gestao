@@ -8,23 +8,25 @@ Na raiz do checkout, usar apenas:
 npm run dev
 ```
 
-O supervisor carrega a configuração privada já provisionada em `~/.local/state/gaucha-gestao/audit-thumbnails/launcher.json`, confere projeto/container/portas e migration, obtém corte pelo relógio do PostgreSQL e inicia o executor antes do frontend. O Vite usa loopback `127.0.0.1:5173` com `strictPort`. Configuração ausente, destino incorreto, lock existente ou porta ocupada causam falha explícita, com limpeza; não há frontend aparentemente funcional acompanhado de inicialização silenciosamente ignorada do executor. Em outra máquina, o provisionamento inicial continua seguindo o [runbook](../../operations/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md); nenhum segredo é versionado ou entregue ao frontend.
+O Vite inicia em `127.0.0.1:5173` com `strictPort`, independentemente do executor. O executor carrega o launcher privado em `~/.local/state/gaucha-gestao/audit-thumbnails/launcher.json` e verifica o container, as portas, a migration e o login restrito. Falhas no executor mantêm o app utilizável, com código e orientação no terminal. Porta ocupada é erro do próprio Vite. Em outra máquina, siga o [runbook de provisionamento e recuperação](../../operations/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md).
 
 Pode-se navegar entre auditorias e anexar JPEG/PNG sem fornecer UUID nem executar `dev:thumbnails`. O comando anterior permanece como ferramenta opcional de diagnóstico, com `--inspection` opcional. O modo integrado sempre usa todas as auditorias. A flag local de miniaturas já habilitada no notebook foi preservada; a flag versionada permanece false.
 
-`Ctrl+C`, SIGTERM e SIGHUP param o agendamento e o frontend, aguardam a execução corrente (limite de 110 s) e restauram `audit_derivative_worker NOLOGIN`. Falha do frontend também cancela o executor; falha do executor encerra o frontend. O mantenedor deve aguardar a confirmação NOLOGIN antes de fechar o terminal.
+`Ctrl+C`, SIGTERM e SIGHUP param o agendamento e o frontend, aguardam a execução corrente (limite de 110 s) e restauram `audit_derivative_worker NOLOGIN`. Falha do Vite também cancela o executor. O mantenedor deve aguardar a confirmação NOLOGIN antes de fechar o terminal.
 
 ## Escopo, concorrência e recuperação
 
 A migration incremental `20261106112635_audit_derivative_global_new_uploads.sql` adiciona o modo transacional explícito `global_new`. Exige corte temporal finito, não futuro e UUID de auditoria ausente. O cliente transmite modo e corte ao worker por allowlist e aplica GUCs com `SET LOCAL` em uma transação. **O modo integrado não usa ambos os filtros nulos**, que continuam tendo o significado global histórico nos contratos de diagnóstico/CI.
 
-A claim exige **evidência iniciada e job criado depois do corte**. Assim, nem uma foto antiga confirmada depois da partida entra no escopo. A atualização de leases expiradas também obedece ao corte, inclusive quando a quinta tentativa já se esgotou. Nenhuma linha existente é reenfileirada na aplicação da migration. Os filtros são proteção operacional contra seleção acidental; não constituem uma nova fronteira de autorização para o login técnico.
+A claim exige **evidência iniciada e job criado a partir do marco de ativação**. Uma foto iniciada antes do marco fica fora do escopo mesmo se a confirmação ocorrer depois. A atualização de leases expiradas também obedece ao corte, inclusive quando a quinta tentativa já se esgotou. Nenhuma linha existente é reenfileirada na aplicação da migration. Os filtros são proteção operacional contra seleção acidental; não constituem uma nova fronteira de autorização para o login técnico.
 
 Há um executor por notebook, protegido pelo lock local já existente, e um one-shot por vez. O advisory lock e a verificação de lease ativa no banco continuam serializando a claim. Se um subprocesso cair, a sessão continua: uma lease interrompida só volta a ser elegível depois de expirar (2 minutos), sob o mesmo corte, teto de cinco tentativas e backoff existentes. A lease anterior perde validade; não há duas execuções simultâneas nem retomada irrestrita de pendências. Falha de renovação interrompe o loop e executa a limpeza.
 
 **Encerramento forçado do supervisor ou energia:** SIGKILL impede `finally`. Os processos isolados usam `--die-with-parent`; one-shot/SQL/JWT/lease continuam limitados. Não há renovação de senha após a morte do supervisor: novas conexões expiram em até 10 minutos após a última renovação; `VALID UNTIL` não encerra conexões SQL já abertas, limitadas pelos timeouts e pelo ciclo one-shot. JWT continua com TTL máximo de 30 s e a policy também exige lease viva. O login pode continuar marcado LOGIN no catálogo até a recuperação, embora a senha expire.
 
-O lock residual bloqueia uma segunda sessão. Recuperação exige conferir que o PID do lock/processos técnicos terminaram, restaurar NOLOGIN com o comando restrito do [registro de 05/11](AUD_IMG_02_LOCAL_EXECUTOR_20261105.md) e só então remover o lock. Não remover um lock ativo. Uma nova partida recebe um corte novo: **não retoma fotos/pendências da sessão anterior por inferência**. A recuperação automática aqui cobre falhas dos one-shots enquanto o supervisor permanece ativo; reprocessamento de evidência de sessão encerrada exige seleção e autorização operacionais explícitas, sem backfill global.
+Na primeira ativação bem-sucedida, o executor registra o horário do PostgreSQL em `activated-after`, no mesmo diretório privado do launcher (modo 0600). O diagnóstico com `--inspection` tem seu próprio `activated-after-<UUID>`. Preserve esses arquivos. Reinícios reaproveitam o marco e retomam pendências elegíveis, inclusive uploads confirmados enquanto o executor estava parado. Um marco ausente em uma nova configuração começa no horário atual. Um marco inválido ou futuro bloqueia o executor.
+
+Um lock residual bloqueia o executor. Antes de recuperar, confira o PID, outros processos técnicos e a ausência de sessões SQL do login técnico. Se ainda houver lease ativa, aguarde a expiração natural. Restaure e confirme NOLOGIN com o comando restrito do [registro de 05/11](AUD_IMG_02_LOCAL_EXECUTOR_20261105.md). Só depois remova um lock comprovadamente residual. O supervisor também preserva o lock quando não consegue confirmar a limpeza de NOLOGIN.
 
 ## Credenciais e isolamento
 
@@ -32,7 +34,9 @@ A duração fixa de quatro horas foi removida. O supervisor renova a validade da
 
 Continuam os cinco wrappers técnicos, `session_user=current_user`, checagem de ausência de privilégios/tabelas/segredo global, emissor com a mesma conexão mínima, tokens restritos a lease/bucket/chave e decoder irmão sem rede/segredos em Bubblewrap. O supervisor local usa o acesso Docker já existente somente para bootstrap LOGIN/validade/NOLOGIN. A configuração de assinatura permanece fora do checkout, modo 0600, e não aparece no ambiente/argv do worker ou no Vite.
 
-O polling, o limite de 480 px, a política de redução estrita e a mensagem **“Imagem já compacta; não foi possível reduzir a miniatura.”** permanecem. Não há fallback automático ao original.
+A lista consulta o estado por até 15 segundos. Em caso de demora, oferece **Abrir original** e **Consultar novamente**. Falhas oferecem abertura explícita. A exceção automática exige o estado terminal autorizado `derivative_not_smaller` e um JPEG/PNG de até 64 KiB. O original usa o fluxo assinado e o cache em memória da sessão, com o mesmo prazo e descarte de acesso. Downloads preservam os bytes.
+
+O derivado continua menor que o original, com lado maior de até 480 px. O terminal registra somente fases e códigos sanitizados, incluindo dimensões acima do limite, falha de decode, timeout e orçamento de memória. Os limites de 16.000.000 pixels, 8192 px por lado, 20 s de decoder e 384 MiB de RSS observado continuam vigentes.
 
 ```mermaid
 flowchart LR
@@ -41,14 +45,24 @@ flowchart LR
   S --> E[Executor sequencial com validade curta renovada]
   A[Upload novo em qualquer auditoria] --> Q[Fila privada]
   Q --> C[global_new com corte explícito]
-  E --> C
+  E --> T[Marco de ativação persistente]
+  T --> C
   C --> W[Worker e decoder isolados]
   W --> M[Miniatura privada ou estado compacto]
-  F --> P[Polling autorizado pelo Core]
+  F --> P[Consulta autorizada por até 15 s]
   P --> M
 ```
 
-## Prova executada no notebook
+## Confiabilidade no notebook em 11/11/2026
+
+- **Partida.** O Docker local estava saudável, com API e Postgres em loopback. A porta 5173 estava livre, o launcher tinha modo 0600, a migration `20261106112635` constava no ledger e não havia lock, processo técnico, sessão SQL ou lease ativa. O role ainda estava em LOGIN com senha expirada. O log do banco registrava duas rejeições do bootstrap por estado de role e um episódio anterior de migration ausente. Foi feita a recuperação prevista pelo runbook e confirmado NOLOGIN. Com lock ativo de outro executor, o Vite respondeu HTTP 200 e registrou o diagnóstico `LOCK`.
+- **Imagens pequenas.** Dois jobs históricos de 11.028 e 11.138 bytes estavam em `derivative_not_smaller`. A interface anterior exibia apenas a mensagem terminal. Os testes cobrem o uso do original privado com 11.138 bytes e os dois lados do limite de 64 KiB, além de negação de assinatura e descarte na troca de sessão.
+- **Imagens de celular.** Havia oito falhas de geração entre 358.266 e 3.181.722 bytes, com três ou quatro tentativas e sem lease ativa. Os logs antigos registravam o erro genérico. A sessão sintética não tinha acesso aos sete originais ainda disponíveis dessa amostra, então as dimensões e a causa individual seguem inconclusivas. No decoder real, JPEG de 4032 × 3024 e JPEG progressivo de 4608 × 3456 passaram. JPEG de 4624 × 3468 excedeu o teto de 16.000.000 pixels. Esse caso agora tem código específico e os limites de segurança continuam vigentes.
+- **Reinício.** Um JPEG sintético de 519.075 bytes e 4032 × 3024 entrou como `pending` com o executor parado. Uma sessão com o marco persistido reivindicou o job e encerrou sem completá-lo, confirmando NOLOGIN. O próximo processo usou o mesmo marco e, após a lease expirar naturalmente, concluiu a segunda tentativa como `ready`. O derivado privado tinha 61.879 bytes. A API autorizada retornou o original byte a byte e negou a assinatura anônima do derivado. Um PNG sintético de 91 bytes terminou em `derivative_not_smaller`; a API retornou os bytes originais ao usuário autorizado. Os dois uploads sintéticos ficaram na auditoria de teste existente.
+
+O Chromium autenticado no localhost renderizou o derivado de 480 × 360 e o PNG compacto original. A lista não transferiu o JPEG original. O encerramento de `npm run dev` restaurou NOLOGIN. O ensaio reutilizou o `gaucha-gestao-local` com o ledger vigente. Nenhuma migration foi criada ou aplicada nesta correção. A homologação física de celular segue pendente.
+
+## Prova histórica executada em 06/11 no notebook
 
 Migration aplicada incrementalmente apenas no local após dump custom de banco, roles, bytes Storage e snapshot de ledger/fila/evidências/objetos, em `tmp/aud-img-integrated-20261106/` (0700/0600, ignorado pelo Git). O ledger tinha 35 registros, todos preservados; adicionou-se somente esta migration. Sem reset, seed, atualização/restart de serviços ou restore sobre dados persistentes. Reversão funcional: parar o supervisor e manter NOLOGIN; eventual mudança SQL deve usar migration posterior, sem editar migrations aplicadas.
 
@@ -69,9 +83,9 @@ A prova usa imagens sintéticas, sem fotos empresariais. A matriz real anterior 
 
 ## Orientação para futura implantação no servidor — não executada
 
-O serviço da aplicação deverá iniciar e supervisionar **um único executor contínuo**, com restart limitado/backoff e encerramento conjunto. O executor deve manter o ciclo sequencial e os one-shots isolados; não iniciar um worker por auditoria, aba ou requisição HTTP. Falhas devem produzir diagnóstico sanitizado e estado observável, preservando originais e limites de retry/lease.
+O serviço da aplicação deverá supervisionar **um único executor contínuo**, com restart limitado/backoff e encerramento conjunto. O executor deve manter o ciclo sequencial e os one-shots isolados; não iniciar um worker por auditoria, aba ou requisição HTTP. Falhas devem produzir diagnóstico sanitizado e estado observável, preservando originais e limites de retry/lease.
 
-A habilitação inicial deve registrar um **corte persistente aprovado** para o processamento global da fila de novos uploads. Reinícios controlados devem recuperar esse mesmo corte de configuração privada durável e as leases expiradas desse escopo, em vez de usar filtros nulos ou recalcular o corte e perder pendências. O acervo anterior ao corte fica excluído; qualquer backfill exige operação separada. Essa diferença deliberada em relação à sessão local precisa de teste de falha/restart antes do GO operacional.
+A habilitação inicial deve registrar um **corte persistente aprovado** para o processamento global da fila de novos uploads. Reinícios controlados devem recuperar esse mesmo corte de configuração privada durável e as leases expiradas desse escopo, em vez de usar filtros nulos ou recalcular o corte e perder pendências. O acervo anterior ao corte fica excluído; qualquer backfill exige operação separada. O destino servidor precisa de seu próprio teste de falha e reinício antes do GO operacional.
 
 Identidade SQL mínima, emissor separado, segredo fora do frontend, JWT curto e decoder isolado permanecem obrigatórios. O ciclo de credenciais deve ser supervisionado pelo serviço confiável: validade curta renovável enquanto ativo, NOLOGIN no encerramento e recuperação que desabilita o login residual antes de reabrir o executor. Não copiar o bootstrap Docker do notebook para um processo web com acesso administrativo. A forma de provisionar essa autoridade no servidor precisa de proposta/GO operacional próprios e respeitar o Identity Boundary vigente.
 

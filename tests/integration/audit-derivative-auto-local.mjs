@@ -48,17 +48,18 @@ try{
  const item=n=>section.locator('.audit-evidence-list .file-item').filter({has:page.locator('strong',{hasText:`Evidência ${n}.jpg`})});
  await item(1).getByRole('img').waitFor();await page.waitForFunction(()=>document.querySelector('.audit-evidence-thumbnail img')?.naturalWidth>0);
  phase='upload second';await section.locator('input[type=file]').setInputFiles(dir+'/'+files[1].name);
- await item(2).getByText('Imagem já compacta; não foi possível reduzir a miniatura.').waitFor();
- assert.equal(await item(2).locator('img').count(),0);
- await Promise.all(bodies);assert.equal(proof.transfers.filter(t=>t.stage==='list'&&t.bucket==='original').length,0);
+ await item(2).getByRole('img').waitFor();
+ await Promise.all(bodies);
+ const automaticOriginals=proof.transfers.filter(t=>t.stage==='list'&&t.bucket==='original');
+ assert.ok(automaticOriginals.length>0);
+ assert.ok(automaticOriginals.every(t=>t.bytes===files[1].bytes.length&&t.sha256===hash(files[1].bytes)));
  assert.ok(proof.transfers.some(t=>t.stage==='list'&&t.bucket==='thumbnail'&&t.bytes<files[0].bytes.length));
  await section.screenshot({path:dir+'/automatic-list.png'});
  for(let i=0;i<files.length;i++){
   phase='expand '+i;stage='expanded-'+i;
-  if(i===1)await item(2).getByRole('button',{name:'Abrir original',exact:true}).click();
-  else await item(1).getByRole('button',{name:'Ampliar Evidência 1.jpg',exact:true}).click();
+  await item(i+1).getByRole('button',{name:`Ampliar Evidência ${i+1}.jpg`,exact:true}).click();
   const dialog=page.getByRole('dialog');await dialog.waitFor();await page.waitForFunction(()=>{const i=document.querySelector('dialog img');return i?.complete&&i.naturalWidth>0;});
-  await Promise.all(bodies);assert.ok(proof.transfers.some(t=>t.stage===stage&&t.sha256===hash(files[i].bytes)&&t.bytes===files[i].bytes.length));
+  await Promise.all(bodies);assert.ok(proof.transfers.some(t=>(t.stage===stage||(i===1&&t.stage==='list'))&&t.sha256===hash(files[i].bytes)&&t.bytes===files[i].bytes.length));
   await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});
   phase='download '+i;stage='download-'+i;
   const [download]=await Promise.all([page.waitForEvent('download'),item(i+1).getByRole('button',{name:`Baixar Evidência ${i+1}.jpg`,exact:true}).click()]);
@@ -66,7 +67,7 @@ try{
   proof.items.push({originalBytes:bytes.length,originalSha256:hash(bytes),expandedOriginal:true,downloadOriginal:true});
  }
  proof.noReloadAfterUploads=true;proof.automatic=true;
- console.log('PASS dois uploads no Chromium: ready automático e estado compacto terminal; ampliar/baixar idênticos.');
+ console.log('PASS dois uploads no Chromium: ready automático e original compacto autorizado; ampliar/baixar idênticos.');
 }catch(e){console.error('FAIL browser phase:',phase,'code:',e.code??'CHECK_FAILED');process.exitCode=1;}
 finally{
  await browser?.close();

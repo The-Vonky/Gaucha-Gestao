@@ -35,6 +35,12 @@ describe('encoder real em subprocesso Linux (sem Storage)', () => {
     expect(meta.exif).toBeUndefined(); expect(meta.orientation).toBeUndefined();
     expect(result.bytes.includes(Buffer.from('synthetic'))).toBe(false);
   });
+  it.each([['jpeg',4032,3024],['png',3024,4032]] as const)('reduz %s sintético em dimensões de celular (%i × %i)', async (format,width,height) => {
+    const input=await image(format,width,height);
+    const result=await encodeIsolated({bytes:input,contentType:'image/'+format});
+    expect([result.width,result.height]).toEqual(width>height?[480,360]:[360,480]);
+    expect(result.bytes.length).toBeLessThan(input.length);
+  });
   it('não amplia imagens pequenas', async () => {
     const input=await sharp(await image('png',80,40)).withMetadata().toBuffer();
     const result = await encodeIsolated({ bytes: input, contentType: 'image/png' });
@@ -48,16 +54,16 @@ describe('encoder real em subprocesso Linux (sem Storage)', () => {
     const good = await image();
     for (const input of [Buffer.from('<svg></svg>'), good.subarray(0, 100), Buffer.alloc(10_485_761), await image('png'), await image('png', 5000, 4000)])
       await expect(encodeIsolated({ bytes: input, contentType: 'image/jpeg' })).rejects.toThrow('derivative_generation_failed');
-    await expect(encodeIsolated({ bytes: await image('png', 5000, 4000), contentType: 'image/png' })).rejects.toThrow();
+    await expect(encodeIsolated({ bytes: await image('png', 5000, 4000), contentType: 'image/png' })).rejects.toMatchObject({code:'DECODER_DIMENSIONS'});
   });
   it('mata decoder por duração ou orçamento RSS e rejeita versão desconhecida', async () => {
     const bytes = await image();
-    await expect(encodeIsolated({ bytes, contentType: 'image/jpeg' }, { timeoutMs: 1 })).rejects.toThrow();
-    await expect(encodeIsolated({ bytes, contentType: 'image/jpeg' }, { maxRss: 1 })).rejects.toThrow();
+    await expect(encodeIsolated({ bytes, contentType: 'image/jpeg' }, { timeoutMs: 1 })).rejects.toMatchObject({code:'DECODER_TIMEOUT'});
+    await expect(encodeIsolated({ bytes, contentType: 'image/jpeg' }, { maxRss: 1 })).rejects.toMatchObject({code:'DECODER_MEMORY'});
     await expect(encodeIsolated({ bytes, contentType: 'image/jpeg', version: 'other' })).rejects.toThrow();
     const controller=new AbortController();
     const cancelled=encodeIsolated({bytes,contentType:'image/jpeg'},{signal:controller.signal});controller.abort();
-    await expect(cancelled).rejects.toThrow();
+    await expect(cancelled).rejects.toMatchObject({code:'DECODER_ABORTED'});
   });
 });
 async function environment() {

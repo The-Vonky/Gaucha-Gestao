@@ -1,5 +1,8 @@
 import {describe,it,expect,vi} from 'vitest';
-import {validateDevelopmentConfig,developmentLoop} from '../scripts/audit-derivative-dev.mjs';
+import {mkdtemp,rm,writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {validateDevelopmentConfig,developmentLoop,activationCutoff} from '../scripts/audit-derivative-dev.mjs';
 const inspection='11111111-1111-4111-8111-111111111111';
 const config={worker:{apiUrl:'http://127.0.0.1:54321',database:{host:'127.0.0.1',port:54322,database:'postgres',user:'audit_derivative_worker',ssl:false}}};
 describe('executor local sem efeitos de infraestrutura no teste',()=>{
@@ -28,4 +31,18 @@ describe('executor local sem efeitos de infraestrutura no teste',()=>{
   const run=vi.fn();await expect(developmentLoop({run,signal:new AbortController().signal,renew:async()=>{throw Error('expired');}})).rejects.toThrow();
   expect(run).not.toHaveBeenCalled();
  });
+});
+
+it('reutiliza o marco persistido com precisão de microssegundos e bloqueia conteúdo inválido',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'audit-activation-'));
+ try{
+  const file=join(dir,'activated-after');
+  const time=vi.fn().mockResolvedValueOnce('2026-11-11T11:55:00.123456Z');
+  expect(await activationCutoff(file,time)).toBe('2026-11-11T11:55:00.123456Z');
+  expect(await activationCutoff(file,time)).toBe('2026-11-11T11:55:00.123456Z');
+  expect(time).toHaveBeenCalledOnce();
+  await writeFile(file,'invalid');
+  await expect(activationCutoff(file,time)).rejects.toMatchObject({code:'CUTOFF'});
+  expect(time).toHaveBeenCalledOnce();
+ }finally{await rm(dir,{recursive:true});}
 });

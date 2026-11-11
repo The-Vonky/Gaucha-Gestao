@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 const backend = vi.hoisted(() => ({ rpc: vi.fn(), sign: vi.fn(), original: vi.fn(), download: vi.fn() }));
 vi.mock('../apps/web/src/core/client', () => ({ client: { storage: { from: (bucket:string) => ({ createSignedUrl: (...args:unknown[]) => backend.sign(bucket,...args) }) } } }));
-vi.mock('../apps/web/src/modules/audit/api', () => ({ db: () => ({ rpc: backend.rpc }) }));
+vi.mock('../apps/web/src/modules/audit/api', () => ({ db: () => ({ rpc: (...args:unknown[]) => {
+  const result = backend.rpc(...args);
+  return Object.assign(result, { abortSignal: () => result });
+} }) }));
 vi.mock('../apps/web/src/modules/audit/evidence', () => ({ downloadUrl: backend.original, downloadEvidence: backend.download }));
 const row = { id: '22222222-2222-4222-8222-222222222222', inspection_id:'11111111-1111-4111-8111-111111111111',
   object_key:'11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222',content_type:'image/png',size_bytes:800,uploaded_at:'2026-11-04' };
@@ -72,10 +75,50 @@ describe('lista de miniaturas com backend mockado',()=>{
   await vi.advanceTimersByTimeAsync(10000);expect(backend.rpc).toHaveBeenCalledTimes(count);
   vi.useRealTimers();
  });
- it('imagem sem ganho de bytes tem estado terminal explícito e nunca baixa o original sozinha',async()=>{
+ it.each([11_138, 65_536])('exibe original privado com %s bytes somente após o estado compacto autorizado', async size_bytes => {
+  backend.rpc.mockResolvedValue({data:[{state:'failed',reason:'derivative_not_smaller',retryable:false}],error:null});
+  vi.stubGlobal('fetch',vi.fn(async()=>new Response(new Uint8Array(size_bytes),{headers:{'content-type':'image/png'}})));
+  const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
+  render(<EvidenceImage row={{...row,size_bytes}} name="Evidência"/>);
+  expect(backend.original).not.toHaveBeenCalled();
+  act(()=>visible([{isIntersecting:true}]));
+  await screen.findByRole('img');expect(backend.original).toHaveBeenCalledTimes(1);expect(backend.sign).not.toHaveBeenCalled();
+  act(()=>cache.setAccess(''));
+  expect(screen.queryByRole('img')).toBeNull();
+ });
+ it('o estado compacto não permite ler o original se o Storage negar a assinatura', async () => {
+  backend.rpc.mockResolvedValue({data:[{state:'failed',reason:'derivative_not_smaller',retryable:false}],error:null});
+  backend.original.mockRejectedValueOnce(new Error('denied'));
+  const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
+  render(<EvidenceImage row={row} name="Evidência" onOpenOriginal={vi.fn()}/>);
+  act(()=>visible([{isIntersecting:true}]));
+  await screen.findByRole('button',{name:'Abrir original'});
+  expect(fetch).not.toHaveBeenCalled();
+  expect(screen.queryByRole('img')).toBeNull();
+ });
+ it.each(['pending', 'stalled'])('encerra a espera e oferece abertura explícita em %s',async kind=>{
+  vi.useFakeTimers();
+  backend.rpc.mockImplementation(()=>kind==='stalled'?new Promise(()=>{}):
+    Promise.resolve({data:[{state:'pending',reason:null,retryable:true}],error:null}));
+  const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
+  const open=vi.fn();
+  render(<EvidenceImage row={row} name="Evidência" onOpenOriginal={open}/>);
+  await act(async()=>visible([{isIntersecting:true}]));
+  await act(async()=>{await vi.advanceTimersByTimeAsync(15_000);});
+  expect(screen.getByText('A miniatura está demorando.')).toBeTruthy();
+  const count=backend.rpc.mock.calls.length;
+  await act(async()=>{await vi.advanceTimersByTimeAsync(30_000);});
+  expect(backend.rpc).toHaveBeenCalledTimes(count);
+  fireEvent.click(screen.getByRole('button',{name:'Abrir original'}));
+  expect(open).toHaveBeenCalledOnce();expect(backend.original).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button',{name:'Consultar novamente'}));
+  expect(backend.rpc).toHaveBeenCalledTimes(count+1);
+  vi.useRealTimers();
+ });
+ it('imagem sem ganho acima de 64 KiB exige ação explícita',async()=>{
   backend.rpc.mockResolvedValue({data:[{state:'failed',reason:'derivative_not_smaller',retryable:false}],error:null});
   const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
-  render(<EvidenceImage row={row} name="Evidência" onOpenOriginal={vi.fn()}/>);act(()=>visible([{isIntersecting:true}]));
+  render(<EvidenceImage row={{...row,size_bytes:65_537}} name="Evidência" onOpenOriginal={vi.fn()}/>);act(()=>visible([{isIntersecting:true}]));
   await screen.findByText('Imagem já compacta; não foi possível reduzir a miniatura.');
   expect(backend.original).not.toHaveBeenCalled();expect(backend.sign).not.toHaveBeenCalled();
  });
