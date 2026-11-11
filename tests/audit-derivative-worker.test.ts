@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import sharp from 'sharp';
 import { createHash } from 'node:crypto';
-import { texturedJpeg, withSefTrailer } from './fixtures/audit-derivative-images.mjs';
+import { samsungJpegFixture, texturedJpeg, withSamsungGainMap, withSefTrailer } from './fixtures/audit-derivative-images.mjs';
 import { encodeIsolated } from '../scripts/audit-derivative-encoder.mjs';
 import { runOneShot, storageApiAdapter, authorizedStorageTransport } from '../scripts/audit-derivative-worker.mjs';
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
@@ -53,6 +53,58 @@ describe('encoder real em subprocesso Linux (sem Storage)', () => {
     expect([result.width, result.height]).toEqual([222, 480]);
     expect(result.bytes).toEqual(plain.bytes);
     expect(digest(original)).toBe(before);
+  });
+
+  it('gera miniatura SDR de JPEG Galaxy de 9 MP com MPF, mapa de ganho e SEF 107', async () => {
+    const {primary,bytes} = await samsungJpegFixture();
+    expect(bytes.length).toBeGreaterThan(3_200_000);
+    expect(bytes.length).toBeLessThan(3_600_000);
+    const before = digest(bytes);
+    const plain = await encodeIsolated({bytes:primary,contentType:'image/jpeg'});
+    const derived = await encodeIsolated({bytes,contentType:'image/jpeg'});
+    expect([derived.width,derived.height]).toEqual([270,480]);
+    expect(derived.bytes).toEqual(plain.bytes);
+    expect(digest(bytes)).toBe(before);
+  });
+
+  it('rejeita adulterações no índice MPF, no JPEG auxiliar e no trailer SEF', async () => {
+    const {primary,map,bytes} = await samsungJpegFixture();
+    const mpf = bytes.indexOf('MPF\0') + 4;
+    const mainEnd = bytes.readUInt32LE(mpf + 54);
+    const isoIdentifier = 'urn:iso:std:iso:ts:21496:-1\0';
+    const mapIso = bytes.indexOf(isoIdentifier, mainEnd) + isoIdentifier.length;
+    const sefDirectory = bytes.length - 8 - bytes.readUInt32LE(bytes.length - 8);
+    const changed = (offset: number, value: number) => {
+      const result = Buffer.from(bytes);
+      result.writeUInt32LE(value, offset);
+      return result;
+    };
+    for (const invalid of [
+      changed(mpf + 30, 3), // número de imagens
+      changed(mpf + 42, 80), // tabela de entradas fora do APP2
+      changed(mpf + 54, mainEnd - 1),
+      changed(mpf + 70, bytes.readUInt32LE(mpf + 70) - 1),
+      changed(mpf + 74, bytes.readUInt32LE(mpf + 74) + 1),
+      changed(mapIso + 9, 0), // denominador ISO inválido
+      changed(sefDirectory + 4, 101),
+      withSamsungGainMap(primary, map.subarray(0, -2)),
+      withSamsungGainMap(primary, Buffer.concat([map, Buffer.from('unindexed')])),
+      withSamsungGainMap(primary, Buffer.concat([map, Buffer.alloc(65_536)])),
+      withSefTrailer(Buffer.concat([primary,map]), {version:107}),
+    ]) {
+      await expect(encodeIsolated({bytes:invalid,contentType:'image/jpeg'})).rejects.toMatchObject({code:'DECODER_INVALID_IMAGE'});
+    }
+  });
+
+  it('rejeita o JPEG auxiliar com tabela de Huffman inválida e contêiner íntegro', async () => {
+    const {primary,map} = await samsungJpegFixture();
+    const corrupted = Buffer.from(map);
+    const dht = corrupted.indexOf(Buffer.from([0xff,0xc4]));
+    expect(dht).toBeGreaterThan(0);
+    corrupted[dht + 4] = 0xff;
+    await expect(encodeIsolated({
+      bytes:withSamsungGainMap(primary,corrupted),contentType:'image/jpeg',
+    })).rejects.toThrow('derivative_generation_failed');
   });
 
   it('gera derivado para JPEG de 5 MB dentro do limite de pixels', async () => {
