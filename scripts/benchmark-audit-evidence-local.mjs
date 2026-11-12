@@ -77,7 +77,7 @@ try{
    await page.waitForTimeout(500);if(count===10&&repetition===1)run.extraTraffic=await meter.snapshot();
    // CDP reporta navegação de download como abortada; bytes/hash salvos em separado.
    assert.equal(run.unfinished,0);
-   const firstGets=run.requests.filter(r=>r.stage==='first-visit'&&r.category==='image-get');
+   const firstGets=run.requests.filter(r=>r.stage==='first-visit'&&['image-get','thumbnail-get'].includes(r.category));
    assert.equal(new Set(firstGets.map(r=>r.object)).size,count);assert.ok(firstGets.every(r=>!r.failed&&r.status===200&&r.imageKind===(mode==='candidate'?'thumbnail':'original')));
    console.log('PASS',mode,count,repetition);
   }finally{if(!run.requests)run.incompleteTraffic=await meter.snapshot();await save();await meter.close();await context.close();}

@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { Blob } from 'node:buffer';
+import sharp from 'sharp';
 const backend = vi.hoisted(() => ({ rpc: vi.fn(), sign: vi.fn(), original: vi.fn(), download: vi.fn() }));
 vi.mock('../apps/web/src/core/client', () => ({ client: { storage: { from: (bucket:string) => ({ createSignedUrl: (...args:unknown[]) => backend.sign(bucket,...args) }) } } }));
 vi.mock('../apps/web/src/modules/audit/api', () => ({ db: () => ({ rpc: backend.rpc }) }));
-vi.mock('../apps/web/src/modules/audit/evidence', () => ({ downloadUrl: backend.original, downloadEvidence: backend.download }));
+vi.mock('../apps/web/src/modules/audit/evidence', () => ({ BUCKET:'audit-checklist-evidence', downloadUrl: backend.original, downloadEvidence: backend.download }));
 const row = { id: '22222222-2222-4222-8222-222222222222', inspection_id:'11111111-1111-4111-8111-111111111111',
   object_key:'11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222',content_type:'image/png',size_bytes:800,uploaded_at:'2026-11-04' };
 const manifest = { evidence_id:row.id,encoder_version:'img-480-v1',derived_object_key:`${row.id}/img-480-v1/${'a'.repeat(64)}/${'b'.repeat(64)}.png`,derived_sha256:'b'.repeat(64),mime:'image/png',bytes:120 };
@@ -21,6 +23,100 @@ beforeEach(async () => {
   backend.rpc.mockImplementation(async(name:string)=>name==='checklist_evidence_thumbnail_state'?readyState:{data:[manifest],error:null});
   backend.sign.mockResolvedValue({data:{signedUrl:'https://storage.example.test/thumb'},error:null});
   backend.original.mockResolvedValue('https://storage.example.test/original');
+});
+
+describe('miniaturas nativas do Storage',()=>{
+ const large = {...row,size_bytes:65_537};
+ const signed = `https://storage.example.test/storage/v1/render/image/sign/audit-checklist-evidence/${row.object_key}?token=synthetic`;
+ const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR1sAAAAASUVORK5CYII='), c=>c.charCodeAt(0));
+ beforeEach(()=>{
+  vi.stubGlobal('Blob',Blob);
+  vi.stubEnv('VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS','true');
+  vi.stubEnv('VITE_SUPABASE_URL','https://storage.example.test');
+  backend.sign.mockResolvedValue({data:{signedUrl:signed},error:null});
+ });
+ it('assina a transformação somente no viewport, sem polling, e mantém o original explícito',async()=>{
+  const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
+  const {rerender}=render(<EvidenceImage row={large} name="Evidência"/>);
+  expect(backend.sign).not.toHaveBeenCalled();
+  act(()=>visible([{isIntersecting:true}]));
+  await screen.findByRole('img');
+  expect(backend.rpc).not.toHaveBeenCalled();
+  expect(backend.original).not.toHaveBeenCalled();
+  expect(backend.sign).toHaveBeenCalledExactlyOnceWith('audit-checklist-evidence',row.object_key,60,{
+   transform:{width:480,height:480,resize:'contain',quality:75,format:'origin'},
+  });
+  expect(fetch).toHaveBeenCalledWith(signed,expect.objectContaining({cache:'no-store',credentials:'omit',redirect:'error'}));
+  vi.mocked(fetch).mockResolvedValueOnce(new Response(new Uint8Array(large.size_bytes),{headers:{'content-type':'image/png'}}));
+  rerender(<EvidenceImage key="expanded" row={large} name="Original" expanded/>);
+  await screen.findByRole('img',{name:'Original'});
+  expect(backend.original).toHaveBeenCalledOnce();
+ });
+ it('reutiliza os bytes de um PNG compacto estático e revoga a prévia ao trocar de sessão',async()=>{
+  vi.mocked(fetch).mockResolvedValueOnce(new Response(png,{headers:{'content-type':'image/png'}}));
+  const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
+  render(<EvidenceImage row={{...row,size_bytes:png.length}} name="Evidência"/>);
+  act(()=>visible([{isIntersecting:true}]));
+  await screen.findByRole('img');
+  expect(backend.original).toHaveBeenCalledOnce();
+  expect(backend.sign).not.toHaveBeenCalled();
+  expect(backend.rpc).not.toHaveBeenCalled();
+  act(()=>cache.setAccess(''));
+  expect(screen.queryByRole('img')).toBeNull();
+ });
+ it('reutiliza um JPEG compacto sem solicitar transformação',async()=>{
+  const jpeg=await sharp({create:{width:320,height:480,channels:3,background:'#c36431'}}).jpeg().toBuffer();
+  vi.mocked(fetch).mockResolvedValueOnce(new Response(jpeg,{headers:{'content-type':'image/jpeg'}}));
+  const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
+  render(<EvidenceImage row={{...row,content_type:'image/jpeg',size_bytes:jpeg.length}} name="Evidência"/>);
+  act(()=>visible([{isIntersecting:true}]));
+  await screen.findByRole('img');
+  expect(backend.original).toHaveBeenCalledOnce();
+  expect(backend.sign).not.toHaveBeenCalled();
+ });
+ it('transforma mesmo um PNG compacto quando a dimensão original supera 480 px',async()=>{
+  const source=png.slice();
+  new DataView(source.buffer).setUint32(16,481);
+  vi.mocked(fetch).mockResolvedValueOnce(new Response(source,{headers:{'content-type':'image/png'}}))
+   .mockResolvedValueOnce(new Response(new Uint8Array(30),{headers:{'content-type':'image/png'}}));
+  const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
+  render(<EvidenceImage row={{...row,size_bytes:source.length}} name="Evidência"/>);
+  act(()=>visible([{isIntersecting:true}]));
+  await screen.findByRole('img');
+  expect(backend.original).toHaveBeenCalledOnce();
+  expect(backend.sign).toHaveBeenCalledOnce();
+ });
+ it.each(['denied','wrong-origin','original-route','renderer','mime','bytes','empty'])('falha %s exige abrir o original explicitamente',async kind=>{
+  if(kind==='denied')backend.sign.mockResolvedValue({data:null,error:{message:'denied'}});
+  if(kind==='wrong-origin')backend.sign.mockResolvedValue({data:{signedUrl:signed.replace('storage.example.test','other.example.test')}});
+  if(kind==='original-route')backend.sign.mockResolvedValue({data:{signedUrl:signed.replace('/render/image/sign/','/object/sign/')}});
+  if(kind==='renderer')vi.mocked(fetch).mockResolvedValueOnce(new Response(null,{status:503}));
+  if(kind==='mime')vi.mocked(fetch).mockResolvedValueOnce(new Response(png,{headers:{'content-type':'text/html'}}));
+  if(kind==='bytes')vi.mocked(fetch).mockResolvedValueOnce(new Response(new Uint8Array(large.size_bytes),{headers:{'content-type':'image/png'}}));
+  if(kind==='empty')vi.mocked(fetch).mockResolvedValueOnce(new Response(new Uint8Array(),{headers:{'content-type':'image/png'}}));
+  const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
+  const open=vi.fn();
+  render(<EvidenceImage row={large} name="Evidência" onOpenOriginal={open}/>);
+  act(()=>visible([{isIntersecting:true}]));
+  await screen.findByText('Miniatura indisponível.');
+  if(['denied','wrong-origin','original-route'].includes(kind))expect(fetch).not.toHaveBeenCalled();
+  expect(backend.original).not.toHaveBeenCalled();
+  expect(backend.rpc).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button',{name:'Abrir original'}));
+  expect(open).toHaveBeenCalledOnce();
+ });
+ it('descarta resposta de assinatura que chegou depois do logout',async()=>{
+  let release!: (value:unknown)=>void;
+  backend.sign.mockImplementationOnce(()=>new Promise(resolve=>{release=resolve;}));
+  const {EvidenceImage}=await import('../apps/web/src/modules/audit/EvidenceImage');
+  render(<EvidenceImage row={large} name="Evidência"/>);
+  act(()=>visible([{isIntersecting:true}]));
+  await waitFor(()=>expect(backend.sign).toHaveBeenCalledOnce());
+  act(()=>cache.setAccess(''));
+  await act(()=>release({data:{signedUrl:signed},error:null}));
+  expect(fetch).not.toHaveBeenCalled();
+  expect(screen.queryByRole('img')).toBeNull();
+ });
 });
 afterEach(()=>{cleanup();cache.setAccess('');vi.resetAllMocks();vi.unstubAllGlobals();vi.unstubAllEnvs();});
 describe('lista de miniaturas com backend mockado',()=>{

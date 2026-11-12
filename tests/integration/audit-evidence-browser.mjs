@@ -4,10 +4,13 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright";
+import sharp from "sharp";
+import { randomBytes } from "node:crypto";
 import { attachAuditTraffic } from "./audit-evidence-traffic.mjs";
 import { assert, config, db, password, users, BUCKET, PDF, bytes, blob, must, fails, api, list, row, inspection, fill, begin, upload, confirm, attach, countEvents, state, service } from "./audit-evidence-fixture.mjs";
 
 export async function runBrowser() {
+  const native = process.env.GG_TEST_AUDIT_STORAGE_TRANSFORMS === "true";
   state.phase = "Chromium real file flow";
   // Chromium against the compiled application and real local API at desktop and 375px.
   const port = await new Promise((done, fail) => {
@@ -22,7 +25,8 @@ export async function runBrowser() {
   const outDir = mkdtempSync(join(tmpdir(), "audit-evidence-e2e-"));
   const vite = (args, stdio) => spawn(process.execPath, [resolve("node_modules/vite/bin/vite.js"), ...args], {
     cwd: "apps/web",
-    env: { ...process.env, VITE_SUPABASE_URL: config.API_URL, VITE_SUPABASE_PUBLISHABLE_KEY: config.ANON_KEY },
+    env: { ...process.env, VITE_SUPABASE_URL: config.API_URL, VITE_SUPABASE_PUBLISHABLE_KEY: config.ANON_KEY,
+      VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS: String(native) },
     stdio,
   });
   const build = vite(["build", "--outDir", outDir, "--emptyOutDir"], "inherit");
@@ -321,30 +325,47 @@ export async function runBrowser() {
       const traffic=await attachAuditTraffic(page,{appOrigin:origin,storageOrigin:config.API_URL});
       try {
         traffic.stage("upload");
-        const png=await page.evaluate(()=>{
-          const canvas=document.createElement("canvas");canvas.width=960;canvas.height=640;
-          const drawing=canvas.getContext("2d");drawing.fillStyle="#fff";drawing.fillRect(0,0,960,640);
-          drawing.fillStyle="#111";drawing.font="32px sans-serif";drawing.fillText("EVIDENCIA SINTETICA 0123456789",40,80);
-          return Array.from(Uint8Array.from(atob(canvas.toDataURL("image/png").split(",")[1]),character=>character.charCodeAt(0)));
-        });
-        const original=Buffer.from(png);
+        const original=native
+          ? await sharp(randomBytes(960*640*3),{raw:{width:960,height:640,channels:3}}).png().toBuffer()
+          : Buffer.from(await page.evaluate(()=>{
+            const canvas=document.createElement("canvas");canvas.width=960;canvas.height=640;
+            const drawing=canvas.getContext("2d");drawing.fillStyle="#fff";drawing.fillRect(0,0,960,640);
+            drawing.fillStyle="#111";drawing.font="32px sans-serif";drawing.fillText("EVIDENCIA SINTETICA 0123456789",40,80);
+            return Array.from(Uint8Array.from(atob(canvas.toDataURL("image/png").split(",")[1]),character=>character.charCodeAt(0)));
+          }));
         await input.setInputFiles({name:"sintetica.png",mimeType:"image/png",buffer:original});
-        const imageFile=section.locator(".file-item").filter({has:page.getByRole("button",{name:"Ampliar Evidência 3.png",exact:true})});
+        const imageFile=section.locator(".file-item").filter({has:page.getByRole("button",{name:"Baixar Evidência 3.png",exact:true})});
         const image=imageFile.getByRole("img");
         await imageFile.scrollIntoViewIfNeeded();await image.waitFor();
         await image.evaluate(element=>element.decode());
-        const initial=(await traffic.snapshot()).requests.filter(request=>request.category==="image-get").length;
+        const previewCategory=native ? "thumbnail-get" : "image-get";
+        const requests=(await traffic.snapshot()).requests;
+        const previews=requests.filter(request=>request.category===previewCategory);
+        const initial=previews.length;
         assert.equal(initial,1,"Uma transferência da prévia");
+        if(native){
+          const preview=previews[0];
+          assert.deepEqual(await image.evaluate(element=>[element.naturalWidth,element.naturalHeight]),[480,320]);
+          assert.equal(requests.filter(request=>request.category==="image-get").length,0,"Lista não pede original");
+          assert.equal(preview.status,200);
+          assert.equal(preview.cache,false);
+          assert.ok(preview.headers.cacheControl.includes("private")&&preview.headers.cacheControl.includes("no-store"));
+          assert.ok(preview.bodyBytes>0&&preview.bodyBytes<original.length);
+          console.log(`AUD-IMG-02 Chromium ${width}px: ${preview.bodyBytes} bytes na miniatura; ${original.length} no original`);
+        }
         traffic.stage("modal");
         await imageFile.getByRole("button",{name:"Ampliar Evidência 3.png",exact:true}).click();
         const modal=page.getByRole("dialog");await modal.getByRole("img").evaluate(element=>element.decode());
-        assert.equal(await modal.getByRole("img").getAttribute("src"),await image.getAttribute("src"),"Modal reutiliza o blob");
+        assert.equal(await modal.getByRole("img").getAttribute("src")===await image.getAttribute("src"),!native);
+        if(native)assert.deepEqual(await modal.getByRole("img").evaluate(element=>[element.naturalWidth,element.naturalHeight]),[960,640]);
         await modal.getByRole("button",{name:"Fechar",exact:true}).click();
         traffic.stage("revisit");
         const toggle=page.locator('li.audit-item:has([aria-label="Evidências do critério 1"]) .audit-evidence-toggle');
         await toggle.click();await openEvidence();await imageFile.scrollIntoViewIfNeeded();
         await image.waitFor();await image.evaluate(element=>element.decode());
-        assert.equal((await traffic.snapshot()).requests.filter(request=>request.category==="image-get").length,initial,"Revisita sem GET do original");
+        const revisited=(await traffic.snapshot()).requests;
+        assert.equal(revisited.filter(request=>request.category===previewCategory).length,initial,"Revisita reutiliza o cache privado");
+        if(native)assert.equal(revisited.filter(request=>request.category==="image-get").length,1,"Somente o modal pediu o original");
         traffic.stage("download");
         const [originalDownload]=await Promise.all([page.waitForEvent("download"),imageFile.getByRole("button",{name:"Baixar Evidência 3.png",exact:true}).click()]);
         assert.ok(readFileSync(await originalDownload.path()).equals(original),"Download preserva bytes PNG");

@@ -1,0 +1,229 @@
+name: gaucha-gestao-local
+
+x-runtime: &runtime
+  restart: unless-stopped
+x-health: &health
+  interval: 5s
+  timeout: 4s
+  retries: 24
+  start_period: 10s
+x-schemas: &schemas public,graphql_public,core,audit,action_plans,abc
+
+services:
+  db:
+    <<: *runtime
+    image: public.ecr.aws/supabase/postgres:17.6.1.167@sha256:6942962433a569e87f228b4d4ab7e11db5deca64e43babb3a038443ad6c4f1bb
+    command: [postgres, -D, /etc/postgresql, -c, log_statement=none, -c, log_min_error_statement=panic]
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?gere ou restaure o arquivo de segredos}
+    ports:
+      - "127.0.0.1:${GG_DB_PORT:-54322}:5432"
+      - "[::1]:${GG_DB_PORT:-54322}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./config/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-gg-roles.sql:ro
+    healthcheck:
+      <<: *health
+      test: [CMD, pg_isready, -h, 127.0.0.1, -U, postgres]
+
+  auth:
+    <<: *runtime
+    image: public.ecr.aws/supabase/gotrue:v2.196.0@sha256:c0c25187a6b835e65a6f6e6c6b39d090e832d40e6de5186f2c038e0411944232
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      API_EXTERNAL_URL: http://127.0.0.1:${GG_API_PORT:-54321}/auth/v1
+      GOTRUE_SITE_URL: http://localhost:5173
+      GOTRUE_URI_ALLOW_LIST: http://localhost:5173,http://127.0.0.1:5173
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:?required}@db:5432/postgres
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:?required}
+      GOTRUE_JWT_KEYS: ${GOTRUE_JWT_KEYS:-[]}
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+      GOTRUE_SECURITY_REFRESH_TOKEN_ROTATION_ENABLED: "true"
+    healthcheck:
+      <<: *health
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:9999/health]
+
+  rest:
+    <<: *runtime
+    image: public.ecr.aws/supabase/postgrest:v16.2@sha256:85258123312dc496ad4c2ed832154a65e9746f84df0d6d09b44229ff9230c08e
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:?required}@db:5432/postgres
+      PGRST_DB_SCHEMAS: *schemas
+      PGRST_DB_EXTRA_SEARCH_PATH: public,extensions
+      PGRST_DB_MAX_ROWS: "1000"
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_ADMIN_SERVER_PORT: "3001"
+      PGRST_ADMIN_SERVER_HOST: 127.0.0.1
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET:-${JWT_SECRET}}
+    healthcheck:
+      <<: *health
+      test: [CMD, /bin/postgrest, --ready]
+
+  storage:
+    <<: *runtime
+    image: public.ecr.aws/supabase/storage-api:v1.72.1@sha256:105a2584129c9600aebed6f5ac49ca4371c92b996ecd1af7179750333e9e2120
+    depends_on:
+      db: {condition: service_healthy}
+      imgproxy: {condition: service_healthy}
+    env_file: ./audit-storage-transforms.env
+    environment:
+      ANON_KEY: ${ANON_KEY:?required}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY:?required}
+      AUTH_JWT_SECRET: ${JWT_SECRET:?required}
+      JWT_JWKS: ${JWT_JWKS:-}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD:?required}@db:5432/postgres
+      POSTGREST_URL: http://rest:3000
+      FILE_SIZE_LIMIT: "52428800"
+      UPLOAD_FILE_SIZE_LIMIT: "52428800000"
+      UPLOAD_FILE_SIZE_LIMIT_STANDARD: "5242880000"
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /mnt
+      TENANT_ID: stub
+      GLOBAL_S3_BUCKET: stub
+      STORAGE_S3_REGION: local
+      S3_PROTOCOL_ENABLED: "true"
+      S3_PROTOCOL_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?required}
+      S3_PROTOCOL_ACCESS_KEY_SECRET: ${S3_ACCESS_KEY_SECRET:?required}
+      S3_PROTOCOL_PREFIX: /storage/v1
+      TUS_URL_PATH: /storage/v1/upload/resumable
+      SIGNED_UPLOAD_URL_EXPIRATION_TIME: "7200"
+      IMGPROXY_URL: http://imgproxy:8080
+    volumes:
+      - storage-data:/mnt
+    networks: [default, transforms]
+    logging: {driver: none}
+    healthcheck:
+      <<: *health
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:5000/status]
+
+  imgproxy:
+    <<: *runtime
+    image: ghcr.io/imgproxy/imgproxy:v4.0.17@sha256:db0b4b9cd690c8b3590203dea300fb759a18c4ec2af7b37424f0bdef23ce317d
+    env_file: ./audit-imgproxy.env
+    environment:
+      IMGPROXY_BIND: ":8080"
+    cpus: 1.0
+    mem_limit: 512m
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    volumes:
+      - storage-data:/isolated/mnt:ro
+    networks: [transforms]
+    logging: {driver: none}
+    healthcheck:
+      <<: *health
+      test: [CMD, imgproxy, health]
+
+  kong:
+    <<: *runtime
+    image: public.ecr.aws/supabase/kong:2.8.1@sha256:1b53405d8680a09d6f44494b7990bf7da2ea43f84a258c59717d4539abf09f6d
+    depends_on:
+      auth: {condition: service_healthy}
+      rest: {condition: service_healthy}
+      storage: {condition: service_healthy}
+    entrypoint: [/bin/sh, /gg/kong-entrypoint.sh]
+    environment:
+      SUPABASE_ANON_KEY: ${ANON_KEY:?required}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY:?required}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+      SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:-}
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /tmp/gg-kong.yml
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_ADMIN_LISTEN: "off"
+      KONG_PROXY_ACCESS_LOG: "off"
+      KONG_PROXY_ERROR_LOG: /dev/null
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_DNS_VALID_TTL: "1"
+      KONG_DNS_NOT_FOUND_TTL: "1"
+      KONG_NGINX_WORKER_PROCESSES: "1"
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      KONG_PLUGINS: request-transformer,cors,response-transformer
+    ports:
+      - "127.0.0.1:${GG_API_PORT:-54321}:8000"
+      - "[::1]:${GG_API_PORT:-54321}:8000"
+    volumes:
+      - ./config/kong.yml:/gg/kong.yml:ro
+      - ./config/kong-entrypoint.sh:/gg/kong-entrypoint.sh:ro
+    logging: {driver: none}
+    healthcheck:
+      <<: *health
+      test: [CMD, kong, health]
+
+  pg-meta:
+    <<: *runtime
+    image: public.ecr.aws/supabase/postgres-meta:v0.99.0@sha256:9a079ac1c94d89629262822a4bd1902d5b1be4adb464e5a0a8fd078aaed72158
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      PG_META_PORT: "8080"
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: "5432"
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: postgres
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    healthcheck:
+      <<: *health
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/health').then(r => {if (!r.ok) process.exit(1)})"]
+
+  studio:
+    <<: *runtime
+    image: public.ecr.aws/supabase/studio:2026.08.24-sha-8ec45b2@sha256:4905784b715cb22b265d26405067649544b40faffff89fd8dc7a28736f42afb0
+    depends_on:
+      pg-meta: {condition: service_healthy}
+      kong: {condition: service_healthy}
+    environment:
+      HOSTNAME: 0.0.0.0
+      STUDIO_PG_META_URL: http://pg-meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      POSTGRES_USER_READ_WRITE: postgres
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: http://127.0.0.1:${GG_API_PORT:-54321}
+      SUPABASE_ANON_KEY: ${ANON_KEY:?required}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY:?required}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+      SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:-}
+      AUTH_JWT_SECRET: ${JWT_SECRET:?required}
+      S3_PROTOCOL_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?required}
+      S3_PROTOCOL_ACCESS_KEY_SECRET: ${S3_ACCESS_KEY_SECRET:?required}
+      PGRST_DB_SCHEMAS: *schemas
+      PGRST_DB_EXTRA_SEARCH_PATH: public,extensions
+      PGRST_DB_MAX_ROWS: "1000"
+      NEXT_PUBLIC_ENABLE_LOGS: "false"
+      SNIPPETS_MANAGEMENT_FOLDER: /app/snippets
+    ports:
+      - "127.0.0.1:${GG_STUDIO_PORT:-54323}:3000"
+      - "[::1]:${GG_STUDIO_PORT:-54323}:3000"
+    volumes:
+      - studio-snippets:/app/snippets
+    healthcheck:
+      <<: *health
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/platform/profile').then(r => {if (!r.ok) process.exit(1)})"]
+
+networks:
+  transforms:
+    internal: true
+    enable_ipv6: false
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.gateway_mode_ipv4: isolated
+
+volumes:
+  db-data:
+  storage-data:
+  studio-snippets:

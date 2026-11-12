@@ -1,6 +1,36 @@
 import { assert, randomUUID, config, A, B, BUCKET, PDF, bytes, blob, db, users, clients, service, api, bucket, must, fails, rpc, beginArgs, begin, upload, confirm, remove, list, row, evidenceRow, inspection, expire, countEvents, download, state } from "./audit-evidence-fixture.mjs";
+import sharp from "sharp";
+
+async function checkNativeTransform() {
+  state.phase = "native signed image authorization and expiry";
+  const original = await sharp({create:{width:960,height:640,channels:3,background:"#d1662d"}}).jpeg().toBuffer();
+  const mime = "image/jpeg";
+  const evidence = await begin("owner", await inspection(), "item-001", "sintetica.jpg", mime, original.length);
+  must(await upload("owner", evidence.object_key, blob(original, mime)));
+  const transform = {width:480,height:480,resize:"contain",quality:75,format:"origin"};
+  const sign = (user, ttl) => bucket(user).createSignedUrl(evidence.object_key, ttl, {transform});
+  fails(await sign("owner", 60)); // ainda pendente
+  must(await confirm("owner", evidence.evidence_id));
+  for (const user of ["anon", "inactive", "empty", "other", "sector", "editOnly"]) fails(await sign(user, 60));
+  const {signedUrl} = must(await sign("reader", 4));
+  const rendered = await fetch(signedUrl, {cache:"no-store"});
+  assert.equal(rendered.status, 200);
+  assert.equal(rendered.headers.get("content-type"), mime);
+  assert.match(rendered.headers.get("cache-control") ?? "", /no-store/);
+  const preview = Buffer.from(await rendered.arrayBuffer());
+  const {width, height} = await sharp(preview).metadata();
+  assert.deepEqual([width, height], [480, 320]);
+  assert.ok(preview.length < original.length);
+  assert.ok(Buffer.from(await must(await bucket("owner").download(evidence.object_key)).arrayBuffer()).equals(original));
+  await new Promise(resolve => setTimeout(resolve, 5500));
+  const expired = await fetch(signedUrl, {cache:"no-store"});
+  assert.ok([400, 401, 403, 404].includes(expired.status));
+  await expired.body?.cancel();
+  console.log("PASS transformação privada: pendente, RLS, dimensões, bytes, original íntegro e expiração");
+}
 
 export async function runApi() {
+  if (process.env.GG_TEST_AUDIT_STORAGE_TRANSFORMS === "true") await checkNativeTransform();
   state.phase = "real bytes flow";
   const main = await inspection();
   const initialVersion = (await row(main)).version;

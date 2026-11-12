@@ -23,14 +23,16 @@ export async function attachAuditTraffic(page, { appOrigin, storageOrigin }) {
   function identify(raw, method) {
     const url = new URL(raw);
     if (!allowed.has(url.origin)) return null;
-    const evidence = /\/storage\/v1\/object\/(?:sign\/|authenticated\/)?(audit-checklist-evidence|audit-evidence-thumbnails)\/(.+)/.exec(url.pathname);
+    const rendered = /^\/storage\/v1\/render\/image\/sign\/(audit-checklist-evidence)\/(.+)/.exec(url.pathname);
+    const evidence = rendered ?? /^\/storage\/v1\/object\/(?:sign\/|authenticated\/)?(audit-checklist-evidence|audit-evidence-thumbnails)\/(.+)/.exec(url.pathname);
     let category;
-    if (evidence) category = method === "POST" && url.pathname.includes("/object/sign/") ? "sign" : method === "POST" ? "upload" : method === "GET" ? "image-get" : "object-head";
+    if (rendered) category = "thumbnail-get";
+    else if (evidence) category = method === "POST" && url.pathname.includes("/object/sign/") ? "sign" : method === "POST" ? "upload" : method === "GET" ? "image-get" : "object-head";
     else category = /\/rest\/v1\//.test(url.pathname) ? "api" : /\/auth\/v1\//.test(url.pathname) ? "auth" : /\/storage\/v1\//.test(url.pathname) ? "storage-api" : "app";
     const path = evidence ? evidence[1] + "/" + evidence[2] : null;
     if (path && !aliases.has(path)) aliases.set(path, aliases.size + 1);
     return { category, object: path ? aliases.get(path) : null,
-      imageKind: evidence ? evidence[1] === "audit-evidence-thumbnails" ? "thumbnail" : "original" : null,
+      imageKind: evidence ? (rendered || evidence[1] === "audit-evidence-thumbnails" ? "thumbnail" : "original") : null,
       rpc: /\/rest\/v1\/rpc\//.test(url.pathname) };
   }
   cdp.on("Network.requestWillBeSent", event => {

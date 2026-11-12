@@ -18,7 +18,7 @@ Originais e limites de acesso/memória preservados. Upload, processamento e down
 Os registros abaixo preservam o diagnóstico e as decisões de 04–05/11. Afirmações de ausência de implementação/medição naqueles SHAs não descrevem a base atual.
 
 
-**Automação local integrada pela PR #101:** [comando único e escopo global de uploads novos](AUD_IMG_02_INTEGRATED_DEV_20261106.md), sem backfill. O [executor anterior de terminal](AUD_IMG_02_LOCAL_EXECUTOR_20261105.md) e os exemplos individuais são históricos; o benchmark geral 10/30/100 foi executado no relatório de 06/11 acima.
+**DEV atual.** A #120 integrou a transformação privada sob demanda e a #121 a disponibilizou no [Compose DEV](../../operations/DOCKER_LOCAL_STANDARDIZATION.md). A medição de 06/11 usou o [executor legado da #101](AUD_IMG_02_INTEGRATED_DEV_20261106.md). O coletor distingue os GETs de objetos e de transformações nativas. As métricas publicadas de 06/11 correspondem ao executor legado.
 
 Data: 04/11/2026. Brief: solicitação do mantenedor «Otimização de tráfego de evidências da Auditoria». Base revalidada: `origin/main` em `d9b47359b00fd1516bc773d696d760c1c603ed84`, posterior ao HEAD de 03/11 citado no pedido. Branch: `codex/audit-evidence-traffic`.
 

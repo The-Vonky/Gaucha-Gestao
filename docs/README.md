@@ -25,6 +25,7 @@ O [inventário de 22/10](operations/C30_STAGING_AS_BUILT_20261022.md) é um **sn
 | Necessidade | Ponto de partida | Aprofundamento |
 | --- | --- | --- |
 | Gerar miniaturas automaticamente no localhost | [Desenvolvimento integrado AUD-IMG-02](modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md) | Somente npm run dev; duas auditorias, JPEG/PNG automáticos, escopo explícito sem backfill, renovação e NOLOGIN |
+| Homologar miniaturas nativas do checklist | [Runbook Storage + imgproxy](operations/AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md) | Opção local reversível. Ativação e homologação no notebook e celular pendentes |
 | Entender o produto e seus limites | [README principal](../README.md) | [Estrutura do produto](architecture/PRODUCT_STRUCTURE.md) |
 | Enxergar a plataforma e os componentes | [Diagramas AS-IS/TO-BE](architecture/DIAGRAMS.md) | [Visão arquitetural](architecture/OVERVIEW.md) |
 | Consultar APIs e RPCs existentes | [Catálogo de interfaces](architecture/API_CONTRACTS.md) | [Mapa de implementação](architecture/IMPLEMENTATION_MAP.md) |

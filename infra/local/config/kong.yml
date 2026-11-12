@@ -1,0 +1,63 @@
+# Auth, REST and Storage routes derived from the Supabase CLI 2.117.0 template.
+_format_version: '1.1'
+services:
+  - name: auth-v1
+    url: http://auth:9999/
+    routes:
+      - name: auth-v1-all
+        paths: [/auth/v1/]
+    plugins: &authorized
+      - name: cors
+      - name: request-transformer
+        config: &authorization
+          add:
+            headers: ["Authorization: __GG_AUTHORIZATION__"]
+          replace:
+            headers: ["Authorization: __GG_AUTHORIZATION__"]
+  - name: rest-v1
+    url: http://rest:3000/
+    routes:
+      - name: rest-v1-all
+        paths: [/rest/v1/]
+    plugins: *authorized
+  - name: graphql-v1
+    url: http://rest:3000/rpc/graphql
+    routes:
+      - name: graphql-v1-all
+        paths: [/graphql/v1]
+    plugins:
+      - name: cors
+      - name: request-transformer
+        config:
+          <<: *authorization
+          add:
+            headers: ["Content-Profile: graphql_public", "Authorization: __GG_AUTHORIZATION__"]
+  - name: auth-discovery
+    url: http://auth:9999/.well-known/oauth-authorization-server
+    routes:
+      - name: auth-discovery
+        paths: [/.well-known/oauth-authorization-server]
+    plugins:
+      - name: cors
+  - name: storage-v1-s3
+    url: http://storage:5000/s3
+    routes:
+      - name: storage-v1-s3-all
+        paths: [/storage/v1/s3/]
+    plugins:
+      - name: cors
+  - name: storage-v1
+    url: http://storage:5000/
+    routes:
+      - name: storage-v1-all
+        paths: [/storage/v1/]
+        plugins:
+          - name: response-transformer
+            config:
+              remove:
+                headers: [Expires]
+              replace:
+                headers: ["Cache-Control:private, no-store"]
+              add:
+                headers: ["Cache-Control:private, no-store"]
+    plugins: *authorized
