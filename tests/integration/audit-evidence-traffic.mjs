@@ -23,15 +23,17 @@ export async function attachAuditTraffic(page, { appOrigin, storageOrigin }) {
   function identify(raw, method) {
     const url = new URL(raw);
     if (!allowed.has(url.origin)) return null;
-    const rendered = /\/storage\/v1\/render\/image\/sign\/audit-checklist-evidence\/(.+)/.exec(url.pathname);
-    const evidence = rendered ?? /\/storage\/v1\/object\/(?:sign\/|authenticated\/)?audit-checklist-evidence\/(.+)/.exec(url.pathname);
+    const rendered = /^\/storage\/v1\/render\/image\/sign\/(audit-checklist-evidence)\/(.+)/.exec(url.pathname);
+    const evidence = rendered ?? /^\/storage\/v1\/object\/(?:sign\/|authenticated\/)?(audit-checklist-evidence|audit-evidence-thumbnails)\/(.+)/.exec(url.pathname);
     let category;
     if (rendered) category = "thumbnail-get";
     else if (evidence) category = method === "POST" && url.pathname.includes("/object/sign/") ? "sign" : method === "POST" ? "upload" : method === "GET" ? "image-get" : "object-head";
     else category = /\/rest\/v1\//.test(url.pathname) ? "api" : /\/auth\/v1\//.test(url.pathname) ? "auth" : /\/storage\/v1\//.test(url.pathname) ? "storage-api" : "app";
-    const path = evidence?.[1];
+    const path = evidence ? evidence[1] + "/" + evidence[2] : null;
     if (path && !aliases.has(path)) aliases.set(path, aliases.size + 1);
-    return { category, object: path ? aliases.get(path) : null };
+    return { category, object: path ? aliases.get(path) : null,
+      imageKind: evidence ? (rendered || evidence[1] === "audit-evidence-thumbnails" ? "thumbnail" : "original") : null,
+      rpc: /\/rest\/v1\/rpc\//.test(url.pathname) };
   }
   cdp.on("Network.requestWillBeSent", event => {
     const identity = identify(event.request.url, event.request.method);
@@ -67,7 +69,8 @@ export async function attachAuditTraffic(page, { appOrigin, storageOrigin }) {
   await cdp.send("Network.enable");
   return {
     stage(value) { if (!TRAFFIC_STAGES.includes(value)) throw new Error("Etapa inválida."); stage = value; },
-    async snapshot() { await Promise.all([...tasks]); return { version: 1, requests: [...requests], uploads: [...uploads], unfinished: pending.size }; },
+    async snapshot() { await Promise.all([...tasks]); return { version: 2, requests: [...requests], uploads: [...uploads], unfinished: pending.size,
+      unfinishedRequests: [...pending.values()].map(({ category, stage, method, imageKind }) => ({ category, stage, method, imageKind })) }; },
     async close() { page.off("requestfinished", finished); await cdp.detach(); pending.clear(); aliases.clear(); },
   };
 }

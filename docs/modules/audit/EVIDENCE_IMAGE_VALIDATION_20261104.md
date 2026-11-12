@@ -1,5 +1,7 @@
 # Validação de tráfego de evidências — 04/11/2026
 
+> **Estado posterior, 06/11/2026:** AUD-IMG-01/02 integradas pelas PRs #99/#101. A rodada MED-01/AUD-IMG-04 e a revisão do carregamento inicial estão no [relatório consolidado](MED01_FRONTEND_CLOSURE_20261106.md). Pendências/ausências abaixo descrevem a data e o SHA históricos deste documento; não invalidam provas posteriores. Homologação física e implantação continuam separadas.
+
 Branch: `codex/audit-evidence-traffic`. Base: `d9b47359b00fd1516bc773d696d760c1c603ed84`. **Código validado:** `d3ec58aee99e486218a6055618adef8b8ec31330`. O commit seguinte altera somente documentação de resultados. Responsável pela execução: agente Codex; decisão de integração: mantenedor único. Sem segunda revisão humana ou aceite formal inferido.
 
 ## Checks executados no SHA de código

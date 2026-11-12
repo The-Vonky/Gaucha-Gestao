@@ -1,5 +1,7 @@
 # Qualidade v1 — matriz factual e escopo restante
 
+> **Atualização restrita de evidências, 06/11/2026:** prévias autorizadas de JPG/PNG foram aceitas na revisão E3 de 04/11 e miniaturas privadas integradas na PR #101. Consulte a [consolidação de tráfego e cache](MED01_FRONTEND_CLOSURE_20261106.md). A descrição anterior de anexos sem preview é histórica; os gates de dispositivos e operação deste documento continuam aplicáveis.
+
 Revisão documental: 2026-10-02 sobre a baseline de aplicação `22334995b5b239274c5c1adc98495357ec0d7980`, merge da PR #18 (fechamento visual/documental da Qualidade v1). Login v3 · Elo, Audit, Action Plans, ambos os domínios de Evidence, Reporting e Admin necessários ao escopo estão integrados. A CI de aplicação pós-merge passou em `37017170877` e a CI de infraestrutura reproduzível em `37017171393`. Nenhuma delas comprova produção. O checklist operacional/físico nominal P1–P9/O1–O8 está em [QUALITY_ACCEPTANCE_V1.md](QUALITY_ACCEPTANCE_V1.md).
 
 ## Estado pós-PR #14
