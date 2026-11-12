@@ -94,65 +94,47 @@ Para diagramas maiores e arquitetura detalhada: [DIAGRAMS](docs/architecture/DIA
 
 ## Primeiros passos: ambiente local
 
-**Pré-requisitos:** Git, **Node.js >= 22.12**, npm, Docker Engine/Desktop com Linux containers e Docker Compose. Usamos a **Supabase CLI 2.117.0** via `npx`; não precisa instalar um binário `supabase` global. Use terminal Bash (Linux/macOS/WSL2).
+**Notebook já provisionado pela Supabase CLI.** Continue o [runbook da instância ativa](docs/operations/AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md). A adoção do Compose requer a janela descrita no [plano de migração](docs/operations/DOCKER_LOCAL_STANDARDIZATION.md#migração-do-notebook-existente).
 
-> **Isolamento obrigatório:** execute em checkout e instância locais próprios. Antes de iniciar Docker, confira se não é o projeto DEV compartilhado, staging persistente, outro projeto Supabase, o ERP de Contratos ou um banco com dados importantes. **Não execute** `supabase db reset`, `db push`, `--linked`, `docker compose down -v` ou `prune` em ambientes compartilhados. Não envie envs ou saídas contendo tokens para PRs.
+### Instalação inicial em máquina nova
 
-**Notebook com AUD-IMG-02 já ativado.** Abra o Docker Desktop e execute `npm run dev:local` pelo WSL a partir do checkout existente. Consulte o [runbook do notebook](docs/operations/AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md) para retomada e reversão.
+Use Git, Node.js ≥ 22.12, npm e Python ≥ 3.11. No Windows, use WSL2 com a distribuição habilitada na integração do Docker Desktop. O Docker deve usar Linux containers, Compose v2 ou superior e um Engine com suporte a bridge `isolated`. Faça o checkout no filesystem da distribuição WSL. Confira o contexto Docker e as portas locais 54321 (API), 54322 (PostgreSQL) e 54323 (Studio) antes de provisionar.
 
-A [proposta de padronização do Docker local](docs/operations/DOCKER_LOCAL_STANDARDIZATION.md) descreve o Compose único e o plano de migração dos dados do notebook. A troca está bloqueada até o ensaio e a autorização específica do mantenedor.
+~~~bash
+git clone https://github.com/The-Vonky/Gaucha-Gestao.git
+cd Gaucha-Gestao
+npm ci
 
-### Preparar um ambiente local novo e exclusivo
+docker context show
+docker version
+docker compose version
+docker compose ls --all
 
-1. **Obtenha o código e instale dependências** (checkout novo):
+GG_DEV_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/gaucha-gestao"
+mkdir -p -m 700 "$GG_DEV_DIR"
+GG_DEV_ENV="$GG_DEV_DIR/backend.env"
+python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" secrets
+python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" install
+python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" vite-env
+~~~
 
-   ~~~bash
-   git clone https://github.com/The-Vonky/Gaucha-Gestao.git
-   cd Gaucha-Gestao
-   git switch main
-   npm ci
-   ~~~
+O provisionamento gera credenciais exclusivas, cria os volumes persistentes e aplica as migrations do checkout. Em caso de interrupção, repita `install` com o mesmo arquivo de segredos. A geração de segredos e a escrita de `apps/web/.env.local` recusam sobrescrever arquivos existentes. A configuração do frontend contém somente a URL, a chave pública local e a flag de transformação.
 
-2. **Confirme Docker/Compose e inicie o Supabase local.** A configuração em [`supabase/config.toml`](supabase/config.toml) usa API `54321`, Postgres `54322` e Studio `54323`. O comando deixa Studio habilitado e exclui serviços não essenciais:
+O cadastro público fica desabilitado. No [Studio local](http://127.0.0.1:54323), abra **Authentication → Users** e crie e confirme um usuário de teste. No SQL Editor, execute uma única vez com o UUID dessa conta local.
 
-   ~~~bash
-   docker version
-   docker compose version
-   docker compose ls --all
-   npx --yes supabase@2.117.0 start -x realtime,imgproxy,mailpit,edge-runtime,logflare,vector,supavisor
-   npx --yes supabase@2.117.0 status
-   ~~~
+~~~sql
+select private.bootstrap_administrator('UUID_DO_USUARIO_CONFIRMADO'::uuid);
+~~~
 
-   Se a instância **já existe**, investigue o status e as portas antes de iniciá-la novamente; **não** use reset para resolver erro de portas ou migrations. O `status` apresenta chaves e informações sensíveis: consulte **localmente**, nunca cole sua saída integral em issues/chats.
+### Uso diário
 
-3. **Configure o frontend.** Copie o modelo e preencha `apps/web/.env.local` **com o Project URL da API e a Publishable key do mesmo Supabase local**, exibidos pela CLI. Somente valores públicos de cliente; **nunca Secret/service_role, URI do banco nem chaves administrativas**.
+Abra o Docker Desktop. O Engine retoma os serviços do grupo `gaucha-gestao-local` que estavam em execução. No WSL, inicie o frontend.
 
-   ~~~bash
-   cp apps/web/.env.example apps/web/.env.local
-   # Edite apps/web/.env.local no seu editor, sem commitar o arquivo:
-   # VITE_SUPABASE_URL=http://127.0.0.1:54321
-   # VITE_SUPABASE_PUBLISHABLE_KEY=<sua chave publishable LOCAL>
-   ~~~
+~~~bash
+npm run dev
+~~~
 
-4. **Crie um usuário de laboratório para conseguir fazer login.** Cadastro público está desabilitado: no **Studio local** (`http://127.0.0.1:54323`), abra **Authentication → Users**, crie e confirme um usuário de teste. No **SQL Editor local**, como operador do banco, execute **uma única vez**, substituindo pelo UUID do usuário confirmado:
-
-   ~~~sql
-   select private.bootstrap_administrator('UUID_DO_USUARIO_CONFIRMADO'::uuid);
-   ~~~
-
-   Esse bootstrap é uma ação **privilegiada apenas no banco local**; não use conta, senha ou UUID do DEV compartilhado e não copie privilégios para outros ambientes. Consulte [LOCAL_FOUNDATION](docs/development/LOCAL_FOUNDATION.md) para o contrato e as regras de acesso.
-
-5. **Inicie a aplicação:**
-
-   ~~~bash
-   npm run dev
-   ~~~
-
-   O comando também inicia o executor local de miniaturas para novos uploads em qualquer auditoria, usando a configuração privada previamente provisionada no notebook. Não é necessário outro terminal nem UUID; `Ctrl+C` encerra frontend/executor e restaura NOLOGIN. Consulte [pré-requisitos, recuperação e validação](docs/modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md).
-
-   Abra o endereço indicado pelo Vite (geralmente `http://localhost:5173`) e faça login com a conta **criada no seu Supabase local**. Se mudar o arquivo `.env.local`, reinicie o Vite.
-
-**Verificação rápida / solução de problemas:** “ambiente indisponível” geralmente indica URL/chave ausente, chave incorreta ou Vite não reiniciado; “login inválido” pode indicar conta inexistente **naquele banco**; “sem acesso” exige verificar grants/escopo Core, **não** desligar RLS. Portas ocupadas exigem inventário de processos/projetos antes de mudar serviços. Para trabalho remoto entre dois devs use a [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68), e **não** exponha Studio, Postgres, chaves locais padrão ou Admin API à LAN.
+O Vite atende em [127.0.0.1:5173](http://127.0.0.1:5173). Para iniciar o Docker Desktop ao entrar no Windows, habilite a opção correspondente nas configurações do aplicativo. Consulte o [runbook do Compose](docs/operations/DOCKER_LOCAL_STANDARDIZATION.md) para diagnóstico, backup e restauração.
 
 ## Verificar o código e contribuir
 

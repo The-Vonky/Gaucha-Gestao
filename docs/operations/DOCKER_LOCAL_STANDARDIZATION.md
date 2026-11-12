@@ -1,51 +1,98 @@
-# Padronização do Docker local
+# Docker Compose de desenvolvimento local
 
-**Proposta para revisão · 12/11/2026 · BLOCKED para a troca do notebook.** A implementação e a prova do Compose estão pendentes. O [runbook da PR #120](AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md) continua sendo a referência para a instância ativa. A troca de topologia exige autorização específica do mantenedor. **PROD NO-GO.**
+A [PR #121](https://github.com/The-Vonky/Gaucha-Gestao/pull/121) implementa o Compose de DEV. O notebook existente permanece na topologia da Supabase CLI até uma janela específica autorizada pelo mantenedor. **PROD NO-GO.**
 
-## Por que adotar Compose
+## Topologia e operação
 
-A Supabase CLI 2.117.0 agrupa os serviços que ela cria e oferece `storage.image_transformation.enabled`. Seu imgproxy nativo escuta em `:5001` na rede compartilhada, usa `VolumesFrom` do Storage e tem configuração fixa, incluindo entrada de 25.000.000 bytes, até 60 quadros e preset de 3.000 × 8.192. O `config.toml` pode habilitar o serviço, mas não configurar o isolamento e os limites homologados. A CLI também gera o declarativo do Kong sem o plugin de cache privado da rota Storage. A extensão da configuração da CLI exigiria recriar ou modificar containers fora da configuração que ela gerencia. [Imgproxy da CLI 2.117.0](https://github.com/supabase/cli/blob/v2.117.0/apps/cli/src/commands/start/services/imgproxy.service.ts) · [Kong da CLI 2.117.0](https://github.com/supabase/cli/blob/v2.117.0/apps/cli/src/commands/start/services/kong.service.ts).
+O [manifesto de DEV](../../infra/local/compose.yaml) fixa oito imagens por digest, com a combinação da instância de referência. O projeto `gaucha-gestao-local` reúne PostgreSQL, Auth, REST, Storage, Kong, Studio, pg_meta e imgproxy. A API, o banco e o Studio escutam em IPv4 e IPv6 loopback nas portas 54321, 54322 e 54323. Os volumes nomeados `db-data`, `storage-data` e `studio-snippets` guardam PostgreSQL, objetos e snippets do Studio. A Supabase CLI continua disponível para a CI e o ambiente anterior. [Referência de versões do laboratório de CI](../../infra/supabase/UPSTREAM.md).
 
-O inventário do notebook mostrou sete serviços ativos no agrupamento da CLI e um imgproxy fora dele. O imgproxy está sem política de reinício e usa `container:<ID do Storage>` como rede. O runbook já registra que reiniciar o Storage deixou o imgproxy no namespace anterior. Adicionar rótulos ou uma política de reinício ao sidecar deixaria essa dependência intacta. O Compose da pasta `infra/supabase` atende à CI e ao laboratório mínimo e tem versões e serviços diferentes do notebook. Serve de referência para o bootstrap e o gateway. [Proveniência e escopo do laboratório](../../infra/supabase/UPSTREAM.md).
+Storage e imgproxy se comunicam em um bridge IPv4 dedicado com `internal: true` e gateway `isolated`. O Storage resolve `http://imgproxy:8080` via DNS do Docker. O imgproxy tem namespace próprio, sem publicação, e monta o volume de objetos somente para leitura. Os controles continuam em [audit-imgproxy.env](../../infra/local/audit-imgproxy.env) e [audit-storage-transforms.env](../../infra/local/audit-storage-transforms.env). O [Kong](../../infra/local/config/kong.yml) aplica `Cache-Control: private, no-store` e remove `Expires` na rota Storage comum. A rota S3 mantém sua assinatura própria. [Modo de gateway isolated](https://docs.docker.com/engine/network/port-publishing/#gateway-modes).
 
-## Topologia proposta
+Os oito serviços usam `restart: unless-stopped`. Healthchecks ordenam o provisionamento com Compose. A retomada do Engine usa as políticas Docker e as reconexões dos serviços. Ao encerrar o trabalho, feche o Vite e o Docker Desktop. Uma parada explícita com `docker compose stop` requer partida explícita dos serviços parados. [Políticas de reinício](https://docs.docker.com/engine/containers/start-containers-automatically/).
 
-Versionar um Compose de DEV em `infra/local/compose.yaml` com `name: gaucha-gestao-local`, declarativos do Kong e bootstrap local. O Compose deve criar e gerenciar **PostgreSQL, Auth, REST, Storage, Kong, Studio, pg_meta e imgproxy**. Fixar imagens por digest, com a mesma combinação do notebook no ensaio da migração, incluindo PostgreSQL 17.6.1.167, Auth v2.196.0, REST v16.2, Storage v1.72.1, Kong 2.8.1 e imgproxy v4.0.17. Registrar também os digests de Studio e pg_meta. Usar aliases estáveis e preservar os contratos de schema, Auth, Storage e gateway. Publicar API 54321, PostgreSQL 54322 e Studio 54323 em loopback. Manter a URL e a chave de cliente local do notebook. O inventário atual confirmou as três portas e bindings sem endereço explícito. Verificar os bindings IPv4 e IPv6 do candidato e o acesso pelo Windows e pelo WSL.
+A [instalação em máquina nova](../../README.md#instalação-inicial-em-máquina-nova) cria os volumes, gera as credenciais e aplica as migrations em ordem. O ledger é escrito na mesma transação de cada migration. O comando `vite-env` escreve a flag nativa e a chave de cliente. `npm run dev` executa só o Vite. O executor anterior segue disponível por `npm run dev:thumbnails`.
 
-- **Rede de imagens.** Conectar apenas Storage e imgproxy a um bridge IPv4 dedicado com `internal: true` e `com.docker.network.bridge.gateway_mode_ipv4: isolated`. O imgproxy usa somente esse bridge, sem publicar porta. O Storage também participa da rede da API e acessa `http://imgproxy:8080` por DNS do Compose. Cada serviço possui seu próprio namespace. Verificar a recusa de acesso direto a partir do Windows, WSL e dos demais serviços. [Redes no Compose](https://docs.docker.com/reference/compose-file/networks/) · [Modo de gateway isolated](https://docs.docker.com/engine/network/port-publishing/#gateway-modes).
-- **Controles das miniaturas.** Manter objetos em `/mnt` para o Storage e montar o mesmo volume em `/isolated/mnt` somente para leitura no imgproxy. Preservar fonte `local://`, teto de 480 px, origem de até 50 MP e 10 MiB, um quadro, 1 vCPU, 512 MiB, um worker, fila de quatro e timeout de 8 s. Manter quatro sockets e timeout configurado de 10 s no Storage. Preservar as rotas e regras do Kong, incluindo `Cache-Control: private, no-store` e remoção de `Expires` em Storage, sem alteração da rota S3. Manter RLS, URL assinada, redução de logs sensíveis e fallback do frontend para **Abrir original**. [Configuração homologada](AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md#topologia).
-- **Inicialização e recuperação.** Configurar `restart: unless-stopped` nos oito serviços, healthchecks e dependências saudáveis para o primeiro `docker compose up`. Na retomada do Engine, a ordem do `depends_on` não é reaplicada. Validar que os clientes reconectam ou que processos com erro de partida saem e reiniciam. Se algum entrypoint precisar esperar, limitar a espera à própria partida, com timeout e saída com erro. O Storage deve recuperar o DNS e as conexões após reinício ou recriação do imgproxy. Testar também o reinício e a recriação do Storage mantendo o imgproxy ativo. [Políticas de reinício](https://docs.docker.com/engine/containers/start-containers-automatically/) · [Ordem de partida no Compose](https://docs.docker.com/compose/how-tos/startup-order/).
-- **Frontend.** Ao implementar o Compose, fazer `npm run dev` iniciar somente o Vite em `127.0.0.1:5173`. O provisionamento do DEV configura `VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS=true` em `apps/web/.env.local`, ao lado da URL e da chave pública local. Manter `npm run dev:thumbnails` como entrada explícita para o executor legado. Exercitar o Vite com Docker inacessível à conta do terminal, com e sem backend disponível, e confirmar que o processo do frontend inicia em ambos os casos.
+## Diagnóstico
 
-## Máquina nova
+Use o arquivo de segredos do provisionamento e o contexto Docker local.
 
-Sequência a implementar e validar antes de atualizar o fluxo diário do README. Usar Windows com WSL2, Docker Desktop com Linux containers e integração na distribuição do checkout, Docker Engine com suporte a bridge `isolated`, Compose e Node.js ≥ 22.12. Conferir o contexto Docker local e a disponibilidade das três portas. Clonar no filesystem do WSL e executar `npm ci`. Gerar credenciais exclusivas e os arquivos privados do Kong a partir de templates versionados. Manter segredos no WSL, em arquivos ignorados com modo `0600`, e deixar no env do Vite somente a URL, a chave de cliente local e a flag de transformação.
+```bash
+GG_DEV_ENV="${XDG_CONFIG_HOME:-$HOME/.config}/gaucha-gestao/backend.env"
+docker compose -f infra/local/compose.yaml --env-file "$GG_DEV_ENV" config --quiet
+docker compose -f infra/local/compose.yaml --env-file "$GG_DEV_ENV" ps
+curl -fsS http://127.0.0.1:54321/auth/v1/health -o /dev/null
+curl -fsS http://127.0.0.1:54321/storage/v1/status -o /dev/null
+curl -fsS http://127.0.0.1:54323/api/platform/profile -o /dev/null
+```
 
-O provisionamento inicial deve criar volumes nomeados para PostgreSQL e objetos, inicializar a plataforma e aplicar as 41 migrations da aplicação em ordem, com ledger verificável e seed opcional exclusivamente sintético. Confirmar Studio, criar e confirmar uma conta local e seguir o bootstrap administrativo do [README](../../README.md#primeiros-passos-ambiente-local). Os volumes ficam ligados ao projeto e são reutilizados nas partidas seguintes. Conferir `docker compose ls` e `docker compose ps` no diretório do manifesto após o primeiro provisionamento. Nas partidas diárias, abrir o Docker Desktop e executar `npm run dev` no WSL. Habilitar **Start Docker Desktop when you sign in to your computer** se a retomada também precisar ocorrer sem abrir o aplicativo manualmente. Para diagnóstico, conferir o projeto, os healthchecks e as portas e consultar somente logs sanitizados. [Configurações do Docker Desktop](https://docs.docker.com/desktop/settings-and-maintenance/settings/#general).
+Se o Docker indicar portas ocupadas, identifique quem as usa antes de prosseguir. Se a configuração Vite divergir, confira URL, chave de cliente e flag, depois reinicie o Vite. Em falha de transformação, a aplicação oferece **Abrir original**. Consulte os estados e healthchecks sem divulgar a saída de `docker compose config` sem `--quiet`, envs, JWTs ou URLs assinadas. Kong, Storage e imgproxy têm driver de logs `none`.
 
-O procedimento de backup deve incluir os dois volumes em um ponto consistente, dump lógico, roles, manifesto SHA-256, versões de imagem e a configuração privada necessária para recuperar Auth, Storage e Kong. Guardar o pacote cifrado fora do checkout e uma cópia em destino independente do volume Docker. O restore deve conferir hashes, materializar os volumes em um destino isolado e verificar login, dados e originais antes de expor o gateway. [Princípios de recuperação](../architecture/BACKUP_RECOVERY.md).
+## Backup e restauração de um DEV Compose
+
+Pause o Vite, uploads, clientes SQL e outros escritores antes da janela. O comando `backup` para os serviços da aplicação, guarda dump lógico e globals, encerra o PostgreSQL e arquiva os volumes a frio com permissões e proprietários. Retoma a origem ao final. Mantenha o pacote cifrado fora do checkout, com cópia independente do Docker Desktop.
+
+```bash
+GG_BACKUP_DIR="$HOME/backups/gaucha-gestao/dev-2026-11-12"
+mkdir -p -m 700 "$(dirname "$GG_BACKUP_DIR")"
+python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" backup "$GG_BACKUP_DIR"
+```
+
+Em um Docker local sem instância com o nome de destino, restaure o pacote íntegro e a credencial original em volumes novos.
+
+```bash
+install -m 600 "$GG_BACKUP_DIR/secrets.env" "$GG_DEV_ENV"
+python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" restore "$GG_BACKUP_DIR"
+```
+
+O restore confere SHA-256, versão/digest do PostgreSQL e ausência de `postmaster.pid` no arquivo. Ele cria containers parados, preenche os volumes e só então inicia o Compose. Para ensaiar com a origem ativa, use `--project gg-dev-lab-<id>` antes de `restore`, com uma cópia privada de `secrets.env` alterando apenas as três portas para valores livres. Compare ledger, roles/grants, Auth, buckets, RLS e hashes dos originais. Se a restauração falhar depois de criar recursos, preserve-os para diagnóstico e use outro destino vazio para o próximo ensaio.
 
 ## Migração do notebook existente
 
-**Inventário de 12/11/2026.** Docker Engine 29.9.3 e Compose 5.7.0. O PostgreSQL 17.6 usa `/var/lib/postgresql/data` no volume `supabase_db_gaucha-gestao-local`. O Storage usa `supabase_storage_gaucha-gestao-local` em `/mnt`. O ledger local coincide versão a versão com a `main` em `f14edb3`, incluindo `20261111125540`. A leitura encontrou sete buckets e quatro registros em `storage.objects`. Vite existente respondeu HTTP 200 em `127.0.0.1:5173`. No backup privado disponível, os 11 hashes do manifesto conferiram, o `pg_restore` leu o catálogo e o dump integralmente e o `tar` listou o arquivo de objetos. A restauração integral desse pacote e sua atualidade para o corte ainda precisam ser demonstradas.
+**Executar apenas após GO específico para a janela do notebook.** A instância de referência tem 41 migrations, incluindo `20261111125540`, sete buckets e volumes `supabase_db_gaucha-gestao-local` e `supabase_storage_gaucha-gestao-local`. Confira o inventário, as imagens e os nomes antes da janela. Guarde o registro de reversão do AUD-IMG-02, a configuração original e o inventário de roles, grants, RLS, triggers, identidades, auditorias e hashes de objetos em pacote privado. Verifique espaço para os volumes duplicados. [Runbook da origem](AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md).
 
-1. **Ensaiar em destino descartável.** Usar o manifesto candidato, volumes e credenciais sintéticos, portas livres e um Engine separado para os testes que exigem reinício. Aplicar as 41 migrations, carregar dados sintéticos e fazer o percurso máquina nova, backup, restauração e reversão. Repetir os testes de reinício do Engine com o Vite desligado. Ensaiar também a reconstrução da topologia anterior, com a configuração equivalente e a versão de origem, usando os volumes sintéticos preservados. Registrar SHA, versões, tempos e resultados antes de abrir a janela do notebook.
-2. **Após GO específico, congelar as escritas.** Fechar o frontend e bloquear novas requisições e uploads na janela. Fazer inventário sanitizado dos serviços e guardar configuração, credenciais, chaves JWT e API, declarativos, TLS e estado de reversão em pacote privado. Registrar ledger, roles, grants, RLS, triggers, contagens e SHA-256 dos originais. Fazer dump lógico e globals e parar os serviços da origem de forma ordenada, encerrando PostgreSQL de forma limpa. Capturar a frio os dois volumes com permissões e UID/GID preservados. Conferir hashes, arquivos, espaço e capacidade de reconstrução. Não usar a rotina de máquina nova para inicializar esses dados.
-3. **Restaurar cópias para o Compose.** Importar os dois arquivos físicos verificados para volumes nomeados exclusivos da nova topologia antes de iniciar o primeiro container. Falhar se `PG_VERSION`, versão da imagem, inventário do Storage ou hashes divergirem. Subir o Compose com a origem parada. Preservar senhas de roles, material de assinatura, parâmetros de tenant e os caminhos dos objetos. Manter os volumes antigos fora da montagem do candidato. Impedir que a origem retome automaticamente durante os ensaios e confirmar que apenas o candidato tem as portas. Validar a matriz abaixo antes de liberar uso diário.
-4. **Ensaiar o retorno no notebook.** Antes de liberar escritas, parar o Compose e retomar a origem com seus volumes e configuração. Conferir login, REST, original e os inventários. Voltar ao Compose e repetir as verificações. A remoção de containers antigos, se necessária para limpar o agrupamento, deve ocorrer só depois de comprovar a reconstrução pelo pacote de reversão, com autorização da janela. Preservar volumes antigos, backups e receita de reconstrução. A reconstrução deve redescobrir serviços e montar o sidecar anterior a partir do Storage recriado, sem assumir os IDs antigos.
+1. **Preparar credenciais e captura.** No checkout da PR, com o contexto Docker do notebook confirmado, defina um diretório externo e proteja a saída. `cli-secrets` captura apenas os parâmetros necessários a partir dos containers esperados, incluindo chaves do Auth, verificação REST/Storage, chaves opacas e S3. O arquivo é gravado com modo 0600 e saída sem valores.
 
-**Reversão.** Se o candidato falhar antes da liberação, parar os serviços do Compose sem apagar volumes, liberar as portas e retomar os containers reservados ou reconstruí-los pelo pacote testado. Conferir ledger, autenticação, inventário e hashes com a origem e retomar o comando do runbook anterior. Se houver escritas após a liberação, preservar primeiro o estado atualizado do candidato e ensaiar a recuperação com um novo par coerente de banco e objetos antes de voltar. O snapshot anterior ao corte perderia essas escritas. Riscos da janela incluem indisponibilidade, perda de acesso por divergência de chaves, objetos órfãos por cópia inconsistente e tentativa de partida simultânea.
+   ```bash
+   umask 077
+   GG_ADOPTION="$HOME/backups/gaucha-gestao/adocao"
+   mkdir -m 700 "$GG_ADOPTION"
+   GG_DEV_ENV="$GG_ADOPTION/backend.env"
+   python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" cli-secrets
+   ```
+2. **Congelar escritas e capturar.** Encerre Vite e clientes SQL. Verifique as referências de objetos enquanto a origem responde. Pare os sete serviços que não são PostgreSQL, com Kong e Studio primeiro e imgproxy antes do Storage. Confirme que os containers de reversão da PR #120 também estão parados. Capture dump/globals e encerre o banco de forma limpa. O helper só arquiva os volumes esperados com a origem parada.
 
-## Evidências para aceitar a migração
+   ```bash
+   gg_origin=gaucha-gestao-local
+   docker stop "supabase_kong_$gg_origin" "supabase_studio_$gg_origin"
+   docker stop "$gg_origin-audit-imgproxy"
+   docker stop "supabase_storage_$gg_origin" "supabase_rest_$gg_origin" \
+     "supabase_auth_$gg_origin" "supabase_pg_meta_$gg_origin"
+   docker exec "supabase_db_$gg_origin" pg_dump -Fc -U supabase_admin postgres > "$GG_ADOPTION/database.dump"
+   docker exec "supabase_db_$gg_origin" pg_dumpall --globals-only -U supabase_admin > "$GG_ADOPTION/roles.sql"
+   docker exec -i "supabase_db_$gg_origin" pg_restore --list < "$GG_ADOPTION/database.dump" > /dev/null
+   docker stop -t 60 "supabase_db_$gg_origin"
+   python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" capture-stopped-cli "$GG_ADOPTION"
+   ```
+3. **Restaurar e comparar.** Valide o pacote em projeto isolado antes da troca definitiva. Para a troca, confirme que a origem está parada e as portas estão livres. Restaure cópias em volumes do Compose.
 
-| Prova | Resultado esperado |
-| --- | --- |
-| Agrupamento | Um projeto Compose `gaucha-gestao-local` no Docker Desktop, com os oito serviços ativos e imgproxy sem publicação. |
-| Retomada | Fechar e reabrir o Docker Desktop e reiniciar o Windows. Com Vite desligado, confirmar que Auth, REST, Storage e Studio recuperam saúde sem comandos WSL de infraestrutura. |
-| Dependências | Reiniciar Storage e depois recriá-lo em ensaio controlado. Reiniciar também o imgproxy. Verificar nova transformação a cada retomada e queda temporária com fallback seguro. |
-| Uso diário | `npm run dev` inicia e encerra só o Vite. Sem alterações nos horários de início dos containers e sem executor legado. |
-| Segurança e originais | Login e REST autorizados, RLS e recusa anônima na assinatura, recusa de acesso direto ao imgproxy, miniaturas de até 480 px para imagens de 9 MP e aproximadamente 50 MP, `private, no-store` sem `Expires`, ampliação e download com SHA-256 do original. |
-| Persistência | Comparar as 41 migrations, roles, grants, RLS, triggers, sete buckets, registros de Auth, auditorias e evidências e os hashes dos objetos com a origem. |
-| Reversão | Retomar a origem com as portas e acesso anteriores e comprovar o mesmo inventário e originais. Voltar ao Compose antes de liberar escritas. |
+   ```bash
+   python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" restore "$GG_ADOPTION" --adopt-stopped-cli
+   ```
 
-O ensaio descartável do Compose, o restore, os reinícios, a migração e a reversão acima **não foram executados** neste diagnóstico. A homologação das miniaturas da PR #120 vale para a topologia anterior.
+   A adoção não executa o provisionamento de máquina nova. Compare os inventários, faça login com uma identidade existente, confirme REST, assinatura privada, miniaturas, originais e fallback. Mantenha a URL e a chave de cliente originais e habilite `VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS=true` no `apps/web/.env.local` existente. Com o Vite fechado, reinicie o Docker Desktop e depois o Windows na janela. Confira também o Storage e o agrupamento.
+4. **Provar reversão antes de liberar escritas.** Pare o Compose e retome a origem nos volumes anteriores. Use a recuperação do runbook da PR #120, que redescobre o namespace ativo do Storage para o sidecar. Compare login, REST, ledger e hashes. Volte ao Compose, repita o smoke test e só então libere uso. Preserve os volumes e containers antigos durante a janela de reversão. Os containers reservados podem aparecer no Docker Desktop como itens parados. A limpeza posterior dos containers de origem requer o pacote de reconstrução ensaiado e autorização própria.
+
+   ```bash
+   docker compose -f infra/local/compose.yaml --env-file "$GG_DEV_ENV" stop
+   npm run dev:local
+   ```
+
+   Se houve escritas após o corte, capture o par atualizado de PostgreSQL e objetos e ensaie a reconciliação antes de voltar. O snapshot anterior ao corte perderia essas escritas.
+
+## Ensaio descartável
+
+Com as dependências Node instaladas e um Docker local com portas livres, execute `node infra/local/rehearse-compose.mjs`. O script cria dois projetos `gg-dev-lab-*` com portas, credenciais, redes e volumes independentes. Ele verifica o inventário persistente antes e depois e remove apenas recursos dos projetos sintéticos que criou.
+
+O ensaio cobre oito serviços saudáveis, Studio/pg_meta, login e REST, RLS negativo, miniaturas assinadas de 9 MP e 49,94 MP, cabeçalhos privados, hashes dos originais, isolamento do imgproxy, restart e recriação de Storage/imgproxy, Vite sem acesso ao Docker, backup a frio, restauração em volumes novos e retorno à origem descartável. A janela do notebook e a interface física do Docker Desktop permanecem para homologação após autorização.
+
+O Engine aninhado 29.0.2 iniciou em socket próprio. A prova de retomada integral ficou bloqueada quando o `runc` recusou iniciar o imgproxy com limites de recursos devido ao estado inválido de cgroups v2 do ambiente aninhado. Repita essa prova em uma VM descartável com Engine próprio e controladores delegados, com Vite desligado e sem iniciar serviços manualmente após reiniciar o Engine.
