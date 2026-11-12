@@ -1,12 +1,29 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import pg from "pg";
 import { createClient } from "@supabase/supabase-js";
 
 // Real, disposable Supabase only. No production credentials or mocked Storage metadata.
 // Never print sessions, keys, signed URLs, or response objects.
-const config = JSON.parse(execFileSync("npx", ["--yes", "supabase@2.117.0", "status", "-o", "json"], {
+function composeConfig(file) {
+  // Only the Compose rehearsal supplies this file, with fresh loopback ports and secrets.
+  const values = Object.fromEntries(readFileSync(file, "utf8").trim().split("\n")
+    .map(line => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)]));
+  for (const port of [values.GG_API_PORT, values.GG_DB_PORT])
+    assert.ok(/^\d+$/.test(port) && !["54321", "54322", "54323"].includes(port), "Disposable Compose ports");
+  return {
+    API_URL: "http://127.0.0.1:" + values.GG_API_PORT,
+    DB_URL: "postgresql://postgres:" + encodeURIComponent(values.POSTGRES_PASSWORD) +
+      "@127.0.0.1:" + values.GG_DB_PORT + "/postgres",
+    ANON_KEY: values.ANON_KEY,
+    SERVICE_ROLE_KEY: values.SERVICE_ROLE_KEY,
+  };
+}
+const config = process.env.GG_TEST_AUDIT_COMPOSE_ENV
+  ? composeConfig(process.env.GG_TEST_AUDIT_COMPOSE_ENV)
+  : JSON.parse(execFileSync("npx", ["--yes", "supabase@2.117.0", "status", "-o", "json"], {
   encoding: "utf8", shell: process.platform === "win32", stdio: ["ignore", "pipe", "ignore"],
 }));
 for (const url of [config.API_URL, config.DB_URL])
