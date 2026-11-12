@@ -141,6 +141,10 @@ npm run dev
 
 O Vite atende em [127.0.0.1:5173](http://127.0.0.1:5173). Para iniciar o Docker Desktop ao entrar no Windows, habilite a opção correspondente nas configurações do aplicativo. Consulte o [runbook do Compose](docs/operations/DOCKER_LOCAL_STANDARDIZATION.md) para diagnóstico, backup e restauração.
 
+### Limpeza de dados de teste do DEV
+
+O banco do notebook é descartável. Quando o mantenedor pedir para excluir unidades, usuários de teste ou outros registros do **DEV local pessoal**, os agentes devem efetuar a exclusão pedida, inclusive dependências e histórico de testes abrangidos, **sem impor soft delete, arquivamento, backup ou nova autorização**. Confirmar apenas que o destino é o DEV correto e verificar o resultado; não atingir DEV compartilhado, C30, STAGING ou PROD. Consulte a [regra obrigatória para agentes](AGENTS.md#regra-permanente--exclusão-de-dados-de-teste-no-dev-local-12112026) e o [guia do Docker local](docs/operations/DOCKER_LOCAL_STANDARDIZATION.md).
+
 ## Verificar o código e contribuir
 
 ~~~bash
