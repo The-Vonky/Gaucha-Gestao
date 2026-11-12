@@ -1,10 +1,10 @@
 # Docker Compose de desenvolvimento local
 
-A [PR #121](https://github.com/The-Vonky/Gaucha-Gestao/pull/121) implementa o Compose de DEV. O notebook existente permanece na topologia da Supabase CLI até uma janela específica autorizada pelo mantenedor. **PROD NO-GO.**
+A [PR #121](https://github.com/The-Vonky/Gaucha-Gestao/pull/121) implementa o Compose de DEV. Em 12/11/2026, o mantenedor autorizou uma instalação limpa no notebook. O Docker Desktop passou a operar com o grupo `gaucha-gestao-local` e os oito serviços do Compose. **PROD NO-GO.**
 
 ## Topologia e operação
 
-O [manifesto de DEV](../../infra/local/compose.yaml) fixa oito imagens por digest, com a combinação da instância de referência. O projeto `gaucha-gestao-local` reúne PostgreSQL, Auth, REST, Storage, Kong, Studio, pg_meta e imgproxy. A API, o banco e o Studio escutam em IPv4 e IPv6 loopback nas portas 54321, 54322 e 54323. Os volumes nomeados `db-data`, `storage-data` e `studio-snippets` guardam PostgreSQL, objetos e snippets do Studio. A Supabase CLI continua disponível para a CI e o ambiente anterior. [Referência de versões do laboratório de CI](../../infra/supabase/UPSTREAM.md).
+O [manifesto de DEV](../../infra/local/compose.yaml) fixa oito imagens por digest, com a combinação da instância de referência. O projeto `gaucha-gestao-local` reúne PostgreSQL, Auth, REST, Storage, Kong, Studio, pg_meta e imgproxy. A API, o banco e o Studio escutam em IPv4 e IPv6 loopback nas portas 54321, 54322 e 54323. Os volumes nomeados `db-data`, `storage-data` e `studio-snippets` guardam PostgreSQL, objetos e snippets do Studio. A Supabase CLI continua disponível para a CI. [Referência de versões do laboratório de CI](../../infra/supabase/UPSTREAM.md).
 
 Storage e imgproxy se comunicam em um bridge IPv4 dedicado com `internal: true` e gateway `isolated`. O Storage resolve `http://imgproxy:8080` via DNS do Docker. O imgproxy tem namespace próprio, sem publicação, e monta o volume de objetos somente para leitura. Os controles continuam em [audit-imgproxy.env](../../infra/local/audit-imgproxy.env) e [audit-storage-transforms.env](../../infra/local/audit-storage-transforms.env). O [Kong](../../infra/local/config/kong.yml) aplica `Cache-Control: private, no-store` e remove `Expires` na rota Storage comum. A rota S3 mantém sua assinatura própria. [Modo de gateway isolated](https://docs.docker.com/engine/network/port-publishing/#gateway-modes).
 
@@ -46,7 +46,17 @@ python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" restore "$GG_BACKUP
 
 O restore confere SHA-256, versão/digest do PostgreSQL e ausência de `postmaster.pid` no arquivo. Ele cria containers parados, preenche os volumes e só então inicia o Compose. Para ensaiar com a origem ativa, use `--project gg-dev-lab-<id>` antes de `restore`, com uma cópia privada de `secrets.env` alterando apenas as três portas para valores livres. Compare ledger, roles/grants, Auth, buckets, RLS e hashes dos originais. Se a restauração falhar depois de criar recursos, preserve-os para diagnóstico e use outro destino vazio para o próximo ensaio.
 
-## Migração do notebook existente
+## Instalação limpa no notebook em 12/11/2026
+
+O ambiente anterior da Supabase CLI foi desligado e removido. A limpeza incluiu os sete serviços da CLI, os dois containers de reversão de Kong e Storage, o imgproxy avulso, os dois volumes legados de banco e objetos e a rede legada. Foram recriados os volumes `db-data` e `storage-data` do Compose. O volume `studio-snippets` foi preservado. Os dados anteriores foram descartados conforme a decisão do mantenedor.
+
+No Engine Docker Desktop 29.9.3, o contexto Windows `desktop-linux` confirmou um projeto `gaucha-gestao-local` com oito serviços em execução. Os healthchecks e a política `unless-stopped` foram conferidos individualmente. O banco recebeu as 41 migrations versionadas, com sete buckets privados. O smoke test confirmou login, REST autenticado, Studio com pg_meta, upload e miniatura assinada pelo Storage com imgproxy. A conta e o objeto sintéticos foram removidos.
+
+O `npm run dev` iniciou o Vite em `127.0.0.1:5173` com acesso ao socket Docker desabilitado para o processo. Os IDs, estados, contadores de reinício e horários de início dos containers permaneceram iguais. O Docker Desktop permaneceu aberto durante a instalação. A retomada após reiniciar o Engine fica sem teste nesta janela.
+
+## Referência histórica da migração com preservação de dados
+
+O procedimento abaixo descreve a janela anterior com preservação de dados. A instalação limpa de 12/11/2026 substituiu essa estratégia para o notebook do mantenedor.
 
 **Executar apenas após GO específico para a janela do notebook.** A instância de referência tem 41 migrations, incluindo `20261111125540`, sete buckets e volumes `supabase_db_gaucha-gestao-local` e `supabase_storage_gaucha-gestao-local`. Confira o inventário, as imagens e os nomes antes da janela. Guarde o registro de reversão do AUD-IMG-02, a configuração original e o inventário de roles, grants, RLS, triggers, identidades, auditorias e hashes de objetos em pacote privado. Verifique espaço para os volumes duplicados. [Runbook da origem](AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md).
 
@@ -93,6 +103,6 @@ O restore confere SHA-256, versão/digest do PostgreSQL e ausência de `postmast
 
 Com as dependências Node instaladas e um Docker local com portas livres, execute `node infra/local/rehearse-compose.mjs`. O script cria dois projetos `gg-dev-lab-*` com portas, credenciais, redes e volumes independentes. Ele verifica o inventário persistente antes e depois e remove apenas recursos dos projetos sintéticos que criou.
 
-O ensaio cobre oito serviços saudáveis, Studio/pg_meta, login e REST, RLS negativo, miniaturas assinadas de 9 MP e 49,94 MP, cabeçalhos privados, hashes dos originais, isolamento do imgproxy, restart e recriação de Storage/imgproxy, Vite sem acesso ao Docker, backup a frio, restauração em volumes novos e retorno à origem descartável. A janela do notebook e a interface física do Docker Desktop permanecem para homologação após autorização.
+O ensaio cobre oito serviços saudáveis, Studio/pg_meta, login e REST, RLS negativo, miniaturas assinadas de 9 MP e 49,94 MP, cabeçalhos privados, hashes dos originais, isolamento do imgproxy, restart e recriação de Storage/imgproxy, Vite sem acesso ao Docker, backup a frio, restauração em volumes novos e retorno à origem descartável. O registro da instalação limpa acima documenta a validação executada no notebook.
 
 O Engine aninhado 29.0.2 iniciou em socket próprio. A prova de retomada integral ficou bloqueada quando o `runc` recusou iniciar o imgproxy com limites de recursos devido ao estado inválido de cgroups v2 do ambiente aninhado. Repita essa prova em uma VM descartável com Engine próprio e controladores delegados, com Vite desligado e sem iniciar serviços manualmente após reiniciar o Engine.

@@ -94,19 +94,24 @@ Para diagramas maiores e arquitetura detalhada: [DIAGRAMS](docs/architecture/DIA
 
 ## Primeiros passos: ambiente local
 
-**Notebook já provisionado pela Supabase CLI.** Continue o [runbook da instância ativa](docs/operations/AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md). A adoção do Compose requer a janela descrita no [plano de migração](docs/operations/DOCKER_LOCAL_STANDARDIZATION.md#migração-do-notebook-existente).
+O ambiente de desenvolvimento usa o projeto Docker Compose `gaucha-gestao-local`, com oito serviços. Para um notebook com instalação anterior pela Supabase CLI, consulte o [runbook do Compose](docs/operations/DOCKER_LOCAL_STANDARDIZATION.md) antes de usar as mesmas portas.
 
 ### Instalação inicial em máquina nova
 
-Use Git, Node.js ≥ 22.12, npm e Python ≥ 3.11. No Windows, use WSL2 com a distribuição habilitada na integração do Docker Desktop. O Docker deve usar Linux containers, Compose v2 ou superior e um Engine com suporte a bridge `isolated`. Faça o checkout no filesystem da distribuição WSL. Confira o contexto Docker e as portas locais 54321 (API), 54322 (PostgreSQL) e 54323 (Studio) antes de provisionar.
+Use Git, Node.js ≥ 22.12, npm e Python ≥ 3.11. No Windows, abra o Docker Desktop e use WSL2 com a distribuição habilitada na integração do Docker Desktop. O Docker deve usar Linux containers, Compose v2 ou superior e um Engine com suporte a bridge `isolated`. Faça o checkout no filesystem da distribuição WSL. O Compose configura as redes e publica em loopback as portas 54321 (API), 54322 (PostgreSQL) e 54323 (Studio). Essas portas devem estar livres na instalação inicial.
 
 ~~~bash
 git clone https://github.com/The-Vonky/Gaucha-Gestao.git
 cd Gaucha-Gestao
+~~~
+
+Enquanto a [PR #121](https://github.com/The-Vonky/Gaucha-Gestao/pull/121) estiver em revisão, selecione a branch publicada com `git switch --track origin/codex/docker-local`. Após a integração, use a branch padrão do repositório.
+
+~~~bash
 npm ci
 
 docker context show
-docker version
+docker info --format '{{.Name}} {{.OperatingSystem}} {{.ServerVersion}}'
 docker compose version
 docker compose ls --all
 
@@ -118,7 +123,7 @@ python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" install
 python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" vite-env
 ~~~
 
-O provisionamento gera credenciais exclusivas, cria os volumes persistentes e aplica as migrations do checkout. Em caso de interrupção, repita `install` com o mesmo arquivo de segredos. A geração de segredos e a escrita de `apps/web/.env.local` recusam sobrescrever arquivos existentes. A configuração do frontend contém somente a URL, a chave pública local e a flag de transformação.
+O provisionamento gera credenciais exclusivas, cria os volumes persistentes e aplica as migrations do checkout, que também criam os buckets da aplicação. Em caso de interrupção, repita `install` com o mesmo arquivo de segredos. A geração de segredos e a escrita de `apps/web/.env.local` recusam sobrescrever arquivos existentes. A configuração do frontend contém somente a URL, a chave pública local e a flag de transformação. No Docker Desktop, confira os oito serviços saudáveis no grupo `gaucha-gestao-local`.
 
 O cadastro público fica desabilitado. No [Studio local](http://127.0.0.1:54323), abra **Authentication → Users** e crie e confirme um usuário de teste. No SQL Editor, execute uma única vez com o UUID dessa conta local.
 
