@@ -100,6 +100,8 @@ Para diagramas maiores e arquitetura detalhada: [DIAGRAMS](docs/architecture/DIA
 
 **Notebook com AUD-IMG-02 já ativado.** Abra o Docker Desktop e execute `npm run dev:local` pelo WSL a partir do checkout existente. Consulte o [runbook do notebook](docs/operations/AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md) para retomada e reversão.
 
+A [proposta de padronização do Docker local](docs/operations/DOCKER_LOCAL_STANDARDIZATION.md) descreve o Compose único e o plano de migração dos dados do notebook. A troca está bloqueada até o ensaio e a autorização específica do mantenedor.
+
 ### Preparar um ambiente local novo e exclusivo
 
 1. **Obtenha o código e instale dependências** (checkout novo):
