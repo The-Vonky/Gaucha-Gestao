@@ -1,6 +1,38 @@
 # AUD-IMG-02 · ativação e reversão no notebook
 
-PR #120, branch `codex/aud-img-02-imgproxy`. A ativação do fluxo nativo em `gaucha-gestao-local` depende de autorização específica do mantenedor. **PROD NO-GO.** [POC de referência](../modules/audit/AUD_IMG_02_STORAGE_IMGPROXY_POC_20261111.md).
+PR #120, branch `codex/aud-img-02-imgproxy`. O mantenedor homologou miniatura, ampliação e download em `gaucha-gestao-local` com fotos reais do Galaxy S24 Ultra de 9 MP e aproximadamente 50 MP. **PROD NO-GO.** [POC de referência](../modules/audit/AUD_IMG_02_STORAGE_IMGPROXY_POC_20261111.md).
+
+## Uso diário
+
+Abra o Docker Desktop. No checkout do notebook, pelo WSL com acesso ao socket local do Docker, execute:
+
+```bash
+npm run dev:local
+```
+
+Abra [localhost:5173](http://127.0.0.1:5173/). O comando reaproveita os containers existentes, inicia os que estiverem parados, valida Auth, REST, Storage e Kong e liga `VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS` no processo do Vite. As demais configurações do frontend continuam vindo de `apps/web/.env.local`. Use `Ctrl+C` para encerrar o Vite. Após reiniciar o Docker Desktop ou o Storage, execute novamente o mesmo comando. Se o Vite anterior ainda estiver aberto, encerre-o primeiro.
+
+O comando compara os namespaces de rede efetivos e testa o imgproxy pelo loopback do Storage. Se o Storage reiniciar e o sidecar ficar na rede antiga, reinicia somente o sidecar já identificado no registro. Se o sidecar estiver ausente, recria-o com a imagem fixada e sem baixar imagens. Uma colisão de nome, divergência de configuração ou ausência de Storage/Kong interrompe a partida com indicação do runbook. O comando usa o acesso Docker da conta WSL e dispensa senha administrativa e credenciais de homologação. A recuperação ocorre ao executar o comando, pois o Docker Desktop não testa a dependência entre os namespaces ao iniciar os serviços.
+
+A CLI fixada em `2.117.0` aceita `storage.image_transformation.enabled`, mas gera imgproxy no bridge, acessível por alias, e Kong sem o plugin de cache privado. `supabase stop` remove containers da CLI, incluindo os originais etiquetados para reversão. `supabase start` pode substituir os containers de uma instância parada. Use esses comandos somente fora da rotina da instância já ativada. [Imgproxy da CLI](https://github.com/supabase/cli/blob/v2.117.0/apps/cli/src/commands/start/services/imgproxy.service.ts) · [Kong da CLI](https://github.com/supabase/cli/blob/v2.117.0/apps/cli/src/commands/start/services/kong.service.ts) · [Ciclo de parada](https://github.com/supabase/cli/blob/v2.117.0/apps/cli/src/commands/stop/stop.handler.ts).
+
+## Conferir antes e depois de um reinício planejado
+
+Pause uploads. Verifique backup do PostgreSQL e dos roles, catálogo do dump, arquivo de objetos, hashes e os dois containers de reversão. Use o arquivo privado de teste da ativação, que precisa apontar para o original conferido naquela janela:
+
+```bash
+python3 -B infra/local/prepare-audit-imgproxy.py verify-active --fixture "$fixture"
+```
+
+O comando confere os originais reservados, saúde, cache, login, REST, assinatura privada e SHA-256. Após o reinício, execute `npm run dev:local` e repita a verificação. A partida do backend pode ser executada separadamente com `python3 -B infra/local/prepare-audit-imgproxy.py ensure` quando já houver Vite ativo.
+
+### Validação no notebook em 12/11/2026
+
+- Backup privado atualizado e conferido antes da primeira parada. O catálogo e a leitura integral do dump passaram, com comparação dos roles, do schema e dos hashes dos objetos. A conferência leu o dump sem restaurá-lo sobre um banco.
+- Storage reiniciado com o imgproxy ativo. Os namespaces divergiram. O comando reconectou o mesmo imgproxy, iniciou o mesmo Kong e a segunda execução conservou o horário de início do sidecar. Um reinício completo do Docker Desktop também recuperou o DEV pelo comando de partida.
+- Os mesmos IDs de containers, as 41 versões do ledger, os sete buckets, roles, grants, RLS, objetos e registros de auditoria conferidos coincidiram antes e depois. O SQL de `20261111125540`, aplicado anteriormente no DEV, foi preservado no Git byte a byte com os testes negativos da PR #119.
+- Login, REST, transformação privada, recusa anônima e cache pelo Kong passaram. O Chromium em `http://127.0.0.1:5173` exibiu miniatura de até 480 px, ampliou o original e baixou os mesmos bytes, conferidos por SHA-256.
+- Em teste de reversão no DEV, os candidatos ficaram temporariamente parados e renomeados. A rotina de restauração iniciou os containers originais e conferiu login, REST, isolamento e integridade. Os mesmos candidatos voltaram ao ar e os originais continuam reservados.
 
 ## Topologia
 
@@ -33,9 +65,9 @@ python3 infra/local/prepare-audit-imgproxy.py activate --approve-local --fixture
 
 O procedimento cria os candidatos parados e copia os três arquivos do Kong via API do Docker. A verificação compara SHA-256, UID, GID e modo, incluindo o declarativo com o plugin novo. A extração usa `copyUIDGID=false` para preservar os metadados do tar. A troca confere novamente IDs e arquivos originais, para Kong e Storage nessa ordem e os guarda com o sufixo `-before-imgproxy`. Após iniciar o Storage candidato, a sonda independente verifica HTTP 200 do imgproxy em loopback compartilhado, HTTP 200 do Storage na rede Docker e `ECONNREFUSED` em `:8080` nessa rede. Confere também ausência de publicação e recusa no loopback do host. [API de arquivos do Docker Engine](https://github.com/moby/moby/blob/master/daemon/archive_unix.go#L783).
 
-O Kong sobe depois da verificação do sidecar. O procedimento confere os arquivos novamente e verifica a rota pelo gateway, login, leitura REST, assinatura autorizada, recusa anônima, resgate assinado, cache e integridade do original. O registro privado de reversão, em `/tmp/gaucha-aud-imgproxy-<uid>/local/state.json`, conserva IDs e hashes. Guarde esse registro e os containers originais durante toda a homologação. Evite `supabase stop/start` durante a troca e a homologação. O CLI pode recriar os serviços.
+O Kong sobe depois da verificação do sidecar. O procedimento confere os arquivos novamente e verifica a rota pelo gateway, login, leitura REST, assinatura autorizada, recusa anônima, resgate assinado, cache e integridade do original. O registro privado de reversão, em `tmp/aud-imgproxy-state/state.json` no checkout, conserva IDs e hashes e fica fora do Git. A primeira execução de `ensure`, `verify-active` ou `rollback` valida e transfere o registro anterior de `/tmp/gaucha-aud-imgproxy-<uid>/local/state.json`. Guarde uma cópia privada do registro com o backup e preserve os containers originais.
 
-Com a ativação verificada, definir `VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS=true` na sessão Vite e reiniciar o frontend. Essa flag tem precedência sobre `VITE_AUDIT_EVIDENCE_THUMBNAILS`. Se o Docker ou o Storage perder o namespace compartilhado, a lista oferece **Abrir original**. Use a reversão automatizada antes de uma nova ativação autorizada.
+Com a ativação verificada, inicie o Vite com `npm run dev:local`. A flag nativa tem precedência sobre `VITE_AUDIT_EVIDENCE_THUMBNAILS`. Durante uma indisponibilidade da transformação, a lista oferece **Abrir original**.
 
 ## Reverter
 
@@ -45,7 +77,7 @@ Desligar a flag nativa e reiniciar o Vite. Com ambas as flags desligadas, volta 
 python3 infra/local/prepare-audit-imgproxy.py rollback --approve-local --fixture "$fixture"
 ```
 
-Falhas durante a ativação disparam a mesma reversão automaticamente. Em caso de encerramento abrupto do processo ou se a reversão automática falhar, repetir o comando de reversão com o registro privado disponível. O procedimento usa os rótulos exclusivos da operação para retirar Kong candidato, sidecar e Storage candidato sem apagar volumes. Restaura nomes e inicia os originais na ordem Storage → Kong. Verifica IDs, saúde, portas, montagem, metadados e hashes de Kong, acesso e integridade do original. Também confere IDs e horários de início de Auth, REST e PostgreSQL. O registro é removido após a verificação.
+Falhas durante a ativação disparam a mesma reversão automaticamente. Em caso de encerramento abrupto do processo ou se a reversão automática falhar, repetir o comando de reversão com o registro privado disponível. O procedimento valida os originais antes de retirar Kong candidato, sidecar e Storage candidato pelos rótulos exclusivos da operação. Restaura nomes e inicia os originais na ordem Storage → Kong. Verifica IDs, saúde, portas, montagem, metadados e hashes de Kong, acesso e integridade do original. A reversão explícita aceita reinícios anteriores de Auth, REST e PostgreSQL se os IDs coincidirem com o registro e esses serviços ficarem estáveis durante a reversão. O registro é removido após a verificação. Após reverter, use `npm run dev` com a flag nativa desligada.
 
 ## Reproduzir o ensaio descartável
 
@@ -57,8 +89,6 @@ O ensaio exige também OpenSSL e as imagens locais de PostgreSQL 17.6.1.167, Aut
 
 **Resultado de 12/11/2026 — PASS no Docker Engine 29.9.3 do notebook.** A sequência verificou os candidatos parados, a integridade dos três arquivos do Kong antes e depois da partida, o bind IPv4/IPv6, o acesso privado ao imgproxy e a recusa externa. O gateway autenticou a conta sintética, serviu REST e entregou o PNG transformado dentro de 480 px com `private, no-store` e sem `Expires`. O SHA-256 dos originais coincidiu com o upload. A leitura autorizada e a recusa anônima do segundo bucket privado passaram, e status e cache da rota S3 coincidiram com o início do ensaio. A reversão explícita e a reversão automática após falha deliberada restauraram os IDs anteriores, os arquivos Kong, as portas e os originais. A limpeza confirmou que os containers preexistentes conservaram IDs e horários de início.
 
-## Homologação após a janela
+## Cobertura adicional
 
-No notebook e no Galaxy S24 Ultra, validar câmera e galeria, JPEG Ultra HDR de 9 MP, amostra próxima de 50 MP dentro do teto, PNG transparente, JPEG/PNG compacto e arquivo inválido. Conferir orientação, dimensões, ampliação, download íntegro e fallback **Abrir original**. Validar perfil inativo, permissão ausente, unidade indevida, evidência pendente/removida, troca de sessão e expiração. Registrar somente status, dimensões, bytes e veredictos de integridade. O teste `GG_TEST_AUDIT_STORAGE_TRANSFORMS=true node tests/integration/audit-evidence.mjs` provisiona fixtures e requer ambiente de integração autorizado.
-
-Medições de latência, lotes de 10/30/100 fotos, saturação do sidecar, memória e cache volátil na revisita ficam para a validação de carga. O ensaio operacional usa uma imagem sintética e a matriz de autorização da aplicação depende da homologação.
+A prova operacional conferiu uma evidência existente e a recusa anônima. A matriz de integração com perfis e escopos, os formatos adicionais e as medições de carga ficam fora da rotina de reinício. O teste `GG_TEST_AUDIT_STORAGE_TRANSFORMS=true node tests/integration/audit-evidence.mjs` provisiona fixtures e requer ambiente de integração autorizado.

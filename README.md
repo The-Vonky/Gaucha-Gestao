@@ -98,6 +98,10 @@ Para diagramas maiores e arquitetura detalhada: [DIAGRAMS](docs/architecture/DIA
 
 > **Isolamento obrigatório:** execute em checkout e instância locais próprios. Antes de iniciar Docker, confira se não é o projeto DEV compartilhado, staging persistente, outro projeto Supabase, o ERP de Contratos ou um banco com dados importantes. **Não execute** `supabase db reset`, `db push`, `--linked`, `docker compose down -v` ou `prune` em ambientes compartilhados. Não envie envs ou saídas contendo tokens para PRs.
 
+**Notebook com AUD-IMG-02 já ativado.** Abra o Docker Desktop e execute `npm run dev:local` pelo WSL a partir do checkout existente. Consulte o [runbook do notebook](docs/operations/AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md) para retomada e reversão.
+
+### Preparar um ambiente local novo e exclusivo
+
 1. **Obtenha o código e instale dependências** (checkout novo):
 
    ~~~bash
@@ -107,7 +111,7 @@ Para diagramas maiores e arquitetura detalhada: [DIAGRAMS](docs/architecture/DIA
    npm ci
    ~~~
 
-2. **Confirme Docker/Compose e inicie o Supabase local somente se o projeto for exclusivo.** A configuração em [`supabase/config.toml`](supabase/config.toml) usa API `54321`, Postgres `54322` e Studio `54323`. O comando abaixo deixa Studio habilitado e exclui serviços não essenciais:
+2. **Confirme Docker/Compose e inicie o Supabase local.** A configuração em [`supabase/config.toml`](supabase/config.toml) usa API `54321`, Postgres `54322` e Studio `54323`. O comando deixa Studio habilitado e exclui serviços não essenciais:
 
    ~~~bash
    docker version

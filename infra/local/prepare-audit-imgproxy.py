@@ -34,6 +34,7 @@ KONG_DIR = "/home/kong"
 KONG_FILES = ("kong.yml", "localhost.crt", "localhost.key")
 LABEL = "io.gauchagestao.audit-imgproxy"
 LOCAL_DIR = Path(__file__).resolve().parent
+LOCAL_STATE = LOCAL_DIR.parents[1] / "tmp" / "aud-imgproxy-state"
 SOCKET = "/var/run/docker.sock"
 
 
@@ -126,7 +127,8 @@ def archive(container_id, file):
     return engine(f"/containers/{container_id}/archive?{urlencode({'path': f'{KONG_DIR}/{file}'})}")
 
 
-def kong_signatures(container_id):
+def kong_files(container_id):
+    data = {}
     signatures = {}
     for name in KONG_FILES:
         with tarfile.open(fileobj=io.BytesIO(archive(container_id, name))) as files:
@@ -134,16 +136,17 @@ def kong_signatures(container_id):
             require(len(entries) == 1 and entries[0].name == name and entries[0].isfile(),
                     f"Kong precisa ter um arquivo regular em {name}.")
             entry = entries[0]
-            signatures[name] = [hashlib.sha256(files.extractfile(entry).read()).hexdigest(),
-                                entry.uid, entry.gid, entry.mode]
-    return signatures
+            data[name] = files.extractfile(entry).read()
+            signatures[name] = [hashlib.sha256(data[name]).hexdigest(), entry.uid, entry.gid, entry.mode]
+    return data, signatures
+
+
+def kong_signatures(container_id):
+    return kong_files(container_id)[1]
 
 
 def kong_candidate(storage_name, kong):
-    signatures = kong_signatures(kong["Id"])
-    data = {name: docker("exec", kong["Id"], "cat", f"{KONG_DIR}/{name}") for name in KONG_FILES}
-    require(all(hashlib.sha256(value).hexdigest() == signatures[name][0] for name, value in data.items()),
-            "Arquivos do Kong mudaram durante a preparação.")
+    data, signatures = kong_files(kong["Id"])
     declarative = yaml.safe_load(data["kong.yml"])
     service, = (item for item in declarative["services"] if item["name"] == "storage-v1")
     route, = (item for item in service["routes"] if item["paths"] == ["/storage/v1/"])
@@ -216,6 +219,7 @@ function refuses(host) {
     }
   } else {
     assert.equal(await status('127.0.0.1', 8080, '/health'), 200);
+    if (host) await refuses(host);
   }
 })().catch(() => { process.exitCode = 1; });
 """
@@ -247,6 +251,12 @@ def protected_services(target):
             for container in [inspect(target.service(role))]}
 
 
+def verify_protected(target, state, *, after_restart):
+    current = protected_services(target)
+    require(all(current[role][0] == previous[0] and (after_restart or current[role][1] == previous[1])
+                for role, previous in state["protected"].items()), "Banco, Auth ou REST diverge do registro.")
+
+
 def verify_host_isolation():
     for family, host in ((socket.AF_INET, "127.0.0.1"), (socket.AF_INET6, "::1")):
         with socket.socket(family) as client:
@@ -258,10 +268,12 @@ def verify_ports(target, storage, kong):
     require(not storage["NetworkSettings"]["Ports"] or
             all(bind is None for bind in storage["NetworkSettings"]["Ports"].values()),
             "Storage publicou uma porta.")
-    require(kong["NetworkSettings"]["Ports"] == {"8000/tcp": [
-        {"HostIp": "127.0.0.1", "HostPort": str(target.port)},
-        {"HostIp": "::1", "HostPort": str(target.port)},
-    ]}, "Portas do Kong diferentes do bind loopback esperado.")
+    ports = kong["NetworkSettings"]["Ports"] or {}
+    bindings = ports.get("8000/tcp") or []
+    require(set(ports) == {"8000/tcp"} and len(bindings) == 2 and
+            {(bind["HostIp"], bind["HostPort"]) for bind in bindings} ==
+            {("127.0.0.1", str(target.port)), ("::1", str(target.port))},
+            "Portas do Kong diferentes do bind loopback esperado.")
 
 
 def verify_volume(target, storage):
@@ -272,13 +284,17 @@ def verify_volume(target, storage):
             mount["Destination"] == "/mnt" and mount["RW"], "Volume de objetos diferente do inventário.")
 
 
-def preflight(target):
-    verify_tools()
-    storage, kong = map(inspect, target.services)
+def verify_network(target):
     network, = json.loads(docker("network", "inspect", target.network))
     require(network["Driver"] == "bridge" and
             network["Options"].get("com.docker.network.bridge.host_binding_ipv4") == "127.0.0.1",
             "Rede Docker diferente do inventário loopback.")
+
+
+def preflight(target):
+    verify_tools()
+    storage, kong = map(inspect, target.services)
+    verify_network(target)
     for container in (storage, kong):
         require(healthy(container) and container["Config"]["Labels"].get("com.supabase.cli.project") == target.project
                 and list(container["NetworkSettings"]["Networks"]) == [target.network]
@@ -425,20 +441,38 @@ def owned_container(name, marker):
     return None
 
 
-def sidecar(target, storage_id, marker):
-    proxy_id = docker("run", "--detach", "--pull=never", "--name", target.proxy,
+def read_env(filename):
+    return dict(line.split("=", 1) for line in (LOCAL_DIR / filename).read_text().splitlines())
+
+
+def create_sidecar(target, storage_id, marker):
+    return docker("create", "--pull=never", "--name", target.proxy,
                       "--label", f"{LABEL}={marker}", "--network", f"container:{storage_id}",
                       "--mount", f"type=volume,source={target.service('storage')},target=/isolated/mnt,readonly",
                       "--env-file", str(LOCAL_DIR / "audit-imgproxy.env"),
                       "--cpus=1", "--memory=512m", "--memory-swap=512m", "--pids-limit=64",
                       "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges",
                       "--log-driver=none", "--restart=no", IMGPROXY_IMAGE).decode().strip()
-    proxy = inspect(proxy_id)
+
+
+def verify_sidecar_config(target, proxy, storage_id):
     mount, = proxy["Mounts"]
-    require(proxy["HostConfig"]["NetworkMode"] == f"container:{storage_id}" and
-            not proxy["HostConfig"]["PortBindings"] and not proxy["HostConfig"]["PublishAllPorts"] and
-            mount["Name"] == target.service("storage") and mount["Destination"] == "/isolated/mnt" and not mount["RW"],
-            "Topologia ou montagem do imgproxy diferente do esperado.")
+    host = proxy["HostConfig"]
+    require(host["NetworkMode"] == f"container:{storage_id}" and
+            not host["PortBindings"] and not host["PublishAllPorts"] and
+            host["ReadonlyRootfs"] and not host["Privileged"] and host["CapDrop"] == ["ALL"] and
+            host["LogConfig"]["Type"] == "none" and
+            mount["Type"] == "volume" and mount["Name"] == target.service("storage") and
+            mount["Destination"] == "/isolated/mnt" and not mount["RW"] and
+            proxy["Config"]["Image"] == IMGPROXY_IMAGE and
+            read_env("audit-imgproxy.env").items() <= env_dict(proxy).items(),
+            "Configuração do imgproxy diferente da ativação. Preserve o container e confira o runbook.")
+
+
+def sidecar(target, storage_id, marker):
+    proxy_id = create_sidecar(target, storage_id, marker)
+    verify_sidecar_config(target, inspect(proxy_id), storage_id)
+    docker("start", proxy_id)
     for _ in range(10):
         if probe(f"container:{storage_id}", "-e", PROBE, "inside", allow_failure=True) is not None:
             break
@@ -450,16 +484,128 @@ def sidecar(target, storage_id, marker):
     verify_host_isolation()
 
 
-def rollback(target, directory, fixture, token=None):
-    state = json.loads((directory / "state.json").read_text())
-    marker = state["marker"]
-    storage_name, kong_name = target.services
-    for name in (kong_name, target.proxy, storage_name):
-        names = (name,) if name == target.proxy else (name, f"{name}-imgproxy-candidate")
-        for candidate_name in names:
-            candidate = owned_container(candidate_name, marker)
-            if candidate is not None:
-                docker("rm", "-f", candidate["Id"])
+def verify_originals(target, state, *, after_restart):
+    originals = [inspect(container_id) for container_id in state["originals"]]
+    for name, original in zip(target.services, originals):
+        require(original["Name"] in (f"/{name}", f"/{name}-before-imgproxy"),
+                "Original em nome inesperado. Confira o registro de reversão.")
+        occupant = listed(name)
+        require(occupant is None or occupant["Id"] == original["Id"] or
+                occupant["Config"]["Labels"].get(LABEL) == state["marker"],
+                "Nome reservado em uso por container de outra operação.")
+    verify_volume(target, originals[0])
+    require(kong_signatures(originals[1]["Id"]) == state["kong_before"], "Arquivos anteriores do Kong divergentes.")
+    verify_protected(target, state, after_restart=after_restart)
+    return originals
+
+
+def active_inventory(target, state):
+    verify_network(target)
+    originals = verify_originals(target, state, after_restart=True)
+    require(all(original["Name"] == f"/{name}-before-imgproxy" and
+                not original["State"]["Running"] for name, original in zip(target.services, originals)),
+            "Containers originais devem estar parados e reservados para reversão.")
+    storage, kong = [owned_container(name, state["marker"]) for name in target.services]
+    require(storage and kong, "Storage ou Kong da ativação ausente. Confira o runbook de reversão.")
+    _, _, expected_kong = kong_candidate(target.service("storage"), originals[1])
+    kong_env = env_dict(kong)
+    require((storage["Image"], kong["Image"]) == (STORAGE_IMAGE, KONG_IMAGE) and not kong["Mounts"] and
+            kong_signatures(kong["Id"]) == expected_kong and
+            kong_env.get("KONG_PLUGINS") == "request-transformer,cors,response-transformer" and
+            kong_env.get("KONG_PROXY_ACCESS_LOG") == "off" and
+            kong_env.get("KONG_PROXY_ERROR_LOG") == "/dev/null" and
+            read_env("audit-storage-transforms.env").items() <= env_dict(storage).items(),
+            "Configuração de Storage ou Kong diverge da ativação.")
+    for container in (storage, kong):
+        require(container["HostConfig"]["NetworkMode"] == target.network and
+                not container["HostConfig"]["PublishAllPorts"] and
+                container["HostConfig"]["LogConfig"]["Type"] == "none",
+                "Rede ou logs de Storage/Kong diferentes da ativação.")
+    require(all(container["HostConfig"]["PortBindings"] == original["HostConfig"]["PortBindings"]
+                for container, original in zip((storage, kong), originals)),
+            "Publicação de portas diferente da ativação.")
+    verify_volume(target, storage)
+    proxy = listed(target.proxy)
+    if proxy is not None:
+        require(proxy["Config"]["Labels"].get(LABEL) == state["marker"],
+                "Nome do imgproxy em uso por outro container. Confira o runbook.")
+        verify_sidecar_config(target, proxy, storage["Id"])
+    return storage, kong, proxy
+
+
+def start_existing(container):
+    container_id = container["Id"]
+    if not container["State"]["Running"]:
+        print(f"Iniciando {container['Name'][1:]} existente.", flush=True)
+        docker("start", container_id)
+    if container["Config"].get("Healthcheck"):
+        wait_health(container_id, container["Name"][1:])
+
+
+def proxy_ready(storage, proxy):
+    if proxy is None or not proxy["State"]["Running"]:
+        return False
+    storage_ns, proxy_ns = (
+        docker("exec", container["Id"], "readlink", "/proc/self/ns/net", allow_failure=True)
+        for container in (storage, proxy)
+    )
+    return bool(storage_ns and storage_ns == proxy_ns and
+                docker("exec", proxy["Id"], "imgproxy", "health", allow_failure=True) is not None)
+
+
+def ensure_sidecar(target, storage, proxy, marker):
+    if proxy_ready(storage, proxy):
+        return
+    if proxy is None:
+        print("imgproxy ausente. Criando o sidecar da ativação.", flush=True)
+        proxy_id = create_sidecar(target, storage["Id"], marker)
+        verify_sidecar_config(target, inspect(proxy_id), storage["Id"])
+    else:
+        proxy_id = proxy["Id"]
+        if proxy["State"]["Running"]:
+            print("imgproxy sem saúde no namespace atual. Reconectando o container existente.", flush=True)
+            docker("stop", proxy_id)
+    docker("start", proxy_id)
+    for _ in range(15):
+        if proxy_ready(storage, inspect(proxy_id)):
+            return
+        time.sleep(1)
+    raise OperationError("imgproxy não respondeu no namespace atual do Storage. Consulte o runbook.")
+
+
+def verify_active(target, storage, kong, proxy):
+    storage, kong = inspect(storage["Id"]), inspect(kong["Id"])
+    require(healthy(storage) and healthy(kong) and proxy_ready(storage, proxy),
+            "Storage, Kong ou imgproxy ainda indisponível.")
+    verify_ports(target, storage, kong)
+    storage_ip = storage["NetworkSettings"]["Networks"][target.network]["IPAddress"]
+    require(storage_ip, "Storage sem IP na rede local.")
+    docker("exec", storage["Id"], "node", "-e", PROBE, "inside", storage_ip, timeout=12)
+    verify_host_isolation()
+    key = env_dict(storage)["ANON_KEY"]
+    expect(http(target, "GET", "/auth/v1/health", key=key), 200, "Saúde de Auth pelo Kong")
+    expect(http(target, "GET", "/rest/v1/", key=key), 200, "Saúde de REST pelo Kong")
+    headers, _ = expect(http(target, "GET", "/storage/v1/status"), 200, "Saúde de Storage pelo Kong")
+    require(headers.get_all("Cache-Control") == ["private, no-store"] and "Expires" not in headers,
+            "Cabeçalhos de cache inesperados no Storage.")
+
+
+def ensure(target, state):
+    storage, kong, proxy = active_inventory(target, state)
+    for role in ("db", "auth", "rest"):
+        start_existing(inspect(state["protected"][role][0]))
+    start_existing(storage)
+    ensure_sidecar(target, storage, proxy, state["marker"])
+    start_existing(kong)
+    for role in ("pg_meta", "studio"):
+        container = listed(target.service(role))
+        if container and container["Config"]["Labels"].get("com.supabase.cli.project") == target.project:
+            start_existing(container)
+    verify_active(target, storage, kong, inspect(target.proxy))
+    print("DEV local pronto. Auth, REST, Kong, Storage e imgproxy verificados.", flush=True)
+
+
+def restore_originals(target, state, fixture, token=None):
     for name, original_id in zip(target.services, state["originals"]):
         original_container = inspect(original_id)
         require(original_container["Name"] in (f"/{name}", f"/{name}-before-imgproxy"),
@@ -476,10 +622,25 @@ def rollback(target, directory, fixture, token=None):
     verify_ports(target, storage, kong)
     verify_volume(target, storage)
     require(kong_signatures(kong["Id"]) == state["kong_before"], "Arquivos anteriores do Kong divergentes.")
-    require(protected_services(target) == state["protected"], "Banco, Auth ou REST mudou durante a operação.")
     gateway(target, fixture, transformed=False, digest=state["digest"], token=token)
-    require(probe(target.network, "-e", PROBE, "outside", storage_name, allow_failure=True) is not None,
+    require(probe(target.network, "-e", PROBE, "outside", target.service("storage"), allow_failure=True) is not None,
             "Sonda externa falhou após reversão.")
+
+
+def rollback(target, directory, fixture, token=None, *, after_restart=False):
+    state = json.loads((directory / "state.json").read_text())
+    protected_before = protected_services(target)
+    verify_originals(target, state, after_restart=after_restart)
+    marker = state["marker"]
+    storage_name, kong_name = target.services
+    for name in (kong_name, target.proxy, storage_name):
+        names = (name,) if name == target.proxy else (name, f"{name}-imgproxy-candidate")
+        for candidate_name in names:
+            candidate = owned_container(candidate_name, marker)
+            if candidate is not None:
+                docker("rm", "-f", candidate["Id"])
+    restore_originals(target, state, fixture, token)
+    require(protected_services(target) == protected_before, "Banco, Auth ou REST reiniciou durante a reversão.")
     print("Reversão verificada: IDs, saúde, portas, arquivos do Kong, acesso e original.", flush=True)
 
 
@@ -496,8 +657,7 @@ def activate(target, directory, fixture, *, inject_failure=False):
     write_state(directory, state)
     try:
         storage_env = env_dict(storage)
-        overrides = (LOCAL_DIR / "audit-storage-transforms.env").read_text().splitlines()
-        storage_env.update(line.split("=", 1) for line in overrides)
+        storage_env.update(read_env("audit-storage-transforms.env"))
         kong_env = env_dict(kong)
         kong_env.update(KONG_PLUGINS="request-transformer,cors,response-transformer",
                         KONG_PROXY_ACCESS_LOG="off", KONG_PROXY_ERROR_LOG="/dev/null")
@@ -543,12 +703,17 @@ def activate(target, directory, fixture, *, inject_failure=False):
         raise
 
 
-@contextmanager
-def local_lock():
-    directory = Path(f"/tmp/gaucha-aud-imgproxy-{os.getuid()}")
+def private_directory(directory, *, private=True):
     directory.mkdir(mode=0o700, exist_ok=True)
     require(directory.is_dir() and not directory.is_symlink() and directory.stat().st_uid == os.getuid() and
-            stat.S_IMODE(directory.stat().st_mode) == 0o700, "Diretório privado inválido.")
+            directory.stat().st_mode & (0o077 if private else 0o022) == 0, "Diretório privado inválido.")
+
+
+@contextmanager
+def local_lock():
+    private_directory(LOCAL_STATE.parent, private=False)
+    private_directory(LOCAL_STATE)
+    directory = LOCAL_STATE
     with (directory / "lock").open("a") as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -557,32 +722,57 @@ def local_lock():
         yield directory
 
 
+def local_state(directory):
+    path = directory / "state.json"
+    legacy = Path(f"/tmp/gaucha-aud-imgproxy-{os.getuid()}/local/state.json")
+    if legacy.is_file():
+        previous = json.loads(legacy.read_text())
+        if path.is_file():
+            require(json.loads(path.read_text()) == previous, "Registros de reversão divergentes.")
+        else:
+            verify_originals(LOCAL, previous, after_restart=True)
+            write_state(directory, previous)
+        legacy.unlink()
+    require(path.is_file(), "Registro privado de ativação ausente. Consulte o runbook.")
+    return json.loads(path.read_text())
+
+
 def interrupt(signum, _frame):
     raise OperationError(f"Operação interrompida por sinal {signum}.")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("preflight", "activate", "rollback"))
-    parser.add_argument("--fixture", type=Path, required=True)
+    parser.add_argument("action", choices=("preflight", "activate", "rollback", "ensure", "verify-active"))
+    parser.add_argument("--fixture", type=Path)
     parser.add_argument("--approve-local", action="store_true")
     args = parser.parse_args()
-    require(args.action == "preflight" or args.approve_local, "Operação requer --approve-local.")
-    fixture = load_fixture(args.fixture)
-    with local_lock() as directory:
-        state = directory / "local"
+    require(args.action not in ("activate", "rollback") or args.approve_local, "Operação requer --approve-local.")
+    require(args.action == "ensure" or args.fixture, "Informe --fixture com o arquivo privado de homologação.")
+    fixture = load_fixture(args.fixture) if args.fixture else None
+    try:
+        engine("/_ping")
+    except OperationError:
+        raise OperationError("Abra o Docker Desktop e confira o acesso ao socket Docker do WSL.") from None
+    with local_lock() as state:
         if args.action == "preflight":
             preflight(LOCAL)
             print("Inventário, sonda e preparação em memória do Kong verificados.")
         elif args.action == "activate":
-            state.mkdir(mode=0o700, exist_ok=True)
             require(not (state / "state.json").exists(),
                     "Existe registro de uma ativação anterior. Execute rollback antes de prosseguir.")
             activate(LOCAL, state, fixture)
         else:
-            require((state / "state.json").is_file(), "Registro privado de ativação ausente.")
-            rollback(LOCAL, state, fixture)
-            (state / "state.json").unlink()
+            record = local_state(state)
+            if args.action == "ensure":
+                ensure(LOCAL, record)
+            elif args.action == "verify-active":
+                verify_active(LOCAL, *active_inventory(LOCAL, record))
+                gateway(LOCAL, fixture, transformed=True, digest=record["digest"])
+                print("Reversão conferida. Login, REST, miniatura privada, cache e SHA-256 do original verificados.")
+            else:
+                rollback(LOCAL, state, fixture, after_restart=True)
+                (state / "state.json").unlink()
 
 
 if __name__ == "__main__":
