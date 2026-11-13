@@ -26,6 +26,7 @@ jobs:
           shellcheck -e SC2089,SC2090 infra/supabase/volumes/api/kong-entrypoint.sh
           node --check scripts/ops/smoke.mjs
           node --check scripts/ops/audit-derivatives.mjs
+          node tests/infra/test-local-native-startup.mjs
           if bash scripts/ops/gen-secrets.sh --environment ci --output "$GITHUB_WORKSPACE/rejected.env"; then
             echo 'Generator accepted a repository path' >&2; exit 1
           fi

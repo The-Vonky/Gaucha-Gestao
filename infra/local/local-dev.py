@@ -195,9 +195,9 @@ def capture_cli_secrets(path):
 def install(path, project):
     if project == PROJECT and cli_containers():
         raise SystemExit("Instância da Supabase CLI encontrada. Use o procedimento de migração.")
-    compose(path, project, "up", "-d", "--wait", "--wait-timeout", "160", "db", "auth", "storage")
+    compose(path, project, "up", "-d", "--build", "--wait", "--wait-timeout", "160", "db", "auth", "storage")
     apply(path, project)
-    compose(path, project, "up", "-d", "--wait", "--wait-timeout", "160")
+    compose(path, project, "up", "-d", "--build", "--wait", "--wait-timeout", "160")
 
 
 def digest(path):

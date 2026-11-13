@@ -12,7 +12,9 @@ x-schemas: &schemas public,graphql_public,core,audit,action_plans,abc
 services:
   db:
     <<: *runtime
-    image: public.ecr.aws/supabase/postgres:17.6.1.167@sha256:6942962433a569e87f228b4d4ab7e11db5deca64e43babb3a038443ad6c4f1bb
+    build:
+      context: .
+      dockerfile: docker/postgres.Dockerfile
     command: [postgres, -D, /etc/postgresql, -c, log_statement=none, -c, log_min_error_statement=panic]
     environment:
       POSTGRES_HOST: /var/run/postgresql
@@ -22,7 +24,6 @@ services:
       - "[::1]:${GG_DB_PORT:-54322}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
-      - ./config/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-gg-roles.sql:ro
     healthcheck:
       <<: *health
       test: [CMD, pg_isready, -h, 127.0.0.1, -U, postgres]
@@ -130,7 +131,9 @@ services:
 
   kong:
     <<: *runtime
-    image: public.ecr.aws/supabase/kong:2.8.1@sha256:1b53405d8680a09d6f44494b7990bf7da2ea43f84a258c59717d4539abf09f6d
+    build:
+      context: .
+      dockerfile: docker/kong.Dockerfile
     depends_on:
       auth: {condition: service_healthy}
       rest: {condition: service_healthy}
@@ -157,9 +160,6 @@ services:
     ports:
       - "127.0.0.1:${GG_API_PORT:-54321}:8000"
       - "[::1]:${GG_API_PORT:-54321}:8000"
-    volumes:
-      - ./config/kong.yml:/gg/kong.yml:ro
-      - ./config/kong-entrypoint.sh:/gg/kong-entrypoint.sh:ro
     logging: {driver: none}
     healthcheck:
       <<: *health

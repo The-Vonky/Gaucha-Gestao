@@ -123,7 +123,7 @@ python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" install
 python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" vite-env
 ~~~
 
-O provisionamento gera credenciais exclusivas, cria os volumes persistentes e aplica as migrations do checkout, que também criam os buckets da aplicação. Em caso de interrupção, repita `install` com o mesmo arquivo de segredos. A geração de segredos e a escrita de `apps/web/.env.local` recusam sobrescrever arquivos existentes. A configuração do frontend contém somente a URL, a chave pública local e a flag de transformação. No Docker Desktop, confira os oito serviços saudáveis no grupo `gaucha-gestao-local`.
+O provisionamento gera credenciais exclusivas, constrói as imagens locais do PostgreSQL e Kong com configuração embutida, cria os volumes persistentes e aplica as migrations do checkout, que também criam os buckets da aplicação. Em caso de interrupção, repita `install` com o mesmo arquivo de segredos. A geração de segredos e a escrita de `apps/web/.env.local` recusam sobrescrever arquivos existentes. A configuração do frontend contém somente a URL, a chave pública local e a flag de transformação. No Docker Desktop, confira os oito serviços saudáveis no grupo `gaucha-gestao-local`.
 
 O cadastro público fica desabilitado. No [Studio local](http://127.0.0.1:54323), abra **Authentication → Users** e crie e confirme um usuário de teste. No SQL Editor, execute uma única vez com o UUID dessa conta local.
 
@@ -133,7 +133,7 @@ select private.bootstrap_administrator('UUID_DO_USUARIO_CONFIRMADO'::uuid);
 
 ### Uso diário
 
-Abra o Docker Desktop. O Engine retoma os serviços do grupo `gaucha-gestao-local` que estavam em execução. No WSL, inicie o frontend.
+Abra o Docker Desktop. O Engine retoma os serviços do grupo `gaucha-gestao-local` nativamente, sem bind mounts de arquivos WSL em PostgreSQL e Kong. No WSL, inicie o frontend.
 
 ~~~bash
 npm run dev
