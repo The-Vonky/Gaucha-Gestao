@@ -107,7 +107,7 @@ export async function runBrowser() {
       // space (no overlap), stacking when the panel is narrow.
       checkpoint("overview layout");
       await page.getByRole("link", { name: "Visão geral", exact: true }).click();
-      const overviewFile = page.locator(".audit-overview-file").filter({ hasText: name });
+      const overviewFile = page.locator(".audit-overview-file").filter({ hasText: "Evidência 1.pdf" });
       for (const size of [375, 768, 1024, 1440]) {
         await page.setViewportSize({ width: size, height: 812 });
         await overviewFile.waitFor();
@@ -354,8 +354,19 @@ export async function runBrowser() {
           assert.ok(preview.bodyBytes>0&&preview.bodyBytes<original.length);
           console.log(`AUD-IMG-02 Chromium ${width}px: ${preview.bodyBytes} bytes na miniatura; ${original.length} no original`);
         }
+        const enlarge = imageFile.getByRole("button", { name: "Ampliar Evidência 3.png", exact: true });
+        if (width === 1280) {
+          await enlarge.hover();
+          assert.equal(await enlarge.evaluate(button => getComputedStyle(button).backgroundColor), "rgba(0, 0, 0, 0)");
+          await imageFile.getByRole("button", { name: "Baixar Evidência 3.png", exact: true }).hover();
+          await enlarge.focus();
+          await page.keyboard.press("Tab");
+          await page.keyboard.press("Shift+Tab");
+          assert.ok(await enlarge.evaluate(button => button.matches(":focus-visible")));
+        }
         traffic.stage("modal");
-        await imageFile.getByRole("button",{name:"Ampliar Evidência 3.png",exact:true}).click();
+        if (width === 1280) await enlarge.press("Enter");
+        else await enlarge.tap();
         const modal=page.getByRole("dialog");await modal.getByRole("img").evaluate(element=>element.decode());
         assert.equal(await modal.getByRole("img").getAttribute("src")===await image.getAttribute("src"),!native);
         if(native)assert.deepEqual(await modal.getByRole("img").evaluate(element=>[element.naturalWidth,element.naturalHeight]),[960,640]);

@@ -5,14 +5,11 @@ import type { ChecklistEvidence as Evidence, Item } from "./types";
 import type { EvidenceController } from "./useChecklistEvidence";
 import "./evidence.css";
 import { EvidenceImage } from "./EvidenceImage";
-function evidenceName(original:string,index:number){
- const extension=original.match(/\.[a-z0-9]+$/i)?.[0]??"";
- return `Evidência ${index+1}${extension}`;
-}
-export function Download({row,name=row.original_name}:{row:Evidence;name?:string}){
+import { compareEvidence, evidenceName } from "./evidencePresentation";
+export function Download({row,name=row.original_name,filename=name}:{row:Evidence;name?:string;filename?:string}){
  const [busy,setBusy]=useState(false),[error,setError]=useState(false);
  return <><button type="button" className="small" aria-label={`Baixar ${name}`} disabled={busy}
- onClick={async()=>{setBusy(true);setError(false);try{await downloadEvidence(row,name);}catch{setError(true);}finally{setBusy(false);}}}>
+ onClick={async()=>{setBusy(true);setError(false);try{await downloadEvidence(row,filename);}catch{setError(true);}finally{setBusy(false);}}}>
  {busy?"Abrindo…":"Baixar"}</button>{error&&<span role="alert">Arquivo indisponível.</span>}</>;
 }
 export function ChecklistEvidence({item,editable,controller,visible=true}:{item:Item;editable:boolean;controller:EvidenceController;visible?:boolean}){
@@ -22,8 +19,7 @@ export function ChecklistEvidence({item,editable,controller,visible=true}:{item:
  const [preview,setPreview]=useState<string>();
  const pending=controller.uploads[item.key];
  const busy=!!pending&&pending.phase!=="error";
- const rows=controller.rows.filter(e=>e.item_key===item.key).sort((a,b)=>
-  a.uploaded_at.localeCompare(b.uploaded_at)||a.id.localeCompare(b.id));
+ const rows=controller.rows.filter(e=>e.item_key===item.key).sort(compareEvidence);
  const previewIndex=rows.findIndex(e=>e.id===preview);
  return <section className="audit-evidence" aria-label={`Evidências do critério ${item.number}`}>
  <h3>Evidências</h3>
