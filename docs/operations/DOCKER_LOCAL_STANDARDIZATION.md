@@ -29,22 +29,47 @@ Se o Docker indicar portas ocupadas, identifique quem as usa antes de prosseguir
 
 ## Retomada automática no Windows com WSL2
 
-Em 13/11/2026, às 08h10min28s (horário de Brasília), o Docker Engine tentou restaurar `db` e `kong` e falhou com código 127 e `not a directory` nos bind mounts de `roles.sql` e `kong-entrypoint.sh`. O proxy de integração do Ubuntu registrou a montagem desses arquivos oito segundos depois. Sem o PostgreSQL, o Auth falhou ao resolver `db` e o REST ficou `unhealthy`. Quando os mounts ficaram disponíveis, `docker start` recuperou PostgreSQL e Kong com os mesmos IDs e volumes. Trocar para `restart: always` também deixa a tentativa inicial a cargo do Engine, sujeita à mesma ordem de montagem. [Incidente equivalente reportado ao Docker Desktop](https://github.com/docker/desktop-feedback/issues/731).
+Em 13/11/2026, na homologação física, o Windows iniciou às 13h29min10s (horário de Brasília). O Engine falhou ao restaurar PostgreSQL e Kong às 13h31min03s. O `init.log` registrou `not a directory` nos bind mounts de `99-gg-roles.sql` e `kong-entrypoint.sh`. O proxy WSL registrou a montagem dos arquivos às 13h31min09s. Auth, REST e Storage foram afetados pela indisponibilidade do banco. Após a abertura do Ubuntu e `docker start`, os oito serviços ficaram `healthy`. Houve a mesma ordem de eventos às 08h10min28s, com os mounts disponíveis oito segundos depois. [Incidente equivalente reportado ao Docker Desktop](https://github.com/docker/desktop-feedback/issues/731).
 
-Para instalar ou atualizar a recuperação automática uma vez, execute no Ubuntu do WSL2, no checkout do notebook:
+No perfil Windows da sessão interativa, o atalho anterior já existia às 09h28 e apontava para a cópia instalada de `Resume-LocalDocker.vbs`. A última entrada do monitor era das 09h28 e não havia processo correspondente depois do boot das 13h29. O launcher usava `On Error Resume Next` e o monitor escrevia seu primeiro registro depois de inicializar o watcher. Os registros do Windows disponíveis não distinguem entre o atalho deixar de ser acionado e a execução terminar antes da primeira linha do log.
+
+### Instalar ou atualizar
+
+Execute no Ubuntu do WSL2 a partir da raiz do checkout do notebook, na mesma conta Windows que abre o Docker Desktop:
 
 ```bash
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File \
   "$(wslpath -w "$PWD/infra/local/windows/Resume-LocalDocker.ps1")" -Install
 ```
 
-A instalação remove a antiga tarefa `GauchaGestaoDockerResume` e adiciona à pasta Inicializar do usuário Windows um atalho que usa o Windows Script Host em modo silencioso. O monitor aguarda eventos de alteração ou rotação do log do backend do Docker Desktop. Ao detectar uma nova instância do backend na sessão Windows, ele consulta a named pipe do Engine Linux local por até quatro minutos, com cinco segundos entre tentativas. Se encontrar o erro de montagem no PostgreSQL do projeto, tenta iniciar o container pelo ID. Quando `db`, `auth`, `rest` e `storage` estiverem `healthy`, aplica a mesma recuperação ao Kong. Depois desse intervalo ou da conclusão da verificação, o monitor volta a aguardar eventos sem consultar o Engine. Uma parada explícita sem esse erro é respeitada. O Docker Desktop continua sendo aberto pelo atalho normal.
+A tarefa `GauchaGestaoDockerResume` é iniciada no logon da conta que a instalou, com privilégios limitados e sem repetição periódica. O Agendador guarda uma cópia do script para iniciar sem ler o checkout WSL ou o launcher EFS no logon. O instalador remove o atalho legado, encerra o monitor legado da sessão e inicia a tarefa para verificação imediata. Reexecute `-Install` após atualizar o script no checkout.
 
-As tentativas são registradas em `%LOCALAPPDATA%\GauchaGestao\Resume-LocalDocker.log`. O monitor depende do nome do processo e do caminho dos logs do Docker Desktop no perfil do usuário. Se o Desktop mudar esses caminhos, confira no log da recuperação se a abertura foi detectada. Para reverter, execute o mesmo comando de instalação com `-Uninstall` no lugar de `-Install`. Isso remove o atalho de inicialização e encerra o monitor da sessão. O log fica disponível para diagnóstico.
+O monitor consulta o processo do backend na própria sessão a cada cinco segundos. Cada instância detectada abre uma janela de verificação de até quatro minutos na named pipe do Engine Linux local. O monitor valida o inventário dos oito serviços e inicia o Ubuntu sem terminal quando encontra a assinatura do erro de mount. Tenta `docker start` somente pelo ID já inspecionado e aguarda `db`, `auth`, `rest` e `storage` ficarem `healthy` antes de iniciar Kong. Uma parada normal é respeitada. Entre janelas de recuperação, as consultas ficam restritas ao processo Windows. [Referência de comandos WSL](https://learn.microsoft.com/windows/wsl/basic-commands).
 
-Na próxima abertura normal do notebook, abra o Docker Desktop como de costume. Confirme no painel que os oito containers chegaram a `healthy` sem partida manual e observe se a sessão permanece sem janelas de terminal. Se o monitor tiver recuperado os serviços, confira no log os retornos `codigo 0` de `db` e `kong`. Use os endpoints de diagnóstico acima para verificar Auth, Storage e Studio, e entre no frontend com `npm run dev` para confirmar login e uma leitura do REST.
+Confira em **Windows PowerShell**, na sessão que abre o Desktop:
 
-Se a recuperação falhar, confirme o contexto local e examine `State.Error` antes de qualquer tentativa manual. Para a falha de mount acima, aguarde a integração do Ubuntu disponibilizar os arquivos do checkout. Inicie `gaucha-gestao-local-db-1` com `docker start` e confira se PostgreSQL, Auth, REST e Storage chegam a `healthy`. Só então inicie `gaucha-gestao-local-kong-1` da mesma forma e confirme os oito healthchecks. Para uma parada explícita do grupo, use `docker compose -f infra/local/compose.yaml --env-file "$GG_DEV_ENV" start --wait` para iniciar os containers existentes na ordem do Compose.
+```powershell
+whoami
+Get-ScheduledTask -TaskName GauchaGestaoDockerResume | Select-Object TaskName, State, Principal
+Get-ScheduledTaskInfo -TaskName GauchaGestaoDockerResume | Select-Object LastRunTime, LastTaskResult
+Get-Content -LiteralPath "$env:LOCALAPPDATA\GauchaGestao\Resume-LocalDocker.log" -Tail 20
+```
+
+A tarefa deve estar `Running` e o log deve conter uma entrada recente `Monitor ativo` com a conta, a sessão e o PID. Quando o Desktop já estiver aberto, procure também `Backend PID … detectado` e `Verificacao concluida: oito containers healthy`. Se a tarefa não aparecer ou o log estiver desatualizado, confira o perfil efetivo e compare `LastRunTime` com o último boot antes de repetir a instalação. Para reverter, execute o comando acima com `-Uninstall` no lugar de `-Install`. A reversão remove a tarefa e mantém os logs para diagnóstico.
+
+### Homologar após reiniciar o Windows
+
+1. Com os oito serviços saudáveis, registre os IDs dos containers e os nomes dos volumes. Reinicie o Windows, entre com a mesma conta e abra o Docker Desktop pelo atalho normal. Aguarde até quatro minutos após a detecção do backend antes de iniciar Ubuntu, Vite ou containers manualmente.
+2. Confira no Windows PowerShell que `LastRunTime` e as linhas `Monitor ativo` e `Backend PID … detectado` são posteriores ao boot. Confira se o monitor ficou sem janela. Na presença da falha de mount, procure `WSL Ubuntu: codigo 0` e `docker start db: codigo 0` seguido de `docker start kong: codigo 0`, conforme os serviços afetados.
+3. Confirme no painel os oito serviços `healthy` e compare os IDs e os volumes com o registro anterior. Se o Engine tiver iniciado tudo sozinho, o teste prova o acionamento do monitor no logon. A recuperação do erro só fica comprovada se a falha ocorrer e o log registrar os starts automáticos. Execute os diagnósticos de Auth, Storage e Studio acima e confirme login e uma leitura autenticada do REST no frontend.
+4. Em falha, guarde o estado da tarefa, o log e o `State.Error` de `db` e `kong` no Engine local. Para a assinatura descrita acima, abra o Ubuntu com `wsl -d Ubuntu`, inicie `gaucha-gestao-local-db-1` com `docker start` e aguarde PostgreSQL, Auth, REST e Storage ficarem `healthy`. Depois inicie `gaucha-gestao-local-kong-1` e confira os oito healthchecks. Para uma parada explícita do grupo, use `docker compose -f infra/local/compose.yaml --env-file "$GG_DEV_ENV" start --wait` para iniciar os containers existentes na ordem do Compose.
+
+A suíte abaixo usa estados simulados e não altera tarefas, distribuições ou containers:
+
+```bash
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File \
+  "$(wslpath -w "$PWD/tests/infra/test-resume-local-docker.ps1")"
+```
 
 ## Dados descartáveis no DEV pessoal
 

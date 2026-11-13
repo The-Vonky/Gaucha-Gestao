@@ -6,6 +6,7 @@ $taskName = 'GauchaGestaoDockerResume'
 $directory = Join-Path $env:LOCALAPPDATA 'GauchaGestao'
 $startup = [Environment]::GetFolderPath('Startup')
 $shortcutPath = Join-Path $startup 'Gaucha Gestao - Docker Resume.lnk'
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $sessionId = (Get-Process -Id $PID).SessionId
 $services = @('db', 'auth', 'rest', 'storage', 'imgproxy', 'kong', 'pg-meta', 'studio')
 
@@ -25,35 +26,35 @@ function Stop-InstalledWatcher {
         }
 }
 
-function Install-ResumeWatcher {
-    New-Item -ItemType Directory -Path $directory -Force | Out-Null
-    $installed = Join-Path $directory 'Resume-LocalDocker.ps1'
-    $launcher = Join-Path $directory 'Resume-LocalDocker.vbs'
-    Copy-Item -LiteralPath $PSCommandPath -Destination $installed -Force
-    @'
-On Error Resume Next
-Set shell = CreateObject("WScript.Shell")
-Set files = CreateObject("Scripting.FileSystemObject")
-script = files.BuildPath(files.GetParentFolderName(WScript.ScriptFullName), "Resume-LocalDocker.ps1")
-powershell = shell.ExpandEnvironmentStrings("%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe")
-shell.Run """" & powershell & """ -NoProfile -NonInteractive -ExecutionPolicy Bypass -File """ & script & """", 0, False
-'@ | Set-Content -LiteralPath $launcher -Encoding ASCII
+function Install-ResumeTask {
+    # O Agendador guarda o script para dispensar leitura do checkout WSL e dos arquivos EFS no logon.
+    $source = Get-Content -LiteralPath $PSCommandPath -Raw
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($source))
+    $arguments = "-NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand $encoded"
+    if ($arguments.Length -gt 32000) { throw 'Script excede o limite de argumentos da tarefa.' }
 
-    $shell = New-Object -ComObject WScript.Shell
-    $shortcut = $shell.CreateShortcut($shortcutPath)
-    $shortcut.TargetPath = Join-Path $env:WINDIR 'System32\wscript.exe'
-    $shortcut.Arguments = '//B //NoLogo "' + $launcher + '"'
-    $shortcut.WorkingDirectory = $directory
-    $shortcut.Save()
-    $shell.Run('"' + $shortcut.TargetPath + '" ' + $shortcut.Arguments, 0, $false) | Out-Null
+    $action = New-ScheduledTaskAction -Execute (Join-Path $PSHOME 'powershell.exe') `
+        -WorkingDirectory $PSHOME -Argument $arguments
+    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $identity.User.Value
+    $principal = New-ScheduledTaskPrincipal -UserId $identity.User.Value -LogonType Interactive -RunLevel Limited
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+        -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero) `
+        -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+    if ((Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue).State -eq 'Running') {
+        Stop-ScheduledTask -TaskName $taskName
+    }
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger `
+        -Principal $principal -Settings $settings -Force | Out-Null
+    Stop-InstalledWatcher
+    Start-ScheduledTask -TaskName $taskName
+    Write-Output ("Tarefa {0} iniciada para {1}. Log: {2}" -f $taskName, $identity.Name,
+        (Join-Path $directory 'Resume-LocalDocker.log'))
 }
 
-function Invoke-DesktopDocker {
-    # A named pipe fixa o Engine Linux local mesmo com outro contexto ativo.
-    $command = @('--host', 'npipe:////./pipe/dockerDesktopLinuxEngine') + $args
+function Invoke-LocalProcess([string]$Executable, [string[]]$Arguments, [int]$TimeoutMs) {
     $start = New-Object System.Diagnostics.ProcessStartInfo
-    $start.FileName = $docker
-    $start.Arguments = ($command | ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' '
+    $start.FileName = $Executable
+    $start.Arguments = ($Arguments | ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' '
     $start.WorkingDirectory = $env:LOCALAPPDATA
     $start.UseShellExecute = $false
     $start.CreateNoWindow = $true
@@ -63,19 +64,33 @@ function Invoke-DesktopDocker {
     try {
         $stdout = $process.StandardOutput.ReadToEndAsync()
         $stderr = $process.StandardError.ReadToEndAsync()
-        if (!$process.WaitForExit(10000)) {
-            $process.Kill()
-            throw 'CLI do Docker Desktop excedeu o tempo de resposta.'
+        if (!$process.WaitForExit($TimeoutMs)) {
+            if (!$process.HasExited) { $process.Kill() }
+            throw ("{0} excedeu o tempo de resposta." -f [IO.Path]::GetFileName($Executable))
         }
-        $script:dockerExit = $process.ExitCode
-        if ($dockerExit -ne 0) {
-            Write-Verbose ($stderr.Result.Trim())
-            return
-        }
-        $stdout.Result.Trim() -split '\r?\n' | Where-Object { $_ }
+        $null = $stderr.Result
+        return @{ ExitCode = $process.ExitCode; Output = $stdout.Result }
     } finally {
         $process.Dispose()
     }
+}
+
+function Invoke-DesktopDocker {
+    # A named pipe fixa o Engine Linux local mesmo com outro contexto ativo.
+    $arguments = @('--host', 'npipe:////./pipe/dockerDesktopLinuxEngine') + $args
+    $result = Invoke-LocalProcess $docker $arguments 10000
+    $script:dockerExit = $result.ExitCode
+    if ($dockerExit -eq 0) {
+        $result.Output.Trim() -split '\r?\n' | Where-Object { $_ }
+    }
+}
+
+function Start-MountDistribution {
+    # Inicia o Ubuntu usado pelos bind mounts, sem abrir um terminal ou depender do distro padrao.
+    $wsl = Join-Path $env:WINDIR 'System32\wsl.exe'
+    $result = Invoke-LocalProcess $wsl @('--distribution', 'Ubuntu', '--cd', '/', '--exec', '/bin/true') 30000
+    Write-ResumeLog ("WSL Ubuntu: codigo {0}" -f $result.ExitCode)
+    return ($result.ExitCode -eq 0)
 }
 
 function Write-ResumeLog([string]$Message) {
@@ -86,8 +101,8 @@ function Write-ResumeLog([string]$Message) {
 
 function Test-MountError($Container, [string]$Destination) {
     return ($Container.State.Status -eq 'exited' -and $Container.State.ExitCode -eq 127 -and
-        $Container.State.Error -match 'error mounting "[^"]*/wsl/docker-desktop-bind-mounts/[^"]+"' -and
-        $Container.State.Error -match [regex]::Escape($Destination) -and
+        $Container.State.Error -match 'error mounting "[^"]*/wsl/docker-desktop-bind-mounts/Ubuntu/[^"]+"' -and
+        $Container.State.Error -match ('to rootfs at "' + [regex]::Escape($Destination) + '"') -and
         $Container.State.Error -match 'not a directory')
 }
 
@@ -96,21 +111,6 @@ function Start-ExistingContainer($Container) {
     Invoke-DesktopDocker start $Container.Id | Out-Null
     Write-ResumeLog ("docker start {0}: codigo {1}" -f $Container.Service, $dockerExit)
 }
-
-if ($Install -or $Uninstall) {
-    if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
-        Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
-    }
-    Stop-InstalledWatcher
-    if ($Install) { Install-ResumeWatcher }
-    return
-}
-
-$docker = @(
-    (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin\docker.exe'),
-    (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin\docker.exe')
-) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
-if (!$docker) { throw 'CLI do Docker Desktop nao encontrada.' }
 
 function Invoke-RecoveryCheck {
     $project = 'gaucha-gestao-local'
@@ -131,15 +131,16 @@ function Invoke-RecoveryCheck {
     }
 
     if (Test-MountError $containers.db '/docker-entrypoint-initdb.d/init-scripts/99-gg-roles.sql') {
-        Start-ExistingContainer $containers.db
+        if (Start-MountDistribution) { Start-ExistingContainer $containers.db }
         return $false
     }
-    if (Test-MountError $containers.kong '/gg/kong') {
+    if ((Test-MountError $containers.kong '/gg/kong-entrypoint.sh') -or
+        (Test-MountError $containers.kong '/gg/kong.yml')) {
         $unready = @('db', 'auth', 'rest', 'storage') | Where-Object {
             $state = $containers[$_].State
             $state.Status -ne 'running' -or $state.Health -ne 'healthy'
         }
-        if (!$unready) { Start-ExistingContainer $containers.kong }
+        if (!$unready -and (Start-MountDistribution)) { Start-ExistingContainer $containers.kong }
         return $false
     }
 
@@ -147,7 +148,13 @@ function Invoke-RecoveryCheck {
     $pending = $containers.Values | Where-Object {
         $_.State.Status -eq 'restarting' -or ($_.State.Status -eq 'running' -and $_.State.Health -ne 'healthy')
     }
-    return !$pending
+    if ($pending) { return $false }
+    if ($containers.Values | Where-Object { $_.State.Status -ne 'running' }) {
+        Write-ResumeLog 'Verificacao concluida com containers parados sem a assinatura de recuperacao.'
+    } else {
+        Write-ResumeLog 'Verificacao concluida: oito containers healthy.'
+    }
+    return $true
 }
 
 function Get-BackendInstance {
@@ -156,52 +163,55 @@ function Get-BackendInstance {
         Sort-Object StartTime | Select-Object -First 1
 }
 
-$logDirectory = Join-Path $env:LOCALAPPDATA 'Docker\log\host'
-if (!(Test-Path -LiteralPath $logDirectory -PathType Container)) { return }
-
-# A atividade do log acorda o processo. Somente uma nova instancia do backend
-# abre uma janela de recuperacao; alteracoes normais do log nao acionam Docker.
-$mutex = New-Object Threading.Mutex($false, 'Local\GauchaGestaoDockerResumeWatcher')
-$watcher = New-Object IO.FileSystemWatcher($logDirectory, 'com.docker.backend.exe.log*')
-$watcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite'
-$acquired = $false
-try {
-    try { $acquired = $mutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $acquired = $true }
-    if (!$acquired) { return }
-    foreach ($name in @('Changed', 'Created', 'Renamed', 'Error')) {
-        Register-ObjectEvent $watcher $name -SourceIdentifier "DockerResume-$name" | Out-Null
-    }
-    $watcher.EnableRaisingEvents = $true
+function Watch-DesktopBackend {
     $lastBackend = ''
-    Write-ResumeLog 'Monitor ativo.'
     while ($true) {
         $backend = Get-BackendInstance
         if ($backend) {
             $instance = '{0}:{1}' -f $backend.Id, $backend.StartTime.Ticks
             if ($instance -ne $lastBackend) {
                 $lastBackend = $instance
-                Write-ResumeLog 'Backend detectado. Verificando o DEV local.'
+                Write-ResumeLog ("Backend PID {0} detectado. Verificando o DEV local." -f $backend.Id)
                 $deadline = [DateTime]::UtcNow.AddMinutes(4)
                 while (!$backend.HasExited -and [DateTime]::UtcNow -lt $deadline) {
                     try {
-                        if (Invoke-RecoveryCheck) {
-                            Write-ResumeLog 'Verificacao concluida.'
-                            break
-                        }
+                        if (Invoke-RecoveryCheck) { break }
                     } catch {
-                        Write-ResumeLog 'CLI indisponivel durante a verificacao.'
+                        Write-ResumeLog ("Falha durante a verificacao ({0})." -f $_.Exception.GetType().Name)
                     }
                     Start-Sleep -Seconds 5
                 }
                 if ([DateTime]::UtcNow -ge $deadline) { Write-ResumeLog 'Prazo de recuperacao encerrado.' }
             }
         }
-        Wait-Event | Out-Null
-        Get-Event | Where-Object SourceIdentifier -Like 'DockerResume-*' | Remove-Event
+        # Entre janelas, consulta somente o processo do Windows, independentemente dos logs do Desktop.
+        Start-Sleep -Seconds 5
     }
-} finally {
-    Get-EventSubscriber | Where-Object SourceIdentifier -Like 'DockerResume-*' | Unregister-Event
-    $watcher.Dispose()
-    if ($acquired) { $mutex.ReleaseMutex() }
-    $mutex.Dispose()
+}
+
+if ($Install) {
+    Install-ResumeTask
+    return
+}
+if ($Uninstall) {
+    if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
+        Stop-ScheduledTask -TaskName $taskName
+        Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+    }
+    Stop-InstalledWatcher
+    return
+}
+
+Write-ResumeLog ("Monitor ativo. Perfil Windows: {0}. Sessao: {1}. PID: {2}." -f $identity.Name, $sessionId, $PID)
+try {
+    $docker = @(
+        (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin\docker.exe'),
+        (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin\docker.exe')
+    ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    if (!$docker) { throw 'CLI do Docker Desktop nao encontrada.' }
+
+    Watch-DesktopBackend
+} catch {
+    Write-ResumeLog ("Monitor encerrado: {0}" -f $_.Exception.Message)
+    throw
 }
