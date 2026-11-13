@@ -1709,7 +1709,8 @@
   grid-template-areas:
     "text responses"
     "obs obs"
-    "evi save";
+    "save save"
+    "evi evi";
   gap: var(--space-2) var(--space-5);
   padding: var(--space-3) var(--space-4) var(--space-3) var(--space-5);
   border-top: 1px solid var(--color-border);
@@ -1919,6 +1920,7 @@
 /* Save state stays visible per row; errors and conflicts are never hidden. */
 .audit-save {
   grid-area: save;
+  justify-self: end;
   display: flex;
   align-items: flex-start;
   gap: var(--space-1);
@@ -1926,11 +1928,10 @@
   font: var(--text-caption);
   color: var(--color-text-secondary);
 }
-/* Errors and conflicts need room: their own full-width row below the item. */
+/* Errors and conflicts use the full width of the save row. */
 .audit-save.error,
 .audit-save.conflict {
-  grid-column: 1 / -1;
-  grid-row: auto;
+  justify-self: stretch;
 }
 .audit-save:empty {
   margin-top: calc(-1 * var(--space-2));

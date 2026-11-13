@@ -7,6 +7,7 @@ import { chromium } from "playwright";
 import sharp from "sharp";
 import { randomBytes } from "node:crypto";
 import { attachAuditTraffic } from "./audit-evidence-traffic.mjs";
+import { assertEvidenceLayout, evidenceViewportWidths } from "./audit-evidence-layout.mjs";
 import { assert, config, db, password, users, BUCKET, PDF, bytes, blob, must, fails, api, list, row, inspection, fill, begin, upload, confirm, attach, countEvents, state, service } from "./audit-evidence-fixture.mjs";
 
 export async function runBrowser() {
@@ -370,6 +371,31 @@ export async function runBrowser() {
         const [originalDownload]=await Promise.all([page.waitForEvent("download"),imageFile.getByRole("button",{name:"Baixar Evidência 3.png",exact:true}).click()]);
         assert.ok(readFileSync(await originalDownload.path()).equals(original),"Download preserva bytes PNG");
         assert.equal(originalDownload.suggestedFilename(),"Evidência 3.png");
+        if (width === 1280) {
+          const criterion = page.locator(".audit-item").filter({ has: imageFile });
+          const observation = criterion.getByRole("textbox", { name: "Observação" });
+          await observation.fill("Verificação do indicador de salvamento com evidências abertas.");
+          await observation.press("Tab");
+          await criterion.getByText("Salvo", { exact: true }).waitFor();
+          for (const size of evidenceViewportWidths) {
+            checkpoint(`checklist evidence layout ${size}px`);
+            await page.setViewportSize({ width: size, height: 812 });
+            await image.waitFor();
+            await assertEvidenceLayout(imageFile);
+          }
+          const previewRoute = native ? "**/render/image/sign/**" : "**/object/sign/**";
+          await page.route(previewRoute, route => route.request().method() === "GET"
+            ? route.fulfill({ status: 503, headers: { "Access-Control-Allow-Origin": "*" } })
+            : route.continue());
+          await image.dispatchEvent("error");
+          for (const size of evidenceViewportWidths) {
+            checkpoint(`checklist evidence fallback layout ${size}px`);
+            await page.setViewportSize({ width: size, height: 812 });
+            await imageFile.getByText(native ? "Miniatura indisponível." : "Imagem indisponível ou expirada.", { exact: true }).waitFor();
+            assert.equal(await imageFile.getByRole("button", { name: "Ampliar Evidência 3.png" }).count(), 0);
+            await assertEvidenceLayout(imageFile, { preview: false });
+          }
+        }
       } finally { await traffic.close(); }
       await context.close();
     }
