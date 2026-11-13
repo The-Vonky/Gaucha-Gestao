@@ -4,7 +4,7 @@ A [PR #121](https://github.com/The-Vonky/Gaucha-Gestao/pull/121) implementa o Co
 
 ## Topologia e operação
 
-O [manifesto de DEV](../../infra/local/compose.yaml) fixa oito imagens por digest, com a combinação da instância de referência. O projeto `gaucha-gestao-local` reúne PostgreSQL, Auth, REST, Storage, Kong, Studio, pg_meta e imgproxy. A API, o banco e o Studio escutam em IPv4 e IPv6 loopback nas portas 54321, 54322 e 54323. Os volumes nomeados `db-data`, `storage-data` e `studio-snippets` guardam PostgreSQL, objetos e snippets do Studio. A Supabase CLI continua disponível para a CI. [Referência de versões do laboratório de CI](../../infra/supabase/UPSTREAM.md).
+O [manifesto de DEV](../../infra/local/compose.yaml) fixa seis imagens por digest e duas imagens locais (PostgreSQL/Kong), construídas a partir de bases fixadas por digest. O projeto `gaucha-gestao-local` reúne PostgreSQL, Auth, REST, Storage, Kong, Studio, pg_meta e imgproxy. A API, o banco e o Studio escutam em IPv4 e IPv6 loopback nas portas 54321, 54322 e 54323. Os volumes nomeados `db-data`, `storage-data` e `studio-snippets` guardam PostgreSQL, objetos e snippets do Studio. A Supabase CLI continua disponível para a CI. [Referência de versões do laboratório de CI](../../infra/supabase/UPSTREAM.md).
 
 Storage e imgproxy se comunicam em um bridge IPv4 dedicado com `internal: true` e gateway `isolated`. O Storage resolve `http://imgproxy:8080` via DNS do Docker. O imgproxy tem namespace próprio, sem publicação, e monta o volume de objetos somente para leitura. Os controles continuam em [audit-imgproxy.env](../../infra/local/audit-imgproxy.env) e [audit-storage-transforms.env](../../infra/local/audit-storage-transforms.env). O [Kong](../../infra/local/config/kong.yml) aplica `Cache-Control: private, no-store` e remove `Expires` na rota Storage comum. A rota S3 mantém sua assinatura própria. [Modo de gateway isolated](https://docs.docker.com/engine/network/port-publishing/#gateway-modes).
 
@@ -27,49 +27,49 @@ curl -fsS http://127.0.0.1:54323/api/platform/profile -o /dev/null
 
 Se o Docker indicar portas ocupadas, identifique quem as usa antes de prosseguir. Se a configuração Vite divergir, confira URL, chave de cliente e flag, depois reinicie o Vite. Em falha de transformação, a aplicação oferece **Abrir original**. Consulte os estados e healthchecks sem divulgar a saída de `docker compose config` sem `--quiet`, envs, JWTs ou URLs assinadas. Kong, Storage e imgproxy têm driver de logs `none`.
 
-## Retomada automática no Windows com WSL2
+## Retomada nativa após reboot Windows/WSL2
 
-Em 13/11/2026, na homologação física, o Windows iniciou às 13h29min10s (horário de Brasília). O Engine falhou ao restaurar PostgreSQL e Kong às 13h31min03s. O `init.log` registrou `not a directory` nos bind mounts de `99-gg-roles.sql` e `kong-entrypoint.sh`. O proxy WSL registrou a montagem dos arquivos às 13h31min09s. Auth, REST e Storage foram afetados pela indisponibilidade do banco. Após a abertura do Ubuntu e `docker start`, os oito serviços ficaram `healthy`. Houve a mesma ordem de eventos às 08h10min28s, com os mounts disponíveis oito segundos depois. [Incidente equivalente reportado ao Docker Desktop](https://github.com/docker/desktop-feedback/issues/731).
+O reboot físico de 13/11/2026 identificou falha exit 127 (`not a directory`) nos bind mounts de `99-gg-roles.sql` e `kong-entrypoint.sh`: o Docker Engine tentou restaurar os containers antes de o proxy WSL disponibilizar os arquivos da distro Ubuntu. Abrir o Ubuntu e iniciar os containers **existentes** recuperou os oito serviços sem alteração dos volumes. O monitor com Agendador tentado nesta PR era apenas um contorno, não a solução definitiva.
 
-No perfil Windows da sessão interativa, o atalho anterior já existia às 09h28 e apontava para a cópia instalada de `Resume-LocalDocker.vbs`. A última entrada do monitor era das 09h28 e não havia processo correspondente depois do boot das 13h29. O launcher usava `On Error Resume Next` e o monitor escrevia seu primeiro registro depois de inicializar o watcher. Os registros do Windows disponíveis não distinguem entre o atalho deixar de ser acionado e a execução terminar antes da primeira linha do log.
+O Compose agora **constrói imagens locais para PostgreSQL e Kong**, incorporando `roles.sql`, `kong.yml` e `kong-entrypoint.sh` ao build. As duas imagens-base continuam fixadas por digest, assim como as outras seis imagens. Esses arquivos já existem nas imagens na hora do boot, sem precisar de bind mounts do Ubuntu. Os dados continuam em três volumes nomeados; `restart: unless-stopped` é o mecanismo nativo de retomada.
 
-### Instalar ou atualizar
+### Aplicação controlada no notebook existente
 
-Execute no Ubuntu do WSL2 a partir da raiz do checkout do notebook, na mesma conta Windows que abre o Docker Desktop:
+O operador/agente com acesso ao notebook deve conferir `git status`, checkout, projeto Docker, IDs dos oito containers, volumes e dados antes da troca. Não misturar ambientes, sobrescrever trabalho local ou executar esta alteração na C30/STAGING/PROD. Se os dados de teste precisarem ser preservados fora dos volumes, criar backup restaurável antes da janela.
 
-```bash
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File \
-  "$(wslpath -w "$PWD/infra/local/windows/Resume-LocalDocker.ps1")" -Install
-```
+1. No **Windows PowerShell**, remova o monitor da tentativa anterior usando **a cópia já instalada** (somente `GauchaGestaoDockerResume`):
 
-A tarefa `GauchaGestaoDockerResume` é iniciada no logon da conta que a instalou, com privilégios limitados e sem repetição periódica. O Agendador guarda uma cópia do script para iniciar sem ler o checkout WSL ou o launcher EFS no logon. O instalador remove o atalho legado, encerra o monitor legado da sessão e inicia a tarefa para verificação imediata. Reexecute `-Install` após atualizar o script no checkout.
+   ```powershell
+   $legacy = Join-Path $env:LOCALAPPDATA 'GauchaGestao\Resume-LocalDocker.ps1'
+   if (Test-Path -LiteralPath $legacy) {
+       powershell.exe -NoProfile -ExecutionPolicy Bypass -File $legacy -Uninstall
+   }
+   Get-ScheduledTask -TaskName GauchaGestaoDockerResume -ErrorAction SilentlyContinue
+   ```
 
-O monitor consulta o processo do backend na própria sessão a cada cinco segundos. Cada instância detectada abre uma janela de verificação de até quatro minutos na named pipe do Engine Linux local. O monitor valida o inventário dos oito serviços e inicia o Ubuntu sem terminal quando encontra a assinatura do erro de mount. Tenta `docker start` somente pelo ID já inspecionado e aguarda `db`, `auth`, `rest` e `storage` ficarem `healthy` antes de iniciar Kong. Uma parada normal é respeitada. Entre janelas de recuperação, as consultas ficam restritas ao processo Windows. [Referência de comandos WSL](https://learn.microsoft.com/windows/wsl/basic-commands).
+   A consulta final deve ser vazia. Se a tarefa continuar presente, registrar o usuário/resultado e remover **somente** esse agendamento após confirmar sua origem. O script legado foi retirado do repositório; esta etapa usa apenas a cópia previamente instalada no perfil Windows.
 
-Confira em **Windows PowerShell**, na sessão que abre o Desktop:
+2. No **Ubuntu/WSL**, na raiz do checkout correto e com Docker Desktop iniciado, confira segredos e Compose **sem imprimir os segredos**:
 
-```powershell
-whoami
-Get-ScheduledTask -TaskName GauchaGestaoDockerResume | Select-Object TaskName, State, Principal
-Get-ScheduledTaskInfo -TaskName GauchaGestaoDockerResume | Select-Object LastRunTime, LastTaskResult
-Get-Content -LiteralPath "$env:LOCALAPPDATA\GauchaGestao\Resume-LocalDocker.log" -Tail 20
-```
+   ```bash
+   GG_DEV_ENV="${XDG_CONFIG_HOME:-$HOME/.config}/gaucha-gestao/backend.env"
+   docker compose -f infra/local/compose.yaml --env-file "$GG_DEV_ENV" config --quiet
+   docker compose -f infra/local/compose.yaml --env-file "$GG_DEV_ENV" ps -a
+   ```
 
-A tarefa deve estar `Running` e o log deve conter uma entrada recente `Monitor ativo` com a conta, a sessão e o PID. Quando o Desktop já estiver aberto, procure também `Backend PID … detectado` e `Verificacao concluida: oito containers healthy`. Se a tarefa não aparecer ou o log estiver desatualizado, confira o perfil efetivo e compare `LastRunTime` com o último boot antes de repetir a instalação. Para reverter, execute o comando acima com `-Uninstall` no lugar de `-Install`. A reversão remove a tarefa e mantém os logs para diagnóstico.
+3. Com a janela de manutenção validada, execute:
 
-### Homologar após reiniciar o Windows
+   ```bash
+   docker compose -f infra/local/compose.yaml --env-file "$GG_DEV_ENV" up -d --build --wait --wait-timeout 180
+   ```
 
-1. Com os oito serviços saudáveis, registre os IDs dos containers e os nomes dos volumes. Reinicie o Windows, entre com a mesma conta e abra o Docker Desktop pelo atalho normal. Aguarde até quatro minutos após a detecção do backend antes de iniciar Ubuntu, Vite ou containers manualmente.
-2. Confira no Windows PowerShell que `LastRunTime` e as linhas `Monitor ativo` e `Backend PID … detectado` são posteriores ao boot. Confira se o monitor ficou sem janela. Na presença da falha de mount, procure `WSL Ubuntu: codigo 0` e `docker start db: codigo 0` seguido de `docker start kong: codigo 0`, conforme os serviços afetados.
-3. Confirme no painel os oito serviços `healthy` e compare os IDs e os volumes com o registro anterior. Se o Engine tiver iniciado tudo sozinho, o teste prova o acionamento do monitor no logon. A recuperação do erro só fica comprovada se a falha ocorrer e o log registrar os starts automáticos. Execute os diagnósticos de Auth, Storage e Studio acima e confirme login e uma leitura autenticada do REST no frontend.
-4. Em falha, guarde o estado da tarefa, o log e o `State.Error` de `db` e `kong` no Engine local. Para a assinatura descrita acima, abra o Ubuntu com `wsl -d Ubuntu`, inicie `gaucha-gestao-local-db-1` com `docker start` e aguarde PostgreSQL, Auth, REST e Storage ficarem `healthy`. Depois inicie `gaucha-gestao-local-kong-1` e confira os oito healthchecks. Para uma parada explícita do grupo, use `docker compose -f infra/local/compose.yaml --env-file "$GG_DEV_ENV" start --wait` para iniciar os containers existentes na ordem do Compose.
+   `up --build` **pode recriar os containers db e kong**, mas deve preservar os três volumes nomeados e os dados existentes. Os IDs de containers recriados mudam; os volumes não devem mudar. **Proibido** `down -v`, `prune`, `supabase db reset`, gerar novos segredos ou criar outra instância por rotina. Em falha, capturar diagnóstico antes de intervir novamente.
 
-A suíte abaixo usa estados simulados e não altera tarefas, distribuições ou containers:
+4. Confirmar os oito serviços `healthy`, Auth/REST/Storage/Studio, login e leituras autenticadas. Inspecionar `.Mounts` de `db` e `kong`: não devem existir bind mounts dos três arquivos WSL citados.
 
-```bash
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File \
-  "$(wslpath -w "$PWD/tests/infra/test-resume-local-docker.ps1")"
-```
+### Homologação física
+
+Reiniciar o Windows, entrar na conta usual e abrir **somente o Docker Desktop**. Não abrir Ubuntu, não rodar comandos de recuperação e não manter tarefa externa. Os oito serviços precisam voltar a `healthy` nativamente, sem prazo fixo de espera de quatro minutos. Após a partida, comparar volumes, checar API e login; em erro, salvar `docker inspect` e logs antes de restart manual. Manter a PR em rascunho e sem merge até o teste físico do mantenedor e CI.
 
 ## Dados descartáveis no DEV pessoal
 
