@@ -7,13 +7,13 @@ $directory = Join-Path $env:LOCALAPPDATA 'GauchaGestao'
 $services = @('db', 'auth', 'rest', 'storage', 'imgproxy', 'kong', 'pg-meta', 'studio')
 
 function Install-ResumeTask {
-    New-Item -ItemType Directory -Path $directory -Force | Out-Null
-    $installed = Join-Path $directory 'Resume-LocalDocker.ps1'
-    if ($PSCommandPath -ne $installed) {
-        Copy-Item -LiteralPath $PSCommandPath -Destination $installed -Force
-    }
+    # O Agendador pode iniciar sem acesso aos arquivos EFS do perfil Windows.
+    # Incorpora o script na tarefa, sem credenciais e sem alterar a criptografia.
+    $source = Get-Content -LiteralPath $PSCommandPath -Raw
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($source))
     $action = New-ScheduledTaskAction -Execute (Join-Path $PSHOME 'powershell.exe') `
-        -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $installed + '"')
+        -WorkingDirectory $PSHOME `
+        -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand $encoded"
     $repeat = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
         -RepetitionInterval (New-TimeSpan -Minutes 1)
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -56,6 +56,7 @@ function Invoke-DesktopDocker {
 }
 
 function Write-ResumeLog([string]$Message) {
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
     Add-Content -LiteralPath (Join-Path $directory 'Resume-LocalDocker.log') `
         -Encoding UTF8 -Value ('{0:o} {1}' -f [DateTimeOffset]::Now, $Message)
 }
