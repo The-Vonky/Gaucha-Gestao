@@ -210,6 +210,8 @@ async function setup() {
     ["revoked", all, "unit", A, null], ["ui", all, "unit", A, null],
   ]) await assign(name, role, scope, unit, sector);
   await db.query("update core.profiles set active=false where id=$1", [users.inactive]);
+  await db.query("update core.profiles set display_name=$2 where id=$1",
+    [users.ui, "Pessoa de Teste com Nome Longo para Verificar a Quebra Natural dos Metadados"]);
   clients.anon = createClient(config.API_URL, config.ANON_KEY, { auth: { persistSession: false } });
 
 }
