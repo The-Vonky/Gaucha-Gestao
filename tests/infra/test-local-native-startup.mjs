@@ -22,6 +22,10 @@ for (const [name, dockerfile, sources] of [
   const dockerfileText = readFileSync("infra/local/" + dockerfile, "utf8");
   assert.match(dockerfileText, /^FROM public\.ecr\.aws\/supabase\/[^\n]+@sha256:[a-f0-9]{64}$/m);
   for (const source of sources) assert.ok(dockerfileText.includes(source));
+  if (name === "kong") {
+    assert.match(dockerfileText, /USER root\s+RUN chmod 0755 \/gg\s+USER kong/);
+    assert.match(dockerfileText, /RUN test -x \/gg && test -r \/gg\/kong\.yml && test -r \/gg\/kong-entrypoint\.sh/);
+  }
 }
 assert.deepEqual((services.db.volumes ?? []).map(v => v.type), ["volume"]);
 assert.ok((services.storage.volumes ?? []).some(v => v.type === "volume"));
