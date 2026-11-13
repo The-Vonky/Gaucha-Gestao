@@ -8,7 +8,7 @@ O [manifesto de DEV](../../infra/local/compose.yaml) fixa oito imagens por diges
 
 Storage e imgproxy se comunicam em um bridge IPv4 dedicado com `internal: true` e gateway `isolated`. O Storage resolve `http://imgproxy:8080` via DNS do Docker. O imgproxy tem namespace próprio, sem publicação, e monta o volume de objetos somente para leitura. Os controles continuam em [audit-imgproxy.env](../../infra/local/audit-imgproxy.env) e [audit-storage-transforms.env](../../infra/local/audit-storage-transforms.env). O [Kong](../../infra/local/config/kong.yml) aplica `Cache-Control: private, no-store` e remove `Expires` na rota Storage comum. A rota S3 mantém sua assinatura própria. [Modo de gateway isolated](https://docs.docker.com/engine/network/port-publishing/#gateway-modes).
 
-Os oito serviços usam `restart: unless-stopped`. Healthchecks ordenam o provisionamento com Compose. A retomada do Engine usa as políticas Docker e as reconexões dos serviços. Ao encerrar o trabalho, feche o Vite e o Docker Desktop. Uma parada explícita com `docker compose stop` requer partida explícita dos serviços parados. [Políticas de reinício](https://docs.docker.com/engine/containers/start-containers-automatically/).
+Os oito serviços usam `restart: unless-stopped`. O Compose aguarda os healthchecks de `depends_on` durante suas próprias operações de partida. Ao abrir o Docker Desktop, o Engine aplica as políticas de reinício individualmente, e os serviços dependentes precisam se reconectar. Uma parada explícita com `docker compose stop` requer partida explícita dos serviços parados. [Políticas de reinício](https://docs.docker.com/engine/containers/start-containers-automatically/) · [Ordem de partida do Compose](https://docs.docker.com/compose/how-tos/startup-order/).
 
 A [instalação em máquina nova](../../README.md#instalação-inicial-em-máquina-nova) cria os volumes, gera as credenciais e aplica as migrations em ordem. O ledger é escrito na mesma transação de cada migration. O comando `vite-env` escreve a flag nativa e a chave de cliente. `npm run dev` executa só o Vite. O executor anterior segue disponível por `npm run dev:thumbnails`.
 
@@ -26,6 +26,23 @@ curl -fsS http://127.0.0.1:54323/api/platform/profile -o /dev/null
 ```
 
 Se o Docker indicar portas ocupadas, identifique quem as usa antes de prosseguir. Se a configuração Vite divergir, confira URL, chave de cliente e flag, depois reinicie o Vite. Em falha de transformação, a aplicação oferece **Abrir original**. Consulte os estados e healthchecks sem divulgar a saída de `docker compose config` sem `--quiet`, envs, JWTs ou URLs assinadas. Kong, Storage e imgproxy têm driver de logs `none`.
+
+## Retomada automática no Windows com WSL2
+
+Em 13/11/2026, às 08h10min28s (horário de Brasília), o Docker Engine tentou restaurar `db` e `kong` e falhou com código 127 e `not a directory` nos bind mounts de `roles.sql` e `kong-entrypoint.sh`. O proxy de integração do Ubuntu registrou a montagem desses arquivos oito segundos depois. Sem o PostgreSQL, o Auth falhou ao resolver `db` e o REST ficou `unhealthy`. Quando os mounts ficaram disponíveis, `docker start` recuperou PostgreSQL e Kong com os mesmos IDs e volumes. Trocar para `restart: always` também deixa a tentativa inicial a cargo do Engine, sujeita à mesma ordem de montagem. [Incidente equivalente reportado ao Docker Desktop](https://github.com/docker/desktop-feedback/issues/731).
+
+Para instalar ou atualizar a recuperação automática uma vez, execute no Ubuntu do WSL2, no checkout do notebook:
+
+```bash
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File \
+  "$(wslpath -w "$PWD/infra/local/windows/Resume-LocalDocker.ps1")" -Install
+```
+
+A tarefa `GauchaGestaoDockerResume` roda com a conta Windows atual, em modo interativo e sem elevação. A cada minuto ela consulta o Engine Linux local se o backend do Desktop estiver em execução. Se encontrar o erro de montagem acima no PostgreSQL do projeto, tenta iniciar o container pelo ID. Quando `db`, `auth`, `rest` e `storage` estiverem `healthy`, aplica a mesma recuperação ao Kong. Cada tentativa fica em `%LOCALAPPDATA%\GauchaGestao\Resume-LocalDocker.log`. Uma parada explícita sem esse erro é respeitada. Para desativar a recuperação, use `Unregister-ScheduledTask -TaskName GauchaGestaoDockerResume -Confirm:$false` no PowerShell.
+
+Na próxima abertura normal do notebook, abra o Docker Desktop como de costume. Confirme no painel que os oito containers chegaram a `healthy` sem partida manual. Se a tarefa tiver atuado, confira no log os retornos `codigo 0` de `db` e `kong`. Use os endpoints de diagnóstico acima para verificar Auth, Storage e Studio, e entre no frontend com `npm run dev` para confirmar login e uma leitura do REST.
+
+Se a recuperação falhar, confirme o contexto local e examine `State.Error` antes de qualquer tentativa manual. Para a falha de mount acima, aguarde a integração do Ubuntu disponibilizar os arquivos do checkout. Inicie `gaucha-gestao-local-db-1` com `docker start` e confira se PostgreSQL, Auth, REST e Storage chegam a `healthy`. Só então inicie `gaucha-gestao-local-kong-1` da mesma forma e confirme os oito healthchecks. Para uma parada explícita do grupo, use `docker compose -f infra/local/compose.yaml --env-file "$GG_DEV_ENV" start --wait` para iniciar os containers existentes na ordem do Compose.
 
 ## Dados descartáveis no DEV pessoal
 
