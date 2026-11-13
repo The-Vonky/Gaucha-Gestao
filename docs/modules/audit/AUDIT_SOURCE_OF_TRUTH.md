@@ -84,7 +84,17 @@ The template identifier in the standalone baseline is:
 
 `checklist-geral-2026-09-22-v1`
 
-The current online repository uses the same template identifier and item model.
+Para novas auditorias, a migration
+[`20261113182401_audit_checklist_v2.sql`](../../../supabase/migrations/20261113182401_audit_checklist_v2.sql)
+ativa `checklist-geral-2026-11-13-v2`, com as
+[14 redações solicitadas pela operação](../../reference/AUDIT_CHECKLIST_V2_REVISIONS.json).
+A v2 mantém os IDs, a numeração global, a ordem e as seções da v1. Auditorias criadas
+na v1, inclusive rascunhos e auditorias reabertas, continuam usando a redação
+original no checklist, na visão geral e nos relatórios. Isso preserva o sentido
+das respostas já registradas nos itens que mudaram de polaridade.
+
+Se for preciso suspender a v2, uma migration corretiva pode desativá-la e
+reativar a v1 na mesma transação. Auditorias já criadas na v2 preservam sua versão.
 
 The checklist content is domain data and must be versioned deliberately. It must not be silently edited because of UI or platform migrations.
 

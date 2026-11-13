@@ -1,0 +1,90 @@
+{
+  "catalogVersion": "checklist-geral-2026-11-13-v2",
+  "baseVersion": "checklist-geral-2026-09-22-v1",
+  "revisions": [
+    {
+      "key": "item-014",
+      "section_key": "section-02",
+      "number": 14,
+      "text": "A entrada da cozinha está limpa, livre de objetos sem uso, caixas de madeira ou papelão?"
+    },
+    {
+      "key": "item-024",
+      "section_key": "section-02",
+      "number": 24,
+      "text": "A cozinha se encontra livre de caixas de papelão e madeira ?"
+    },
+    {
+      "key": "item-057",
+      "section_key": "section-04",
+      "number": 57,
+      "text": "Os freezers e câmaras frias encontram-se em bom funcionamento"
+    },
+    {
+      "key": "item-122",
+      "section_key": "section-07",
+      "number": 122,
+      "text": "Não foram identificados sinais e/ou insetos / roedores na área no momento da inspeção?"
+    },
+    {
+      "key": "item-125",
+      "section_key": "section-07",
+      "number": 125,
+      "text": "Não existe alimento acondicionado diretamente sobre o chão?"
+    },
+    {
+      "key": "item-127",
+      "section_key": "section-07",
+      "number": 127,
+      "text": "Não há caixas de papelão ou madeira no estoque?"
+    },
+    {
+      "key": "item-131",
+      "section_key": "section-08",
+      "number": 131,
+      "text": "Não existem alimentos que necessitam de refrigeração acondicionados em temperatura ambiente?"
+    },
+    {
+      "key": "item-133",
+      "section_key": "section-08",
+      "number": 133,
+      "text": "Não existem alimentos abertos sem identificação?"
+    },
+    {
+      "key": "item-146",
+      "section_key": "section-08",
+      "number": 146,
+      "text": "A unidade não faz uso de pano de prato?"
+    },
+    {
+      "key": "item-147",
+      "section_key": "section-08",
+      "number": 147,
+      "text": "Não existem alimentos acondicionados de maneira incorreta?"
+    },
+    {
+      "key": "item-148",
+      "section_key": "section-08",
+      "number": 148,
+      "text": "Não há indícios de reaproveitamento de embalagens?"
+    },
+    {
+      "key": "item-149",
+      "section_key": "section-08",
+      "number": 149,
+      "text": "Não há indícios de reaproveitamento de sobras?"
+    },
+    {
+      "key": "item-152",
+      "section_key": "section-09",
+      "number": 152,
+      "text": "A unidade não realiza pedidos emergenciais regularmente?"
+    },
+    {
+      "key": "item-153",
+      "section_key": "section-09",
+      "number": 153,
+      "text": "A unidade não realiza pedido manual de mercadorias?"
+    }
+  ]
+}
