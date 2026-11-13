@@ -84,6 +84,8 @@ Essa contagem é **histórica**, não a suíte atual. Nenhum teste em projeto re
 
 ## AUD-IMG-02 — implementação e ensaio local
 
+No cartão de evidência, **Ampliar** fica disponível após o navegador carregar a imagem. Se a miniatura falhar, a mensagem e **Abrir original** ocupam uma linha do cartão abaixo dos dados do arquivo. **Abrir original** solicita o arquivo ao abrir o modal. **Baixar** permanece disponível no cartão.
+
 **Transformação nativa no Compose DEV.** Com `VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS=true`, a lista assina a transformação privada no bucket original e carrega até 480 px quando a imagem entra no viewport. JPEG/PNG estáticos de até 64 KiB com dimensões até 480 px podem usar os próprios bytes autorizados. Respostas de transformação precisam ter o MIME esperado, até 1 MiB e menos bytes que o original. Falhas mostram **Abrir original**. Ampliação e download continuam no original autorizado. A opção nativa dispensa manifesto, polling e executor para exibir a lista. [POC](AUD_IMG_02_STORAGE_IMGPROXY_POC_20261111.md) · [Runbook do Compose](../../operations/DOCKER_LOCAL_STANDARDIZATION.md).
 
 **Executor legado integrado pela #101.** Na configuração de [execução legada](AUD_IMG_02_INTEGRATED_DEV_20261106.md), a lista consulta o estado e mostra “Preparando miniatura…” enquanto o trabalho é retomável. Imagens sem redução viável oferecem abertura explícita do original. O executor usa corte para novos uploads, sem backfill, e o login técnico retorna a NOLOGIN ao encerrar. A flag legada é versionada como false.

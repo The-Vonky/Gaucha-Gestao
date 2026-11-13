@@ -33,11 +33,9 @@ export function ChecklistEvidence({item,editable,controller,visible=true}:{item:
  <ul className="audit-evidence-list">
  {rows.map((e,index)=>{const name=evidenceName(e.original_name,index);return <li key={e.id} className="file-item">
  <div className="file-body">
- {visible&&(e.content_type==="image/jpeg"||e.content_type==="image/png")&&<div className="audit-evidence-thumbnail">
- <EvidenceImage row={e} name={name} onOpenOriginal={()=>setPreview(e.id)}/>
- <button type="button" className="audit-evidence-enlarge" aria-label={`Ampliar ${name}`} onClick={()=>setPreview(e.id)}/>
- </div>}
- <div><strong className="audit-evidence-name">{name}</strong>
+ {visible&&(e.content_type==="image/jpeg"||e.content_type==="image/png")&&
+ <EvidenceImage row={e} name={name} onOpenOriginal={()=>setPreview(e.id)}/>}
+ <div className="audit-evidence-info"><strong className="audit-evidence-name">{name}</strong>
  <p className="file-meta">{typeLabel(e.content_type)} · {formatSize(e.size_bytes)} · {e.uploaded_by_name} · {new Date(e.uploaded_at).toLocaleString("pt-BR")}</p></div>
  </div><div className="file-actions"><Download row={e} name={name}/>{editable&&<button type="button" className="small" aria-label={`Remover ${name}`} onClick={()=>setRemoving(e)}>Remover</button>}</div>
  </li>;})}

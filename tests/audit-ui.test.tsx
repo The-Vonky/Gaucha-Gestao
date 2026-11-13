@@ -841,7 +841,7 @@ describe("Checklist evidence removal errors", () => {
     const {rerender}=render(<ChecklistEvidence item={items[0]} editable={false} controller={controller} visible={false}/>);
     expect(evidenceApi.downloadUrl).not.toHaveBeenCalled();
     rerender(<ChecklistEvidence item={items[0]} editable={false} controller={controller}/>);
-    expect(await screen.findByRole("img",{name:"Evidência 1.jpg"})).toBeTruthy();
+    fireEvent.load(await screen.findByRole("img",{name:"Evidência 1.jpg"}));
     for(const close of ["button","escape","backdrop"]){
       await userEvent.click(screen.getByRole("button",{name:"Ampliar Evidência 1.jpg"}));
       const modal=screen.getByRole("dialog");

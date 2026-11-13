@@ -6,7 +6,11 @@ import sharp from 'sharp';
 const backend = vi.hoisted(() => ({ rpc: vi.fn(), sign: vi.fn(), original: vi.fn(), download: vi.fn() }));
 vi.mock('../apps/web/src/core/client', () => ({ client: { storage: { from: (bucket:string) => ({ createSignedUrl: (...args:unknown[]) => backend.sign(bucket,...args) }) } } }));
 vi.mock('../apps/web/src/modules/audit/api', () => ({ db: () => ({ rpc: backend.rpc }) }));
-vi.mock('../apps/web/src/modules/audit/evidence', () => ({ BUCKET:'audit-checklist-evidence', downloadUrl: backend.original, downloadEvidence: backend.download }));
+vi.mock('../apps/web/src/modules/audit/evidence', async importOriginal => ({
+  ...await importOriginal<typeof import('../apps/web/src/modules/audit/evidence')>(),
+  downloadUrl: backend.original,
+  downloadEvidence: backend.download,
+}));
 const row = { id: '22222222-2222-4222-8222-222222222222', inspection_id:'11111111-1111-4111-8111-111111111111',
   object_key:'11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222',content_type:'image/png',size_bytes:800,uploaded_at:'2026-11-04' };
 const manifest = { evidence_id:row.id,encoder_version:'img-480-v1',derived_object_key:`${row.id}/img-480-v1/${'a'.repeat(64)}/${'b'.repeat(64)}.png`,derived_sha256:'b'.repeat(64),mime:'image/png',bytes:120 };
@@ -50,6 +54,48 @@ describe('miniaturas nativas do Storage',()=>{
   vi.mocked(fetch).mockResolvedValueOnce(new Response(new Uint8Array(large.size_bytes),{headers:{'content-type':'image/png'}}));
   rerender(<EvidenceImage key="expanded" row={large} name="Original" expanded/>);
   await screen.findByRole('img',{name:'Original'});
+  expect(backend.original).toHaveBeenCalledOnce();
+ });
+ async function renderEvidenceCard() {
+  const { ChecklistEvidence } = await import('../apps/web/src/modules/audit/ChecklistEvidence');
+  const item = { key: 'item-001', number: 1, position: 1, text: 'Critério', template_version: 'v1', section_key: 'section-1' };
+  const evidence = { ...large, item_key: item.key, original_name: 'sintetica.png', created_by: 'synthetic-user', uploaded_by_name: 'Teste' };
+  const controller = { rows: [evidence], data: [evidence], uploads: {}, loading: false, error: '',
+   reload: vi.fn(), send: vi.fn(), retry: vi.fn(), discard: vi.fn() };
+  render(<ChecklistEvidence item={item} editable={false} controller={controller}/>);
+  act(() => visible([{ isIntersecting: true }]));
+ }
+ it('oferece ampliação após o carregamento e a remove se a imagem falhar',async()=>{
+  await renderEvidenceCard();
+  const image = await screen.findByRole('img', { name: 'Evidência 1.png' });
+  expect(screen.queryByRole('button', { name: 'Ampliar Evidência 1.png' })).toBeNull();
+  fireEvent.load(image);
+  const enlarge = screen.getByRole('button', { name: 'Ampliar Evidência 1.png' });
+  expect(enlarge.closest('.audit-evidence-thumbnail')).toBe(image.closest('.audit-evidence-thumbnail'));
+  expect(enlarge.closest('.audit-evidence-thumbnail')).not.toBeNull();
+  expect(backend.original).not.toHaveBeenCalled();
+  fireEvent.error(image);
+  expect(screen.queryByRole('button', { name: 'Ampliar Evidência 1.png' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Abrir original' }).closest('.audit-evidence-thumbnail')).toBeNull();
+ });
+ it.each(['transformação indisponível', 'assinatura negada'])('%s exibe o fallback no cartão e abre o original por clique',async failure=>{
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
+  HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
+  if (failure === 'assinatura negada') backend.sign.mockResolvedValue({ data: null, error: { message: 'denied' } });
+  else vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 503 }));
+  await renderEvidenceCard();
+  const status = await screen.findByText('Miniatura indisponível.');
+  const open = screen.getByRole('button', { name: 'Abrir original' });
+  expect(status.closest('.file-item')).toBe(open.closest('.file-item'));
+  expect(status.closest('.audit-evidence-thumbnail')).toBeNull();
+  expect(open.closest('.audit-evidence-thumbnail')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Ampliar Evidência 1.png' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Baixar Evidência 1.png' })).toBeTruthy();
+  expect(backend.original).not.toHaveBeenCalled();
+  vi.mocked(fetch).mockResolvedValueOnce(new Response(new Uint8Array(large.size_bytes), { headers: { 'content-type': 'image/png' } }));
+  fireEvent.click(open);
+  expect(screen.getByRole('dialog', { name: 'Evidência 1.png' })).toBeTruthy();
+  await screen.findByRole('img', { name: 'Evidência 1.png' });
   expect(backend.original).toHaveBeenCalledOnce();
  });
  it('reutiliza os bytes de um PNG compacto estático e revoga a prévia ao trocar de sessão',async()=>{
