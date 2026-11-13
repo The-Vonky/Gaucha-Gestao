@@ -51,10 +51,10 @@ function Install-ResumeTask {
         (Join-Path $directory 'Resume-LocalDocker.log'))
 }
 
-function Invoke-LocalProcess([string]$Executable, [string[]]$Arguments, [int]$TimeoutMs) {
+function Invoke-LocalProcess([string]$Executable, [string]$CommandLine, [int]$TimeoutMs) {
     $start = New-Object System.Diagnostics.ProcessStartInfo
     $start.FileName = $Executable
-    $start.Arguments = ($Arguments | ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' '
+    $start.Arguments = $CommandLine
     $start.WorkingDirectory = $env:LOCALAPPDATA
     $start.UseShellExecute = $false
     $start.CreateNoWindow = $true
@@ -78,7 +78,8 @@ function Invoke-LocalProcess([string]$Executable, [string[]]$Arguments, [int]$Ti
 function Invoke-DesktopDocker {
     # A named pipe fixa o Engine Linux local mesmo com outro contexto ativo.
     $arguments = @('--host', 'npipe:////./pipe/dockerDesktopLinuxEngine') + $args
-    $result = Invoke-LocalProcess $docker $arguments 10000
+    $commandLine = ($arguments | ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' '
+    $result = Invoke-LocalProcess $docker $commandLine 10000
     $script:dockerExit = $result.ExitCode
     if ($dockerExit -eq 0) {
         $result.Output.Trim() -split '\r?\n' | Where-Object { $_ }
@@ -88,7 +89,7 @@ function Invoke-DesktopDocker {
 function Start-MountDistribution {
     # Inicia o Ubuntu usado pelos bind mounts, sem abrir um terminal ou depender do distro padrao.
     $wsl = Join-Path $env:WINDIR 'System32\wsl.exe'
-    $result = Invoke-LocalProcess $wsl @('--distribution', 'Ubuntu', '--cd', '/', '--exec', '/bin/true') 30000
+    $result = Invoke-LocalProcess $wsl '--distribution Ubuntu --cd / --exec /bin/true' 30000
     Write-ResumeLog ("WSL Ubuntu: codigo {0}" -f $result.ExitCode)
     return ($result.ExitCode -eq 0)
 }

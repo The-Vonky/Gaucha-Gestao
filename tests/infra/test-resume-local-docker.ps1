@@ -17,9 +17,9 @@ $kongMount = '/gg/kong-entrypoint.sh'
 $script:calls = [Collections.Generic.List[string]]::new()
 
 function Write-ResumeLog([string]$Message) {}
-function Invoke-LocalProcess($Executable, $Arguments, $TimeoutMs) {
+function Invoke-LocalProcess($Executable, $CommandLine, $TimeoutMs) {
     if ([IO.Path]::GetFileName($Executable) -ne 'wsl.exe' -or
-        ($Arguments -join ' ') -cne '--distribution Ubuntu --cd / --exec /bin/true') {
+        $CommandLine -cne '--distribution Ubuntu --cd / --exec /bin/true') {
         throw 'Comando WSL inesperado.'
     }
     $script:calls.Add('wsl Ubuntu')
