@@ -17,7 +17,7 @@ export const report: InspectionReport = {
 };
 export function evidenceRows(count: number): ChecklistEvidence[] {
   return Array.from({ length: count }, (_, index) => ({
-    id: `synthetic-evidence-${index}`, inspection_id: report.inspection.id, item_key: `i${Math.floor(index / 5)}`,
+    id: `synthetic-evidence-${index}`, inspection_id: report.inspection.id, item_key: `i${count === 5 ? [0, 0, 10, 11, 11][index] : Math.floor(index / 5)}`,
     object_key: `synthetic/${index}.jpg`, original_name: `foto-sintética-${index + 1}.jpg`, content_type: "image/jpeg",
     size_bytes: 32, created_by: "synthetic-user", uploaded_by_name: "Pessoa sintética", uploaded_at: "2026-11-18T12:00:00Z",
   }));

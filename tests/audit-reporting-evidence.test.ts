@@ -27,6 +27,7 @@ describe("Imagens privadas nos relatórios", () => {
     const result = await prepareEvidence(report, new AbortController().signal, progress);
     expect(result).toHaveLength(count); expect(progress).toHaveBeenCalledTimes(count);
     expect(result.filter(e => e.image)).toHaveLength(count);
+    if (count === 5) { expect(new Set(result.map(e => e.section)).size).toBe(2); expect(new Set(result.map(e => e.number)).size).toBe(3); }
     expect(fetch).toHaveBeenCalledTimes(count);
     for (const row of result) {
       expect(row.question).toContain("está adequada"); expect(row.uploadedBy).toBe("Pessoa sintética");

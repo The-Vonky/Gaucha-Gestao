@@ -45,7 +45,7 @@ try {
     page.on("pageerror", error => console.error("Erro do harness:", error.message));
     let mode = "ok", requests = 0, transformRequests = 0;
     const rows = Array.from({ length: count }, (_, i) => ({ id: `synthetic-evidence-${i}`, inspection_id: "00000000-0000-0000-0000-000000000002",
-      item_key: `i${Math.floor(i / 5)}`, object_key: `synthetic/${i}.${i % 2 ? "png" : "jpg"}`,
+      item_key: `i${count === 5 ? [0, 0, 10, 11, 11][i] : Math.floor(i / 5)}`, object_key: `synthetic/${i}.${i % 2 ? "png" : "jpg"}`,
       original_name: `foto-sintética-${i + 1}.${i % 2 ? "png" : "jpg"}`, content_type: i % 2 ? "image/png" : "image/jpeg",
       size_bytes: i === 3 ? largePng.length : i % 2 ? png.length : jpeg.length,
       created_by: "synthetic-user", uploaded_by_name: "Pessoa sintética", uploaded_at: "2026-11-18T12:00:00Z" }));
@@ -85,6 +85,9 @@ try {
     const parsed = await readExcelFile(bytes);
     assert.deepEqual(parsed.map(s => s.sheet), ["Resumo", "Checklist", "Secoes", "Evidências"]);
     assert.equal(parsed[3].data.length, count + 1);
+    const prepared = await page.evaluate(() => window.prepared.map(e => ({ section: e.section, number: e.number, question: e.question, name: e.name })));
+    prepared.forEach((e, index) => assert.deepEqual(parsed[3].data[index + 1].slice(0, 4), [e.section, e.number, e.question, e.name]));
+    if (count === 5) { assert.equal(new Set(prepared.map(e => e.section)).size, 2); assert.equal(new Set(prepared.map(e => e.number)).size, 3); }
     await page.emulateMedia({ media: "print" });
     // Cada figura cabe numa página A4; o CSS permite quebra entre figuras do mesmo critério.
     const figures = await page.locator("figure").evaluateAll(nodes => nodes.map(n => ({ height: n.getBoundingClientRect().height,
