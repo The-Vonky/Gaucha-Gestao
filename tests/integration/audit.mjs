@@ -23,7 +23,11 @@ for (const url of [config.API_URL, config.DB_URL])
 const catalog = JSON.parse(
   readFileSync("docs/reference/AUDIT_CHECKLIST_V1.json", "utf8"),
 );
-const VERSION = "checklist-geral-2026-09-22-v1";
+const revisedCatalog = JSON.parse(
+  readFileSync("docs/reference/AUDIT_CHECKLIST_V2_REVISIONS.json", "utf8"),
+);
+const VERSION = revisedCatalog.catalogVersion;
+const revisedText = new Map(revisedCatalog.revisions.map((item) => [item.key, item.text]));
 const db = new pg.Client({ connectionString: config.DB_URL });
 await db.connect();
 const password = `Local-${randomUUID()}-aA1!`;
@@ -253,7 +257,7 @@ try {
     },
     { version: VERSION, item_count: 158, active: true },
   );
-  assert.equal(catalog.catalogVersion, VERSION);
+  assert.equal(catalog.catalogVersion, revisedCatalog.baseVersion);
   assert.deepEqual(
     sections.map(({ key, position, name }) => ({ key, position, name })),
     catalog.sections.map((s) => ({
@@ -277,7 +281,7 @@ try {
       number,
       text,
     })),
-    expectedItems,
+    expectedItems.map((item) => ({ ...item, text: revisedText.get(item.key) ?? item.text })),
   );
   assert.deepEqual(
     items.map((i) => i.position),
@@ -312,6 +316,8 @@ try {
     text: m[5].replaceAll("''", "'"),
   }));
   assert.deepEqual(seeded, expectedItems);
+  const previousItems = ok(await get(`checklist_items?template_version=eq.${catalog.catalogVersion}&order=position`, "reader"));
+  assert.deepEqual(previousItems.map(({ key, section_key, number, text }) => ({ key, section_key, number, text })), seeded);
   // Client read-only; anonymous callers cannot read the catalog.
   denied(
     await request(

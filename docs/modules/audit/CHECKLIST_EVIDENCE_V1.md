@@ -8,6 +8,12 @@ Consulte [matriz de conclusão](QUALITY_COMPLETION_V1.md) e [gates](../../archit
 
 A Auditoria é proprietária de `audit.checklist_evidence` e do bucket privado `audit-checklist-evidence`. FK composta **imutável** vincula arquivo a uma resposta real `(inspection_id, item_key)`. Servidor gera chaves `<inspection_uuid>/<evidence_uuid>`, sem nome do usuário nem extensão. Auditoria **não depende** de Planos de Ação; ambos reutilizam validador neutro de arquivos em Shared.
 
+A visão geral lista até cinco evidências por vez e filtra somente pelos critérios
+com anexos. O agrupamento segue o número global do critério. O nome de exibição
+`Evidência N.ext` usa a ordem de envio no critério, com desempate pelo ID, igual
+ao checklist. A visão geral solicita os bytes somente ao baixar, com o nome
+original do arquivo.
+
 | RPC | Contrato |
 | --- | --- |
 | `begin_checklist_evidence_upload(p_inspection,p_item_key,p_original_name,p_content_type,p_size)` | Autoriza rascunho/edição, valida metadados, reserva slot pendente; retorna ID/chave criados pelo servidor |

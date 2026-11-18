@@ -23,6 +23,7 @@ import { NewInspection } from "../apps/web/src/modules/audit/NewInspection";
 import { visibleNavigation } from "../apps/web/src/app/navigation";
 import type {
   Answer,
+  ChecklistEvidence as EvidenceRow,
   InspectionSummary,
 } from "../apps/web/src/modules/audit/types";
 const api = vi.hoisted(() => ({
@@ -38,7 +39,7 @@ const api = vi.hoisted(() => ({
   createInspection: vi.fn(),
 }));
 vi.mock("../apps/web/src/modules/audit/api", () => api);
-const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async()=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),downloadUrl:vi.fn(async()=>"https://storage.test/image?token=test"),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
+const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async():Promise<EvidenceRow[]>=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),downloadUrl:vi.fn(async()=>"https://storage.test/image?token=test"),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
 vi.mock("../apps/web/src/modules/audit/evidence",()=>evidenceApi);
 const plansApi = vi.hoisted(() => ({ summaries: vi.fn(async () => [] as unknown[]) }));
 vi.mock("../apps/web/src/modules/action-plans/api", () => plansApi);
@@ -86,6 +87,11 @@ const answer = (item_key: string, response: Answer["response"]): Answer => ({
   version: 1,
   updated_at: "",
   updated_by: null,
+});
+const evidenceRow = (id: number, item_key = "item-001"): EvidenceRow => ({
+  id: String(id).padStart(2, "0"), inspection_id: "i1", item_key, object_key: `i1/${id}`,
+  original_name: `arquivo-${id}.pdf`, content_type: "application/pdf", size_bytes: 10,
+  created_by: "u", uploaded_by_name: "Ana", uploaded_at: "2026-09-24T12:00:00Z",
 });
 function summary(over: Partial<InspectionSummary> = {}): InspectionSummary {
   return {
@@ -609,6 +615,52 @@ describe("inspection page", () => {
     await user.click(screen.getByRole("link", { name: /Checklist/ }));
     expect(screen.getAllByRole("button", { name: "Evidências" })).toHaveLength(2);
     expect(screen.queryByRole("button", { name: /Evidências \(0\)/ })).toBeNull();
+  });
+  it.each([0, 1, 5])("shows %s overview files without an expansion button", async (count) => {
+    evidenceApi.listEvidence.mockResolvedValue(Array.from({ length: count }, (_, index) => evidenceRow(index)));
+    setup(summary(), [], undefined, "/audit/inspections/i1");
+    const panel = within(await screen.findByRole("region", { name: `Evidências ${count}` }));
+    expect(panel.getByRole("heading", { level: 2 }).textContent).toBe(`Evidências ${count}`);
+    expect(panel.queryAllByRole("button", { name: /^Baixar Evidência/ })).toHaveLength(count);
+    expect(panel.queryByRole("button", { name: "Ver mais evidências" })).toBeNull();
+    if (!count) {
+      expect(panel.getByText("Nenhuma evidência anexada a esta auditoria.")).toBeTruthy();
+      expect(panel.queryByRole("combobox")).toBeNull();
+    }
+  });
+  it("paginates by file and resets on filter change while keeping the checklist names", async () => {
+    const user = userEvent.setup();
+    const firstCriterion = Array.from({ length: 6 }, (_, index) => evidenceRow(index + 1));
+    const thirdCriterion = Array.from({ length: 6 }, (_, index) => evidenceRow(index + 7, "item-003"));
+    evidenceApi.listEvidence.mockResolvedValue([...thirdCriterion, ...firstCriterion].reverse());
+    setup(summary(), items.map((item) => answer(item.key, null)), undefined, "/audit/inspections/i1");
+    const panel = within(await screen.findByRole("region", { name: "Evidências 12" }));
+    const filter = panel.getByRole("combobox", { name: "Filtrar por critério" });
+    const files = () => panel.getAllByRole("button", { name: /^Baixar Evidência/ });
+    expect(panel.getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "Todos os critérios", "Critério 1", "Critério 3",
+    ]);
+    expect(files()).toHaveLength(5);
+    expect(panel.queryByRole("heading", { name: "Critério 3" })).toBeNull();
+    await user.click(panel.getByRole("button", { name: "Ver mais evidências" }));
+    expect(files()).toHaveLength(10);
+    await user.selectOptions(filter, "item-003");
+    expect(files()).toHaveLength(5);
+    expect(panel.getByRole("status").textContent).toBe("Exibindo 5 de 6 evidências");
+    expect(panel.queryByRole("heading", { name: "Critério 1" })).toBeNull();
+    await user.click(panel.getByRole("button", { name: "Ver mais evidências" }));
+    const sixth = panel.getByRole("button", { name: "Baixar Evidência 6.pdf" });
+    await user.click(sixth);
+    expect(evidenceApi.downloadEvidence).toHaveBeenLastCalledWith(thirdCriterion[5], "arquivo-12.pdf");
+    await user.click(panel.getByRole("button", { name: "Ver menos evidências" }));
+    expect(files()).toHaveLength(5);
+    expect(evidenceApi.listEvidence).toHaveBeenCalledTimes(1);
+    expect(evidenceApi.downloadUrl).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("link", { name: /Checklist/ }));
+    await user.click(await screen.findByRole("button", { name: /^Seção 2:/ }));
+    await user.click(screen.getByRole("button", { name: "Evidências (6)" }));
+    await user.click(screen.getByRole("button", { name: "Baixar Evidência 6.pdf" }));
+    expect(evidenceApi.downloadEvidence).toHaveBeenLastCalledWith(thirdCriterion[5], "Evidência 6.pdf");
   });
   it("hides the action plan tab without action_plan.read", async () => {
     permissions.allowed = false;
