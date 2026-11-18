@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge, type BadgeTone } from "../../shared/ui";
 import { isOverdue, STATUS_LABELS, type PlanStatus } from "../action-plans/public";
 import { Download } from "./ChecklistEvidence";
+import { compareEvidence, evidenceName } from "./evidencePresentation";
 import { useInspection } from "./InspectionContext";
 import { formatDate } from "./Result";
 import {
@@ -21,6 +22,7 @@ const BAND_TONE: Record<Classification, BadgeTone> = {
 };
 /** Points of attention shown before "Mostrar todos". */
 const ATTENTION_PREVIEW = 6;
+const EVIDENCE_BATCH_SIZE = 5;
 const dateTime = (value: string | null) =>
   value && !Number.isNaN(Date.parse(value)) ? new Date(value).toLocaleString("pt-BR") : "—";
 /** Section status text: classification only for a complete section (scoring rule). */
@@ -36,6 +38,9 @@ export function InspectionOverview() {
     useInspection();
   const navigate = useNavigate();
   const [allAttention, setAllAttention] = useState(false);
+  const [criterion, setCriterion] = useState("");
+  const [evidenceLimit, setEvidenceLimit] = useState(EVIDENCE_BATCH_SIZE);
+  const evidenceListId = useId();
   const base = `/audit/inspections/${summary.id}`;
   const { tally } = results.overall;
   const counts = { AT: tally.at, AP: tally.ap, NAT: tally.nat, NAP: tally.nap };
@@ -47,16 +52,29 @@ export function InspectionOverview() {
     navigate(`${base}/checklist`);
   };
   const sectionOf = new Map(sections.map((s) => [s.key, s]));
-  const itemOf = new Map(items.map((i) => [i.key, i]));
   // Points of attention: AP/NAT criteria, in checklist order, with their observation.
   const attention = items.filter((i) => {
     const r = answers[i.key]?.response;
     return r === "AP" || r === "NAT";
   });
   const evidenceByItem = new Map<string, typeof evidence.rows>();
-  for (const row of evidence.rows)
-    evidenceByItem.set(row.item_key, [...(evidenceByItem.get(row.item_key) ?? []), row]);
-  const evidenceItems = items.filter((i) => evidenceByItem.has(i.key));
+  for (const row of evidence.rows) {
+    const group = evidenceByItem.get(row.item_key);
+    if (group) group.push(row);
+    else evidenceByItem.set(row.item_key, [row]);
+  }
+  const evidenceItems = items.filter((item) => evidenceByItem.has(item.key))
+    .sort((a, b) => a.number - b.number);
+  const selectedCriterion = evidenceByItem.has(criterion) ? criterion : "";
+  const resultCount = selectedCriterion ? evidenceByItem.get(selectedCriterion)!.length : evidence.rows.length;
+  let remaining = evidenceLimit;
+  const visibleGroups = evidenceItems.flatMap((item) => {
+    if (remaining <= 0 || (selectedCriterion && selectedCriterion !== item.key)) return [];
+    const rows = evidenceByItem.get(item.key)!.sort(compareEvidence).slice(0, remaining);
+    remaining -= rows.length;
+    return [{ item, rows }];
+  });
+  const hasMoreEvidence = evidenceLimit < resultCount;
   // Counts only after a successful read: loading/error is "unavailable", never zero.
   const plansRead = !plans.loading && !plans.error;
   const evidenceRead = !evidence.loading && !evidence.error;
@@ -248,31 +266,61 @@ export function InspectionOverview() {
           {evidenceRead && !evidence.rows.length && (
             <p className="muted">Nenhuma evidência anexada a esta auditoria.</p>
           )}
-          {evidenceItems.length > 0 && (
-            <ul className="audit-evidence-groups">
-              {evidenceItems.map((item) => (
-                <li key={item.key}>
-                  <p className="audit-evidence-group-title">
-                    Critério <span className="numeric">{itemOf.get(item.key)?.number}</span>
-                  </p>
-                  <ul className="audit-overview-files">
-                    {evidenceByItem.get(item.key)!.map((e) => (
-                      <li key={e.id} className="audit-overview-file">
-                        <div>
-                          <strong className="audit-evidence-name">{e.original_name}</strong>
-                          <p className="file-meta">
-                            {e.uploaded_by_name} · {dateTime(e.uploaded_at)}
-                          </p>
-                        </div>
-                        <div className="audit-overview-file-action">
-                          <Download row={e} />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
+          {evidenceRead && visibleGroups.length > 0 && (
+            <>
+              <label className="audit-evidence-filter">
+                Filtrar por critério
+                <select value={selectedCriterion} onChange={(event) => {
+                  setCriterion(event.target.value);
+                  setEvidenceLimit(EVIDENCE_BATCH_SIZE);
+                }}>
+                  <option value="">Todos os critérios</option>
+                  {evidenceItems.map((item) => (
+                    <option key={item.key} value={item.key}>Critério {item.number}</option>
+                  ))}
+                </select>
+              </label>
+              <p className="audit-evidence-count muted" role="status">
+                {evidenceLimit < resultCount
+                  ? `Exibindo ${evidenceLimit} de ${resultCount} evidências`
+                  : resultCount === 1 ? "1 evidência" : `${resultCount} evidências`}
+              </p>
+              <ul id={evidenceListId} className="audit-evidence-groups">
+                {visibleGroups.map(({ item, rows }) => (
+                  <li key={item.key}>
+                    <h3 className="audit-evidence-group-title">Critério {item.number}</h3>
+                    <p className="audit-evidence-question">{item.text}</p>
+                    <ul className="audit-overview-files">
+                      {rows.map((row, index) => {
+                        const name = evidenceName(row.original_name, index);
+                        return (
+                          <li key={row.id} className="audit-overview-file">
+                            <div>
+                              <strong className="audit-evidence-name">{name}</strong>
+                              <p className="file-meta">
+                                {row.uploaded_by_name} · {dateTime(row.uploaded_at)}
+                              </p>
+                            </div>
+                            <div className="audit-overview-file-action">
+                              <Download row={row} name={name} filename={row.original_name} />
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+              {resultCount > EVIDENCE_BATCH_SIZE && (
+                <button type="button" className="audit-show-all audit-evidence-more"
+                  aria-controls={evidenceListId}
+                  onClick={() => setEvidenceLimit((limit) =>
+                    hasMoreEvidence ? limit + EVIDENCE_BATCH_SIZE : EVIDENCE_BATCH_SIZE
+                  )}>
+                  {hasMoreEvidence ? "Ver mais evidências" : "Ver menos evidências"}
+                </button>
+              )}
+            </>
           )}
         </section>
 

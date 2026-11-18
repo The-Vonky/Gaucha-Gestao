@@ -19,6 +19,13 @@ const catalog = JSON.parse(
     items: { key: string; number: number; text: string }[];
   }[];
 };
+const revisedCatalog = JSON.parse(
+  readFileSync("docs/reference/AUDIT_CHECKLIST_V2_REVISIONS.json", "utf8"),
+) as {
+  catalogVersion: string;
+  baseVersion: string;
+  revisions: { key: string; section_key: string; number: number; text: string }[];
+};
 let db: PGlite;
 const uid = (n: number) =>
   `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
@@ -132,42 +139,35 @@ afterAll(async () => {
   await db?.close();
 });
 describe("Audit domain database", { concurrent: false }, () => {
-  it("seeds exactly the canonical catalog from the reference JSON", async () => {
+  it("preserves v1 and activates v2 with exactly the 14 approved text changes", async () => {
     await db.exec("reset role");
-    const template = await one<{
-      version: string;
-      item_count: number;
-      active: boolean;
-    }>("select * from audit.checklist_templates");
-    expect(template).toMatchObject({
-      version: "checklist-geral-2026-09-22-v1",
-      item_count: 158,
-      active: true,
-    });
-    const sections = await rows(
-      "select key,position,name from audit.checklist_sections order by position",
-    );
-    expect(sections).toEqual(
-      catalog.sections.map((s) => ({
-        key: s.key,
-        position: s.order,
-        name: s.name,
-      })),
-    );
-    const items = await rows(
-      "select key,section_key,number,text from audit.checklist_items order by position",
-    );
-    expect(items).toEqual(
-      catalog.sections.flatMap((s) =>
-        s.items.map((i) => ({
-          key: i.key,
-          section_key: s.key,
-          number: i.number,
-          text: i.text,
-        })),
-      ),
-    );
-    expect(items).toHaveLength(158);
+    expect(revisedCatalog.baseVersion).toBe(catalog.catalogVersion);
+    expect(await rows("select version,item_count,active from audit.checklist_templates order by version")).toEqual([
+      { version: catalog.catalogVersion, item_count: 158, active: false },
+      { version: revisedCatalog.catalogVersion, item_count: 158, active: true },
+    ]);
+    const expectedSections = catalog.sections.map((s) => ({ key: s.key, position: s.order, name: s.name }));
+    const expectedItems = catalog.sections.flatMap((s) =>
+      s.items.map((i) => ({ ...i, section_key: s.key })),
+    ).map((item, index) => ({ ...item, position: index + 1 }));
+    const revisedText = new Map(revisedCatalog.revisions.map((item) => [item.key, item.text]));
+    expect(revisedCatalog.revisions).toHaveLength(14);
+    for (const version of [catalog.catalogVersion, revisedCatalog.catalogVersion]) {
+      expect(await rows(
+        "select key,position,name from audit.checklist_sections where template_version=$1 order by position", [version],
+      )).toEqual(expectedSections);
+      const items = await rows(
+        "select key,section_key,position,number,text from audit.checklist_items where template_version=$1 order by position", [version],
+      );
+      const expected = version === catalog.catalogVersion ? expectedItems : expectedItems.map((item) => ({
+        ...item, text: revisedText.get(item.key) ?? item.text,
+      }));
+      expect(items).toEqual(expected);
+      if (version === revisedCatalog.catalogVersion) {
+        expect(expected.filter((item, index) => item.text !== expectedItems[index].text)
+          .map(({ key, section_key, number, text }) => ({ key, section_key, number, text }))).toEqual(revisedCatalog.revisions);
+      }
+    }
   });
   it("keeps the catalog immutable and client read-only", async () => {
     await db.exec("reset role");
@@ -180,9 +180,7 @@ describe("Audit domain database", { concurrent: false }, () => {
       db.query("delete from audit.checklist_sections"),
     ).rejects.toThrow();
     await login(users.global);
-    expect(await rows("select key from audit.checklist_items")).toHaveLength(
-      158,
-    );
+    expect(await rows("select key from audit.checklist_items")).toHaveLength(316);
     await expect(
       db.query(
         "insert into audit.checklist_templates(version,name,item_count) values ('x','x',1)",
@@ -211,6 +209,7 @@ describe("Audit domain database", { concurrent: false }, () => {
       total_items: 158,
       final_score: null,
       status: "draft",
+      template_version: revisedCatalog.catalogVersion,
     });
     await db.exec("reset role");
     expect(
@@ -222,7 +221,8 @@ describe("Audit domain database", { concurrent: false }, () => {
     // A template used by an inspection cannot gain content either.
     await expect(
       db.query(
-        "insert into audit.checklist_items(template_version,key,section_key,position,number,text) values ('checklist-geral-2026-09-22-v1','item-162','section-09',159,162,'x')",
+        "insert into audit.checklist_items(template_version,key,section_key,position,number,text) values ($1,'item-162','section-09',159,162,'x')",
+        [revisedCatalog.catalogVersion],
       ),
     ).rejects.toThrow(/in use/);
   });

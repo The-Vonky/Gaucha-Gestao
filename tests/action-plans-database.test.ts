@@ -238,7 +238,9 @@ describe("Action Plans database", { concurrent: false }, () => {
     );
     const criterion = (key: string) =>
       one<{ text: string }>(
-        "select text from audit.checklist_items where key=$1",
+        `select item.text from audit.checklist_items item
+         join audit.checklist_templates template on template.version=item.template_version
+         where template.active and item.key=$1`,
         [key],
       );
     expect(plans).toEqual([
