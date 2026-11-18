@@ -185,6 +185,8 @@ manual. A C30 exige inventário e autorização operacional próprios.
 
 ### GG-05 — criação de usuários e Identity Boundary
 
+O [runbook GG-05A](../operations/GG_05A_PROVISIONAMENTO.md) reúne o diagnóstico local, o ensaio sintético e o procedimento para revisar, bloquear e reconciliar acessos. Convite/recuperação de funcionários e a invariante do último administrador recuperável aguardam decisão D01 e GO operacional.
+
 **Fato encontrado:** Core oferece administração de perfis e grants, mas o desenho privilegiado de identidade (Auth) não foi aprovado/implantado de modo comprovado. A Issue #49 foi fechada em 23/10 como registro administrativo, sem encerrar a pendência arquitetural. Não converter issue fechada em “problema resolvido”.
 
 **Proposta de execução em dois níveis:**
