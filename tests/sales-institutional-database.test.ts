@@ -9,7 +9,11 @@ import { retireSalesRoles, finishSalesLocal } from "./integration/sales-role-cle
 import { retireSalesUnits } from "./integration/sales-unit-cleanup.mjs";
 
 const db = createTestDatabase(), directory = mkdtempSync(join(tmpdir(), "sales-cleanup-"));
-const migration = readFileSync("supabase/migrations/20261029180613_sales_institutional_roles.sql", "utf8");
+const filename = "20261118132509_gg04_sales_institutional_roles.sql";
+const migration = readFileSync(`supabase/migrations/${filename}`, "utf8");
+const legacyRole = async () => (await db.query<{ id: string }>(
+  "insert into core.roles(key,name,system) values('sales_operator','Sales Operator',true) returning id",
+)).rows[0].id;
 beforeAll(async () => {
   await db.exec(readFileSync("tests/fixtures/room-booking-auth.sql", "utf8"));
   await db.exec(STORAGE_STUB);
@@ -59,72 +63,69 @@ it("MEL-01: recusa recibo divergente, ajuste externo e FK desconhecida sem alter
   expect((await db.query("select tgname from pg_trigger where tgenabled='D' and not tgisinternal")).rows).toEqual([]);
 });
 
-it("composição protegida exata, sem atribuição automática, idempotência e D5-B", async () => {
-  for (let n = 0; n < 2; n++) {
-    await db.exec(migration);
-    const rows = (await db.query<{ key: string; system: boolean; permissions: string[] }>(`select r.key,r.system,array_agg(rp.permission_key order by rp.permission_key) permissions
-      from core.roles r join core.role_permissions rp on rp.role_id=r.id
-      where r.key in ('platform_administrator','sales_manager','sales_operator') and rp.permission_key like 'sales.%'
-      group by r.key,r.system order by r.key`)).rows;
-    const all = ["sales.dashboard.read", "sales.entry.create", "sales.entry.delete", "sales.entry.edit", "sales.entry.read", "sales.export.filtered", "sales.export.full"];
-    expect(rows).toEqual([
-      { key: "platform_administrator", system: true, permissions: all },
-      { key: "sales_manager", system: true, permissions: all },
-      { key: "sales_operator", system: true, permissions: ["sales.entry.create", "sales.entry.read"] },
-    ]);
-    expect((await db.query("select * from core.user_role_assignments")).rows).toEqual([]);
-    expect((await db.query(`select 1 from core.role_permissions rp join core.roles r on r.id=rp.role_id
-      where r.key in ('platform_administrator','sales_manager','sales_operator') and rp.permission_key='room_booking.manage'`)).rows).toEqual([]);
-  }
-});
-
-it("colisão não promove papel personalizado a protegido", async () => {
-  await db.exec("begin; update core.roles set system=false where key='sales_operator'; commit");
-  await expect(db.exec(migration)).rejects.toThrow(/Colisão/);
-  await db.exec("rollback");
-  expect((await db.query<{ system: boolean }>("select system from core.roles where key='sales_operator'")).rows[0].system).toBe(false);
-  await db.exec("update core.roles set system=true where key='sales_operator'");
-});
-
-it("papéis institucionais respeitam capacidade, setor, unidade e perfil ativo sem inferência pelo nome", async () => {
+it("GG-04 remove o papel físico com auditoria, preserva os demais e é idempotente", async () => {
   await db.exec("begin");
   try {
-    const user = randomUUID(), unit = randomUUID(), other = randomUUID(), sector = randomUUID();
-    await db.query("insert into auth.users(id,email) values($1,'institutional@example.test')", [user]);
-    await db.query("insert into core.units(id,code,name) values($1,'INST-A','Sintética A'),($2,'INST-B','Sintética B')", [unit, other]);
-    await db.query("insert into core.sectors(id,code,name) values($1,'INST-S','Setor sintético')", [sector]);
-    await db.query("insert into core.unit_sectors(unit_id,sector_id) values($1,$2)", [unit, sector]);
-    for (const role of ["sales_operator", "sales_manager", "platform_administrator"]) {
-      await db.exec("reset role; select set_config('request.jwt.claim.sub','',false)");
-      await db.query("delete from core.user_role_assignments where user_id=$1", [user]);
-      await db.query(`insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id)
-        select $1,id,$3,$2 from core.roles where key=$4`, [user, role === "platform_administrator" ? null : unit, role === "platform_administrator" ? "global" : "unit", role]);
-      await db.query("select set_config('request.jwt.claim.sub',$1,false)", [user]);
-      const check = async (capability: string, target = unit) => (await db.query<{ ok: boolean }>("select private.has_unit_permission($1,$2) ok", [capability, target])).rows[0].ok;
-      expect(await check("sales.entry.read")).toBe(true);
-      expect(await check("sales.entry.create")).toBe(true);
-      expect(await check("sales.entry.edit")).toBe(role !== "sales_operator");
-      expect(await check("sales.dashboard.read")).toBe(role !== "sales_operator");
-      expect(await check("sales.entry.read", other)).toBe(role === "platform_administrator");
-      expect(await check("room_booking.manage")).toBe(false);
-      // Retirar a relação elimina a capacidade mesmo preservando nome e atribuição.
-      await db.exec("select set_config('request.jwt.claim.sub','',false)");
-      await db.query("delete from core.role_permissions where role_id in (select id from core.roles where key=$1) and permission_key='sales.entry.read'", [role]);
-      await db.query("select set_config('request.jwt.claim.sub',$1,false)", [user]);
-      expect(await check("sales.entry.read")).toBe(false);
-      await db.exec("select set_config('request.jwt.claim.sub','',false)");
-      await db.query("insert into core.role_permissions select id,'sales.entry.read' from core.roles where key=$1", [role]);
-    }
-    await db.exec("select set_config('request.jwt.claim.sub','',false)");
-    await db.query("delete from core.user_role_assignments where user_id=$1", [user]);
-    await db.query(`insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id,sector_id)
-      select $1,id,'sector',$2,$3 from core.roles where key='sales_manager'`, [user, unit, sector]);
-    await db.query("select set_config('request.jwt.claim.sub',$1,false)", [user]);
-    expect((await db.query<{ ok: boolean }>("select private.has_unit_permission('sales.dashboard.read',$1) ok", [unit])).rows[0].ok).toBe(false);
-    await db.exec("select set_config('request.jwt.claim.sub','',false)");
-    await db.query("update core.profiles set active=false where id=$1", [user]);
-    await db.query("select set_config('request.jwt.claim.sub',$1,false)", [user]);
-    expect((await db.query("select * from core.my_access()")).rows).toEqual([]);
+    const operator = await legacyRole();
+    await db.query("insert into core.role_permissions values($1,'sales.entry.read'),($1,'sales.entry.create')", [operator]);
+    const preserved = () => db.query(`select r.*, array(select permission_key from core.role_permissions
+      where role_id=r.id order by permission_key) permissions from core.roles r where id<>$1 order by key`, [operator]);
+    const before = (await preserved()).rows;
+    const audit = (await db.query("select * from core.system_audit_log order by id")).rows;
+    await db.exec(migration);
+    expect((await preserved()).rows).toEqual(before);
+    expect((await db.query("select 1 from core.roles where id=$1 or key='sales_operator'", [operator])).rows).toEqual([]);
+    expect((await db.query("select 1 from core.role_permissions where role_id=$1", [operator])).rows).toEqual([]);
+    expect((await db.query(`select action, entity_type from core.system_audit_log
+      where action='delete' and (entity_id=$1 or before_data->>'role_id'=$1) order by entity_type`, [operator])).rows).toEqual([
+      { action: "delete", entity_type: "role_permissions" },
+      { action: "delete", entity_type: "role_permissions" },
+      { action: "delete", entity_type: "roles" },
+    ]);
+    const after = (await db.query("select * from core.system_audit_log order by id")).rows;
+    expect(after).toEqual(expect.arrayContaining(audit));
+    await db.exec(migration);
+    expect((await db.query("select * from core.system_audit_log order by id")).rows).toEqual(after);
+  } finally { await db.exec("rollback"); }
+});
+
+it.each([true, false])("GG-04 interrompe a remoção se houver atribuição com active=%s", async active => {
+  await db.exec("begin");
+  try {
+    const operator = await legacyRole();
+    const user = randomUUID();
+    await db.query("insert into auth.users(id,email) values($1,'gg04-history@example.test')", [user]);
+    await db.query(`insert into core.user_role_assignments(user_id,role_id,scope_type,active)
+      values($1,$2,'global',$3)`, [user, operator, active]);
+    await db.exec("savepoint before_gg04");
+    await expect(db.exec(migration)).rejects.toThrow(/possui atribuições/);
+    await db.exec("rollback to before_gg04");
+    expect((await db.query("select active from core.user_role_assignments where role_id=$1", [operator])).rows).toEqual([{ active }]);
+    expect((await db.query("select id from core.roles where key='sales_operator'")).rows).toEqual([{ id: operator }]);
+  } finally { await db.exec("rollback"); }
+});
+
+it("GG-04 recusa FK inesperada que poderia remover histórico", async () => {
+  await db.exec("begin");
+  try {
+    const operator = await legacyRole();
+    await db.exec("create table public.gg04_history(role_id uuid references core.roles(id) on delete cascade)");
+    await db.query("insert into public.gg04_history values($1)", [operator]);
+    await db.exec("savepoint before_gg04");
+    await expect(db.exec(migration)).rejects.toThrow(/chave estrangeira inesperada/);
+    await db.exec("rollback to before_gg04");
+    expect((await db.query("select role_id from public.gg04_history")).rows).toEqual([{ role_id: operator }]);
+  } finally { await db.exec("rollback"); }
+});
+
+it("GG-04 recusa colisão com Sales Viewer personalizado", async () => {
+  await db.exec("begin");
+  try {
+    await db.exec("update core.roles set system=false where key='sales_viewer'");
+    await db.exec("savepoint before_gg04");
+    await expect(db.exec(migration)).rejects.toThrow(/colisão/);
+    await db.exec("rollback to before_gg04");
+    expect((await db.query("select system from core.roles where key='sales_viewer'")).rows).toEqual([{ system: false }]);
   } finally { await db.exec("rollback"); }
 });
 

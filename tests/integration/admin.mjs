@@ -278,6 +278,12 @@ try {
 
     // Roles: system role opens read-only.
     await visit("/admin/roles", "roles");
+    const roles = page.getByRole("list", { name: "Perfis de acesso", exact: true });
+    for (const name of ["Sales Manager", "Sales Viewer"]) {
+      await roles.getByRole("button", { name: `Consultar ${name}`, exact: true }).waitFor();
+      assert.equal(await roles.getByRole("button", { name: `Editar ${name}`, exact: true }).count(), 0);
+    }
+    assert.equal(await roles.getByRole("button", { name: /Sales Operator/ }).count(), 0);
     const system = page.getByRole("button", {
       name: "Consultar Platform Administrator",
     });

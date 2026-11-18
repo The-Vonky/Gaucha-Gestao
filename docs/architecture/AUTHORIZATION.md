@@ -52,32 +52,37 @@ catálogo operacional. URL externa é negada, respostas obsoletas são descartad
 troca de identidade elimina dados anteriores. Status histórico indisponível permanece
 indeterminado. RLS/RPCs preservadas; [contrato e cobertura](../modules/sales/VEN04B_DASHBOARD_UI.md).
 
-## Correção institucional de Vendas — VEN-04B, 29/10/2026
+## Perfis institucionais de Vendas — GG-04
 
-Decisão expressa do mantenedor após revisão visual da PR #94. A ausência das
-relações em `core.role_permissions` na VEN-01 impedia o acesso do administrador,
-mesmo com perfil Core e atribuição global ativos. A migration append-only
-`20261029180613_sales_institutional_roles.sql` provisiona a composição abaixo:
+A decisão de 18/11/2026 estabelece dois perfis operacionais protegidos, ativos
+e atribuíveis globalmente ou por unidade. Grants de setor não dão acesso à unidade.
 
-| Papel protegido | Capacidades explícitas | Escopo da atribuição |
-| --- | --- | --- |
-| `platform_administrator` | `sales.entry.read/create/edit/delete`, `sales.dashboard.read`, `sales.export.filtered/full` | Global existente |
-| `sales_manager` — Sales Manager | As mesmas sete capacidades de Vendas | Global ou unidade; setor não concede unidade |
-| `sales_operator` — Sales Operator | `sales.entry.read`, `sales.entry.create` | Global ou unidade; setor não concede unidade |
+| Capacidade | Sales Manager (`sales_manager`) | Sales Viewer (`sales_viewer`) |
+| --- | :---: | :---: |
+| `sales.entry.read` | Sim | Sim |
+| `sales.entry.create` | Sim | — |
+| `sales.entry.edit` | Sim | — |
+| `sales.entry.delete` | Sim | — |
+| `sales.dashboard.read` | Sim | Sim |
+| `sales.export.filtered` | Sim | Sim |
+| `sales.export.full` | Sim | Sim |
 
-`system=true`, sem atribuir os novos papéis automaticamente. Nenhuma capacidade de
-outro módulo nos papéis de Vendas. Exportações permanecem **capacidades reservadas**:
-a composição não implementa VEN-05. Colisões personalizadas/divergências falham;
-reexecução válida não duplica papéis/relações. Autorização continua por capacidade,
-perfil ativo e escopo, sem inferência positiva pelo nome do papel.
+Cada perfil possui somente as capacidades acima. O `platform_administrator` é
+um papel administrativo global e conserva sua composição, incluindo as sete
+capacidades de Vendas e a restrição D5-B. A administração de perfis lista os
+papéis protegidos do catálogo em modo consulta. A autorização das RPCs depende
+de perfil ativo, atribuição vigente e permissão efetiva na unidade. Exportação
+completa percorre o histórico do escopo autorizado.
 
-**D5-B preservada integralmente:** administrador continua sem `room_booking.manage`;
-nenhuma função, política ou provisionamento de Agendamento foi alterado. A limpeza
-física de 58 papéis comprovadamente sintéticos foi autorizada somente no notebook,
-com inventário, preservação privada, dry-run/ROLLBACK e transação por UUID. Não faz
-parte da migration e não altera a visibilidade de papéis inativos legítimos.
-Testes Auth locais retiram seus papéis e relações no teardown, preservando auditoria
-e histórico financeiro. [Relatório e reprodução](../modules/sales/VEN04B_ACCESS_CORRECTION.md).
+A migration `20261118132509_gg04_sales_institutional_roles.sql` cria o Viewer
+sem atribuições automáticas, valida a composição do Manager e remove do catálogo
+o antigo papel de operação e suas relações de permissão. A trilha do Core
+registra as alterações. A migration histórica que provisionava esse papel
+permanece na sequência append-only. Atribuições ativas ou revogadas no papel a
+remover, dependências inesperadas e colisões de composição interrompem a operação.
+A aplicação local exige inventário, cópia privada dos registros afetados e
+simulação com rollback; ambientes remotos exigem autorização própria.
+[Histórico VEN-04B](../modules/sales/VEN04B_ACCESS_CORRECTION.md).
 
 ## Identidade, papéis e permissões
 
@@ -144,8 +149,8 @@ Ajustes/justificativas exigem ainda `sales.dashboard.read` na mesma unidade;
 ausência fica explícita no arquivo, sem revelar dados recusados. Global/unidade,
 inclusive histórico inativo; setor negado. Unidade explícita fora da interseção
 nega a chamada inteira. Cada página e a conferência final revalidam o acesso;
-alterações de conjunto/escopo invalidam o token. Nenhum grant ou papel acrescentado;
-tabelas privadas e RLS preservadas. A partir de `20261104122256`, listagem e
+alterações de conjunto/escopo invalidam o token. A VEN-05A preservou grants,
+papéis, tabelas privadas e RLS. A partir de `20261104122256`, listagem e
 exportação incluem somente o nome atual do criador dos lançamentos autorizados,
 sem abrir o diretório de perfis nem exportar e-mail/UUID do criador. Mudança de
 nome também invalida o token. [Matriz, consistência e limites](../modules/sales/VEN05A_EXCEL_EXPORT.md).

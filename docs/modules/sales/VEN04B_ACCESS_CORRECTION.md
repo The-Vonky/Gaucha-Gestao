@@ -1,5 +1,9 @@
 # VEN-04B — Correção de acesso e catálogo institucional
 
+Registro histórico de outubro de 2026. A
+[GG-04](../../architecture/AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04)
+define a composição institucional vigente.
+
 **Adendo MEL-01 de 30/10/2026:** unidades e históricos locais foram removidos com
 autorização específica; o catálogo terminou vazio. Roteiros agora retiram suas próprias
 unidades após backup/dry-run. [Estado vigente e evidências](VEN04B_MEL01_LOCAL_CLEANUP.md).
