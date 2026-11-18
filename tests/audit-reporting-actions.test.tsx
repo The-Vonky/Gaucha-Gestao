@@ -14,6 +14,10 @@ vi.mock("../apps/web/src/core/auth/AuthProvider", () => ({
     can: (permission: string) => permission === "audit.inspection.read" ? state.read : state.export }),
 }));
 vi.mock("../apps/web/src/modules/audit/reporting/api", () => rpc);
+const attachments = vi.hoisted(() => ({ prepareEvidence: vi.fn().mockResolvedValue([]), checkEvidence: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("../apps/web/src/modules/audit/reporting/evidence", async original => ({
+  ...await original<typeof import("../apps/web/src/modules/audit/reporting/evidence")>(), ...attachments,
+}));
 const files = vi.hoisted(() => ({ workbookBlob: vi.fn(), download: vi.fn() }));
 vi.mock("../apps/web/src/modules/audit/reporting/workbook", () => ({ workbookBlob: files.workbookBlob }));
 vi.mock("../apps/web/src/modules/audit/reporting/download", async (original) => ({
@@ -57,9 +61,26 @@ describe("Report actions", () => {
     expect(await screen.findByText(/Erro ao gerar relatório: Não foi possível concluir/)).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
     expect(await screen.findByRole("dialog", { name: "Prévia de impressão" })).toBeTruthy();
-    expect(rpc.inspectionExport).toHaveBeenCalledTimes(2);
+    expect(rpc.inspectionExport).toHaveBeenCalledTimes(3);
     state.session = false; view.rerender(component());
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Prévia de impressão" })).toBeNull());
+  });
+  it("não entrega arquivo após cancelar nem após falha de uma evidência", async () => {
+    const user = userEvent.setup();
+    rpc.inspectionExport.mockResolvedValue(report);
+    let finish!: (value: unknown[]) => void;
+    attachments.prepareEvidence.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    render(component());
+    await user.click(screen.getByRole("button", { name: "Exportar Excel" }));
+    await user.click(screen.getByRole("button", { name: "Cancelar preparação" }));
+    finish([]);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe(""));
+    expect(files.workbookBlob).not.toHaveBeenCalled(); expect(files.download).not.toHaveBeenCalled();
+    attachments.prepareEvidence.mockRejectedValueOnce(new Error("private token"));
+    await user.click(screen.getByRole("button", { name: "Exportar Excel" }));
+    await screen.findByText(/Erro ao gerar relatório/);
+    expect(files.workbookBlob).not.toHaveBeenCalled(); expect(files.download).not.toHaveBeenCalled();
+    expect(screen.getByRole("status").textContent).not.toContain("private token");
   });
   it.each(["excel", "print"] as const)("guides a >5,000 history %s error without preparing output and allows retry", async (output) => {
     const user = userEvent.setup();

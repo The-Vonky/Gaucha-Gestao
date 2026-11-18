@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import writeExcelFile from "write-excel-file/node";
 import readExcelFile from "read-excel-file/node";
+import sharp from "sharp";
+import { report as synthetic } from "./fixtures/audit-report";
+import type { ReportEvidence } from "../apps/web/src/modules/audit/reporting/evidence";
 import { unzipSync } from "fflate";
 import { filename } from "../apps/web/src/modules/audit/reporting/download";
 import { sheets } from "../apps/web/src/modules/audit/reporting/workbook";
@@ -42,6 +45,31 @@ async function inspect(report: InspectionReport | HistoryReport) {
   return { parsed, entries };
 }
 describe("Audit XLSX", () => {
+  it.each([0, 1, 5, 100])("incorpora %s imagens offline com associação por linha e preserva as três abas", async count => {
+    const png = await sharp({ create: { width: 200, height: 100, channels: 3, background: "#408060" } }).png().toBuffer();
+    const evidence: ReportEvidence[] = Array.from({ length: count }, (_, index) => ({ id: `e${index}`, itemKey: "i0", section: "Instalações",
+      number: index + 1, question: "=Pergunta sintética?", name: `Evidência ${index + 1}.png`, originalName: "=foto.png",
+      uploadedAt: synthetic.generated_at, uploadedBy: "@Pessoa sintética", contentType: "image/png",
+      image: { blob: new Blob([new Uint8Array(png)], { type: "image/png" }), width: 200, height: 100 } }));
+    const original = await writeExcelFile(sheets(synthetic)).toBuffer();
+    const buffer = await writeExcelFile(sheets(synthetic, evidence)).toBuffer();
+    const parsed = await readExcelFile(buffer);
+    expect(parsed.slice(0, 3)).toEqual((await readExcelFile(original)).slice(0, 3));
+    expect(parsed[3].sheet).toBe("Evidências"); expect(parsed[3].data).toHaveLength(count + 1);
+    const entries = unzipSync(new Uint8Array(buffer));
+    const media = Object.keys(entries).filter(name => name.startsWith("xl/media/"));
+    expect(media).toHaveLength(count);
+    for (const name of media) expect(entries[name]).toEqual(new Uint8Array(png));
+    const xml = Object.entries(entries).filter(([name]) => /\.(xml|rels)$/.test(name)).map(([, content]) => new TextDecoder().decode(content)).join("\n");
+    expect(xml).not.toMatch(/TargetMode="External"|<f(?:\s|>)/);
+    if (count) {
+      expect(parsed[3].data[1][2]).toBe("=Pergunta sintética?"); expect(parsed[3].data[1][4]).toBe("=foto.png");
+      const drawing = Object.entries(entries).filter(([name]) => /^xl\/drawings\/[^/]+\.xml$/.test(name)).map(([, bytes]) => new TextDecoder().decode(bytes)).join("");
+      expect(drawing).toContain("<xdr:col>8</xdr:col>");
+      expect(drawing).toContain(`<xdr:row>${count}</xdr:row>`);
+      expect(new TextDecoder().decode(entries["xl/worksheets/sheet4.xml"])).toContain('ht="240"');
+    }
+  });
   it("sets readable columns, wrapped text, numeric formats and frozen table headers", async () => {
     const { entries } = await inspect(inspection);
     const styles = new TextDecoder().decode(entries["xl/styles.xml"]);
@@ -56,7 +84,7 @@ describe("Audit XLSX", () => {
   });
   it("writes all 158 criteria and nine sections as strings and numbers without executable content", async () => {
     const { parsed, entries } = await inspect(inspection);
-    expect(parsed.map((sheet) => sheet.sheet)).toEqual(["Resumo", "Checklist", "Secoes"]);
+    expect(parsed.map((sheet) => sheet.sheet)).toEqual(["Resumo", "Checklist", "Secoes", "Evidências"]);
     const checklist = parsed[1].data;
     expect(checklist).toHaveLength(159);
     expect(checklist[1][2]).toBe("item-0-0");
@@ -68,7 +96,7 @@ describe("Audit XLSX", () => {
     expect(resumo.find((r) => r[0] === "Unidade")?.[1]).toBe("@Unidade Á");
     expect(resumo.find((r) => r[0] === "Conformidade parcial (%)")?.[1]).toBe(50);
     expect(resumo.find((r) => r[0] === "Sem resposta")?.[1]).toBe(157);
-    expect(Object.keys(entries).filter((name) => name.startsWith("xl/worksheets/sheet"))).toHaveLength(3);
+    expect(Object.keys(entries).filter((name) => name.startsWith("xl/worksheets/sheet"))).toHaveLength(4);
     expect(filename(inspection)).toBe(`auditoria-${id}-20260929121314.xlsx`);
   });
   it("keeps an undefined result blank and zero history explicit", async () => {

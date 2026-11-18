@@ -1,9 +1,9 @@
+import type { ReportEvidence } from "./evidence";
 import { CLASSIFICATION_LABELS, RESPONSE_LABELS } from "../scoring";
 import type { AuditReport, Counts, HistoryReport, InspectionReport, ReportInspection } from "./types";
 import type { Cell as ExcelCell, Sheet as ExcelSheet } from "write-excel-file/browser";
 
-// Every text value, including a leading =, +, - or @, has an explicit string
-// type. Formula, hyperlink, image and feature APIs are intentionally unused.
+// Texto externo sempre tem tipo String; imagens incorporadas usam apenas Blobs locais.
 export type Cell = { value: string; type: StringConstructor; fontWeight?: "bold" } |
   { value: number; type: NumberConstructor } | null;
 type Sheet = { sheet: string; data: Cell[][] };
@@ -18,8 +18,25 @@ const timestamp = (value: string | null | undefined) => value ? new Intl.DateTim
   dateStyle: "short", timeStyle: "medium", timeZone: "America/Sao_Paulo",
 }).format(new Date(value)) : "—";
 
-export function sheets(report: AuditReport): ExcelSheet<Blob>[] {
-  return (report.kind === "inspection" ? inspectionSheets(report) : historySheets(report)).map(present);
+export function sheets(report: AuditReport, evidence: ReportEvidence[] = []): ExcelSheet<Blob>[] {
+  const existing = (report.kind === "inspection" ? inspectionSheets(report) : historySheets(report)).map(present);
+  return report.kind === "inspection" ? [...existing, evidenceSheet(evidence)] : existing;
+}
+function evidenceSheet(evidence: ReportEvidence[]): ExcelSheet<Blob> {
+  const data: Cell[][] = [header("Seção", "Número", "Critério", "Evidência", "Arquivo original", "Anexado em (São Paulo)", "Responsável pelo anexo", "Tipo", "Imagem")];
+  for (const e of evidence) data.push(row(s(e.section), n(e.number), s(e.question), s(e.name), s(e.originalName),
+    s(timestamp(e.uploadedAt)), s(e.uploadedBy), s(e.contentType), s(e.image ? "" : "Anexo não fotográfico · somente metadados")));
+  const sheet = present({ sheet: "Evidências", data });
+  return { ...sheet, columns: [30, 10, 60, 24, 32, 26, 30, 24, 52].map(width => ({ width })),
+    data: sheet.data?.map((cells, index) => cells.map(cell => cell ? { ...cell, height: index === 0 ? 42 : evidence[index - 1]?.image ? 240 : 60 } : cell)),
+    images: evidence.flatMap((e, index) => {
+      if (!e.image) return [];
+      const scale = Math.min(1, 340 / e.image.width, 300 / e.image.height);
+      return [{ content: e.image.blob, contentType: e.image.blob.type, width: e.image.width * scale,
+        height: e.image.height * scale, dpi: 96, anchor: { row: index + 2, column: 9 }, offsetX: 8, offsetY: 8,
+        title: `Critério ${e.number} · ${e.name}`, description: e.question }];
+    }),
+  };
 }
 /** Presentation only: preserve values, cell types, ordering and contract sheet names. */
 function present(sheet: Sheet): ExcelSheet<Blob> {
@@ -100,7 +117,7 @@ function historySheets(r: HistoryReport): Sheet[] {
   return [{ sheet: "Historico", data: historico }, { sheet: "Metadados", data: metadados }];
 }
 
-export async function workbookBlob(report: AuditReport): Promise<Blob> {
+export async function workbookBlob(report: AuditReport, evidence: ReportEvidence[] = []): Promise<Blob> {
   const { default: writeExcelFile } = await import("write-excel-file/browser");
-  return writeExcelFile(sheets(report)).toBlob();
+  return writeExcelFile(sheets(report, evidence)).toBlob();
 }

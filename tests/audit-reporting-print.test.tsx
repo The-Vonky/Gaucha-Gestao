@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PrintSurface } from "../apps/web/src/modules/audit/reporting/PrintSurface";
 import type { HistoryReport, InspectionReport } from "../apps/web/src/modules/audit/reporting/types";
@@ -21,9 +21,43 @@ const inspection: InspectionReport = { ...common, kind: "inspection", record_cou
       position: position + 1, number: position + 1, text: `Critério ${section}-${position}`,
       response: null, observation: position === 0 ? "=SUM(1,2)\n" + "á".repeat(1800) : "",
       version: 1, updated_at: common.generated_at })) })) };
-afterEach(() => { cleanup(); document.getElementById("root")?.remove(); });
+beforeEach(() => { vi.stubGlobal("URL", class extends URL { static createObjectURL = vi.fn(() => "blob:synthetic"); static revokeObjectURL = vi.fn(); }); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); document.getElementById("root")?.remove(); });
 
 describe("Audit print surface", () => {
+  const attachment = { id: "e1", itemKey: "i-0-0", section: "Seção 1", number: 1, question: "Critério 0-0", name: "Evidência 1.jpg",
+    originalName: "foto.jpg", uploadedAt: common.generated_at, uploadedBy: "Pessoa sintética", contentType: "image/jpeg",
+    image: { blob: new Blob(["synthetic"], { type: "image/jpeg" }), width: 200, height: 100 } };
+  it("aguarda todas as imagens, imprime e libera URLs ao fechar", async () => {
+    const print = vi.spyOn(window, "print").mockImplementation(() => {});
+    const authorize = vi.fn().mockResolvedValue(undefined);
+    const evidence = [attachment, { ...attachment, id: "e2", name: "Evidência 2.jpg" }];
+    const view = render(<PrintSurface report={inspection} evidence={evidence} authorize={authorize} onClose={() => {}} />);
+    const button = screen.getByRole("button", { name: "Imprimir / Salvar como PDF" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    const images = screen.getAllByRole("img");
+    images.forEach(img => Object.defineProperty(img, "naturalWidth", { value: 200 }));
+    fireEvent.load(images[0]); expect(button.disabled).toBe(true);
+    fireEvent.load(images[1]); expect(button.disabled).toBe(false);
+    await userEvent.click(button);
+    expect(authorize).toHaveBeenCalledOnce(); expect(print).toHaveBeenCalledOnce();
+    view.unmount(); expect(URL.revokeObjectURL).toHaveBeenCalledTimes(2);
+    print.mockRestore();
+  });
+  it("bloqueia impressão e mostra falha por critério quando uma imagem não carrega", () => {
+    render(<PrintSurface report={inspection} evidence={[attachment]} onClose={() => {}} />);
+    fireEvent.error(screen.getByRole("img"));
+    expect((screen.getByRole("button", { name: "Imprimir / Salvar como PDF" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("alert").textContent).toContain("critério 1, Evidência 1.jpg");
+    expect(screen.getByRole("dialog").getAttribute("data-ready")).toBe("false");
+  });
+  it("recusa impressão após revogação de acesso", async () => {
+    const print = vi.spyOn(window, "print").mockImplementation(() => {});
+    render(<PrintSurface report={inspection} authorize={async () => { throw new Error("403"); }} onClose={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: "Imprimir / Salvar como PDF" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("O acesso ou os dados mudaram"));
+    expect(print).not.toHaveBeenCalled(); print.mockRestore();
+  });
   it.each([0, 300])("keeps the unit, open filters and all %s history records", (count) => {
     const report: HistoryReport = { ...common, kind: "unit_history", record_count: count,
       filters: { from: null, to: null }, ordering: "applied_on DESC, created_at DESC, id DESC",

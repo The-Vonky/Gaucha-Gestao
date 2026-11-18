@@ -121,3 +121,7 @@ Não entram: novos módulos/origens, Realtime, arquivo portátil ZIP, importaç�
 - **Operação:** responsáveis e janela provisória definidos em BACKUP_RECOVERY.md; retenção/purge, RPO técnico, RTO dentro/fora do expediente, comprovação de restore e liberação de produção permanecem pendentes. Não supor que ausência de evidência neste repositório significa ausência de configuração no servidor.
 
 E1–E3 e relatórios não têm decisões de produto pendentes. Reporting (PR #9), Checklist Evidence (PR #11), paginação do histórico (PR #13), hardening pré-homologação (PR #14) e Login v3 (PR #17) estão integrados na `main`; a CI atual está verde. Não há blocker funcional de código conhecido registrado nesta matriz. O fechamento de repositório inclui a rodada final de consistência visual/documental, mas **Qualidade só pode ser chamada de 100%/production-ready depois que os aceites P1–P9 e O1–O8 de `QUALITY_ACCEPTANCE_V1.md` forem realmente executados e registrados.**
+
+## Exportação de fotografias — candidato de 18/11/2026
+
+A tarefa independente da PR #124 acrescenta fotografias no PDF e uma aba Evidências no XLSX, preservando o histórico. Implementação e limites estão no [contrato de exportação](REPORT_EVIDENCE_EXPORT.md). Esta entrega é candidata em branch própria e depende de homologação local, abertura no Excel real, CI e decisão de merge do mantenedor; não altera o estado de produção.
