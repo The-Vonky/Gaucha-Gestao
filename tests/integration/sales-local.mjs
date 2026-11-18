@@ -4,14 +4,18 @@ import pg from "pg";
 /** Opt-in exclusivo do notebook autorizado. Nunca descobre um projeto remoto. */
 export class SalesLocalDatabase {
   static async open() {
-    if ((process.env.VEN03_LOCAL_TEST ?? process.env.VEN04A_LOCAL_TEST ?? process.env.VEN04B_LOCAL_TEST) !== "gaucha-gestao-local")
+    const gg04 = process.env.SALES_GG04_LOCAL_TEST;
+    if ((gg04 ?? process.env.VEN03_LOCAL_TEST ?? process.env.VEN04A_LOCAL_TEST ?? process.env.VEN04B_LOCAL_TEST) !== "gaucha-gestao-local")
       throw new Error("Validação local exige opt-in explícito gaucha-gestao-local.");
-    const name = "supabase_db_gaucha-gestao-local";
+    const name = gg04 ? "gaucha-gestao-local-db-1" : "supabase_db_gaucha-gestao-local";
     const info = JSON.parse(execFileSync("docker", ["inspect", name], { encoding: "utf8" }))[0];
-    if (info.Name !== `/${name}` || !info.State.Running
-      || !info.Config.Image.includes("supabase/postgres:")) throw new Error("Container local inesperado.");
+    const labels = info.Config.Labels;
+    const verifiedRuntime = gg04
+      ? labels?.["com.docker.compose.project"] === "gaucha-gestao-local" && labels["com.docker.compose.service"] === "db"
+      : info.Config.Image.includes("supabase/postgres:");
+    if (info.Name !== `/${name}` || !info.State.Running || !verifiedRuntime) throw new Error("Container local inesperado.");
     const port = info.NetworkSettings.Ports["5432/tcp"];
-    if (!port.some(p => p.HostIp === "127.0.0.1" && p.HostPort === "54322"))
+    if (!port?.some(p => p.HostIp === "127.0.0.1" && p.HostPort === "54322"))
       throw new Error("Binding local inesperado.");
     const password = info.Config.Env.find(v => v.startsWith("POSTGRES_PASSWORD="))?.slice("POSTGRES_PASSWORD=".length);
     if (!password) throw new Error("Credencial local indisponível.");

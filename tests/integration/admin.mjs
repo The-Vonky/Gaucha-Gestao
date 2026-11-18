@@ -6,7 +6,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import pg from "pg";
-import { chromium } from "playwright";
+import { chromium, expect } from "playwright/test";
 
 // Administration UI (Quality UI v1 phase 3 polish) against real Supabase Auth,
 // PostgREST and PostgreSQL. Only the disposable Supabase CLI cluster is supported.
@@ -296,6 +296,15 @@ try {
     if (shots)
       await page.screenshot({ path: join(shots, `role-editor-${width}.png`) });
     await page.keyboard.press("Escape");
+
+    // Earlier suites can fill the first page with custom roles.
+    const search = page.getByPlaceholder("Nome ou chave do perfil");
+    await search.fill("Sales");
+    const roles = page.getByRole("list", { name: "Perfis de acesso", exact: true });
+    await expect(roles.getByRole("listitem")).toHaveCount(2, { timeout: 10000 });
+    for (const name of ["Sales Manager", "Sales Viewer"]) {
+      await expect(roles.getByRole("button", { name: `Consultar ${name}`, exact: true })).toBeVisible();
+    }
 
     // Permissions: read-only catalog grouped by domain, on one screen (no buttons).
     await visit("/admin/permissions", "permissions");

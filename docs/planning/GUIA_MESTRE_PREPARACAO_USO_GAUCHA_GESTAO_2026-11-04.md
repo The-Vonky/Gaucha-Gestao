@@ -166,23 +166,20 @@ Além do piloto, exige fechamento dos gates do Plano Diretor, aceite físico/ope
 
 ### GG-04 — Vendas/Maquininhas: composição dos perfis
 
-**Fato encontrado:** o código/documento `AUTHORIZATION.md` descreve sete capacidades de Vendas:
-
-- `sales.entry.read`, `sales.entry.create`, `sales.entry.edit`, `sales.entry.delete`;
-- `sales.dashboard.read`;
-- `sales.export.filtered`, `sales.export.full`.
-
-Há papéis existentes: `sales_manager` com as sete; `sales_operator` com leitura e criação; e `platform_administrator` com as sete capacidades na composição institucional documentada. A exportação VEN-05A foi mergeada em 04/11. **Não assumir que a C30 já recebeu esses papéis/migrations.**
-
-**Composição proposta (depende de aceite do negócio):**
+**Decisão do mantenedor (18/11/2026):** dois perfis institucionais operacionais,
+com atribuição global ou por unidade. A exportação completa do Viewer se limita
+às unidades autorizadas. O `platform_administrator` mantém as sete capacidades
+de Vendas em sua atribuição administrativa global.
 
 | Papel | Consultar | Criar | Editar | Excluir logicamente | Dashboard | Exportar filtrado | Exportar completo |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Sales Manager** (existente) | Sim | Sim | Sim | Sim | Sim | Sim | Sim |
-| **Sales Viewer** (**novo, proposto**) | Sim | Não | Não | Não | Sim | Sim | Sim |
-| **Sales Operator** (existente; futuro a decidir) | Sim | Sim | Não | Não | Não | Não | Não |
+| **Sales Manager** | Sim | Sim | Sim | Sim | Sim | Sim | Sim |
+| **Sales Viewer** | Sim | Não | Não | Não | Sim | Sim | Sim |
 
-Manter escopo **global/unidade** conforme grants efetivos, nunca transformar um papel em acesso a todas as unidades automaticamente. Verificar se a atribuição de exportação completa é de fato desejada para todo Viewer. `platform_administrator` possui acesso às sete capacidades na composição atual: confirmar se essa regra continua desejada antes da liberação.
+A [composição definitiva](../architecture/AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04)
+usa uma migration incremental para remover o papel de operação anterior e criar o
+Viewer sem atribuições automáticas. A validação no notebook precede o aceite
+manual. A C30 exige inventário e autorização operacional próprios.
 
 **Testes de aceite:** usuário com unidade A não lê, altera, calcula nem exporta B; Viewer não escreve nem por RPC direta; Manager opera apenas unidades permitidas; usuário sem papel, inativo ou revogado recebe negação; relatórios não agregam dados fora da interseção das permissões; mudanças de grants durante a sessão são respeitadas.
 
@@ -468,4 +465,4 @@ Marcar cada item apenas com evidência verificável; usar **N/A justificado** qu
 - Preferir links para fontes canônicas e não duplicar segredos, dados pessoais, scripts de implantação perigosa ou grandes trechos do código.
 - Revisar prioridades após o primeiro restore, após cada merge relevante e antes de qualquer liberação.
 
-**Próxima ação recomendada neste documento:** iniciar **GG-01 (inventário em modo leitura)** e, com o estado real confirmado, executar **GG-02/GG-03 (backup remoto e restauração independente)**. Em desenvolvimento local, pode-se avançar paralelamente no desenho/validação de **GG-04 (Sales Manager/Viewer)** sem instalar alterações na C30 por inferência.
+**Próxima ação recomendada neste documento:** iniciar **GG-01 (inventário em modo leitura)** e, com o estado real confirmado, executar **GG-02/GG-03 (backup remoto e restauração independente)**. Em desenvolvimento local, pode-se avançar paralelamente na homologação local de **GG-04 (Sales Manager/Viewer)** sem instalar alterações na C30 por inferência.

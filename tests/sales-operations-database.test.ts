@@ -44,7 +44,7 @@ beforeAll(async () => {
   for (const file of readdirSync("supabase/migrations").sort())
     await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
   // Conferência anterior a qualquer concessão sintética.
-  expect((await db.query<{ n: number }>("select count(*)::int n from core.role_permissions where permission_key like 'sales.%'")).rows[0].n).toBe(16);
+  expect((await db.query<{ n: number }>("select count(*)::int n from core.role_permissions where permission_key like 'sales.%'")).rows[0].n).toBe(18);
   }
   const fixture = readFileSync("tests/fixtures/sales-operations.sql", "utf8");
   await db.exec(local ? fixture.replace("select private.bootstrap_administrator('00000000-0000-0000-0000-000000000001');", "") : fixture);

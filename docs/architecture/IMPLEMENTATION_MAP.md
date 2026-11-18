@@ -19,8 +19,10 @@ PR #94 continua para revisão; sem merge ou deploy.
 VEN-04A integrada pela PR #93 (`7ddcd31`). VEN-04B implementada para revisão:
 [dashboard gerencial completo](../modules/sales/VEN04B_DASHBOARD_UI.md), com
 [evidências sintéticas locais](../modules/sales/VEN04B_LOCAL_VALIDATION.md).
-Correção pré-merge: administrador com sete capacidades Vendas, Sales Manager/Operator
-protegidos e teardown dirigido; [evidências](../modules/sales/VEN04B_ACCESS_CORRECTION.md).
+O administrador mantém sete capacidades de Vendas. A
+[GG-04](AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04) define Sales Manager
+e Sales Viewer como os dois perfis operacionais protegidos.
+[Histórico VEN-04B](../modules/sales/VEN04B_ACCESS_CORRECTION.md).
 Sem homologação VEN-07 ou alterações em STAGING/PROD. O restante mantém sua fotografia histórica.
 
 **Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).

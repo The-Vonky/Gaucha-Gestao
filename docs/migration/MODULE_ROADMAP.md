@@ -29,10 +29,10 @@ e [evidências locais](../modules/sales/VEN04B_LOCAL_VALIDATION.md). MEL-03–06
 menu agrupado, entrada gerencial, atalhos contextuais e avisos de cadastro;
 [contrato e validação intermediária](../modules/sales/VEN04B_MEL03_06_VALIDATION.md). Implementada para revisão,
 sem homologação. VEN-05–08 permanecem dependentes de autorizações próprias.
-Correção pré-merge autorizada: composição explícita de sete capacidades de Vendas
-no administrador existente, papéis institucionais Sales Manager/Operator e catálogo
-local limpo, com teardown que não acumula papéis. [Relatório](../modules/sales/VEN04B_ACCESS_CORRECTION.md).
-STAGING/PROD não alterados; nenhuma atribuição automática a funcionários ou migração financeira.
+O administrador conserva as sete capacidades de Vendas. A
+[GG-04](../architecture/AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04)
+define os perfis operacionais Sales Manager e Sales Viewer, sem atribuições
+automáticas. [Histórico VEN-04B](../modules/sales/VEN04B_ACCESS_CORRECTION.md).
 
 **Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).
 

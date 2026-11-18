@@ -78,13 +78,12 @@ try {
   await expect(page.getByText("Carregando dashboard…", { exact: true })).toHaveCount(0);
   await page.goto("http://127.0.0.1:5173/admin/roles");
   const list = page.getByRole("list", { name: "Perfis de acesso", exact: true });
-  await expect(list.getByRole("listitem")).toHaveCount(9);
-  for (const name of ["Sales Manager", "Sales Operator"]) {
+  for (const name of ["Sales Manager", "Sales Viewer"]) {
     await expect(list.getByRole("button", { name: `Consultar ${name}`, exact: true })).toBeVisible();
     await expect(list.getByRole("button", { name: `Editar ${name}`, exact: true })).toHaveCount(0);
   }
   assert.equal(/VEN0[34]|ven03-/i.test(await list.innerText()), false);
-  manifest.checks.push("Auth/login UI sintético com Platform Administrator: Comercial, /sales, cadastro/edição/exclusão UI, /sales/dashboard; my_access global, D5-B sem manage; /admin/roles com 9 institucionais, Sales Manager/Operator protegidos.");
+  manifest.checks.push("Auth/login UI sintético com Platform Administrator: Comercial, /sales, cadastro/edição/exclusão UI, /sales/dashboard; my_access global, D5-B sem manage; /admin/roles com Sales Manager e Sales Viewer protegidos.");
   await context.close();
   console.log("Platform Administrator Auth/Playwright PASS");
 } finally {

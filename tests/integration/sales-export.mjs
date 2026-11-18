@@ -24,14 +24,16 @@ const permissions = ["sales.entry.read", "sales.dashboard.read", "sales.export.f
 let browser, server, phase = "setup";
 const must = r => { assert.equal(r.error, null, "RPC autorizada"); return r.data; };
 const fails = (r, code = "42501") => { assert.equal(r.data, null); assert.equal(r.error?.code, code); };
-async function user(name, grants, units) {
+async function user(name, grants, units, institutionalRole) {
   const email = `ven05a-${tag}-${name}@example.test`;
   const res = await fetch(`${config.API_URL}/auth/v1/admin/users`, { method: "POST", headers: {
     apikey: config.SERVICE_ROLE_KEY, Authorization: `Bearer ${config.SERVICE_ROLE_KEY}`, "Content-Type": "application/json",
   }, body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { display_name: `Pessoa sintética ${name}` } }) });
   assert.equal(res.status, 200, "Auth sintético no CI");
   const id = (await res.json()).id;
-  const role = (await db.query("insert into core.roles(key,name) values($1,$1) returning id", [`ven05a-${tag}-${name}`])).rows[0].id;
+  const role = (await (institutionalRole
+    ? db.query("select id from core.roles where key=$1 and system and active", [institutionalRole])
+    : db.query("insert into core.roles(key,name) values($1,$1) returning id", [`ven05a-${tag}-${name}`]))).rows[0].id;
   for (const p of grants) await db.query("insert into core.role_permissions values($1,$2)", [role, p]);
   for (const unit of units ?? [null]) await db.query("insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id) values($1,$2,$3,$4)", [id, role, unit ? "unit" : "global", unit]);
   const client = createClient(config.API_URL, config.ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -50,7 +52,7 @@ async function blocked(waiter, blocker) {
 try {
   await Promise.all([db.connect(), a.connect(), b.connect()]);
   await db.query("insert into core.units(id,code,name) values($1,$4,$7),($2,$5,'VEN05A B'),($3,$6,'VEN05A C')", [A, B, C, `V5-A-${tag}`, `V5-B-${tag}`, `V5-C-${tag}`, " \t=HYPERLINK(\"https://evil.test\") Á 😀"]);
-  await user("global", permissions, null); await user("unit", permissions, [A]); await user("two", permissions, [A, B]);
+  await user("global", [], null, "sales_viewer"); await user("unit", [], [A], "sales_viewer"); await user("two", permissions, [A, B]);
   await user("reader", ["sales.entry.read"], [A]); await user("dash", ["sales.dashboard.read", "sales.export.full", "sales.export.filtered"], [A]);
   await user("inactive", permissions, [A]); await user("revoked", permissions, [A]);
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [users.global.id]);
@@ -73,6 +75,13 @@ try {
   const stone = must(await rpc("unit", { p_mode: "filtered", p_from: "2026-09-01", p_to: "2026-09-30", p_method: "Stone" }));
   assert.equal(stone.total, "0.11"); assert.equal(stone.entry_total, "0.01"); assert.equal(stone.adjustment_total, "0.10");
   fails(await users.unit.client.schema("sales").from("entries").select(), "PGRST106");
+  const viewerRpc = (name, args) => users.unit.client.rpc(`sales_${name}`, args);
+  const [entry] = must(await viewerRpc("entries_list", { p_unit: A, p_method: "Stone" }));
+  const write = { p_date: "2026-09-01", p_unit: A, p_method: "Stone", p_amount: "0.02" };
+  const target = { p_id: entry.id, p_expected_version: entry.version };
+  fails(await viewerRpc("entry_create", write));
+  fails(await viewerRpc("entry_update", { ...write, ...target }));
+  fails(await viewerRpc("entry_delete", target));
 
   phase = "1100+ registros sem truncamento PostgREST";
   await db.query("insert into sales.entries(sale_date,unit_id,payment_method,amount,created_by) select date '1900-01-01'+n,$1,'Stone',0.01,$2 from generate_series(1,1100) n", [A, users.global.id]);
@@ -123,6 +132,8 @@ try {
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   phase = "Chromium — carregar consulta operacional";
   await page.getByRole("button", { name: "Exportar período filtrado", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Novo lançamento", exact: true }).isDisabled(), true);
+  assert.equal(await page.getByRole("button", { name: /^Editar |^Excluir / }).count(), 0);
   // Rascunho não confirmado: download ainda deve representar setembro/Stone.
   await page.locator('select[name="method"]').selectOption("PIX");
   phase = "Chromium — gerar e baixar XLSX";

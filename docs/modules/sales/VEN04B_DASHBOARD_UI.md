@@ -21,8 +21,10 @@ notebook, branch e PR. Baseline `origin/main` reconferida por fetch:
 VEN-00/01/02/03 integradas nas PRs #89/#90/#91/#92. A entrega original de UI não
 continha migration. A correção obrigatória anterior ao merge acrescenta
 `20261029180613_sales_institutional_roles.sql`: sete capacidades para o administrador,
-Sales Manager/Operator protegidos, sem atribuições automáticas nem mudança de RLS/RPC.
-[Composição, limpeza local e validação](VEN04B_ACCESS_CORRECTION.md).
+composição institucional protegida, sem atribuições automáticas nem mudança de RLS/RPC.
+A [GG-04](../../architecture/AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04)
+define os perfis operacionais vigentes, Sales Manager e Sales Viewer.
+[Histórico da correção VEN-04B](VEN04B_ACCESS_CORRECTION.md).
 
 ## Acesso e componentes
 
@@ -64,7 +66,7 @@ Shared e Core não receberam mudanças de contrato. A rota usa importação din�
 
 ```mermaid
 flowchart LR
-  P["Core: Platform Administrator / Sales Manager / Sales Operator"] --> A["Identidade ativa + composição explícita + escopo"]
+  P["Core: Platform Administrator / Sales Manager / Sales Viewer"] --> A["Identidade ativa + composição explícita + escopo"]
   A --> E["/sales: entrada conforme capacidade; query antiga preservada"]
   E --> O["/sales/entries: sales.entry.*"]
   E --> D

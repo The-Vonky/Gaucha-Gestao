@@ -35,8 +35,8 @@ select public.ven01_assert(
  'Catalogo de sete capacidades'
 );
 select public.ven01_assert(
- (select count(*)=16 from core.role_permissions rp where rp.permission_key like 'sales.%'),
- 'Composição institucional: administrador 7, gestor 7 e operador 2; sem atribuição automática'
+ (select count(*)=18 from core.role_permissions rp where rp.permission_key like 'sales.%'),
+ 'Composição institucional: administrador 7, gestor 7 e visualizador 4; sem atribuição automática'
 );
 select public.ven01_assert(
  (select count(*)=0 from pg_roles r where r.rolname like 'sales_%'),
