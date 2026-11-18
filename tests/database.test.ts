@@ -545,3 +545,57 @@ describe("PostgreSQL Core migration and RLS", { concurrent: false }, () => {
     expect(log.after_data.display_name).toBe("Beatriz Silva");
   });
 });
+
+describe("GG-05A • ensaio sintético de provisionamento", () => {
+  const target = "00000000-0000-0000-0000-000000000055";
+  it("desfaz a identidade quando o trigger falha e reconcilia repetição pelo mesmo UUID", async () => {
+    await db.exec("reset role; begin; select set_config('request.jwt.claim.sub','',true)");
+    try {
+      await db.exec("alter table core.profiles add constraint falha_sintetica check (display_name <> 'Falha GG05A')");
+      const create = (name: string) => db.query(
+        "insert into auth.users(id,email,raw_user_meta_data) values ($1,$2,jsonb_build_object('display_name',$3::text))",
+        [target, "gg05a@example.test", name],
+      );
+      await db.exec("savepoint antes_do_vinculo");
+      await expect(create("Falha GG05A")).rejects.toMatchObject({ code: "23514" });
+      await db.exec("rollback to antes_do_vinculo");
+      expect((await db.query("select id from auth.users where id=$1", [target])).rows).toHaveLength(0);
+      await db.exec("savepoint antes_do_perfil");
+      await expect(db.query("insert into core.profiles(id,display_name) values ($1,'Sintético')", [target]))
+        .rejects.toMatchObject({ code: "23503" });
+      await db.exec("rollback to antes_do_perfil");
+      await create("GG-05A");
+      await db.exec("savepoint resposta_perdida");
+      await expect(create("GG-05A")).rejects.toMatchObject({ code: "23505" });
+      await db.exec("rollback to resposta_perdida");
+      await login(ids.admin);
+      expect((await db.query("select id, active from core.user_directory('gg05a@example.test',true)")).rows)
+        .toEqual([{ id: target, active: true }]);
+      await login(target);
+      expect((await db.query("select * from core.my_access()")).rows).toEqual([]);
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+  it("preserva o único Platform Administrator nas operações sobre si mesmo e nega autopromoção", async () => {
+    await db.exec("reset role; begin");
+    try {
+      await login(ids.admin);
+      const assignment = (await db.query<{id: string; role_id: string}>(
+        "select a.id,a.role_id from core.user_role_assignments a join core.roles r on r.id=a.role_id where a.active and r.key='platform_administrator' and a.user_id=$1",
+        [ids.admin],
+      )).rows;
+      expect(assignment).toHaveLength(1);
+      expect((await db.query("update core.profiles set active=false where id=$1 returning id", [ids.admin])).rows).toEqual([]);
+      expect((await db.query("update core.user_role_assignments set active=false where id=$1 returning id", [assignment[0].id])).rows).toEqual([]);
+      expect(await check("admin.user.manage")).toBe(true);
+      await login(ids.empty);
+      await expect(db.query(
+        "insert into core.user_role_assignments(user_id,role_id,scope_type) values ($1,$2,'global')",
+        [ids.empty, assignment[0].role_id],
+      )).rejects.toMatchObject({ code: "42501" });
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+});

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { verifyProvisioning } from "./gg05a-provisioning.mjs";
+import { verifyPasswordLifecycle } from "./gg05b-password-lifecycle.mjs";
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
@@ -177,6 +179,17 @@ try {
   assert.equal(Number(post[0].revoked_assignment_count), 1);
   const after = must(await rpc("full", "unit_access_assignments", { p_unit: A }), "post revoke");
   assert.ok(!after.some((x) => x.user_id === ids.target));
+  if (process.env.GITHUB_ACTIONS === "true" && process.env.RUNNER_ENVIRONMENT === "github-hosted") {
+    phase = "GG-05A: ciclo supervisionado com identidades sintéticas";
+    await role("provision", ["admin.user.manage", "admin.unit.read"]);
+    await grant("full", "provision");
+    await verifyProvisioning({
+      config, operator: clients.full, target: clients.none, targetId: ids.none,
+      email: emails.none, password, roleId: roleIds.unit, unit: A, otherUnit: B,
+    });
+    phase = "GG-05B: contrato de senha e sessões do provedor";
+    await verifyPasswordLifecycle({ config, email: emails.none, targetId: ids.none });
+  }
   console.log("PASS Core governance + logs real JWT/PostgREST: anon, inactive, audience separation, scoped logs, guessed IDs, revocation");
 } catch (error) {
   console.error("Core JWT security matrix failed during: " + phase);
