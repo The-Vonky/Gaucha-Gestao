@@ -2106,7 +2106,9 @@ try {
       page.getByRole("button", { name: "Exportar Excel" }).click(),
     ]);
     assert.match(inspectionDownload.suggestedFilename(), /^auditoria-[a-f0-9-]+-\d+\.xlsx$/);
-    assert.deepEqual((await readExcelFile(await inspectionDownload.path())).map((sheet) => sheet.sheet), ["Resumo", "Checklist", "Secoes"]);
+    const inspectionSheets = await readExcelFile(await inspectionDownload.path());
+    assert.deepEqual(inspectionSheets.map((sheet) => sheet.sheet), ["Resumo", "Checklist", "Secoes", "Evidências"]);
+    assert.equal(inspectionSheets[3].data.length, 1, "Auditoria sem anexos mantém a aba Evidências somente com cabeçalho");
     // The history report lives on the unit's Histórico tab (D4).
     await page.goto(`${origin}/audit/units/${A}/historico`);
     await page.getByLabel("De", { exact: true }).fill("2026-09-20");

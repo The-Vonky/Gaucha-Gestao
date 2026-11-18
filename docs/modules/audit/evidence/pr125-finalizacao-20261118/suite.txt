@@ -1,0 +1,15 @@
+
+> test
+> vitest run --maxWorkers=2
+
+
+ RUN  v5.0.4 /home/bernardodev/projetos/Gaucha-Gestao
+
+
+ Test Files  82 passed (82)
+      Tests  1164 passed (1164)
+   Start at  09:20:44
+   Duration  161.22s (tests 90%, environment 6%, import 3%)
+
+    Isolate  82 workers spawned · ~380ms startup each (spawn + environment, per file)
+             at least ~15.21s faster with isolate: false — reuses workers across files instead of one per file

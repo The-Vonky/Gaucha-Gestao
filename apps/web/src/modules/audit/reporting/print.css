@@ -43,3 +43,14 @@
   .report-section h2 { break-after: avoid; }
   .report-section li { break-inside: avoid; }
 }
+
+.report-evidence { margin: 1rem 0; padding: .5rem; border: 1px solid #ccd3db; break-inside: avoid; page-break-inside: avoid; }
+.report-evidence figcaption { font-size: .85rem; margin-bottom: .5rem; overflow-wrap: anywhere; }
+.report-evidence img { display: block; width: auto; height: auto; max-width: 100%; max-height: 175mm; object-fit: contain; margin: auto; }
+.report-section li.report-has-evidence { break-inside: auto; }
+.report-image-status { padding: 1rem; color: #7a2600; background: white; }
+@media print {
+  .report-overlay[data-ready="false"] .report-page { display: none !important; }
+  .report-evidence img { max-width: 100%; max-height: 160mm; }
+  .report-evidence { break-inside: avoid-page; }
+}

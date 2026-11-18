@@ -1,8 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CLASSIFICATION_LABELS, formatScore, RESPONSE_LABELS } from "../scoring";
 import type { AuditReport, Counts, ReportInspection } from "./types";
+import type { ReportEvidence } from "./evidence";
 import "./print.css";
+const EMPTY_EVIDENCE: ReportEvidence[] = [];
 
 function date(value: string | null | undefined) {
   return value ? value.slice(0, 10).split("-").reverse().join("/") : "—";
@@ -16,7 +18,40 @@ function counts(c: Counts) {
 function status(i: ReportInspection) {
   return i.status === "draft" ? "Rascunho · resultado parcial" : "Finalizada";
 }
-export function PrintSurface({ report, onClose }: { report: AuditReport; onClose: () => void }) {
+export function PrintSurface({ report, onClose, evidence = EMPTY_EVIDENCE, authorize }: {
+  report: AuditReport; onClose: () => void; evidence?: ReportEvidence[]; authorize?: () => Promise<void>;
+}) {
+  const [images, setImages] = useState<Record<string, string>>({});
+  const [loaded, setLoaded] = useState<Set<string>>(new Set());
+  const [failure, setFailure] = useState("");
+  const loadedRef = useRef(new Set<string>());
+  const [printing, setPrinting] = useState(false);
+  const expected = evidence.filter(e => e.image).length;
+  const ready = !failure && loaded.size === expected;
+  useEffect(() => {
+    const urls = Object.fromEntries(evidence.filter(e => e.image).map(e => [e.id, URL.createObjectURL(e.image!.blob)]));
+    setImages(urls); loadedRef.current = new Set(); setLoaded(new Set()); setFailure("");
+    const timeout = expected ? setTimeout(() => {
+      if (loadedRef.current.size !== expected) setFailure("Falha ao carregar imagens. Feche a prévia e tente novamente.");
+    }, 30_000) : undefined;
+    const expiry = expected ? setTimeout(() => {
+      setFailure("A prévia expirou. Feche o relatório e prepare novamente para imprimir.");
+      Object.values(urls).forEach(url => URL.revokeObjectURL(url)); setImages({});
+    }, 60_000) : undefined;
+    return () => { clearTimeout(timeout); clearTimeout(expiry); Object.values(urls).forEach(url => URL.revokeObjectURL(url)); };
+  }, [evidence, expected]);
+  useEffect(() => {
+    if (!expected) return;
+    window.addEventListener("afterprint", onClose);
+    return () => window.removeEventListener("afterprint", onClose);
+  }, [expected, onClose]);
+  async function printReport() {
+    if (!ready || printing) return;
+    setPrinting(true);
+    try { await authorize?.(); window.print(); }
+    catch { setFailure("O acesso ou os dados mudaram. Feche a prévia e gere o relatório novamente."); }
+    finally { setPrinting(false); }
+  }
   const close = useRef<HTMLButtonElement>(null);
   const print = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -24,7 +59,7 @@ export function PrintSurface({ report, onClose }: { report: AuditReport; onClose
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
       if (event.key === "Tab") {
-        const first = close.current, last = print.current;
+        const first = close.current, last = print.current?.disabled ? close.current : print.current;
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }
@@ -32,11 +67,12 @@ export function PrintSurface({ report, onClose }: { report: AuditReport; onClose
     document.addEventListener("keydown", escape);
     return () => document.removeEventListener("keydown", escape);
   }, [onClose]);
-  return createPortal(<div className="report-overlay" role="dialog" aria-modal="true" aria-label="Prévia de impressão">
+  return createPortal(<div className="report-overlay" data-ready={ready} role="dialog" aria-modal="true" aria-label="Prévia de impressão">
     <div className="report-actions">
       <button ref={close} onClick={onClose}>Fechar relatório</button>
-      <button ref={print} className="primary" onClick={() => window.print()}>Imprimir / Salvar como PDF</button>
+      <button ref={print} className="primary" disabled={!ready || printing} onClick={() => void printReport()}>Imprimir / Salvar como PDF</button>
     </div>
+    {(failure || !ready) && <p className="report-image-status" role="alert">{failure || `Carregando imagens para impressão: ${loaded.size}/${expected}…`}</p>}
     <article className="report-page">
       <header className="report-head">
         <p>Gaúcha Gestão · Qualidade · Auditorias</p>
@@ -57,10 +93,20 @@ export function PrintSurface({ report, onClose }: { report: AuditReport; onClose
         {report.sections.map((section) => <section key={section.key} className="report-section">
           <h2>{section.position}. {section.name}</h2>
           <p>{counts(section.counts)} · Conformidade {formatScore(section.score)} · Seção {section.complete ? "completa" : "em andamento"}</p>
-          <ol>{section.items.map((item) => <li key={item.key}>
+          <ol>{section.items.map((item) => <li key={item.key} className={evidence.some(e => e.itemKey === item.key) ? "report-has-evidence" : undefined}>
             <strong>{item.number}. {item.text}</strong>
             <p>Resposta: {item.response ? `${item.response} · ${RESPONSE_LABELS[item.response]}` : "Sem resposta"}</p>
             {item.observation && <p className="report-note">Observação: {item.observation}</p>}
+            {evidence.filter(e => e.itemKey === item.key).map(e => <figure className="report-evidence" key={e.id}>
+              <figcaption><strong>Critério {item.number} · {item.text}</strong><br />{e.name} · {e.originalName}<br />
+                Anexado em {instant(e.uploadedAt)} por {e.uploadedBy}</figcaption>
+              {e.image && images[e.id] ? <img src={images[e.id]} alt={`Critério ${item.number} · ${e.name}`} width={e.image.width} height={e.image.height}
+                onLoad={event => {
+                  if (!event.currentTarget.naturalWidth) { setFailure(`Falha na imagem do critério ${item.number}. Feche e tente novamente.`); return; }
+                  loadedRef.current.add(e.id); setLoaded(new Set(loadedRef.current));
+                }} onError={() => setFailure(`Falha na imagem do critério ${item.number}, ${e.name}. Feche e tente novamente.`)} />
+                : !e.image && <p>Anexo não fotográfico · {e.contentType} · somente metadados</p>}
+            </figure>)}
           </li>)}</ol>
         </section>)}
       </> : <>
