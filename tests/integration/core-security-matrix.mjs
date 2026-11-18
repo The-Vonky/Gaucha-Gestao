@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { verifyProvisioning } from "./gg05a-provisioning.mjs";
+import { verifyPasswordLifecycle } from "./gg05b-password-lifecycle.mjs";
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
@@ -186,6 +187,8 @@ try {
       config, operator: clients.full, target: clients.none, targetId: ids.none,
       email: emails.none, password, roleId: roleIds.unit, unit: A, otherUnit: B,
     });
+    phase = "GG-05B: contrato de senha e sessões do provedor";
+    await verifyPasswordLifecycle({ config, email: emails.none, targetId: ids.none });
   }
   console.log("PASS Core governance + logs real JWT/PostgREST: anon, inactive, audience separation, scoped logs, guessed IDs, revocation");
 } catch (error) {
