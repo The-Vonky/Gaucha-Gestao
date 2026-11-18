@@ -233,7 +233,7 @@ Resumo de docs/modules/audit/QUALITY_ACCEPTANCE_V1.md; status conforme a matriz 
 | P4   | iOS Safari — evidências do checklist (JPEG esperado, HEIC rejeitado com clareza)                        | PENDING |
 | P5   | Android Chrome — evidências de plano de ação (anexar, baixar, remover, verificar)                       | PENDING |
 | P6   | iOS Safari — mesmo contrato de P5 com seletor nativo                                                    | PENDING |
-| P7   | Android + iOS — XLSX de inspeção (abas Resumo/Checklist/Secoes)                                         | PENDING |
+| P7   | Android + iOS — XLSX de inspeção (abas Resumo/Checklist/Secoes/Evidências, imagens offline)                                         | PENDING |
 | P8   | Android + iOS — XLSX de histórico (abas Historico/Metadados, filtros)                                   | PENDING |
 | P9   | Android + iOS — impressão e PDF de inspeção e histórico                                                 | PENDING |
 | O1   | RPO/RTO e retenções definidos e medidos                                                                 | PARTIAL |

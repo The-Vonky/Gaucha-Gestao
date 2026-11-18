@@ -54,7 +54,7 @@ Cada execução deve registrar: data/hora, aparelho, SO, navegador/versão, usu�
 | P4 | iOS Safari — Checklist Evidence | câmera/galeria/arquivos; JPEG esperado quando o seletor transpõe foto, HEIC rejeitado claramente quando chegar; download/removal | PENDING |
 | P5 | Android Chrome — Action Plan Evidence | execução e verificação: anexar, baixar, remover, verificar/reverificar com conjunto mostrado | PENDING |
 | P6 | iOS Safari — Action Plan Evidence | mesmo contrato de P5 com seletor nativo e download real | PENDING |
-| P7 | Android + iOS — XLSX de inspeção | salvar/abrir arquivo, nomes seguros, abas Resumo/Checklist/Secoes e conteúdo legível | PENDING |
+| P7 | Android + iOS — XLSX de inspeção | salvar/abrir arquivo, nomes seguros, abas Resumo/Checklist/Secoes/Evidências, imagens offline e conteúdo legível | PENDING |
 | P8 | Android + iOS — XLSX de histórico | salvar/abrir arquivo, abas Historico/Metadados, filtros e conteúdo legível | PENDING |
 | P9 | Android + iOS — impressão / salvar-compartilhar PDF | inspeção e histórico completos, sem chrome da aplicação, sem clipping crítico; registrar limitações do navegador | PENDING |
 
