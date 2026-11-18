@@ -1,0 +1,50 @@
+[
+  {
+    "file": "auditoria-v1-0.pdf",
+    "pages": 3,
+    "images": 0,
+    "uniqueImageObjects": 0
+  },
+  {
+    "file": "auditoria-v1-1.pdf",
+    "pages": 4,
+    "images": 1,
+    "uniqueImageObjects": 1
+  },
+  {
+    "file": "auditoria-v1-5.pdf",
+    "pages": 7,
+    "images": 5,
+    "uniqueImageObjects": 5
+  },
+  {
+    "file": "auditoria-v1-100.pdf",
+    "pages": 100,
+    "images": 100,
+    "uniqueImageObjects": 100
+  },
+  {
+    "file": "auditoria-v2-0.pdf",
+    "pages": 3,
+    "images": 0,
+    "uniqueImageObjects": 0
+  },
+  {
+    "file": "auditoria-v2-1.pdf",
+    "pages": 4,
+    "images": 1,
+    "uniqueImageObjects": 1
+  },
+  {
+    "file": "auditoria-v2-5.pdf",
+    "pages": 7,
+    "images": 5,
+    "uniqueImageObjects": 5
+  },
+  {
+    "file": "auditoria-v2-100.pdf",
+    "pages": 100,
+    "images": 100,
+    "uniqueImageObjects": 100
+  }
+]
