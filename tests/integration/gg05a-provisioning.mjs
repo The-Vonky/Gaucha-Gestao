@@ -30,6 +30,29 @@ export async function verifyProvisioning({ config, operator, target, targetId, e
   assert.ok(["email_exists", "user_already_exists"].includes(duplicate.error?.code), "duplicata identificada pelo Auth");
   const grant = { user_id: targetId, role_id: roleId, scope_type: "unit", unit_id: unit };
   const assign = () => core.from("user_role_assignments").insert(grant);
+  const operatorSession = data(await operator.auth.getSession(), "sessão do operador").session;
+  async function disconnectedGrant(deliver) {
+    let committed = false;
+    const offline = createClient(config.API_URL, config.ANON_KEY, {
+      ...options,
+      accessToken: async () => operatorSession.access_token,
+      global: {
+        fetch: async (url, init) => {
+          if (deliver) {
+            const response = await fetch(url, init);
+            committed = response.status === 201;
+            await response.arrayBuffer();
+          }
+          throw new TypeError("Falha de rede sintética");
+        },
+      },
+    });
+    const result = await offline.schema("core").from("user_role_assignments").insert(grant);
+    assert.ok(result.error && result.status === 0, "cliente perdeu a resposta");
+    assert.equal(committed, deliver, "ponto de falha no transporte");
+  }
+  await disconnectedGrant(false);
+  assert.deepEqual(data(await core.rpc("user_access_assignments", { p_user: targetId }), "falha antes do envio"), []);
   // Duas requisições para o mesmo pedido; reconciliar sem confiar na resposta vencedora.
   const responses = await Promise.all([assign(), assign()]);
   assert.equal(responses.filter(r => !r.error).length, 1, "grant único");
@@ -45,7 +68,12 @@ export async function verifyProvisioning({ config, operator, target, targetId, e
   assert.deepEqual(data(await revoke(), "versão já consumida"), []);
   assert.deepEqual(await visibleUnits(), []);
   assert.deepEqual(data(await sameToken.rpc("my_access"), "JWT anterior à revogação"), []);
-  data(await assign(), "nova atribuição sintética");
+  await disconnectedGrant(true);
+  const reconciled = data(await core.rpc("user_access_assignments", { p_user: targetId }), "falha após commit");
+  assert.equal(reconciled.length, 1);
+  assert.ok(reconciled[0].assignment_active && reconciled[0].role_id === roleId &&
+    reconciled[0].unit_id === unit && reconciled[0].scope_type === "unit");
+  assert.deepEqual(await visibleUnits(), [{ id: unit }]);
   assert.equal(data(await core.from("profiles").update({ active: false }).eq("id", targetId)
     .eq("version", directory[0].version).select("id"), "bloquear").length, 1);
   assert.deepEqual(await visibleUnits(), []);
