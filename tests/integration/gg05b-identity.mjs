@@ -20,11 +20,16 @@ const tag = randomUUID().slice(0, 8);
 const uuid = () => randomUUID();
 const logStart = new Date().toISOString();
 const secrets = [];
-const password = () => {
-  const value = `Gg!9-${uuid()}`;
+const password = (length = 41) => {
+  const value = `Gg!9-${uuid()}`.slice(0, length);
   secrets.push(value);
   return value;
 };
+function assertTemporaryPassword(value) {
+  assert.ok(/^[A-HJ-NP-Zabcdefghijkmnpqrstuvwxyz2-9!@#$%&*+?]{22}$/.test(value)
+    && /[A-Z]/.test(value) && /[a-z]/.test(value) && /[2-9]/.test(value)
+    && /[!@#$%&*+?]/.test(value), "Formato da senha temporária");
+}
 const email = (name) => `gg05b-${name}-${tag}@example.test`;
 const actors = [uuid(), uuid()];
 const units = [uuid(), uuid()];
@@ -172,14 +177,19 @@ try {
     }, 201);
     assert.match(employee.userId, /^[a-f0-9-]{36}$/);
     identities.push(employee.userId);
-    assert.ok(employee.temporaryPassword.length >= 24);
+    assertTemporaryPassword(employee.temporaryPassword);
     const pending = await login("employee", employee.temporaryPassword);
     assert.equal((await (await identity("/me", pending.access_token)).json()).passwordChangeRequired, true);
     await assertBarriers(pending.access_token, file(0));
     const pendingRefresh = await (await grant("refresh_token", { refresh_token: pending.refresh_token })).json();
     await assertBarriers(pendingRefresh.access_token, file(0));
 
-    const definitive = password();
+    const short = password(7);
+    const tooShort = await command("/me/password", pendingRefresh.access_token, {
+      password: short, confirmation: short, currentPassword: employee.temporaryPassword,
+    }, 400);
+    assert.equal(tooShort.code, "invalid_password");
+    const definitive = password(8);
     const wrong = await command("/me/password", pendingRefresh.access_token, {
       password: definitive, confirmation: definitive, currentPassword: password(),
     }, 422);
@@ -203,6 +213,8 @@ try {
     }, 201);
     assert.match(reader.userId, /^[a-f0-9-]{36}$/);
     identities.push(reader.userId);
+    assertTemporaryPassword(reader.temporaryPassword);
+    assert.ok(reader.temporaryPassword !== employee.temporaryPassword);
     const readerPending = await login("reader", reader.temporaryPassword);
     const readerDefinitive = password();
     await change(readerPending.access_token, reader.temporaryPassword, readerDefinitive);
@@ -214,6 +226,7 @@ try {
     const reset = await command(`/users/${employee.userId}/password-reset`, admin, {
       version: version(employee.userId), verified: true,
     }, 200);
+    assertTemporaryPassword(reset.temporaryPassword);
     assert.ok(reset.temporaryPassword !== employee.temporaryPassword);
     await assertBarriers(first, file(0));
     await grant("refresh_token", { refresh_token: admitted.refresh_token }, [400]);
@@ -300,7 +313,7 @@ try {
       phase = "interface: login e botão de cadastro";
       await operatorPage.goto(`${origin}/admin/users`);
       await signIn(operatorPage, "operador", adminSecret);
-      await operatorPage.getByRole("button", { name: "Novo usuário", exact: true }).click();
+      await operatorPage.locator("header.page-title").getByRole("button", { name: "Novo usuário", exact: true }).click();
       phase = "interface: envio e temporária";
       const form = operatorPage.getByRole("dialog", { name: "Novo usuário" });
       await form.getByLabel("Nome completo").fill("Funcionário sintético pelo navegador");
@@ -310,6 +323,7 @@ try {
       const modal = operatorPage.getByRole("dialog", { name: "Senha temporária" });
       const temporary = await modal.getByRole("textbox").inputValue();
       secrets.push(temporary);
+      assertTemporaryPassword(temporary);
       await modal.getByRole("button", { name: "Concluir" }).click();
       assert.equal(await operatorPage.getByRole("dialog", { name: "Senha temporária" }).count(), 0);
 
@@ -321,12 +335,32 @@ try {
       await heading.waitFor();
       await employeePage.reload();
       await heading.waitFor();
+      const newPassword = employeePage.getByLabel("Nova senha", { exact: true });
+      const confirmation = employeePage.getByLabel("Confirme a nova senha", { exact: true });
+      assert.equal(await newPassword.getAttribute("minlength"), "8");
+      assert.equal(await confirmation.getAttribute("minlength"), "8");
+      const exit = employeePage.getByRole("button", { name: "Sair", exact: true });
+      const submit = employeePage.getByRole("button", { name: "Alterar senha e sair" });
+      for (const width of [1024, 320]) {
+        await employeePage.setViewportSize({ width, height: 768 });
+        const fields = await employeePage.locator('input[type="password"]').evaluateAll((inputs) =>
+          inputs.map((input) => ({ x: input.getBoundingClientRect().x, width: input.getBoundingClientRect().width })),
+        );
+        assert.equal(fields.length, 3);
+        assert.deepEqual(fields, [fields[0], fields[0], fields[0]]);
+        const [left, right] = await Promise.all([exit.boundingBox(), submit.boundingBox()]);
+        assert.ok(left && right && left.y === right.y && left.height === right.height
+          && left.x === fields[0].x && right.x + right.width === fields[0].x + fields[0].width
+          && left.x + left.width < right.x && right.x + right.width <= width);
+      }
       phase = "interface: troca e novo login";
-      const secret = password();
+      const secret = password(8);
       await employeePage.locator('input[name="current_password"]').fill(temporary);
-      await employeePage.locator('input[name="password"]').fill(secret);
-      await employeePage.locator('input[name="confirmation"]').fill(secret);
-      await employeePage.getByRole("button", { name: "Alterar senha e sair" }).click();
+      await newPassword.pressSequentially(secret.slice(0, 7));
+      assert.ok(await newPassword.evaluate((input) => input.validity.tooShort));
+      await newPassword.fill(secret);
+      await confirmation.fill(secret);
+      await submit.click();
       await employeePage.getByRole("heading", { name: "Entrar na plataforma" }).waitFor();
       await signIn(employeePage, "browser", secret);
       await employeePage.getByText("Acesso não autorizado", { exact: true }).waitFor();

@@ -64,10 +64,11 @@ export function UsersPage() {
         eyebrow="Administração"
         title="Usuários"
         description="Identidades corporativas, situação e atribuições de acesso."
-      />
-      {auth.identity?.provision && (
-        <button className="primary" type="button" onClick={() => setRegistering(true)}>Novo usuário</button>
-      )}
+      >
+        {auth.identity?.provision ? (
+          <button className="primary" type="button" onClick={() => setRegistering(true)}>Novo usuário</button>
+        ) : null}
+      </PageTitle>
       <p className="muted adm-intro">
         Contas são criadas ou convidadas pela equipe responsável pelos acessos.
         Ativar uma conta não restaura suas atribuições revogadas.

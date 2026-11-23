@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import pg from "pg";
 import { proxyStorage, storagePath } from "./storage.mjs";
@@ -65,9 +65,30 @@ function emailAddress(value) {
 }
 
 function passwordInput(value, minimum) {
-  if (typeof value !== "string" || value.includes("\0") || value.length < minimum
-      || Buffer.byteLength(value) > 72) throw reject(400, "invalid_password");
+  if (typeof value !== "string" || value.includes("\0") || Buffer.byteLength(value) > 72
+      || [...value].length < minimum) throw reject(400, "invalid_password");
   return value;
+}
+
+const temporaryPasswordClasses = [
+  "ABCDEFGHJKLMNPQRSTUVWXYZ",
+  "abcdefghijkmnpqrstuvwxyz",
+  "23456789",
+  "!@#$%&*+?",
+];
+const temporaryPasswordAlphabet = temporaryPasswordClasses.join("");
+
+function generateTemporaryPassword() {
+  // Amostragem uniforme entre as combinações com as quatro classes: mais de 128 bits.
+  let password;
+  do {
+    password = Array.from({ length: 22 }, () =>
+      temporaryPasswordAlphabet[randomInt(temporaryPasswordAlphabet.length)],
+    ).join("");
+  } while (!temporaryPasswordClasses.every((characters) =>
+    [...password].some((character) => characters.includes(character)),
+  ));
+  return password;
 }
 
 async function authCall(method, path, token, body) {
@@ -216,7 +237,7 @@ async function credentialCommand(request, token, identity, verb, target) {
   if (verb === "reset" && (!Number.isInteger(body.version) || body.version < 1
       || body.verified !== true || identity.user === target)) throw reject(403);
   if (verb === "change") {
-    passwordInput(body.password, 12);
+    passwordInput(body.password, 8);
     passwordInput(body.currentPassword, 1);
     if (body.password !== body.confirmation || body.password === body.currentPassword) {
       throw reject(400, "invalid_password");
@@ -233,7 +254,7 @@ async function credentialCommand(request, token, identity, verb, target) {
   const finish = (confirmation) => scalar(
     "select private.identity_finish($1,$2,$3,$4,$5) as result", [user, session, operation, target, confirmation],
   );
-  const temporary = verb === "change" ? null : `Gg!9-${randomBytes(24).toString("base64url")}`;
+  const temporary = verb === "change" ? null : generateTemporaryPassword();
   try {
     let result;
     if (verb === "create") {

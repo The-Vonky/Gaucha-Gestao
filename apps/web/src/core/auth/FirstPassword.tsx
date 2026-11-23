@@ -1,7 +1,10 @@
 import { useRef, useState, type FormEvent } from "react";
 import { client } from "../client";
 import { Notice } from "../../shared/ui";
-import { defineEmployeePassword, identityErrorMessage } from "./identity";
+import {
+  defineEmployeePassword, identityErrorMessage, MAX_EMPLOYEE_PASSWORD_BYTES, MIN_EMPLOYEE_PASSWORD_LENGTH,
+} from "./identity";
+import "./FirstPassword.css";
 
 export function FirstPassword({ token }: { token: string }) {
   const [busy, setBusy] = useState(false);
@@ -45,29 +48,38 @@ export function FirstPassword({ token }: { token: string }) {
   }
 
   return (
-    <main className="center-state">
-      <h1>Defina sua senha</h1>
-      <p>Use sua senha temporária e escolha uma senha definitiva com pelo menos 12 caracteres.</p>
+    <main className="center-state first-password">
+      <header>
+        <h1>Defina sua senha</h1>
+        <p>Use sua senha temporária e escolha uma senha definitiva com pelo menos {MIN_EMPLOYEE_PASSWORD_LENGTH} caracteres.</p>
+      </header>
       {error && <Notice error>{error}</Notice>}
       {finished ? (
-        <Notice>Senha alterada. Entre novamente com a senha definitiva.</Notice>
+        <>
+          <Notice>Senha alterada. Entre novamente com a senha definitiva.</Notice>
+          <div className="first-password-actions">
+            <button className="danger" disabled={busy} type="button" onClick={() => void leave()}>Sair</button>
+          </div>
+        </>
       ) : (
         <form onSubmit={(event) => void submit(event)}>
           <fieldset disabled={busy}>
             <label>Senha temporária
-              <input required maxLength={72} name="current_password" type="password" autoComplete="current-password" />
+              <input required maxLength={MAX_EMPLOYEE_PASSWORD_BYTES} name="current_password" type="password" autoComplete="current-password" />
             </label>
             <label>Nova senha
-              <input required minLength={12} maxLength={72} name="password" type="password" autoComplete="new-password" />
+              <input required minLength={MIN_EMPLOYEE_PASSWORD_LENGTH} maxLength={MAX_EMPLOYEE_PASSWORD_BYTES} name="password" type="password" autoComplete="new-password" />
             </label>
             <label>Confirme a nova senha
-              <input required minLength={12} maxLength={72} name="confirmation" type="password" autoComplete="new-password" />
+              <input required minLength={MIN_EMPLOYEE_PASSWORD_LENGTH} maxLength={MAX_EMPLOYEE_PASSWORD_BYTES} name="confirmation" type="password" autoComplete="new-password" />
             </label>
-            <button className="primary" type="submit">{busy ? "Alterando…" : "Alterar senha e sair"}</button>
+            <div className="first-password-actions">
+              <button className="danger" type="button" onClick={() => void leave()}>Sair</button>
+              <button className="primary" type="submit">{busy ? "Alterando…" : "Alterar senha e sair"}</button>
+            </div>
           </fieldset>
         </form>
       )}
-      <button className="ghost" disabled={busy} type="button" onClick={() => void leave()}>Sair</button>
     </main>
   );
 }
