@@ -77,17 +77,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState({ ...initial, session, identity, loading: false });
         return;
       }
+      const profileQuery = database()
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      const grantsQuery = database().rpc("my_access");
+      if (identityEnabled) {
+        const authorization = `Bearer ${session.access_token}`;
+        profileQuery.setHeader("Authorization", authorization);
+        grantsQuery.setHeader("Authorization", authorization);
+      }
       const [
         { data: profile, error: profileError },
         { data: grants, error: accessError },
-      ] = await Promise.all([
-        database()
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .maybeSingle(),
-        database().rpc("my_access"),
-      ]);
+      ] = await Promise.all([profileQuery, grantsQuery]);
       if (profileError || accessError) throw profileError ?? accessError;
       if (request === sequence.current) {
         privateImages.setAccess(profile?.active ? accessKey(session.user.id, true, grants ?? []) : "");
