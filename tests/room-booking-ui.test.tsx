@@ -114,6 +114,7 @@ it("gestor vê fila; observações com HTML são texto inerte", async () => {
   const { container } = render(<RoomsPage />);
   await screen.findByText("<script>executar()</script>");
   expect(container.querySelector("script")).toBeNull();
+  expect(screen.queryByRole("group", { name: "Modo de atuação" })).toBeNull();
   await userEvent
     .setup()
     .click(screen.getByRole("button", { name: "Editar reserva" }));
