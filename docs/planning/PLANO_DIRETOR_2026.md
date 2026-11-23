@@ -1,5 +1,7 @@
 # Gaúcha Gestão — Plano Diretor 2026
 
+> **Adendo de status — 23/11/2026:** a [matriz GG-01–GG-15](GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md#51-estado-atual-das-15-ggs--23-11-2026) registra GG-04 e GG-05 integradas e homologadas no DEV ([#126](https://github.com/The-Vonky/Gaucha-Gestao/pull/126) e [#127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127)) e GG-08–12 integradas. Menções de outubro à ausência de serviço privilegiado no código são **fotografia histórica**. Não houve GO de piloto nem promoção comprovada do HEAD `df113c2` à C30; recuperação, backups, alertas e gates continuam necessários. **PROD NO-GO.**
+
 > **Evidência posterior — 30/10/2026, sem revisão dos gates deste Plano Diretor v1.3:** STAGING na C30 passou a ter acesso HTTPS de testes por [Cloudflare Tunnel](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) em `teste.gauchagestao.online`. Operador validou login, auditoria preservada, fotos, nova auditoria e download em PC/celular. **Não** foram demonstrados backup off-site, restauração independente, matriz negativa de permissões, políticas Cloudflare Access, ensaio de carga ou aceite P1–P9/O1–O8. A proposta de **Workers Static Assets + R2 para PROD** continua futura. **PROD NO-GO**.
 
 Plano diretor técnico, financeiro e de implantação · **Versão 1.3** · 15 de outubro de 2026
