@@ -103,7 +103,6 @@ export function RoomHeroBanner({
             ) : summary.next_start ? dateTime(summary.next_start) : "Nenhuma prevista"}
           </dd>
         </div>
-
       </dl>
     </header>
   );

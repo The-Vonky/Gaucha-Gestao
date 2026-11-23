@@ -64,7 +64,8 @@ try {
         assert.equal(await modal.evaluate((dialog) => dialog.contains(document.activeElement)), true, "Foco contido no modal");
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `Sem overflow ${role} ${width}`);
-      await page.screenshot({ path: `${artifacts}/${role}-${width}-modal.png`, fullPage: true });
+      assert.equal(await modal.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth), true, `Modal sem overflow interno ${role} ${width}`);
+      await page.screenshot({ path: `${artifacts}/${role}-${width}-modal.png` });
       await page.keyboard.press("Escape");
       await expect(modal).toHaveCount(0);
       await expect(trigger).toBeFocused();
@@ -80,6 +81,7 @@ try {
         await expect(page.getByRole("dialog", { name: "Reserva direta" })).toBeVisible();
         await page.keyboard.press("Escape");
       }
+      await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
       await page.screenshot({ path: `${artifacts}/${role}-${width}.png`, fullPage: true });
     }
     empty = true;

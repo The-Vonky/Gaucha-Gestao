@@ -164,9 +164,15 @@
 }
 .room-form-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 1rem;
+}
+.room-form-grid > label,
+.room-form-grid input,
+.room-form-grid textarea {
+  min-width: 0;
+  max-width: 100%;
 }
 .room-wide {
   grid-column: 1 / -1;
@@ -209,7 +215,7 @@
     grid-template-columns: 1fr;
   }
   .room-form-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .room-form-grid > label:first-child {
     grid-column: 1 / -1;

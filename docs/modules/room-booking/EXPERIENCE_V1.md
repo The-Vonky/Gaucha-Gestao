@@ -223,3 +223,8 @@ auditoria e objetos preservados. A suíte completa no sandbox teve 1.192 PASS e
 resultado conclusivo. A homologação humana desta nova apresentação e o aceite de
 merge permanecem pendentes; o relato de homologação anterior da PR #129 refere-se
 à funcionalidade antes deste refinamento.
+
+A inspeção visual em 320 px também verificou os campos nativos de data/hora:
+colunas e campos do formulário têm largura mínima zero para não extrapolar o
+modal. O smoke exige `dialog.scrollWidth <= dialog.clientWidth`, além de conferir
+a largura da página, evitando aprovar campos cortados dentro do diálogo.
