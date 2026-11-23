@@ -1,5 +1,7 @@
 # GG-05B · D01 · Cadastro administrativo e ciclo de senhas
 
+> **Adendo de 23/11/2026 (AG-D5-C):** a criação segura aceita excepcionalmente os papéis globais `room_booking_manager` e `room_booking_requester` com `unitId = sectorId = null`. A interface, o serviço de identidade e `private.identity_can_assign` validam a lista fechada; outros papéis globais/administrativos seguem proibidos. A implementação original da PR #127 continua registrada abaixo como fotografia histórica. [Contrato vigente da correção](../modules/room-booking/D5C_ADMIN_MODES.md).
+
 **D01 aprovada para implementação no DEV em 23/11/2026.** A senha temporária permanece válida até a troca, substituição ou bloqueio. O GoTrue mantém a credencial e o componente interno do Core, atrás do Kong, controla a admissão da sessão. A implantação fora do DEV, a recuperação administrativa emergencial e o piloto dependem de decisões próprias. A descrição da base e os casos de aceite abaixo preservam o contexto do desenho de 18/11. [Registro D01](../planning/DECISION_REGISTER.md) · [execução e evidências GG-05B](../operations/GG_05B_IDENTIDADE_DEV.md).
 
 ## O que já existe
