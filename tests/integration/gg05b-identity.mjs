@@ -508,6 +508,10 @@ try {
       assert.ok([200, 204].includes(result.status));
     }
     cleanupPhase = "Core";
+    const fixtureAudit = `actor_user_id in (${userList})
+      or entity_id in (${userList},${unitList}) or unit_id in (${unitList})
+      or (entity_type = 'user_role_assignments'
+        and (before_data->>'user_id' in (${userList}) or after_data->>'user_id' in (${userList})))`;
     sql(`begin;
       -- A trilha normal guarda a unidade em uma FK. Suspende o trigger somente
       -- na transação que remove as duas unidades desta fixture.
@@ -518,8 +522,7 @@ try {
       delete from private.identity_operators where user_id in (${userList});
       delete from private.identity_credentials where user_id in (${userList});
       delete from private.identity_operations where target_id in (${userList}) or actor_id in (${userList});
-      delete from core.system_audit_log where actor_user_id in (${userList})
-        or entity_id in (${userList},${unitList}) or unit_id in (${unitList});
+      delete from core.system_audit_log where ${fixtureAudit};
       set constraints all immediate;
       delete from core.units where id in (${unitList});
       alter table core.units enable trigger record_change;
@@ -532,7 +535,8 @@ try {
       assert.ok([200, 204, 404].includes(result.status));
     }
     assert.equal(sql(`select count(*) from auth.users where id in (${userList})`), "0");
-    console.log("Fixtures GG-05B removidas e ausência das identidades confirmada.");
+    assert.equal(sql(`select count(*) from core.system_audit_log where ${fixtureAudit}`), "0");
+    console.log("Fixtures GG-05B removidas e ausência das identidades e de sua trilha confirmada.");
   } catch {
     console.error(`A limpeza verificada das fixtures GG-05B falhou na etapa ${cleanupPhase}.`);
     process.exitCode = 1;
