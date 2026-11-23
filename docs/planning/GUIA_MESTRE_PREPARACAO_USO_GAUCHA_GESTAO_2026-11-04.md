@@ -7,6 +7,8 @@
 **Classificação:** documento de planejamento, acompanhamento e orientação; **não** é autorização para implantar em produção, alterar ambientes persistentes ou executar operações privilegiadas.  
 **Estado-base para uso produtivo:** **PROD NO-GO**, até fechamento e aceite dos requisitos aplicáveis.
 
+> **Atualização de acompanhamento — 23/11/2026:** a versão-base de 04/11 permanece como histórico. A [matriz atual das 15 GGs](#51-estado-atual-das-15-ggs--23-11-2026) foi reconciliada com a `main` no SHA `df113c2532b5560d96ae8d7e6e34529a35e0b1f7`. Integração à `main`, homologação no notebook e implantação na C30 são evidências distintas.
+
 > **Propósito deste documento.** Reunir a análise dos cuidados finais levantados pelo responsável, registrar o estado verificável do projeto e estabelecer um método de trabalho para que o assistente atue como guia técnico no desenvolvimento, na preparação do servidor, na homologação e na liberação gradual. Este documento deve ser consultado junto com o código, os ADRs e os contratos canônicos atualizados, não em substituição a eles.
 
 ---
@@ -142,6 +144,30 @@ Além do piloto, exige fechamento dos gates do Plano Diretor, aceite físico/ope
 | **GG-14** | Monitoramento e observabilidade | **P0 para operação real** | Host e arquitetura alvo | Alertas para host, disco, serviços, banco, storage, túnel e falha do backup; responsáveis sabem como reagir. |
 | **GG-15** | Homologação e autorização do piloto | **P0 final** | P0 aplicáveis e funcionalidades do piloto | Aceites funcionais/operacionais registrados; público, limites, suporte e GO do piloto assinados pelo responsável. |
 
+### 5.1. Estado atual das 15 GGs — 23/11/2026
+
+**Recorte:** fotografia de desenvolvimento e inventário na `main` (`df113c2`), confrontada com PRs, runbooks e homologações comunicadas pelo mantenedor. **7 integradas, 3 parciais e 5 em aberto.** Nenhuma delas recebe GO de piloto por essa classificação.
+
+| GG e entrega | Estado | Evidência e limite |
+| --- | --- | --- |
+| **GG-01 — Inventário real de ambientes** | **Parcial** | [PR #104](https://github.com/The-Vonky/Gaucha-Gestao/pull/104): inventário inicial C30 de 05/11 com ressalvas. Revalidar versão, mounts, serviços e dados antes do deploy. |
+| **GG-02 — Backup independente automatizado** | **Parcial** | POCs Restic/Rclone e [PR #114](https://github.com/The-Vonky/Gaucha-Gestao/pull/114): `Preflight` e `Run` **PASS relatados em 10/11 no Google Drive real apenas com dados sintéticos**. Falta operação automática da C30, alertas, retenção e cópia física independente. |
+| **GG-03 — Restauração de falha total** | **Em aberto** | Restores sintéticos executados; sem restauração completa de DB/Auth/Storage/configuração da C30 em destino independente com tempo/perda medidos. |
+| **GG-04 — Sales Manager/Viewer** | **Integrada; homologada no DEV** | [PR #126](https://github.com/The-Vonky/Gaucha-Gestao/pull/126), merge `189106a`: dois perfis, remoção de `sales_operator` no DEV, permissões e escopos testados. Sem C30. |
+| **GG-05 — Cadastro e identidade** | **Integrada; homologada no DEV** | [PR #127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127), merge `df113c2`: GG-05A/B, cadastro, temporária individual sem prazo, troca obrigatória, reset e barreira por sessão. Pendentes recuperação emergencial de admin, revisão de segurança aplicável e GO para outros ambientes. |
+| **GG-06 — Segurança transversal** | **Parcial** | Matriz de negativas e escopos em CI (inclusive #126/#127); falta aceite consolidado na release candidata do ambiente-alvo. |
+| **GG-07 — Release candidata/C30** | **Em aberto** | Runbooks existentes; sem promoção controlada da versão atual nem evidência de forward-fix/rollback aceito na C30. |
+| **GG-08 — Contato de salas** | **Integrada** | [PR #116](https://github.com/The-Vonky/Gaucha-Gestao/pull/116): nome/ramal e gestão autorizada; homologação da responsável e C30 pendentes. |
+| **GG-09 — Histórico de salas** | **Integrada** | [PR #116](https://github.com/The-Vonky/Gaucha-Gestao/pull/116): solicitações e reservas diretas, canceladas inclusive, com filtros; aceite da secretária/C30 pendente. |
+| **GG-10 — Comunicados/aviso** | **Integrada** | [PR #117](https://github.com/The-Vonky/Gaucha-Gestao/pull/117): gestão e períodos de publicação; configuração do ambiente-alvo ainda a conferir. |
+| **GG-11 — Relatos e sugestões** | **Integrada** | [PR #117](https://github.com/The-Vonky/Gaucha-Gestao/pull/117): formulário, anexos privados e consulta administrativa; retenção e aceite em release pendentes. |
+| **GG-12 — Cores e descrição inicial** | **Integrada** | [PR #115](https://github.com/The-Vonky/Gaucha-Gestao/pull/115): descrição de `Administrativo` e faixas visuais; conferir dispositivos na candidata. |
+| **GG-13 — Turnstile e borda** | **Em aberto** | Avaliação de ameaça/compatibilidade proposta; sem implementação homologada de Turnstile. |
+| **GG-14 — Monitoramento e alertas** | **Em aberto** | Há health checks e planos, mas não operação completa de alertas para host, banco, túnel, Storage e backup na C30. |
+| **GG-15 — Aceite e GO do piloto** | **Em aberto** | Faltam release/homologação no ambiente-alvo, participantes, suporte e GO nominal. **PROD NO-GO.** |
+
+**Prioridade operacional após GG-04/05:** completar GG-02/GG-03, fechar GG-06 na release candidata e preparar GG-07/GG-14 antes do GG-15. GG-01 precisa de atualização do inventário. GG-08–12 não exigem reimplementação só para mudar de ambiente.
+
 > **Regra de paralelismo:** melhorias de UI e módulos podem avançar em branches locais sem aguardar o restore da C30. **Mudança em ambiente persistente não herda essa autorização**. O gate de backup/restore deve preceder upgrades arriscados e uso relevante com dados que não podem ser perdidos.
 
 ---
@@ -150,7 +176,7 @@ Além do piloto, exige fechamento dos gates do Plano Diretor, aceite físico/ope
 
 ### GG-01 a GG-03 — backup, perda total do HD e restauração
 
-**Problema existente:** foram documentados dumps locais do PostgreSQL e um ensaio histórico sintético de outra baseline, mas isso não comprova backup remoto/restauração atual de PostgreSQL + Auth + bytes de Storage + configuração do servidor.
+**Estado em 23/11:** GG-01 tem [inventário inicial](../operations/C30_GG01_INVENTORY_20261105.md) da C30, com ressalvas. Na GG-02, o mantenedor comprovou `Preflight` e `Run` sintéticos no Drive real em 10/11 ([PR #114](https://github.com/The-Vonky/Gaucha-Gestao/pull/114)); automatização na C30 não está comprovada. GG-03 permanece sem restore independente da instalação atual. Dumps históricos e POCs sintéticas não demonstram recuperação integral de PostgreSQL/Auth/Storage/configuração.
 
 **Escopo mínimo:**
 
@@ -178,39 +204,31 @@ de Vendas em sua atribuição administrativa global.
 
 A [composição definitiva](../architecture/AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04)
 usa uma migration incremental para remover o papel de operação anterior e criar o
-Viewer sem atribuições automáticas. A validação no notebook precede o aceite
-manual. A C30 exige inventário e autorização operacional próprios.
+Viewer sem atribuições automáticas. **GG-04 foi homologada pelo mantenedor no notebook e integrada pela [PR #126](https://github.com/The-Vonky/Gaucha-Gestao/pull/126) (merge `189106a`, 18/11/2026).** O `sales_operator` foi removido do catálogo operacional do DEV. A C30 exige inventário e autorização operacional próprios.
 
 **Testes de aceite:** usuário com unidade A não lê, altera, calcula nem exporta B; Viewer não escreve nem por RPC direta; Manager opera apenas unidades permitidas; usuário sem papel, inativo ou revogado recebe negação; relatórios não agregam dados fora da interseção das permissões; mudanças de grants durante a sessão são respeitadas.
 
 ### GG-05 — criação de usuários e Identity Boundary
 
-O [runbook GG-05A](../operations/GG_05A_PROVISIONAMENTO.md) reúne o diagnóstico local, o ensaio sintético e o procedimento para revisar, bloquear e reconciliar acessos. Em 18/11 o mantenedor confirmou o fluxo de cadastro e reset administrativos com temporária individual e troca obrigatória. Em 23/11 o mantenedor aprovou a [GG-05B para o DEV](../operations/GG_05B_IDENTIDADE_DEV.md), com temporária válida até troca, substituição ou bloqueio. A recuperação administrativa de emergência, o piloto e a implantação em outros ambientes seguem com decisão própria.
+**Estado em 23/11: GG-05A/B concluídas no desenvolvimento, homologadas no notebook e integradas à `main`** pela [PR #127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127) (merge `df113c2`). O [runbook GG-05A](../operations/GG_05A_PROVISIONAMENTO.md) documenta diagnóstico/reconciliação; a [GG-05B](../operations/GG_05B_IDENTIDADE_DEV.md) implementa cadastro administrativo por nome/e-mail/papel/escopo, componente interno de identidade, senha temporária individual sem expiração por tempo, troca obrigatória, redefinição e controle de sessões/gerações.
 
-**Fato encontrado:** Core oferece administração de perfis e grants, mas o desenho privilegiado de identidade (Auth) não foi aprovado/implantado de modo comprovado. A Issue #49 foi fechada em 23/10 como registro administrativo, sem encerrar a pendência arquitetural. Não converter issue fechada em “problema resolvido”.
+**Validação registrada:** fluxo homologado pelo mantenedor no notebook com identidade sintética, incluindo refinamentos de interface e senhas; nove checks de CI aprovados no HEAD homologado. A temporária vale até troca, substituição ou bloqueio; senha definitiva mínima de oito caracteres. Não há chave administrativa exposta no navegador.
 
-**Proposta de execução em dois níveis:**
-
-- **Nível temporário para piloto:** procedimento operacional restrito, controlado e auditado para criar as poucas contas autorizadas, com reconciliação Auth ↔ Core, validação de ativação e bloqueio. Somente após avaliação explícita de segurança.
-- **Nível definitivo:** implementar fluxo confiável de provisionamento, recuperação, inativação e revogação após decisão arquitetural. Não colocar `service_role`, segredo de banco, credenciais privilegiadas nem equivalentes no JavaScript do navegador. Tratar criação parcial/erro, corrida de último administrador, sessões antigas e consequências de revogação.
-
-**Critério de aceite:** conta criada tem vínculo único e consistente, acesso mínimo explícito, unidade correta, procedimento de recuperação, trilha de auditoria e retirada efetiva de acesso. A interface administrativa é entrega de UX adicional, não justificativa para improvisar o backend privilegiado.
+**Limite:** concluída como funcionalidade no **DEV**, não como implantação/GO da C30, STAGING, PROD ou piloto. Recuperação emergencial do administrador, revisão de segurança aplicável, adoção/recuperação de contas legadas e homologação do ambiente-alvo continuam pendentes. A antiga PR #24 não foi mergeada; a Issue #49 foi encerrada administrativamente, sem equivaler a GO. Ver [D01](DECISION_REGISTER.md).
 
 ### GG-08 e GG-09 — Agendamento de Salas
 
-**Fato encontrado:** a PR #88 já implementou histórico paginado das solicitações com status (`pending`, `approved`, `rejected`, `cancelled`), intervalo de datas, nomes de Core e decisão. O arquivo `RequestHistory.tsx` afirma que **reservas diretas permanecem na agenda e auditoria**. Logo, criar novamente o histórico de pedidos seria retrabalho.
+**Ambas implementadas e integradas à `main`** na [PR #116](https://github.com/The-Vonky/Gaucha-Gestao/pull/116), em 10/11/2026.
 
-**Melhorias propostas:**
+- **GG-08:** responsável e ramal consultáveis na agenda, editáveis pela gestão efetiva com versão e auditoria.
+- **GG-09:** duas abas de histórico — solicitações e reservas diretas, inclusive canceladas — com filtros/paginação; sem pedidos artificiais para reservas diretas.
+- **D5-B preservada:** `room_booking_manager` administra; o Platform Administrator não recebe `room_booking.manage` automaticamente.
 
-1. Exibir responsável institucional e ramal na área do módulo, com política para substituta e configuração que evite editar código a cada mudança de pessoa.
-2. Revisar filtros e legibilidade do histórico atual com a secretária, preservando paginação e registros anteriores.
-3. Adicionar **histórico de reservas diretas**, sem inventar um pedido `request` para uma reserva direta. Preferir leitura autorizada dos registros efetivos, com filtros de data/estado/autoria quando necessários e retenção do histórico de cancelamento.
-4. Preservar **D5-B**: `room_booking_manager` gerencia; o administrador geral não recebe automaticamente capacidade de gestão nem acesso ao histórico privado, mesmo com atribuição simultânea conflitante, conforme contrato vigente.
-5. Testar conflitos de horário, aprovação/recusa, fuso `America/Sao_Paulo`, começo apenas no futuro, término até 23:59, cancelamentos, revogações e acesso por papel.
-
-**Aceite:** secretária consegue consultar reservas diretas e solicitações passadas sem depender de varrer a agenda; solicitante e administrador sem `manage` não acessam as informações privadas da gestão.
+**Pendência operacional:** contato institucional autorizado, aceite da secretária/gestora com dados e dispositivos reais e release na C30. Não reimplementar o histórico já integrado. Ver [contrato](../modules/room-booking/EXPERIENCE_V1.md).
 
 ### GG-10 e GG-11 — aviso de testes e coleta de feedback
+
+**Ambas implementadas e integradas à `main`** na [PR #117](https://github.com/The-Vonky/Gaucha-Gestao/pull/117), com testes documentados. A C30 ainda exige release autorizada, revisão dos registros e política de retenção.
 
 O funcionário ativo relata um problema ou sugere uma melhoria pela barra de
 comunicados ou pela ação permanente no cabeçalho. O fluxo interno confirma o
@@ -227,13 +245,9 @@ aceite e a validação da release candidata.
 
 ### GG-12 — tela inicial
 
-**Fato confirmado:** `apps/web/src/app/navigation.ts` possui descrições para Qualidade, Custos, Comercial e Administração, mas **não** para `Administrativo`. As duas categorias têm finalidades distintas.
+**Implementada e integrada à `main`** na [PR #115](https://github.com/The-Vonky/Gaucha-Gestao/pull/115). A descrição de `Administrativo` foi adicionada em `apps/web/src/app/navigation.ts`; o padrão de faixas institucionais passou a alternar verde e laranja. A categoria `Administração` permanece distinta.
 
-**Texto proposto para `Administrativo`:**
-
-> Organize as atividades administrativas da empresa, consulte agendas, acompanhe solicitações e acesse os serviços internos em um só lugar.
-
-Revisar cores/faixas pela identidade visual existente e verificar contraste, legibilidade, responsividade e estados de navegação. **Baixa prioridade operacional**; ótima tarefa paralela.
+A aceitação de contraste e responsividade em dispositivos do ambiente candidato não deve ser confundida com a conclusão do código.
 
 ### GG-13 — Cloudflare Turnstile e controles de borda
 
@@ -259,7 +273,7 @@ Cada módulo incluído no piloto deve ter uma pequena matriz de **fluxos felizes
 - [ ] Identificar dados reais/sintéticos atualmente presentes e usuários autorizados a acessar o STAGING.
 - [ ] Registrar as divergências entre AS-BUILT, README, código e banco sem corrigir por inferência.
 
-**Saída:** inventário datado GG-01 + mapa dos riscos e dependências.
+**Evidência parcial:** inventário GG-01 de 05/11 ([PR #104](https://github.com/The-Vonky/Gaucha-Gestao/pull/104)). **Ainda necessário:** atualizar a fotografia operacional da C30 antes da release.
 
 ### Etapa 1 — Continuidade (primeira prioridade operacional)
 
@@ -269,27 +283,28 @@ Cada módulo incluído no piloto deve ter uma pequena matriz de **fluxos felizes
 - [ ] Conferir login, perfis, auditoria, arquivos, RLS e capacidade de iniciar a release correspondente.
 - [ ] Registrar evidência, duração, perda potencial e procedimento de substituição de host.
 
-**Saída:** GG-02/GG-03 com prova e runbook, não apenas “script criado”.
+**Evidência parcial:** laboratório Restic/Rclone com Drive real e dados sintéticos. **Ainda necessário:** backup automatizado/alertado na C30 e restore independente de todo o conjunto, com medidas e runbook.
 
 ### Etapa 2 — Identidades e permissões (pode ser desenvolvida em paralelo)
 
-- [ ] Confirmar matriz de Sales Manager/Viewer/Operator e administrador.
-- [ ] Implementar/ajustar papéis sem ampliar escopos existentes.
-- [ ] Validar casos de autorização positivos e **negativos** via API/DB.
-- [ ] Decidir processo provisório de provisionamento e requisitos do definitivo.
-- [ ] Conferir acesso e revogação do `room_booking_manager` (D5-B).
+- [x] Definir os dois papéis de Vendas, removendo `sales_operator` do DEV (GG-04).
+- [x] Implementar/homologar composição e escopos de Vendas no notebook (PR #126).
+- [x] Implementar/homologar cadastro, troca obrigatória e reset administrativo (GG-05A/B, PR #127).
+- [ ] Fechar a validação transversal GG-06 na release candidata do ambiente-alvo, incluindo D5-B, JWT e Storage.
+- [ ] Homologar adoção da identidade e recuperação administrativa antes de eventual corte na C30.
 
-**Saída:** GG-04/GG-05/GG-06 testados em ambiente autorizado.
+**Saída de desenvolvimento:** GG-04 e GG-05 integradas. **Saída operacional:** GG-06 e liberação da identidade na C30 ainda pendentes.
 
 ### Etapa 3 — Ajustes de experiência e suporte
 
-- [ ] Exibir responsável e ramal no Agendamento.
-- [ ] Melhorar histórico de pedidos **existente** e desenvolver histórico de reservas diretas.
-- [ ] Implementar aviso de fase de testes e canal de feedback/evidências.
-- [ ] Ajustar descrição/cores de `Administrativo`.
-- [ ] Avaliar Turnstile e controles Cloudflare sem introduzir regressão.
+- [x] Implementar contato e ramal no Agendamento (GG-08, PR #116).
+- [x] Implementar histórico de solicitações e reservas diretas (GG-09, PR #116).
+- [x] Implementar Comunicados/aviso e relatos com evidências (GG-10/11, PR #117).
+- [x] Implementar descrição/cores de `Administrativo` (GG-12, PR #115).
+- [ ] Avaliar Turnstile e controles Cloudflare (GG-13).
+- [ ] Homologar conteúdo, perfis e dispositivos das GG-08–12 no ambiente-alvo.
 
-**Saída:** GG-08–GG-13 validados e documentados.
+**Saída de desenvolvimento:** GG-08–GG-12 integradas. **Saída operacional:** aceite da release e eventual GG-13 pendentes.
 
 ### Etapa 4 — Release candidata e homologação
 
@@ -413,7 +428,7 @@ Copiar a estrutura abaixo ao iniciar uma entrega:
 
 ## 11. Checklist mestre para decisão de piloto
 
-Marcar cada item apenas com evidência verificável; usar **N/A justificado** quando realmente fora do escopo do piloto.
+Marcar cada item apenas com evidência verificável; usar **N/A justificado** quando realmente fora do escopo do piloto. **O checklist a seguir é do ambiente candidato/piloto, não do desenvolvimento:** itens integrados na `main` podem permanecer desmarcados enquanto não forem aceitos na C30.
 
 ### Continuidade e operação
 
@@ -426,8 +441,8 @@ Marcar cada item apenas com evidência verificável; usar **N/A justificado** qu
 
 ### Segurança, identidade e dados
 
-- [ ] GG-04 — matriz Sales Manager/Viewer aprovada e testada por unidade.
-- [ ] GG-05 — procedimento seguro de criar/inativar/revogar usuários comprovado.
+- [ ] GG-04 — homologada no DEV; validar a migração e a matriz Sales Manager/Viewer na release candidata.
+- [ ] GG-05 — homologada no DEV; validar identidade, recuperação administrativa e sessões no ambiente-alvo.
 - [ ] GG-06 — negativas de RLS/RPC/Storage e cross-unit testadas na versão candidata.
 - [ ] Acesso externo, portas, segredos, credenciais e cache/cabeçalhos revisados.
 - [ ] Dados de teste e eventuais dados reais autorizados/classificados.
@@ -458,6 +473,7 @@ Marcar cada item apenas com evidência verificável; usar **N/A justificado** qu
 | Versão | Data | Alteração |
 | --- | --- | --- |
 | **1.0** | **04/11/2026** | Consolidação da análise da lista de cuidados finais; checagem de documentação/código/PRs; backlog GG-01 a GG-15, gates e protocolo de acompanhamento. |
+| **1.1** | **23/11/2026** | Atualização dos 15 estados com `main` `df113c2`, integração de GG-04/05/08–12, evolução do laboratório GG-02D e preservação dos gates operacionais. |
 
 **Como manter atualizado:**
 
