@@ -102,3 +102,7 @@ arquivo original ficam fora da auditoria. O download reavalia a autorização
 atual e usa o bucket privado com operações limitadas a envio reservado e
 download autenticado. A UI trata os bytes como conteúdo não confiável e entrega
 o arquivo como download. [Contrato e limites GG-11](../modules/feedback/FEEDBACK_V1.md).
+
+## Identidade GG-05B no DEV
+
+O componente interno do Core usa a confirmação direta do GoTrue para trocar a senha e mantém a chave administrativa no runtime. PostgREST e Storage reavaliam a admissão da sessão. O ingresso do DEV em modo estrito fecha o resgate por assinatura, e o navegador lê o objeto pelo caminho autenticado com a autorização da unidade e do domínio. [Operação e limites no notebook](../operations/GG_05B_IDENTIDADE_DEV.md).

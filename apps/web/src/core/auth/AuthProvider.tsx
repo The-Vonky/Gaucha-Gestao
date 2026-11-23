@@ -14,12 +14,14 @@ import { can, type AccessGrant, type Scope } from "./permissions";
 import { message } from "../../shared/errors";
 import { setUnitCoverAccess } from "../unitCovers";
 import { privateImages } from "../../shared/privateImageCache";
+import { identityEnabled, identityStatus, type IdentityStatus } from "./identity";
 type AuthState = {
   session: Session | null;
   profile: Profile | null;
   grants: AccessGrant[];
   loading: boolean;
   error: string;
+  identity?: IdentityStatus;
 };
 type AuthValue = AuthState & {
   refresh: () => void;
@@ -67,17 +69,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ ...initial, session, loading: true });
     }
     try {
+      const identity = identityEnabled ? await identityStatus(session.access_token) : undefined;
+      if (request !== sequence.current) return;
+      if (identity?.passwordChangeRequired) {
+        privateImages.setAccess("");
+        setUnitCoverAccess("");
+        setState({ ...initial, session, identity, loading: false });
+        return;
+      }
+      const profileQuery = database()
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      const grantsQuery = database().rpc("my_access");
+      if (identityEnabled) {
+        const authorization = `Bearer ${session.access_token}`;
+        profileQuery.setHeader("Authorization", authorization);
+        grantsQuery.setHeader("Authorization", authorization);
+      }
       const [
         { data: profile, error: profileError },
         { data: grants, error: accessError },
-      ] = await Promise.all([
-        database()
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .maybeSingle(),
-        database().rpc("my_access"),
-      ]);
+      ] = await Promise.all([profileQuery, grantsQuery]);
       if (profileError || accessError) throw profileError ?? accessError;
       if (request === sequence.current) {
         privateImages.setAccess(profile?.active ? accessKey(session.user.id, true, grants ?? []) : "");
@@ -86,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
         setState({
           session,
+          identity,
           profile,
           grants: grants ?? [],
           loading: false,

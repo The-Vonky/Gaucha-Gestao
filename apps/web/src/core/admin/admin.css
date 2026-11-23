@@ -3,7 +3,7 @@
  * operational: dense divided rows, no dashboards. Values come from tokens.css.
  */
 .adm-intro {
-  margin: calc(-1 * var(--space-3)) 0 var(--space-4);
+  margin: 0 0 var(--space-4);
 }
 
 /* ---------- Dense record rows ---------- */

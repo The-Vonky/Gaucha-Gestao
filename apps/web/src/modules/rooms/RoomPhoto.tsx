@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { client } from "../../core/client";
+import { identityEnabled } from "../../core/auth/identity";
+import { privateCoverUrl } from "../../core/auth/privateStorage";
 import { useAuth } from "../../core/auth/AuthProvider";
 import {
   COVER_ACCEPT,
@@ -24,7 +26,9 @@ const BUCKET = "room-covers";
 export async function readRoomCover(): Promise<RoomCover> {
   const cover = await rpc<RoomCover>("cover");
   if (!cover) throw new Error("Sala indisponível.");
-  if (cover.object_key && client) {
+  if (cover.object_key && identityEnabled) {
+    cover.url = await privateCoverUrl(BUCKET, cover.object_key, 300_000).catch(() => undefined);
+  } else if (cover.object_key && client) {
     const signed = await client.storage
       .from(BUCKET)
       .createSignedUrl(cover.object_key, 300);

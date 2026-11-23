@@ -23,6 +23,8 @@ import {
 } from "./parts";
 import { UserAssignments } from "./UserAssignments";
 import { UserAccessReview } from "./UserAccessReview";
+import { EmployeeRegistration, TemporaryPassword } from "./EmployeeIdentity";
+import { identityErrorMessage, resetEmployeePassword } from "../auth/identity";
 /** "Último acesso 07/10/2026 14:32" from the Auth last sign-in. */
 const lastAccess = (at: string | null) =>
   at
@@ -51,6 +53,10 @@ export function UsersPage() {
   const [reviewing, setReviewing] = useState<DirectoryUser>();
   const [toggle, setToggle] = useState<DirectoryUser>();
   const [renaming, setRenaming] = useState<DirectoryUser>();
+  const [registering, setRegistering] = useState(false);
+  const [resetting, setResetting] = useState<DirectoryUser>();
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const token = auth.session?.access_token;
   const manage = auth.can("admin.user.manage");
   return (
     <>
@@ -58,7 +64,11 @@ export function UsersPage() {
         eyebrow="Administração"
         title="Usuários"
         description="Identidades corporativas, situação e atribuições de acesso."
-      />
+      >
+        {auth.identity?.provision ? (
+          <button className="primary" type="button" onClick={() => setRegistering(true)}>Novo usuário</button>
+        ) : null}
+      </PageTitle>
       <p className="muted adm-intro">
         Contas são criadas ou convidadas pela equipe responsável pelos acessos.
         Ativar uma conta não restaura suas atribuições revogadas.
@@ -158,6 +168,9 @@ export function UsersPage() {
                       Renomear
                     </button>
                   )}
+                  {auth.identity?.resetPassword && row.active && !self && (
+                    <button className="small ghost" onClick={() => setResetting(row)}>Redefinir senha</button>
+                  )}
                   {manage && !self && (
                     <button
                       className={`small ghost ${row.active ? "adm-danger" : "adm-activate"}`}
@@ -228,6 +241,26 @@ export function UsersPage() {
           </Form>
         </Modal>
       )}
+      {registering && token && auth.identity?.provision && (
+        <EmployeeRegistration token={token} onClose={() => setRegistering(false)} onCreated={(password) => {
+          setRegistering(false);
+          setTemporaryPassword(password);
+          r.reload();
+        }} />
+      )}
+      {resetting && token && auth.identity?.resetPassword && (
+        <Confirm
+          title="Redefinir senha"
+          formatError={identityErrorMessage}
+          description={`Confirme a identidade de ${resetting.display_name} antes de gerar a nova senha temporária. A sessão anterior perderá acesso.`}
+          onClose={() => setResetting(undefined)}
+          onConfirm={async () => {
+            const result = await resetEmployeePassword(token, resetting.id, resetting.version);
+            setTemporaryPassword(result.temporaryPassword);
+          }}
+        />
+      )}
+      {temporaryPassword && <TemporaryPassword password={temporaryPassword} onClose={() => setTemporaryPassword("")} />}
       {toggle && (
         <Confirm
           title={`${toggle.active ? "Desativar" : "Ativar"} usuário`}
