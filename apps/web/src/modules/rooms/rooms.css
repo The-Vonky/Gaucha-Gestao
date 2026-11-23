@@ -183,14 +183,16 @@
   padding: 1rem;
   border-radius: 12px;
 }
-.rooms-page label {
+.rooms-page label,
+.room-form label {
   display: grid;
   gap: 0.4rem;
 }
 .rooms-page textarea {
   min-height: 90px;
 }
-.rooms-page .actions {
+.rooms-page .actions,
+.room-form .actions {
   flex-wrap: wrap;
 }
 @media (max-width: 850px) {
@@ -321,6 +323,11 @@
 .room-contact-values dd {
   margin: 0;
   font-weight: 600;
+}
+.room-contact-fields input,
+.room-contact-fields > label {
+  min-width: 0;
+  max-width: 100%;
 }
 .room-contact-fields {
   display: grid;
@@ -472,6 +479,9 @@
   flex-wrap: wrap;
   gap: 1rem;
 }
+.room-agenda-actions > label {
+  margin-bottom: 0;
+}
 .room-hero-copy, .room-hero-card > div {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -486,13 +496,6 @@
 }
 .room-hero .room-contact .muted {
   color: #e2ece7;
-}
-.room-contact form {
-  background: white;
-  color: #173e34;
-  padding: 1rem;
-  border-radius: 12px;
-  margin-top: 1rem;
 }
 .room-upcoming {
   grid-column: 1 / -1;

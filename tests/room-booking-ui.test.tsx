@@ -336,9 +336,7 @@ it("gestora configura contato e vê o valor salvo; leitor só consulta após rem
   await screen.findByText("Contato ainda não informado.");
   const user = userEvent.setup();
   await user.click(screen.getByRole("button", { name: "Editar contato" }));
-  expect(document.activeElement).toBe(
-    screen.getByLabelText("Nome da responsável"),
-  );
+  expect(screen.getByRole("dialog", { name: "Editar contato" }).contains(document.activeElement)).toBe(true);
   await user.type(
     screen.getByLabelText("Nome da responsável"),
     "Nome Institucional",
@@ -392,22 +390,23 @@ it("conflito de contato impede nova gravação até consultar a versão atual", 
   await user.click(
     await screen.findByRole("button", { name: "Editar contato" }),
   );
-  const save = within(contact).getByRole<HTMLButtonElement>("button", {
+  const modal = screen.getByRole("dialog", { name: "Editar contato" });
+  const save = within(modal).getByRole<HTMLButtonElement>("button", {
     name: "Salvar contato",
   });
   await user.click(save);
-  expect((await within(contact).findByRole("alert")).textContent).toContain(
+  expect((await within(modal).findByRole("alert")).textContent).toContain(
     "O contato mudou",
   );
   expect(save.disabled).toBe(true);
   await user.click(
-    within(contact).getByRole("button", {
+    within(modal).getByRole("button", {
       name: "Consultar contato atualizado",
     }),
   );
   await within(contact).findByText("Contato atualizado por outra sessão");
   expect(
-    within(contact).queryByRole("button", { name: "Salvar contato" }),
+    screen.queryByRole("button", { name: "Salvar contato" }),
   ).toBeNull();
 });
 
@@ -608,7 +607,7 @@ it.each([false, true])("barra acima do hero preserva edição de contato/foto pa
   expect(within(hero as HTMLElement).queryByRole("button", { name: "Editar contato" })).toBeNull();
   expect(within(hero as HTMLElement).queryByRole("button", { name: "Alterar foto da sala" })).toBeNull();
   await user.click(contact);
-  expect(screen.getByLabelText("Nome da responsável")).toBe(document.activeElement);
+  expect(screen.getByRole("dialog", { name: "Editar contato" }).contains(document.activeElement)).toBe(true);
   await user.click(screen.getByRole("button", { name: "Cancelar edição" }));
   expect(document.activeElement).toBe(contact);
   await user.click(photo);
@@ -619,4 +618,50 @@ it.each([false, true])("barra acima do hero preserva edição de contato/foto pa
     await user.click(screen.getByRole("button", { name: "Room Booking Requester", exact: true }));
     expect(screen.queryByRole("group", { name: "Ações da sala" })).toBeNull();
   }
+});
+
+it("contato abre em modal fora do banner e fecha pelos quatro acionamentos", async () => {
+  state.permissions = ["schedule.read", "manage"];
+  const fallback = state.rpc.getMockImplementation()!;
+  mockRooms(async (name, args) => name === "contact"
+    ? { room_id: "fixture", responsible_name: "Contato", extension: "1234", version: 1 }
+    : fallback(name, args));
+  const { container } = render(<RoomsPage />);
+  const user = userEvent.setup();
+  const trigger = await screen.findByRole("button", { name: "Editar contato" });
+  for (const close of ["button", "cancel", "escape", "overlay"]) {
+    await user.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: "Editar contato" });
+    expect(container.querySelector(".room-hero form")).toBeNull();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    if (close === "button") await user.click(within(dialog).getByRole("button", { name: "Fechar", exact: true }));
+    else if (close === "cancel") await user.click(within(dialog).getByRole("button", { name: "Cancelar edição" }));
+    else if (close === "escape") fireEvent(dialog, new Event("cancel", { cancelable: true }));
+    else fireEvent.click(dialog);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  }
+});
+
+it("modal de contato bloqueia fechamento ao salvar e mostra falha dentro do diálogo", async () => {
+  state.permissions = ["schedule.read", "manage"];
+  const fallback = state.rpc.getMockImplementation()!;
+  let rejectSave!: (error: unknown) => void;
+  mockRooms((name, args) => name === "contact"
+    ? Promise.resolve({ room_id: "fixture", responsible_name: "Contato", extension: "1234", version: 1 })
+    : name === "save_contact" ? new Promise((_, reject) => { rejectSave = reject; })
+    : fallback(name, args));
+  render(<RoomsPage />);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: "Editar contato" }));
+  const modal = screen.getByRole("dialog", { name: "Editar contato" });
+  await user.click(within(modal).getByRole("button", { name: "Salvar contato" }));
+  expect(within(modal).getByRole<HTMLButtonElement>("button", { name: "Fechar", exact: true }).disabled).toBe(true);
+  expect(within(modal).getByRole<HTMLButtonElement>("button", { name: "Cancelar edição" }).matches(":disabled")).toBe(true);
+  fireEvent(modal, new Event("cancel", { cancelable: true }));
+  fireEvent.click(modal);
+  expect(screen.getByRole("dialog")).toBe(modal);
+  rejectSave({ code: "42501" });
+  expect((await within(modal).findByRole("alert")).textContent).toContain("Você não tem permissão");
+  expect(within(modal).getByRole<HTMLButtonElement>("button", { name: "Fechar", exact: true }).disabled).toBe(false);
 });

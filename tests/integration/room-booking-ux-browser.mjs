@@ -77,10 +77,29 @@ try {
           assert.ok(bounds.x >= barBounds.x && bounds.x + bounds.width <= barBounds.x + barBounds.width + 1);
           assert.ok(bounds.y + bounds.height <= heroBounds.y);
         }
-        await actions.getByRole("button", { name: "Editar contato" }).click();
-        await expect(page.getByLabel("Nome da responsável")).toBeFocused();
-        await page.getByLabel("Nome da responsável").fill("Contato sintético da sala");
+        const edit = actions.getByRole("button", { name: "Editar contato" });
+        const originalHeight = (await hero.boundingBox()).height;
+        for (const close of ["button", "cancel", "escape", "overlay"]) {
+          await edit.click();
+          const contactModal = page.getByRole("dialog", { name: "Editar contato", exact: true });
+          await expect(contactModal).toBeVisible();
+          await expect(contactModal.getByRole("button", { name: "Fechar", exact: true })).toBeFocused();
+          assert.equal((await hero.boundingBox()).height, originalHeight, "Editar contato não altera a altura do hero");
+          await expect(hero.locator("form")).toHaveCount(0);
+          assert.equal(await contactModal.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth), true, "Contato sem overflow interno");
+          await page.screenshot({ path: `${artifacts}/${role}-${width}-contact-modal.png` });
+          if (close === "button") await contactModal.getByRole("button", { name: "Fechar", exact: true }).click();
+          else if (close === "cancel") await contactModal.getByRole("button", { name: "Cancelar edição" }).click();
+          else if (close === "escape") await page.keyboard.press("Escape");
+          else await page.mouse.click(2, 2);
+          await expect(contactModal).toHaveCount(0);
+          await expect(edit).toBeFocused();
+        }
+        await edit.click();
+        await page.getByLabel("Nome da responsável").fill("Contato atualizado no modal");
         await page.getByRole("button", { name: "Salvar contato" }).click();
+        await expect(page.getByRole("dialog", { name: "Editar contato", exact: true })).toHaveCount(0);
+        await expect(hero.getByText("Contato atualizado no modal", { exact: true })).toBeVisible();
         await expect(page.getByText("Contato atualizado.", { exact: true })).toBeVisible();
         const photo = actions.getByRole("button", { name: "Alterar foto da sala" });
         await photo.click();
@@ -93,7 +112,13 @@ try {
       }
       if (role === "admin") await page.getByRole("button", { name: "Room Booking Requester", exact: true }).click();
       const trigger = page.getByRole("button", { name: role === "manager" ? "Criar reserva direta" : "Solicitar horário", exact: true });
-      if (role !== "manager") assert.equal(await trigger.evaluate((button) => button.closest("section").querySelector("h2").textContent), "Agenda");
+      if (role !== "manager") {
+        assert.equal(await trigger.evaluate((button) => button.closest("section").querySelector("h2").textContent), "Agenda");
+        const inputBounds = await page.locator(".room-agenda-actions input[type=date]").boundingBox();
+        const buttonBounds = await trigger.boundingBox();
+        if (width > 480) assert.ok(Math.abs(inputBounds.y + inputBounds.height - buttonBounds.y - buttonBounds.height) <= 1, "Bases de Data e Solicitar horário alinhadas");
+        else assert.ok(buttonBounds.y >= inputBounds.y + inputBounds.height, "Quebra de linha sem sobreposição");
+      }
       await trigger.click();
       const modal = page.getByRole("dialog");
       await expect(modal).toBeVisible();

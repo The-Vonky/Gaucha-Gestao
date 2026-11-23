@@ -10,6 +10,18 @@ Melhorias aprovadas pelo responsável em 26/10/2026, na mesma PR #88 e branch `f
 
 A sala ativa exibe **Responsável** e **Ramal** para quem pode consultar a agenda. Sem cadastro, a interface informa **Contato ainda não informado**. A gestora efetiva usa **Editar contato** e recebe a versão gravada sem recarregar a página. O nome é preenchido no formulário e pode diferir do nome cadastrado no Core. Informe somente o nome institucional e o ramal.
 
+**Refinamento de interface de 23/11/2026, PR #129:** o botão **Editar contato**
+permanece na barra acima do banner e abre o `Modal` compartilhado, centralizado.
+Nome, ramal, mensagens e consulta após conflito ficam no diálogo, com Escape,
+overlay, botão de fechar e **Cancelar edição**; todos os fechamentos ficam
+bloqueados durante o salvamento. O foco segue o padrão do componente e retorna
+ao acionador. O formulário é renderizado fora do banner, cuja altura permanece
+estável ao abrir/reabrir. O contato salvo é atualizado no hero sem recarregar.
+Na agenda, somente a margem inferior do rótulo Data é zerada localmente para
+alinhar a base do input à de **Solicitar horário**; em 320 px os controles quebram
+linha. Sem alterações no contrato de banco ou nas permissões.
+
+
 | RPC pública | Capacidade efetiva | Contrato |
 |---|---|---|
 | `room_booking_contact` | `room_booking.schedule.read` | Identifica a sala ativa e devolve nome, ramal e versão. Versão 0 indica que ainda não existe contato. |
