@@ -463,15 +463,44 @@ describe("PostgreSQL Core migration and RLS", { concurrent: false }, () => {
       )
     ).rows[0];
     expect(detail.role.version).toBe(1);
-    expect(detail.permission_keys).toHaveLength(34);
+    expect(detail.permission_keys).toHaveLength(35);
     expect(detail.permission_keys).toContain("feedback.report.read");
     expect(detail.permission_keys).toContain("announcements.notice.manage");
     expect(detail.permission_keys).toContain("sales.dashboard.read");
-    expect(detail.permission_keys).not.toContain("room_booking.manage");
+    expect(detail.permission_keys).toContain("room_booking.manage");
     await login(ids.empty);
     expect(
       (await db.query("select * from core.role_detail($1)", [id])).rows,
     ).toEqual([]);
+  });
+  it("D5-C permite gestão do administrador e provisionamento global apenas de Room Booking", async () => {
+    await login(ids.admin);
+    expect(await check("room_booking.manage")).toBe(true);
+    expect(
+      (await db.query<{ allowed: boolean }>(
+        "select public.room_booking_admin_context() as allowed",
+      )).rows[0].allowed,
+    ).toBe(true);
+    const roles = await db.query<{ key: string; allowed: boolean; with_unit: boolean }>(`
+      select r.key,
+        private.identity_can_assign(r.id, null, null) as allowed,
+        private.identity_can_assign(r.id, '${ids.a}', null) as with_unit
+      from core.roles r
+      where r.key in ('platform_administrator','room_booking_manager','room_booking_requester')
+      order by r.key
+    `);
+    expect(roles.rows).toEqual([
+      { key: "platform_administrator", allowed: false, with_unit: false },
+      { key: "room_booking_manager", allowed: true, with_unit: false },
+      { key: "room_booking_requester", allowed: true, with_unit: false },
+    ]);
+    await login(ids.user);
+    expect(await check("room_booking.manage")).toBe(false);
+    expect(
+      (await db.query<{ allowed: boolean }>(
+        "select public.room_booking_admin_context() as allowed",
+      )).rows[0].allowed,
+    ).toBe(false);
   });
   it("returns e-mail and last sign-in only to user administrators, searching name or e-mail literally", async () => {
     await db.exec("reset role");
