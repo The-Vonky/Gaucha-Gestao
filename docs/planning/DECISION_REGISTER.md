@@ -29,7 +29,7 @@
 
 | ID | Questão / alternativa | Condição de aprovação | Impacto enquanto aberta |
 | --- | --- | --- | --- |
-| D01 | Identity Boundary / criação e recuperação de contas | [Desenho GG-05B](../architecture/GG05B_IDENTITY_DESIGN.md) aprovado pelo mantenedor para implementação no DEV em 23/11. Temporária válida até troca, substituição ou bloqueio. | **DEV autorizado.** Revisão de segurança, recuperação administrativa emergencial, piloto e implantação fora do DEV seguem com decisão própria. |
+| D01 | Identity Boundary / criação e recuperação de contas | [GG-05B](../architecture/GG05B_IDENTITY_DESIGN.md) autorizada em DEV; [PR #127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127) integrada em 23/11 (`df113c2`) e homologada no notebook. Temporária válida até troca, substituição ou bloqueio. | **Implementada no DEV, não encerrada operacionalmente:** revisão de segurança aplicável, recuperação emergencial do administrador, adoção na C30 e GO do piloto seguem abertos. |
 | D02 | RPO técnico e RTO dentro/fora do horário seg–sex 07–18h | Valores numéricos, cenários e responsáveis aprovados, medidos quando houver infra | O1 e go-live bloqueados; não declarar RPO zero |
 | D03 | Retenções para DB/WAL, objetos, dados removidos e logs | Política escrita, justificativa legal/negócio, mecanismos e testes | Purge, custos, compliance e O1/O6 abertos |
 | D04 | Ferramenta de backup e PITR, destino independente/off-site, chaves e segurança | Escolher WAL-G/pgBackRest ou equivalente por ADR/ensaio; definir restauração de objetos | O3/O4 bloqueados em PROD |
