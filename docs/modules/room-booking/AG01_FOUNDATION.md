@@ -1,5 +1,7 @@
 # AG-01 — Fundação do Agendamento de Salas
 
+> **Regra atual (23/11/2026):** [AG-D5-C](D5C_ADMIN_MODES.md) substituiu a proibição do administrador registrada em D5-B abaixo. Administrador global possui `room_booking.manage` e seletor de vistas; os demais papéis conservam as capacidades originais. Este arquivo registra a fundação e as decisões históricas, sem reescrever migrations.
+
 **Decisão vigente — 26/10/2026:** D5-A revogada pelo responsável em 26/10/2026. D5-B adotada: o administrador geral não administra reservas; a gestão cabe ao papel `room_booking_manager`, com provisionamento administrativo restrito e auditado. Atribuição administrativa ativa conflitante nega gestão mesmo com papel adicional. D1–D4, D6–D11 e F2 permanecem aprovadas. Os registros de 23/10 abaixo são históricos.
 
 
