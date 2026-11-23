@@ -54,7 +54,27 @@ export function RoomsPage() {
   const read = allowed("schedule.read"),
     own = allowed("request.read_own"),
     create = allowed("request.create"),
-    manage = allowed("manage");
+    manageGranted = allowed("manage");
+  // O papel global de administrador é conferido no banco, não inferido de grants genéricos.
+  const [adminContext, setAdminContext] = useState<boolean | null>(null);
+  const [mode, setMode] = useState<"requester" | "manager">("requester");
+  const [modeError, setModeError] = useState("");
+  const manage = manageGranted && adminContext !== null
+    && (!adminContext || mode === "manager");
+  useEffect(() => {
+    let cancelled = false;
+    setAdminContext(null);
+    setMode("requester");
+    setModeError("");
+    void rpc<boolean>("admin_context")
+      .then((value) => {
+        if (!cancelled) setAdminContext(value === true);
+      })
+      .catch((error) => {
+        if (!cancelled) setModeError(roomMessage(error));
+      });
+    return () => { cancelled = true; };
+  }, [auth.profile?.id, auth.profile?.active]);
   const [date, setDate] = useState(day());
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
@@ -204,6 +224,15 @@ export function RoomsPage() {
     : Date.now();
   const historical =
     !!editor?.booking && new Date(editor.booking.starts_at).getTime() <= now;
+  if (adminContext === null) {
+    return (
+      <div className="rooms-page">
+        {modeError
+          ? <Notice error>{modeError}. Não foi possível verificar o modo de atuação.</Notice>
+          : <p role="status">Verificando acesso ao Agendamento…</p>}
+      </div>
+    );
+  }
   return (
     <div className="rooms-page">
       <RoomHeroBanner
@@ -213,6 +242,42 @@ export function RoomsPage() {
         onBoundary={refresh}
         photo={<RoomPhoto manager={manage} read={read} />}
       />
+      {adminContext && manageGranted && (
+        <section className="room-mode-switch" aria-label="Modo de atuação no Agendamento">
+          <div>
+            <strong>Atuar como</strong>
+            <p>Escolha a visualização de trabalho para esta sala.</p>
+          </div>
+          <div className="room-mode-actions" role="group" aria-label="Modo de atuação">
+            <button
+              type="button"
+              className={mode === "requester" ? "primary" : ""}
+              aria-pressed={mode === "requester"}
+              disabled={busy}
+              onClick={() => {
+                setEditor(undefined);
+                setDecision(undefined);
+                setSuccess("");
+                setError("");
+                setMode("requester");
+              }}
+            >Room Booking Requester</button>
+            <button
+              type="button"
+              className={mode === "manager" ? "primary" : ""}
+              aria-pressed={mode === "manager"}
+              disabled={busy}
+              onClick={() => {
+                setEditor(undefined);
+                setDecision(undefined);
+                setSuccess("");
+                setError("");
+                setMode("manager");
+              }}
+            >Room Booking Manager</button>
+          </div>
+        </section>
+      )}
       <div className="room-toolbar">
         <span>Horários de Brasília · America/Sao_Paulo</span>
         <button disabled={busy || loading} onClick={() => void refresh()}>
