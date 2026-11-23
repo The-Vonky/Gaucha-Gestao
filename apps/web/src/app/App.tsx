@@ -10,6 +10,7 @@ import {
 import { client } from "../core/client";
 import { AuthProvider, useAuth } from "../core/auth/AuthProvider";
 import { Login } from "../core/auth/Login";
+import { FirstPassword } from "../core/auth/FirstPassword";
 import { loadPublishedNotices, noPublishedNotices } from "../modules/announcements/api";
 import { FeedbackButton, FeedbackEntry } from "../modules/feedback/FeedbackEntry";
 import { BrandMark, Loader } from "../shared/brand";
@@ -82,6 +83,7 @@ function Boundary() {
       </main>
     );
   if (!auth.session) return <Login />;
+  if (auth.identity?.passwordChangeRequired) return <FirstPassword key={auth.session.user.id} token={auth.session.access_token} />;
   if (!auth.profile?.active || auth.error) return <AnnouncementLayout loadConfig={noPublishedNotices}><AuthenticatedBoundary /></AnnouncementLayout>;
   return <FeedbackEntry key={auth.session.user.id}>
     <AnnouncementLayout loadConfig={loadPublishedNotices}><AuthenticatedBoundary /></AnnouncementLayout>

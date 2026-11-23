@@ -29,7 +29,7 @@
 
 | ID | Questão / alternativa | Condição de aprovação | Impacto enquanto aberta |
 | --- | --- | --- | --- |
-| D01 | Identity Boundary / criação e recuperação de contas (ADR-007) | [Proposta GG-05B de 18/11](../architecture/GG05B_IDENTITY_DESIGN.md) para novo ADR, em revisão. Exige provas contra GoTrue pinado, parecer independente e GO explícito conforme [#49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) | **P0: runtime privilegiado, migração Auth e cutover bloqueados** |
+| D01 | Identity Boundary / criação e recuperação de contas | [Desenho GG-05B](../architecture/GG05B_IDENTITY_DESIGN.md) aprovado pelo mantenedor para implementação no DEV em 23/11. Temporária válida até troca, substituição ou bloqueio. | **DEV autorizado.** Revisão de segurança, recuperação administrativa emergencial, piloto e implantação fora do DEV seguem com decisão própria. |
 | D02 | RPO técnico e RTO dentro/fora do horário seg–sex 07–18h | Valores numéricos, cenários e responsáveis aprovados, medidos quando houver infra | O1 e go-live bloqueados; não declarar RPO zero |
 | D03 | Retenções para DB/WAL, objetos, dados removidos e logs | Política escrita, justificativa legal/negócio, mecanismos e testes | Purge, custos, compliance e O1/O6 abertos |
 | D04 | Ferramenta de backup e PITR, destino independente/off-site, chaves e segurança | Escolher WAL-G/pgBackRest ou equivalente por ADR/ensaio; definir restauração de objetos | O3/O4 bloqueados em PROD |

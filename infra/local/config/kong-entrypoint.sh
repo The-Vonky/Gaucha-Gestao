@@ -16,6 +16,15 @@ if [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
   expression="$expression or (headers.apikey == '$SUPABASE_PUBLISHABLE_KEY' and 'Bearer $SUPABASE_ANON_KEY')"
 fi
 export GG_AUTHORIZATION="$expression or headers.apikey)"
-awk '{ gsub(/__GG_AUTHORIZATION__/, ENVIRON["GG_AUTHORIZATION"]); print }' /gg/kong.yml > "$KONG_DECLARATIVE_CONFIG"
+awk '
+  {
+    gsub(/__GG_AUTHORIZATION__/, ENVIRON["GG_AUTHORIZATION"]);
+    if (ENVIRON["GG_IDENTITY_INGRESS"] == "true") {
+      sub(/url: http:\/\/auth:9999\//, "url: http://identity:8080/");
+      sub(/url: http:\/\/storage:5000\//, "url: http://identity:8080/storage/");
+    }
+    print
+  }
+' /gg/kong.yml > "$KONG_DECLARATIVE_CONFIG"
 unset GG_AUTHORIZATION expression key
 exec /docker-entrypoint.sh kong docker-start

@@ -88,6 +88,8 @@ simulação com rollback; ambientes remotos exigem autorização própria.
 
 Supabase Auth autentica. `auth.users.id` liga-se 1:1 a `core.profiles.id`. Sessão Auth válida **não** dá acesso se o perfil Core está inativo.
 
+No modo GG-05B do DEV, o JWT também precisa pertencer a uma sessão viva admitida para os módulos na geração atual. A sessão de troca acessa apenas o contrato de identidade. Bloqueio revoga atribuições e invalida a geração anterior. Após reativação, um login novo consulta as atribuições vigentes. A leitura de Comunicados publicados continua disponível ao perfil admitido sem papel operacional. [Ciclo e validação no DEV](../operations/GG_05B_IDENTIDADE_DEV.md).
+
 Uma **permissão** descreve capacidade (`domain.resource.action`); um **papel** reúne permissões. Aplicação verifica permissões, **não nomes de papéis**.
 
 Correto: `can('audit.inspection.finalize')`. Incorreto: `role === 'qualidade'`.

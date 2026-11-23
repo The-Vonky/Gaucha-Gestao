@@ -1,3 +1,5 @@
+import { identityEnabled } from "../../core/auth/identity";
+import { downloadPrivateObject } from "../../core/auth/privateStorage";
 import { useCallback, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../shared/icons";
@@ -58,6 +60,7 @@ export function AbcRevision() {
     if (!d) return;
     setDownloadError("");
     try {
+      if (identityEnabled) return await downloadPrivateObject(api.BUCKET, d.file.object_key, d.file.original_name);
       const a = document.createElement("a");
       a.href = await api.downloadUrl(d.file.object_key, d.file.original_name);
       a.rel = "noopener";

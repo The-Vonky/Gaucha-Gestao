@@ -2,6 +2,8 @@
 
 **Uso atual em 18/11/2026.** Ensaio sintético e diagnóstico de estrutura do DEV, homologado pelo mantenedor no notebook com 43 migrations. O produto GG-05B aprovado prevê criação administrativa, senha temporária entregue individualmente e troca obrigatória pelo funcionário. A proposta D01 está em revisão. Cadastro e redefinição de funcionários continuam bloqueados. [Desenho e critérios do piloto](../architecture/GG05B_IDENTITY_DESIGN.md).
 
+> O incremento de 23/11 segue no [runbook GG-05B para o DEV](GG_05B_IDENTIDADE_DEV.md). As evidências abaixo registram a base GG-05A.
+
 ## Conferir o ambiente
 
 No checkout que serve o localhost, iniciar pelo modo offline. A segunda linha executa o ensaio do contrato com as migrations em memória.

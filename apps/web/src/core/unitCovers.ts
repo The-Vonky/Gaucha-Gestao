@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { client, database } from "./client";
+import { identityEnabled } from "./auth/identity";
+import { privateCoverUrl } from "./auth/privateStorage";
 import { message } from "../shared/errors";
 import { CoverImageError, type PreparedCover } from "./unitCoverImage";
 import type { UnitCoverRow } from "./types";
@@ -54,7 +56,16 @@ async function fetchBatch(ids: string[], from: number, captured: number[]) {
   const rows = (data ?? []) as UnitCoverRow[];
   const signedAt = Date.now();
   const urls = new Map<string, string>();
-  if (rows.length) {
+  if (identityEnabled) {
+    // O cache privado aceita até 100 itens pendentes e limita transferências concorrentes.
+    for (let index = 0; index < rows.length; index += 10) {
+      if (from !== epoch) return;
+      await Promise.all(rows.slice(index, index + 10).map(async ({ object_key }) => {
+        const url = await privateCoverUrl(COVER_BUCKET, object_key, COVER_URL_TTL * 1000).catch(() => "");
+        if (url) urls.set(object_key, url);
+      }));
+    }
+  } else if (rows.length) {
     if (!client) throw new Error("Configuração indisponível.");
     const signed = await client.storage
       .from(COVER_BUCKET)

@@ -1,3 +1,5 @@
+import { identityEnabled } from "../../core/auth/identity";
+import { fetchPrivateObject } from "../../core/auth/privateStorage";
 import { privateImages, PRIVATE_IMAGE_TTL } from "../../shared/privateImageCache";
 import { MAX_BYTES } from "../../shared/evidenceFiles";
 import type { ChecklistEvidence } from "./types";
@@ -34,14 +36,20 @@ export function loadEvidenceImage(e: ImageEvidence) {
       throw new Error("Imagem indisponível.");
     // O prazo começa antes da assinatura. O blob nunca prolonga os 60s do link original.
     const expiresAt = Date.now() + PRIVATE_IMAGE_TTL;
-    const url = await downloadUrl(e, "Evidência");
-    if (signal.aborted) throw new Error("Imagem indisponível.");
-    return readImage(url, e.content_type, e.size_bytes, MAX_BYTES, expiresAt, signal);
+    const response = await readOriginal(e, signal);
+    return readImage(response, e.content_type, e.size_bytes, MAX_BYTES, expiresAt);
   });
 }
 
-async function readImage(url: string, mime: string, expectedBytes: number | null, maxBytes: number, expiresAt: number, signal: AbortSignal) {
-  const response = await fetch(url, { cache: "no-store", signal, credentials: "omit", redirect: "error" });
+const fetchSigned = (url: string, signal: AbortSignal) =>
+  fetch(url, { cache: "no-store", signal, credentials: "omit", redirect: "error" });
+
+async function readOriginal(e: ImageEvidence, signal: AbortSignal) {
+  if (identityEnabled) return fetchPrivateObject(BUCKET, e.object_key, signal);
+  return fetchSigned(await downloadUrl(e, "Evidência"), signal);
+}
+
+async function readImage(response: Response, mime: string, expectedBytes: number | null, maxBytes: number, expiresAt: number) {
   if (!response.ok || response.headers.get("content-type")?.split(";")[0].trim() !== mime) {
     await response.body?.cancel();
     throw new Error("Imagem indisponível.");
@@ -109,23 +117,26 @@ export function loadStorageThumbnail(e: ImageEvidence) {
       throw new Error("Miniatura indisponível.");
     if (e.size_bytes <= SMALL_ORIGINAL_MAX_BYTES) {
       const expiresAt = Date.now() + PRIVATE_IMAGE_TTL;
-      const url = await downloadUrl(e, "Evidência");
-      if (signal.aborted) throw new Error("Miniatura indisponível.");
-      const preview = await readImage(url, e.content_type, e.size_bytes, SMALL_ORIGINAL_MAX_BYTES, expiresAt, signal);
+      const response = await readOriginal(e, signal);
+      const preview = await readImage(response, e.content_type, e.size_bytes, SMALL_ORIGINAL_MAX_BYTES, expiresAt);
       if (await isCompactPreview(preview.blob)) return preview;
     }
     if (signal.aborted) throw new Error("Miniatura indisponível.");
     const expiresAt = Date.now() + PRIVATE_IMAGE_TTL;
-    const { data, error } = await client.storage.from(BUCKET).createSignedUrl(e.object_key, SIGNED_URL_SECONDS, {
-      transform: { width: THUMBNAIL_DIMENSION, height: THUMBNAIL_DIMENSION, resize: "contain", quality: 75, format: "origin" },
-    });
+    const transform = { width: THUMBNAIL_DIMENSION, height: THUMBNAIL_DIMENSION, resize: "contain", quality: 75, format: "origin" } as const;
+    const maxBytes = Math.min(THUMBNAIL_MAX_BYTES, e.size_bytes - 1);
+    if (identityEnabled) {
+      const response = await fetchPrivateObject(BUCKET, e.object_key, signal, transform);
+      return readImage(response, e.content_type, null, maxBytes, expiresAt);
+    }
+    const { data, error } = await client.storage.from(BUCKET).createSignedUrl(e.object_key, SIGNED_URL_SECONDS, { transform });
     if (error || !data?.signedUrl || signal.aborted) throw new Error("Miniatura indisponível.");
     const url = new URL(data.signedUrl);
     const origin = import.meta.env.VITE_SUPABASE_URL;
     if ((origin && url.origin !== new URL(origin).origin) ||
       !url.pathname.endsWith(`/render/image/sign/${BUCKET}/${e.object_key}`) || !url.searchParams.has("token"))
       throw new Error("Miniatura indisponível.");
-    return readImage(url.href, e.content_type, null, Math.min(THUMBNAIL_MAX_BYTES, e.size_bytes - 1), expiresAt, signal);
+    return readImage(await fetchSigned(url.href, signal), e.content_type, null, maxBytes, expiresAt);
   });
 }
 
@@ -142,11 +153,15 @@ export function loadEvidenceThumbnail(e: ImageEvidence) {
       Number(row.bytes) > 1_048_576 || typeof row.derived_object_key !== "string" ||
       !new RegExp(`^${e.id}/${THUMBNAIL_VERSION}/[a-f0-9]{64}/${row.derived_sha256}\\.${row.mime === "image/png" ? "png" : "jpg"}$`).test(row.derived_object_key) ||
       signal.aborted) throw new Error("Miniatura indisponível.");
+    if (identityEnabled) {
+      const response = await fetchPrivateObject("audit-evidence-thumbnails", row.derived_object_key, signal);
+      return readImage(response, row.mime, Number(row.bytes), THUMBNAIL_MAX_BYTES, expiresAt);
+    }
     const signed = await client.storage.from("audit-evidence-thumbnails").createSignedUrl(row.derived_object_key, 60);
     if (signed.error || !signed.data?.signedUrl || signal.aborted) throw new Error("Miniatura indisponível.");
     const url = new URL(signed.data.signedUrl);
     const origin = import.meta.env.VITE_SUPABASE_URL;
     if (origin && url.origin !== new URL(origin).origin) throw new Error("Miniatura indisponível.");
-    return readImage(url.href, row.mime, Number(row.bytes), 1_048_576, expiresAt, signal);
+    return readImage(await fetchSigned(url.href, signal), row.mime, Number(row.bytes), THUMBNAIL_MAX_BYTES, expiresAt);
   });
 }

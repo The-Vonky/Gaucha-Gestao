@@ -212,6 +212,7 @@ export function Confirm({
   onClose,
   tone = "danger",
   confirmDisabled = false,
+  formatError = message,
 }: {
   title: string;
   description: string;
@@ -220,6 +221,7 @@ export function Confirm({
   onClose: () => void;
   tone?: "danger" | "primary";
   confirmDisabled?: boolean;
+  formatError?: (error: unknown) => string;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -233,7 +235,7 @@ export function Confirm({
       await onConfirm();
       onClose();
     } catch (e) {
-      setError(message(e));
+      setError(formatError(e));
     } finally {
       submitting.current = false;
       setBusy(false);
@@ -260,11 +262,13 @@ export function Form({
   onSave,
   onCancel,
   saveDisabled = false,
+  formatError = message,
 }: {
   children: ReactNode;
   onSave: (data: FormData) => Promise<void>;
   onCancel: () => void;
   saveDisabled?: boolean;
+  formatError?: (error: unknown) => string;
 }) {
   const setPending = useContext(PendingContext);
   const [busy, setBusy] = useState(false);
@@ -281,7 +285,7 @@ export function Form({
     try {
       await onSave(data);
     } catch (e) {
-      setError(message(e));
+      setError(formatError(e));
     } finally {
       submitting.current = false;
       setBusy(false);

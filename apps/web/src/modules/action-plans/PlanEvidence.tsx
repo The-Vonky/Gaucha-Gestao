@@ -1,8 +1,11 @@
+import { identityEnabled } from "../../core/auth/identity";
+import { downloadPrivateObject } from "../../core/auth/privateStorage";
 import { useId, useRef, useState, type DragEvent } from "react";
 import { Icon } from "../../shared/icons";
 import {
   ACCEPT,
   beginUpload,
+  BUCKET,
   downloadUrl,
   evidenceMessage,
   finishUpload,
@@ -35,7 +38,8 @@ function Download({ evidence }: { evidence: Evidence }) {
     setBusy(true);
     setError(false);
     try {
-      openDownload(await downloadUrl(evidence));
+      if (identityEnabled) await downloadPrivateObject(BUCKET, evidence.object_key, evidence.original_name);
+      else openDownload(await downloadUrl(evidence));
     } catch {
       setError(true);
     } finally {

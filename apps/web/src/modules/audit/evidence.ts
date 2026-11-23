@@ -1,3 +1,5 @@
+import { identityEnabled } from "../../core/auth/identity";
+import { downloadPrivateObject } from "../../core/auth/privateStorage";
 import { client } from "../../core/client";
 import { message } from "../../shared/errors";
 import { checkFile, FileValidationError } from "../../shared/evidenceFiles";
@@ -56,6 +58,7 @@ export async function downloadUrl(e:Pick<ChecklistEvidence,"object_key"> & Parti
  return url.href;
 }
 export async function downloadEvidence(e:ChecklistEvidence,name=e.original_name){
+ if(identityEnabled)return downloadPrivateObject(BUCKET,e.object_key,name);
  const epoch=privateImages.getAccessVersion();
  const url=await downloadUrl(e,name);
  // Check the actual bytes endpoint before starting a same-tab attachment download.

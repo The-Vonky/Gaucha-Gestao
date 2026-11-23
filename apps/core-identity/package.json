@@ -1,0 +1,7 @@
+{
+  "name": "gaucha-core-identity",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.12" },
+  "dependencies": { "pg": "8.16.3" }
+}

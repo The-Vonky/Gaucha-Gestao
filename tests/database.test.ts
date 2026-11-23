@@ -599,3 +599,65 @@ describe("GG-05A • ensaio sintético de provisionamento", () => {
     }
   });
 });
+
+describe("admissão GG-05B", () => {
+  it("recusa sessão restrita, login em voo e JWT antigo após reativação", async () => {
+    const actor = "5d52cde3-6688-49fb-a8a0-01a98dffdcd1";
+    const target = "69f35606-23f5-4a2e-b565-8bf07a499b05";
+    const firstSession = "85fc2db3-bea7-4045-b567-f4345fd69cd7";
+    const nextSession = "96ae15e5-ff36-49aa-b202-971734a728a3";
+    const actorSession = "efebd075-a00f-41ec-81bb-6dadc2a978c8";
+    const operation = "0aa91881-711f-46c2-a35a-787ce213090c";
+    const status = (user: string, session: string) => db.query<{ purpose: string | null }>(
+      "select private.identity_session_purpose($1,$2) as purpose", [user, session],
+    ).then(({ rows }) => rows[0].purpose);
+
+    await db.exec("reset role; begin; select set_config('request.jwt.claim.sub','',true)");
+    try {
+      await db.exec(`
+        insert into auth.users(id,email,email_confirmed_at) values
+          ('${actor}','gg05b-admin@example.test',now()),
+          ('${target}','gg05b-employee@example.test',now());
+        insert into core.user_role_assignments(user_id,role_id,scope_type)
+          select '${actor}',id,'global' from core.roles where key='platform_administrator';
+        insert into private.identity_operators(user_id,provision,reset_password) values ('${actor}',true,true);
+        insert into private.identity_credentials(user_id,state) values
+          ('${actor}','active'),('${target}','temporary');
+        insert into auth.sessions(id,user_id) values
+          ('${actorSession}','${actor}'),('${firstSession}','${target}'),('${nextSession}','${target}');
+        update private.identity_settings set enabled=true;
+      `);
+      await db.query("select private.identity_admit($1,$2,1)", [actor, actorSession]);
+      await db.query("select private.identity_admit($1,$2,1)", [target, firstSession]);
+      expect(await status(target, firstSession)).toBe("password_change");
+
+      await db.exec(`select set_config('request.jwt.claim.sub','${target}',true);
+        select set_config('request.jwt.claims','{"sub":"${target}","role":"authenticated","session_id":"${firstSession}"}',true);
+        savepoint denied;
+        set local role authenticated`);
+      await expect(db.query("select public.identity_pre_request()")).rejects.toMatchObject({ code: "42501" });
+      await db.exec("rollback to denied; reset role");
+
+      const begin = (who: string, session: string, verb: string) => db.query<{ ok: boolean }>(
+        "select private.identity_begin($1,$2,$3,$4,$5,1,null,null,null,null,null) as ok",
+        [who, session, operation, who === actor ? actor : target, verb],
+      ).then(({ rows }) => rows[0].ok);
+      expect(await begin(actor, actorSession, "reset")).toBe(false);
+      expect(await begin(target, firstSession, "change")).toBe(true);
+      expect(await status(target, firstSession)).toBeNull();
+      await db.query("select private.identity_finish($1,$2,$3,$1,true)", [target, firstSession, operation]);
+      const admit = (session: string, generation: number) => db.query<{ purpose: string | null }>(
+        "select private.identity_admit($1,$2,$3) as purpose", [target, session, generation],
+      ).then(({ rows }) => rows[0].purpose);
+      expect(await admit(nextSession, 1)).toBeNull();
+      expect(await admit(nextSession, 3)).toBe("application");
+      await db.exec(`update core.profiles set active=false where id='${target}';
+        update core.profiles set active=true where id='${target}'`);
+      expect(await status(target, nextSession)).toBeNull();
+      expect(await admit(nextSession, 3)).toBeNull();
+      expect(await status(actor, actorSession)).toBe("application");
+    } finally {
+      await db.exec("rollback; reset role");
+    }
+  });
+});

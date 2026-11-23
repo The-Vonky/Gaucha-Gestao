@@ -1,0 +1,37 @@
+# Extensão opt-in do mesmo projeto local. A ordem de ativação está no runbook GG-05B.
+services:
+  auth:
+    environment:
+      GOTRUE_JWT_ISSUER: http://127.0.0.1:${GG_API_PORT:-54321}/auth/v1
+      GOTRUE_SECURITY_UPDATE_PASSWORD_REQUIRE_CURRENT_PASSWORD: "true"
+      GOTRUE_SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION: "false"
+      GOTRUE_MAILER_NOTIFICATIONS_PASSWORD_CHANGED_ENABLED: "false"
+  rest:
+    environment:
+      PGRST_DB_PRE_REQUEST: public.identity_pre_request
+  identity:
+    build: ../../apps/core-identity
+    environment:
+      GG_IDENTITY_ISSUER: http://127.0.0.1:${GG_API_PORT:-54321}/auth/v1
+      GG_IDENTITY_AUTH_ADMIN_KEY: ${SERVICE_ROLE_KEY:?required}
+      GG_IDENTITY_DATABASE_URL: ${GG_IDENTITY_DATABASE_URL:?required}
+    depends_on:
+      db: {condition: service_healthy}
+      auth: {condition: service_healthy}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+    cpus: 1.0
+    mem_limit: 256m
+    healthcheck:
+      interval: 5s
+      timeout: 4s
+      retries: 12
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/health').then(r => {if (!r.ok) process.exit(1)})"]
+  kong:
+    environment:
+      GG_IDENTITY_INGRESS: "true"
+    depends_on:
+      identity: {condition: service_healthy}

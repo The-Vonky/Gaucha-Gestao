@@ -14,12 +14,14 @@ import { can, type AccessGrant, type Scope } from "./permissions";
 import { message } from "../../shared/errors";
 import { setUnitCoverAccess } from "../unitCovers";
 import { privateImages } from "../../shared/privateImageCache";
+import { identityEnabled, identityStatus, type IdentityStatus } from "./identity";
 type AuthState = {
   session: Session | null;
   profile: Profile | null;
   grants: AccessGrant[];
   loading: boolean;
   error: string;
+  identity?: IdentityStatus;
 };
 type AuthValue = AuthState & {
   refresh: () => void;
@@ -67,6 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ ...initial, session, loading: true });
     }
     try {
+      const identity = identityEnabled ? await identityStatus(session.access_token) : undefined;
+      if (request !== sequence.current) return;
+      if (identity?.passwordChangeRequired) {
+        privateImages.setAccess("");
+        setUnitCoverAccess("");
+        setState({ ...initial, session, identity, loading: false });
+        return;
+      }
       const [
         { data: profile, error: profileError },
         { data: grants, error: accessError },
@@ -86,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
         setState({
           session,
+          identity,
           profile,
           grants: grants ?? [],
           loading: false,

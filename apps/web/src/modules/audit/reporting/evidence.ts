@@ -1,3 +1,5 @@
+import { identityEnabled } from "../../../core/auth/identity";
+import { fetchPrivateObject } from "../../../core/auth/privateStorage";
 import { client } from "../../../core/client";
 import { privateImages } from "../../../shared/privateImageCache";
 import { MAX_BYTES } from "../../../shared/evidenceFiles";
@@ -49,21 +51,27 @@ export async function sourceSize(blob: Blob) {
 }
 async function readImage(row: ChecklistEvidence, signal: AbortSignal): Promise<Blob> {
   if (!Number.isSafeInteger(row.size_bytes) || row.size_bytes <= 0 || row.size_bytes > MAX_BYTES) throw unavailable();
-  let url: string;
-  let transformed = false;
-  if (AUDIT_STORAGE_TRANSFORMS && row.size_bytes > 256 * 1024) {
-    if (!client) throw unavailable();
-    const result = await abortable(client.storage.from(BUCKET).createSignedUrl(row.object_key, 60, {
-      transform: { width: 1280, height: 1280, resize: "contain", quality: 82, format: "origin" },
-    }), signal);
-    if (result.error || !result.data?.signedUrl) throw unavailable();
-    const signed = new URL(result.data.signedUrl);
-    if (signed.origin !== new URL(import.meta.env.VITE_SUPABASE_URL).origin ||
-        !signed.pathname.endsWith(`/render/image/sign/${BUCKET}/${row.object_key}`)) throw unavailable();
-    url = signed.href; transformed = true;
-  } else url = await abortable(downloadUrl(row), signal);
-  signal.throwIfAborted();
-  const response = await fetch(url, { signal, cache: "no-store", credentials: "omit", redirect: "error" });
+  const transformed = AUDIT_STORAGE_TRANSFORMS && row.size_bytes > 256 * 1024;
+  const transform = { width: 1280, height: 1280, resize: "contain", quality: 82, format: "origin" } as const;
+  let response: Response;
+  if (identityEnabled) {
+    response = await fetchPrivateObject(BUCKET, row.object_key, signal, transformed ? transform : undefined);
+  } else {
+    let url: string;
+    if (transformed) {
+      if (!client) throw unavailable();
+      const result = await abortable(client.storage.from(BUCKET).createSignedUrl(row.object_key, 60, {
+        transform,
+      }), signal);
+      if (result.error || !result.data?.signedUrl) throw unavailable();
+      const signed = new URL(result.data.signedUrl);
+      if (signed.origin !== new URL(import.meta.env.VITE_SUPABASE_URL).origin ||
+          !signed.pathname.endsWith(`/render/image/sign/${BUCKET}/${row.object_key}`)) throw unavailable();
+      url = signed.href;
+    } else url = await abortable(downloadUrl(row), signal);
+    signal.throwIfAborted();
+    response = await fetch(url, { signal, cache: "no-store", credentials: "omit", redirect: "error" });
+  }
   const mime = response.headers.get("content-type")?.split(";")[0].trim();
   if (!response.ok || !["image/jpeg", "image/png"].includes(mime ?? "")) { await response.body?.cancel(); throw unavailable(); }
   const reader = response.body?.getReader();

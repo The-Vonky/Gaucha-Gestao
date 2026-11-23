@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "npm run dev -w apps/web -- --strictPort --host 127.0.0.1",
     "dev:local": "python3 -B infra/local/prepare-audit-imgproxy.py ensure && VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS=true node scripts/dev.mjs",
+    "dev:identity": "VITE_GG_IDENTITY_ENABLED=true VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS=true npm run dev",
     "dev:thumbnails": "node scripts/audit-derivative-dev.mjs",
     "typecheck": "npm run typecheck -w apps/web",
     "build": "npm run build -w apps/web",
