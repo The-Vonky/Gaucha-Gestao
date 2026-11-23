@@ -81,7 +81,7 @@ Documentos obrigatórios conforme o escopo:
 - Host/backup/implantação: [ADR-008](docs/decisions/ADR-008-production-host-thinkstation-c30.md), [ADR-006 — Proposed](docs/decisions/ADR-006-infra-v1-reused-hardware.md), [BACKUP_RECOVERY](docs/architecture/BACKUP_RECOVERY.md) e [Plano Diretor](docs/planning/PLANO_DIRETOR_2026.md).
 - Curva ABC: [brief](docs/briefs/ABC_DOMAIN_V1.md), [guia](docs/modules/abc/OPERATOR_GUIDE_V1.md) e [Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70).
 
-**ADR-007 / Identity Boundary:** proposta anterior na PR #24 fechada **sem merge**. A [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) permanece aberta. **Não** implementar serviço privilegiado, migrations de identidade ou corte sem nova proposta aprovada, revisão independente e GO humano.
+**D01 / Identity Boundary — atualização 23/11/2026:** proposta anterior da PR #24 fechada **sem merge**, [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) encerrada administrativamente. GG-05B foi autorizada apenas para o **DEV**, homologada no notebook e integrada pela [PR #127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127) (`df113c2`). Isso **não** libera contas reais, cutover ou instalação em C30/STAGING/PROD. Revisão de segurança aplicável, recuperação emergencial do administrador e GO operacional permanecem obrigatórios. Ver [D01](docs/planning/DECISION_REGISTER.md).
 
 ## 4. Trabalho de engenharia
 
