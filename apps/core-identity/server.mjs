@@ -208,7 +208,9 @@ function intentFor(body) {
   if (!name || name.length > 160 || (body.roleId !== null && !uuid.test(body.roleId))
       || (body.unitId !== null && !uuid.test(body.unitId))
       || (body.sectorId !== null && !uuid.test(body.sectorId))
-      || Boolean(body.roleId) !== Boolean(body.unitId) || (body.sectorId && !body.unitId)
+      // Papéis globais do Agendamento podem ter roleId sem unitId;
+      // private.identity_can_assign aplica a allowlist definitiva no banco.
+|| (body.unitId && !body.roleId) || (body.sectorId && !body.unitId)
       || body.verified !== true) throw reject(400);
   return [email, name, body.roleId, body.unitId, body.sectorId];
 }
