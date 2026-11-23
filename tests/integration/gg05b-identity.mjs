@@ -35,6 +35,7 @@ const actors = [uuid(), uuid()];
 const units = [uuid(), uuid()];
 const identities = [...actors];
 const assets = [];
+let requesterPassword;
 const jpeg = Buffer.from("/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=", "base64");
 
 function runDocker(args, input) {
@@ -223,6 +224,8 @@ try {
     await rest("announcements_published", readerAccess, {}, "public");
 
     phase = "D5-C: cadastro global da secretaria e solicitante";
+    assert.equal(await (await rest("room_booking_admin_context", admin, {}, "public")).json(), true);
+    await rest("room_booking_requests", admin, { p_queue: true }, "public");
     for (const [key, alias, shouldManage] of [
       ["room_booking_manager", "secretary", true],
       ["room_booking_requester", "roomrequester", false],
@@ -234,17 +237,35 @@ try {
         roleId: roomRole, unitId: null, sectorId: null, verified: true,
       }, 201);
       identities.push(registered.userId);
-      const assignment = sql(`select a.scope_type || ':' || coalesce(a.unit_id::text, 'null')
+      secrets.push(registered.temporaryPassword);
+      assertTemporaryPassword(registered.temporaryPassword);
+      const assignment = sql(`select concat_ws(':',a.scope_type,
+          a.unit_id is null,a.sector_id is null,a.granted_by='${actors[0]}',
+          exists(select 1 from core.system_audit_log l where l.actor_user_id='${actors[0]}'
+            and l.entity_id=a.id::text and l.action='grant'))
         from core.user_role_assignments a
         where a.user_id='${registered.userId}' and a.role_id='${roomRole}' and a.active`);
-      assert.equal(assignment, "global:null");
+      assert.equal(assignment, "global:t:t:t:t");
       const temporaryLogin = await login(alias, registered.temporaryPassword);
+      secrets.push(temporaryLogin.access_token);
+      await assertBarriers(temporaryLogin.access_token, "/storage/v1/object/authenticated/unit-covers/missing");
       const chosenPassword = password();
       await change(temporaryLogin.access_token, registered.temporaryPassword, chosenPassword);
       const roomToken = (await login(alias, chosenPassword)).access_token;
+      secrets.push(roomToken);
       const access = await (await rest("my_access", roomToken, {})).json();
       assert.equal(access.some((entry) => entry.permission === "room_booking.manage"), shouldManage);
-      assert.equal((await (await rest("room_booking_admin_context", roomToken, {}, "public")).json()), false);
+      assert.equal(await (await rest("room_booking_admin_context", roomToken, {}, "public")).json(), false);
+      await rest("room_booking_requests", roomToken, { p_queue: false }, "public");
+      for (const [name, json] of [
+        ["room_booking_requests", { p_queue: true }],
+        ["room_booking_history", {}],
+        ["room_booking_direct_history", {}],
+      ]) {
+        await responseOf(`/rest/v1/rpc/${name}`, { token: roomToken, method: "POST", json },
+          shouldManage ? [200] : [403]);
+      }
+      if (!shouldManage) requesterPassword = chosenPassword;
     }
     const forbiddenAdministrator = await command("/users", admin, {
       name: "Administrativo não permitido", email: email("forbiddenadmin"),
@@ -252,6 +273,7 @@ try {
       unitId: null, sectorId: null, verified: true,
     }, 409);
     assert.equal(forbiddenAdministrator.code, "operation_conflict");
+    assert.equal(sql(`select count(*) from auth.users where email='${email("forbiddenadmin")}'`), "0");
 
     phase = "reset e revogação";
     const reset = await command(`/users/${employee.userId}/password-reset`, admin, {
@@ -349,6 +371,12 @@ try {
       const form = operatorPage.getByRole("dialog", { name: "Novo usuário" });
       await form.getByLabel("Nome completo").fill("Funcionário sintético pelo navegador");
       await form.getByLabel("E-mail individual").fill(email("browser"));
+      const role = form.getByLabel("Papel institucional");
+      assert.equal(await role.getByRole("option", { name: "Room Booking Requester", exact: true }).count(), 1);
+      assert.equal(await role.getByRole("option", { name: "Platform Administrator", exact: true }).count(), 0);
+      await role.selectOption({ label: "Room Booking Manager" });
+      assert.equal(await form.getByLabel("Unidade", { exact: true }).count(), 0);
+      assert.equal(await form.getByLabel("Setor", { exact: true }).count(), 0);
       await form.getByRole("checkbox").check();
       await form.getByRole("button", { name: "Salvar" }).click();
       const modal = operatorPage.getByRole("dialog", { name: "Senha temporária" });
@@ -395,7 +423,41 @@ try {
       await employeePage.getByRole("heading", { name: "Entrar na plataforma" }).waitFor();
       await signIn(employeePage, "browser", secret);
       await employeePage.getByText("Acesso não autorizado", { exact: true }).waitFor();
-      console.log("PASS GG-05B: cadastro, recarga da troca e novo login pelo Vite em Chromium.");
+      phase = "interface: gestora após troca";
+      await employeePage.goto(`${origin}/rooms`);
+      await employeePage.getByRole("button", { name: "Criar reserva direta" }).waitFor();
+      assert.equal(await employeePage.getByRole("group", { name: "Modo de atuação" }).count(), 0);
+      assert.equal(await employeePage.getByRole("heading", { name: "Meus pedidos" }).count(), 0);
+
+      phase = "interface: modos do administrador em desktop e celular";
+      await operatorPage.goto(`${origin}/rooms`);
+      const requester = operatorPage.getByRole("button", { name: "Room Booking Requester", exact: true });
+      const manager = operatorPage.getByRole("button", { name: "Room Booking Manager", exact: true });
+      await requester.waitFor();
+      assert.equal(await requester.getAttribute("aria-pressed"), "true");
+      await operatorPage.getByRole("button", { name: "Novo pedido" }).waitFor();
+      for (const width of [1280, 320]) {
+        await operatorPage.setViewportSize({ width, height: 800 });
+        const [left, right] = await Promise.all([requester.boundingBox(), manager.boundingBox()]);
+        assert.ok(left && right && [left, right].every((box) => box.x >= 0 && box.x + box.width <= width));
+        await manager.click();
+        assert.equal(await manager.getAttribute("aria-pressed"), "true");
+        await operatorPage.getByRole("heading", { name: "Histórico do agendamento" }).waitFor();
+        assert.equal(await operatorPage.getByRole("heading", { name: "Meus pedidos" }).count(), 0);
+        await requester.click();
+        await operatorPage.getByRole("heading", { name: "Meus pedidos" }).waitFor();
+        assert.equal(await operatorPage.getByRole("heading", { name: "Histórico do agendamento" }).count(), 0);
+      }
+      if (requesterPassword) {
+        phase = "interface: solicitante sem gestão";
+        const requesterPage = observe(await browser.newPage({ reducedMotion: "reduce" }));
+        await requesterPage.goto(`${origin}/rooms`);
+        await signIn(requesterPage, "roomrequester", requesterPassword);
+        await requesterPage.getByRole("heading", { name: "Meus pedidos" }).waitFor();
+        assert.equal(await requesterPage.getByRole("button", { name: "Criar reserva direta" }).count(), 0);
+        assert.equal(await requesterPage.getByRole("group", { name: "Modo de atuação" }).count(), 0);
+      }
+      console.log("PASS GG-05B/D5-C: cadastro global, troca, modos administrativos e vistas fixas pelo Vite em Chromium.");
     } catch (error) {
       const summaries = ["intercepts pointer events", "strict mode violation", "element is not visible",
         "element is not stable", "Timeout", "page has been closed", "did not resolve to an element"];
@@ -427,6 +489,8 @@ try {
   if (!browserOnly) console.log("PASS GG-05B: GoTrue, Kong, REST/RPC, objetos, escopo, primeiro acesso, reset, bloqueio e reativação.");
 } catch (error) {
   console.error(`FAIL GG-05B | ${phase}${error.actualStatus ? ` | ${error.surface}: HTTP ${error.actualStatus}, esperado ${error.expectedStatuses.join("/")}` : ""}`);
+  const location = error.stack?.match(/gg05b-identity\.mjs:\d+:\d+/)?.[0];
+  if (location) console.error(location);
   if (phase.startsWith("interface:") && browserResponses.length) console.error(browserResponses.slice(-10).join(" | "));
   process.exitCode = 1;
 } finally {

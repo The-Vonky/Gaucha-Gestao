@@ -45,7 +45,7 @@ try {
   must(await client.auth.signInWithPassword({ email: person.email, password }));
   const access = must(await client.schema("core").rpc("my_access"));
   assert.equal(access.filter(a => a.permission.startsWith("sales.")).length, 7);
-  assert.ok(!access.some(a => a.permission === "room_booking.manage"));
+  assert.ok(access.some(a => a.permission === "room_booking.manage"));
 
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, locale: "pt-BR" });
   await context.route("**/*", route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
@@ -83,7 +83,7 @@ try {
     await expect(list.getByRole("button", { name: `Editar ${name}`, exact: true })).toHaveCount(0);
   }
   assert.equal(/VEN0[34]|ven03-/i.test(await list.innerText()), false);
-  manifest.checks.push("Auth/login UI sintético com Platform Administrator: Comercial, /sales, cadastro/edição/exclusão UI, /sales/dashboard; my_access global, D5-B sem manage; /admin/roles com Sales Manager e Sales Viewer protegidos.");
+  manifest.checks.push("Auth/login UI sintético com Platform Administrator: Comercial, /sales, cadastro/edição/exclusão UI, /sales/dashboard; my_access global, D5-C com manage; /admin/roles com Sales Manager e Sales Viewer protegidos.");
   await context.close();
   console.log("Platform Administrator Auth/Playwright PASS");
 } finally {

@@ -472,14 +472,6 @@
   border-radius: 16px;
   background: #fff;
 }
-.room-mode-switch strong {
-  color: #173e34;
-}
-.room-mode-switch p {
-  margin: 0.25rem 0 0;
-  font-size: 0.85rem;
-  color: #61736a;
-}
 .room-mode-actions {
   display: flex;
   flex-wrap: wrap;

@@ -9,7 +9,10 @@ type Contact = {
   version: number;
 };
 
-export function RoomContact({ manage }: { manage: boolean }) {
+export function RoomContact({ manage, onSaving }: {
+  manage: boolean;
+  onSaving: (value: boolean) => void;
+}) {
   const [contact, setContact] = useState<Contact | null>();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
@@ -77,6 +80,7 @@ export function RoomContact({ manage }: { manage: boolean }) {
     if (!contact || saving || conflict) return;
     setError("");
     setSaving(true);
+    onSaving(true);
     try {
       const result = await rpc<Contact>("save_contact", {
         p_room_id: contact.room_id,
@@ -98,6 +102,7 @@ export function RoomContact({ manage }: { manage: boolean }) {
       }
     } finally {
       setSaving(false);
+      onSaving(false);
     }
   }
 

@@ -55,35 +55,117 @@ export function RoomsPage() {
     own = allowed("request.read_own"),
     create = allowed("request.create"),
     manageGranted = allowed("manage");
-  // O papel global de administrador é conferido no banco, não inferido de grants genéricos.
-  const [adminContext, setAdminContext] = useState<boolean | null>(null);
-  const [mode, setMode] = useState<"requester" | "manager">("requester");
-  const [modeError, setModeError] = useState("");
-  const manage = manageGranted && adminContext !== null
-    && (!adminContext || mode === "manager");
+  // Remonta os dados da sala quando muda o principal, a sessão ou as capacidades.
+  const access = JSON.stringify([
+    auth.session?.user.id, auth.session?.user.last_sign_in_at, auth.profile?.id,
+    read, own, create, manageGranted,
+  ]);
+  return (
+    <RoomsAccess key={access} read={read} own={own} create={create}
+      manageGranted={manageGranted} />
+  );
+}
+
+type RoomAccess = { read: boolean; own: boolean; create: boolean };
+
+function RoomsAccess({ manageGranted, ...access }: RoomAccess & { manageGranted: boolean }) {
+  const [admin, setAdmin] = useState<boolean>();
+  const [managerMode, setManagerMode] = useState(false);
+  const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [savingContact, setSavingContact] = useState(false);
+  const [date, setDate] = useState(day);
   useEffect(() => {
-    let cancelled = false;
-    setAdminContext(null);
-    setMode("requester");
-    setModeError("");
-    void rpc<boolean>("admin_context")
-      .then((value) => {
-        if (!cancelled) setAdminContext(value === true);
-      })
-      .catch((error) => {
-        if (!cancelled) setModeError(roomMessage(error));
-      });
-    return () => { cancelled = true; };
-  }, [auth.profile?.id, auth.profile?.active]);
-  const [date, setDate] = useState(day());
+    if (!manageGranted) return;
+    let generation = 0;
+    async function verify() {
+      const current = ++generation;
+      try {
+        const result = await rpc<boolean>("admin_context");
+        if (current !== generation) return;
+        if (typeof result !== "boolean") throw new Error("Resposta de autorização inválida.");
+        setAdmin(result);
+        setError("");
+        if (!result) setManagerMode(false);
+      } catch (e) {
+        if (current !== generation) return;
+        setAdmin(undefined);
+        setManagerMode(false);
+        setError(roomMessage(e));
+      }
+    }
+    const visible = () => {
+      if (document.visibilityState === "visible") void verify();
+    };
+    void verify();
+    document.addEventListener("visibilitychange", visible);
+    const timer = window.setInterval(visible, 60000);
+    return () => {
+      generation++;
+      document.removeEventListener("visibilitychange", visible);
+      clearInterval(timer);
+    };
+  }, [manageGranted, attempt]);
+
+  if (manageGranted && admin === undefined) {
+    return (
+      <div className="rooms-page">
+        {error ? (
+          <>
+            <Notice error>Não foi possível verificar o modo de atuação. {error}</Notice>
+            <button type="button" onClick={() => {
+              setError("");
+              setAttempt((current) => current + 1);
+            }}>Tentar novamente</button>
+          </>
+        ) : <p role="status">Verificando acesso ao Agendamento…</p>}
+      </div>
+    );
+  }
+  const manage = manageGranted && (!admin || managerMode);
+  return (
+    <div className="rooms-page">
+      {admin && (
+        <div className="room-mode-switch" role="group" aria-label="Modo de atuação">
+          <div className="room-mode-actions">
+            <button type="button" className={!manage ? "primary" : ""}
+              aria-pressed={!manage} disabled={busy || savingContact}
+              onClick={() => setManagerMode(false)}>
+              Room Booking Requester
+            </button>
+            <button type="button" className={manage ? "primary" : ""}
+              aria-pressed={manage} disabled={busy || savingContact}
+              onClick={() => setManagerMode(true)}>
+              Room Booking Manager
+            </button>
+          </div>
+        </div>
+      )}
+      <RoomsWorkspace key={`${admin}:${manage}`} {...access} manage={manage}
+        date={date} setDate={setDate} busy={busy} setBusy={setBusy}
+        onContactSaving={setSavingContact} />
+    </div>
+  );
+}
+
+function RoomsWorkspace({
+  read, own, create, manage, date, setDate, busy, setBusy, onContactSaving,
+}: RoomAccess & {
+  manage: boolean;
+  date: string;
+  setDate: (value: string) => void;
+  busy: boolean;
+  setBusy: (value: boolean) => void;
+  onContactSaving: (value: boolean) => void;
+}) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
   const [queue, setQueue] = useState<Request[]>([]);
   const [summary, setSummary] = useState<Summary | null>();
   const [page, setPage] = useState(0),
     [queuePage, setQueuePage] = useState(0);
-  const [loading, setLoading] = useState(true),
-    [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(""),
     [success, setSuccess] = useState("");
   const [editor, setEditor] = useState<Editor>();
@@ -131,6 +213,9 @@ export function RoomsPage() {
       setRequests([]);
       setQueue([]);
       setSummary(null);
+      setEditor(undefined);
+      setDecision(undefined);
+      setHistoryRevision((r) => r + 1);
     } finally {
       if (current === generation.current) setLoading(false);
     }
@@ -224,17 +309,8 @@ export function RoomsPage() {
     : Date.now();
   const historical =
     !!editor?.booking && new Date(editor.booking.starts_at).getTime() <= now;
-  if (adminContext === null) {
-    return (
-      <div className="rooms-page">
-        {modeError
-          ? <Notice error>{modeError}. Não foi possível verificar o modo de atuação.</Notice>
-          : <p role="status">Verificando acesso ao Agendamento…</p>}
-      </div>
-    );
-  }
   return (
-    <div className="rooms-page">
+    <>
       <RoomHeroBanner
         summary={summary}
         loading={loading}
@@ -242,49 +318,13 @@ export function RoomsPage() {
         onBoundary={refresh}
         photo={<RoomPhoto manager={manage} read={read} />}
       />
-      {adminContext && manageGranted && (
-        <section className="room-mode-switch" aria-label="Modo de atuação no Agendamento">
-          <div>
-            <strong>Atuar como</strong>
-            <p>Escolha a visualização de trabalho para esta sala.</p>
-          </div>
-          <div className="room-mode-actions" role="group" aria-label="Modo de atuação">
-            <button
-              type="button"
-              className={mode === "requester" ? "primary" : ""}
-              aria-pressed={mode === "requester"}
-              disabled={busy}
-              onClick={() => {
-                setEditor(undefined);
-                setDecision(undefined);
-                setSuccess("");
-                setError("");
-                setMode("requester");
-              }}
-            >Room Booking Requester</button>
-            <button
-              type="button"
-              className={mode === "manager" ? "primary" : ""}
-              aria-pressed={mode === "manager"}
-              disabled={busy}
-              onClick={() => {
-                setEditor(undefined);
-                setDecision(undefined);
-                setSuccess("");
-                setError("");
-                setMode("manager");
-              }}
-            >Room Booking Manager</button>
-          </div>
-        </section>
-      )}
       <div className="room-toolbar">
         <span>Horários de Brasília · America/Sao_Paulo</span>
         <button disabled={busy || loading} onClick={() => void refresh()}>
           Atualizar agenda
         </button>
       </div>
-      {read && <RoomContact key={auth.profile?.id} manage={manage} />}
+      {read && <RoomContact manage={manage} onSaving={onContactSaving} />}
       {error && <Notice error>{error}</Notice>}
       {success && <Notice>{success}</Notice>}
       <div className={`room-columns${manage ? " room-columns-manager" : ""}`}>
@@ -665,7 +705,7 @@ export function RoomsPage() {
         </section>
       )}
       {manage && <RequestHistory revision={historyRevision} />}
-    </div>
+    </>
   );
 }
 function Pagination({

@@ -33,6 +33,7 @@ join core.roles r on r.key = actors.role;
 -- GG-08: inicialização, dados normalizados, leitura e versão.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', current_setting('gg.manager'), true);
+select pg_temp.check(not public.room_booking_admin_context(), 'gestora não recebe seletor');
 select set_config('gg.room', public.room_booking_contact()->>'room_id', true);
 select pg_temp.check((public.room_booking_contact()->>'version')::int = 0
   and public.room_booking_contact()->>'responsible_name' is null, 'contato ainda não configurado');
@@ -58,17 +59,11 @@ select pg_temp.fails($q$select public.room_booking_direct_history()$q$, '42501')
 select pg_temp.fails($q$select public.room_booking_history()$q$, '42501');
 select set_config('request.jwt.claim.sub', current_setting('gg.admin'), true);
 select pg_temp.check(public.room_booking_contact()->>'extension' = '0123', 'admin lê contato com schedule.read');
-select pg_temp.fails($q$select public.room_booking_save_contact(current_setting('gg.room')::uuid, 'Admin', '4321', 1)$q$, '42501');
-select pg_temp.fails($q$select public.room_booking_direct_history()$q$, '42501');
-
-reset role;
-select set_config('request.jwt.claim.sub', '', true);
-insert into core.user_role_assignments (user_id, role_id, scope_type)
-select current_setting('gg.admin')::uuid, id, 'global' from core.roles where key = 'room_booking_manager';
-set local role authenticated;
-select set_config('request.jwt.claim.sub', current_setting('gg.admin'), true);
-select pg_temp.fails($q$select public.room_booking_save_contact(current_setting('gg.room')::uuid, 'Admin em conflito', '4321', 1)$q$, '42501');
-select pg_temp.fails($q$select public.room_booking_direct_history()$q$, '42501');
+select pg_temp.check(public.room_booking_admin_context(), 'admin global recebe seletor');
+select pg_temp.check((public.room_booking_direct_history() ? 'items'), 'admin lê histórico direto');
+select pg_temp.check((public.room_booking_history() ? 'items'), 'admin lê histórico de pedidos');
+-- A falha de versão comprova que o administrador passou pela autorização de gestão.
+select pg_temp.fails($q$select public.room_booking_save_contact(current_setting('gg.room')::uuid, 'Admin', '4321', 0)$q$, '40001');
 
 select set_config('request.jwt.claim.sub', current_setting('gg.substitute'), true);
 select pg_temp.check(public.room_booking_save_contact(current_setting('gg.room')::uuid, 'Nome da Substituta', '0123', 1)->>'version' = '2',
@@ -175,6 +170,7 @@ select pg_temp.fails($q$select public.room_booking_direct_history()$q$, '42501')
 select pg_temp.fails($q$select public.room_booking_history()$q$, '42501');
 set local role anon;
 select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.fails($q$select public.room_booking_admin_context()$q$, '42501');
 select pg_temp.fails($q$select public.room_booking_contact()$q$, '42501');
 select pg_temp.fails($q$select public.room_booking_save_contact(current_setting('gg.room')::uuid, 'Anônimo', '0123', 2)$q$, '42501');
 select pg_temp.fails($q$select public.room_booking_direct_history()$q$, '42501');

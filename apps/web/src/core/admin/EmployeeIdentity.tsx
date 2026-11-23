@@ -17,7 +17,7 @@ export function EmployeeRegistration({ token, onClose, onCreated }: {
     const administrative = new Set(permissions.filter((permission) => permission.permission_key.startsWith("admin."))
       .map((permission) => permission.role_id));
     return {
-      roles: roles.filter((role) => role.active
+      roles: roles.filter((role) => role.active && role.key !== "platform_administrator"
         && (!role.global_only || ["room_booking_manager", "room_booking_requester"].includes(role.key))
         && !administrative.has(role.id)),
       units: units.filter((unit) => unit.active),

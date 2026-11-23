@@ -17,11 +17,12 @@ export async function existingActors(db) {
   const requester = rows.find(
     (r) =>
       r.roles.includes("room_booking_requester") &&
-      !r.roles.includes("room_booking_manager"),
+      !r.roles.includes("room_booking_manager") &&
+      !r.roles.includes("platform_administrator"),
   )?.id;
   assert.ok(
     manager && admin && requester,
-    "Contas existentes: gestor sem conflito e solicitante (pode acumular administrador D5-B)",
+    "Contas existentes: administrador global, gestor e solicitante com vista fixa",
   );
   return { manager, admin, requester };
 }

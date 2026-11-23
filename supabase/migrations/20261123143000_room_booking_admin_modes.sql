@@ -5,7 +5,7 @@ begin;
 -- A migration D5-B permanece histórica e intacta.
 do $$
 begin
-  if (select count(*) from core.roles where key = 'platform_administrator' and active) <> 1
+  if (select count(*) from core.roles where key = 'platform_administrator' and active and global_only) <> 1
      or (select count(*) from core.roles where key = 'room_booking_manager' and active and global_only) <> 1
      or (select count(*) from core.roles where key = 'room_booking_requester' and active and global_only) <> 1
      or not exists (select 1 from core.permissions where key = 'room_booking.manage' and active) then
@@ -27,6 +27,7 @@ returns boolean language sql stable security definer set search_path = '' as $$
   select p_permission <> 'room_booking.manage' or exists (
     select 1 from core.user_role_assignments a
     join core.roles r on r.id = a.role_id and r.active
+    join core.role_permissions rp on rp.role_id = r.id and rp.permission_key = p_permission
     where a.user_id = auth.uid() and a.active and a.scope_type = 'global'
       and r.key in ('platform_administrator', 'room_booking_manager')
   )
@@ -71,7 +72,7 @@ $$;
 -- admissão, bloqueio, auditoria e reconciliação da implementação anterior.
 create or replace function private.identity_finish(
   p_actor uuid,p_session uuid,p_operation uuid,p_target uuid,p_confirmed boolean
-) returns boolean language plpgsql security definer set search_path = '' as $
+) returns boolean language plpgsql security definer set search_path = '' as $$
 declare op private.identity_operations;
 begin
   if not private.identity_enabled() then return false; end if;
@@ -129,8 +130,7 @@ begin
     values (p_actor,'core','identity_' || op.verb || '_complete','identity',p_target::text,p_operation::text);
   return true;
 end
-$;
-
+$$;
 
 -- Projeção da identidade de administrador, não uma concessão de acesso.
 -- O navegador usa a resposta apenas para mostrar o seletor de visualização.

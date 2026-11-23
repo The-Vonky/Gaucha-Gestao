@@ -69,7 +69,7 @@ e atribuíveis globalmente ou por unidade. Grants de setor não dão acesso à u
 
 Cada perfil possui somente as capacidades acima. O `platform_administrator` é
 um papel administrativo global e conserva sua composição, incluindo as sete
-capacidades de Vendas e a restrição D5-B. A administração de perfis lista os
+capacidades de Vendas e a decisão de Agendamento vigente em cada versão. A administração de perfis lista os
 papéis protegidos do catálogo em modo consulta. A autorização das RPCs depende
 de perfil ativo, atribuição vigente e permissão efetiva na unidade. Exportação
 completa percorre o histórico do escopo autorizado.
@@ -181,7 +181,7 @@ O cadastro de funcionário GG-05B permite `room_booking_manager` ou `room_bookin
 
 Catálogo `room_booking.schedule.read`, `room_booking.request.create`, `room_booking.request.read_own` e `room_booking.manage`; solicitante e administrador recebem as três primeiras; gestor recebe as quatro, condicionado à ausência de atribuição administrativa ativa conflitante (D5-B, 26/10/2026). Papéis novos `global_only`, sem atribuição automática. Schema privado e tabelas sem acesso direto, RLS restritiva; RPCs autorizadas e leitura saneada somente em AG-02. Ver [contrato AG-01](../modules/room-booking/AG01_FOUNDATION.md). Implementação autorizada para revisão em 23/10; revisão do titular e merge continuam pendentes, conforme exceção de mantenedor único registrada em `9e20199` (sem parecer independente).
 
-GG-08 permite ler o contato da sala com `room_booking.schedule.read` e exige `room_booking.manage` efetivo para gravá-lo com versão otimista e auditoria. GG-09 exige gestão efetiva para consultar tanto solicitações quanto reservas diretas. As três RPCs novas usam a autorização existente do Agendamento, sem grants diretos sobre as tabelas. D5-B se aplica inclusive ao administrador com atribuição conflitante e D6 segue a atribuição efetiva da substituta. [Contratos do Agendamento](../modules/room-booking/EXPERIENCE_V1.md#gg-08-e-gg-09--contato-e-histórico-de-gestão).
+GG-08 permite ler o contato da sala com `room_booking.schedule.read` e exige `room_booking.manage` efetivo para gravá-lo com versão otimista e auditoria. GG-09 exige gestão efetiva para consultar tanto solicitações quanto reservas diretas. As três RPCs novas usam a autorização existente do Agendamento, sem grants diretos sobre as tabelas. D6 segue a atribuição efetiva da substituta. A restrição a administradores prevista em D5-B é histórica e fica superada com a aplicação de AG-D5-C. [Contratos do Agendamento](../modules/room-booking/EXPERIENCE_V1.md#gg-08-e-gg-09--contato-e-histórico-de-gestão).
 
 
 ## Agendamento — API AG-02 e interface AG-03 (PR #88)

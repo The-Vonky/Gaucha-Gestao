@@ -32,14 +32,17 @@ vi.mock("../apps/web/src/modules/rooms/api", async (original) => ({
   ...(await original<object>()),
   rpc: state.rpc,
 }));
+function mockRooms(implementation: NonNullable<ReturnType<typeof state.rpc.getMockImplementation>>) {
+  state.rpc.mockImplementation((name, args) =>
+    name === "admin_context" ? Promise.resolve(state.adminContext) : implementation(name, args),
+  );
+}
 beforeEach(() => {
   state.permissions = ["schedule.read"];
   state.adminContext = false;
   state.rpc.mockReset();
-  state.rpc.mockImplementation(async (name) =>
-    name === "admin_context"
-      ? state.adminContext
-      : name === "summary"
+  mockRooms(async (name) =>
+    name === "summary"
       ? {
           name: "Sala de Reunião",
           server_now: "2026-10-23T12:00:00Z",
@@ -82,11 +85,11 @@ it("solicitante envia pedido com chave idempotente e não o apresenta como confi
     p_booked_for: "Teste",
     p_key: expect.any(String),
   });
-  expect(screen.queryByText("Solicitações pendentes")).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Solicitações pendentes" })).toBeNull();
 });
 it("gestor vê fila; observações com HTML são texto inerte", async () => {
   state.permissions = ["schedule.read", "manage"];
-  state.rpc.mockImplementation(async (name) =>
+  mockRooms(async (name) =>
     name === "schedule"
       ? [
           {
@@ -134,7 +137,7 @@ it("nega navegação sem concessão global e limpa agenda após erro de autoriza
       .flatMap((g) => g.destinations)
       .some((d) => d.path === "/rooms"),
   ).toBe(false);
-  state.rpc.mockImplementation(async (name) => {
+  mockRooms(async (name) => {
     if (name === "schedule") throw { code: "42501" };
     return null;
   });
@@ -153,10 +156,8 @@ it("converte minutos livres e borda 23:59 no fuso de São Paulo", () => {
 it("D5-C: só o administrador alterna entre solicitante e gestor", async () => {
   state.adminContext = true;
   state.permissions = ["schedule.read", "request.create", "request.read_own", "manage"];
-  state.rpc.mockImplementation(async (name) =>
-    name === "admin_context"
-      ? true
-      : name === "schedule"
+  mockRooms(async (name) =>
+    name === "schedule"
       ? [
           {
             id: "B",
@@ -186,19 +187,19 @@ it("D5-C: só o administrador alterna entre solicitante e gestor", async () => {
   expect(screen.getByText("Meus pedidos")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Novo pedido" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Criar reserva direta" })).toBeNull();
-  expect(screen.queryByText("Solicitações pendentes")).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Solicitações pendentes" })).toBeNull();
   expect(screen.queryByText("99")).toBeNull();
   await user.click(manager);
   expect(manager.getAttribute("aria-pressed")).toBe("true");
   expect(screen.getByRole("button", { name: "Criar reserva direta" })).toBeTruthy();
-  expect(screen.getByText("Solicitações pendentes")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Solicitações pendentes" })).toBeTruthy();
   expect(screen.queryByText("Meus pedidos")).toBeNull();
   await waitFor(() => expect(state.rpc.mock.calls.some(
     (c) => c[0] === "requests" && c[1]?.p_queue,
   )).toBe(true));
   await user.click(requester);
   expect(requester.getAttribute("aria-pressed")).toBe("true");
-  expect(screen.queryByText("Solicitações pendentes")).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Solicitações pendentes" })).toBeNull();
   expect(screen.getByRole("button", { name: "Novo pedido" })).toBeTruthy();
 });
 it("fecha visualmente o editor de gestão quando a permissão efetiva é revogada", async () => {
@@ -256,7 +257,7 @@ it("histórico apresenta estados, decisão e reserva cancelada, pagina por curso
       booking_cancelled_at: i === 1 ? "2019-12-22T12:00:00Z" : null,
     }),
   );
-  state.rpc.mockImplementation(async (name) =>
+  mockRooms(async (name) =>
     name === "history"
       ? { items: entries, has_more: true }
       : name === "summary"
@@ -313,7 +314,7 @@ it("gestora configura contato e vê o valor salvo; leitor só consulta após rem
     version: 0,
   };
   const fallback = state.rpc.getMockImplementation()!;
-  state.rpc.mockImplementation(async (name, args) => {
+  mockRooms(async (name, args) => {
     if (name === "contact") return contact;
     if (name === "save_contact") {
       contact = {
@@ -362,7 +363,7 @@ it("conflito de contato impede nova gravação até consultar a versão atual", 
   state.permissions = ["schedule.read", "manage"];
   const fallback = state.rpc.getMockImplementation()!;
   let version = 1;
-  state.rpc.mockImplementation(async (name, args) => {
+  mockRooms(async (name, args) => {
     if (name === "contact")
       return {
         room_id: "sala-sintética",
@@ -382,7 +383,7 @@ it("conflito de contato impede nova gravação até consultar a versão atual", 
 
   render(<RoomsPage />);
   const user = userEvent.setup();
-  const contact = screen.getByRole("region", { name: "Contato da sala" });
+  const contact = await screen.findByRole("region", { name: "Contato da sala" });
   await user.click(
     await within(contact).findByRole("button", { name: "Editar contato" }),
   );
@@ -422,7 +423,7 @@ it("aba de diretas usa RPC própria, cursor e filtros sem misturar as origens", 
     secretary_notes: "<b>Somente texto</b>",
   };
   const fallback = state.rpc.getMockImplementation()!;
-  state.rpc.mockImplementation(async (name, args) =>
+  mockRooms(async (name, args) =>
     name === "direct_history"
       ? args.p_before_id
         ? {
@@ -483,4 +484,23 @@ it("aba de diretas usa RPC própria, cursor e filtros sem misturar as origens", 
       p_before_id: null,
     }),
   );
+});
+
+it("aguarda o contexto para consultar a fila e permite repetir uma falha de rede", async () => {
+  state.permissions = ["schedule.read", "request.create", "request.read_own", "manage"];
+  const fallback = state.rpc.getMockImplementation()!;
+  let retry = false;
+  state.rpc.mockImplementation(async (name, args) => {
+    if (name === "admin_context" && !retry) throw new Error("Sem conexão");
+    return fallback(name, args);
+  });
+  render(<RoomsPage />);
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toContain("Não foi possível verificar o modo de atuação");
+  expect(state.rpc.mock.calls.map(([name]) => name)).toEqual(["admin_context"]);
+  retry = true;
+  await userEvent.setup().click(screen.getByRole("button", { name: "Tentar novamente" }));
+  await screen.findByRole("button", { name: "Criar reserva direta" });
+  await waitFor(() => expect(state.rpc).toHaveBeenCalledWith("requests", expect.objectContaining({ p_queue: true })));
+  expect(state.rpc.mock.calls.some(([name, args]) => name === "requests" && !args?.p_queue)).toBe(false);
 });

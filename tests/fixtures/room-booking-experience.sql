@@ -6,9 +6,8 @@ create or replace function pg_temp.fails(command text,expected text) returns voi
 end $$;
 set local role authenticated;
 select set_config('request.jwt.claim.sub',current_setting('test.admin'),true);
-select pg_temp.fails($q$select public.room_booking_history()$q$,'42501');
-select pg_temp.fails($q$select public.room_booking_begin_cover_upload(3,1,1,'image/jpeg')$q$,'42501');
-select pg_temp.fails($q$select public.room_booking_save_cover('remove',gen_random_uuid(),1)$q$,'42501');
+select pg_temp.check(public.room_booking_history() ? 'items');
+select pg_temp.fails($q$select public.room_booking_begin_cover_upload(0,1,1,'image/jpeg')$q$,'23514');
 select set_config('request.jwt.claim.sub',current_setting('test.requester'),true);
 select pg_temp.fails($q$select public.room_booking_history()$q$,'42501');
 select pg_temp.fails($q$select public.room_booking_begin_cover_upload(3,1,1,'image/jpeg')$q$,'42501');
