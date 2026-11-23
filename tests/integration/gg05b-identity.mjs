@@ -222,6 +222,37 @@ try {
     assert.deepEqual(await (await rest("my_access", readerAccess, {})).json(), []);
     await rest("announcements_published", readerAccess, {}, "public");
 
+    phase = "D5-C: cadastro global da secretaria e solicitante";
+    for (const [key, alias, shouldManage] of [
+      ["room_booking_manager", "secretary", true],
+      ["room_booking_requester", "roomrequester", false],
+    ]) {
+      const roomRole = sql(`select id from core.roles where key='${key}'`);
+      const registered = await command("/users", admin, {
+        name: "Usuário sintético Room Booking",
+        email: email(alias),
+        roleId: roomRole, unitId: null, sectorId: null, verified: true,
+      }, 201);
+      identities.push(registered.userId);
+      const assignment = sql(`select a.scope_type || ':' || coalesce(a.unit_id::text, 'null')
+        from core.user_role_assignments a
+        where a.user_id='${registered.userId}' and a.role_id='${roomRole}' and a.active`);
+      assert.equal(assignment, "global:null");
+      const temporaryLogin = await login(alias, registered.temporaryPassword);
+      const chosenPassword = password();
+      await change(temporaryLogin.access_token, registered.temporaryPassword, chosenPassword);
+      const roomToken = (await login(alias, chosenPassword)).access_token;
+      const access = await (await rest("my_access", roomToken, {})).json();
+      assert.equal(access.some((entry) => entry.permission === "room_booking.manage"), shouldManage);
+      assert.equal((await (await rest("room_booking_admin_context", roomToken, {}, "public")).json()), false);
+    }
+    const forbiddenAdministrator = await command("/users", admin, {
+      name: "Administrativo não permitido", email: email("forbiddenadmin"),
+      roleId: sql("select id from core.roles where key='platform_administrator'"),
+      unitId: null, sectorId: null, verified: true,
+    }, 409);
+    assert.equal(forbiddenAdministrator.code, "operation_conflict");
+
     phase = "reset e revogação";
     const reset = await command(`/users/${employee.userId}/password-reset`, admin, {
       version: version(employee.userId), verified: true,
@@ -401,7 +432,7 @@ try {
 } finally {
   let cleanupPhase = "identificar alvos";
   try {
-    const syntheticEmails = [email("employee"), email("reader"), email("browser")].map((value) => `'${value}'`).join(",");
+    const syntheticEmails = [email("employee"), email("reader"), email("browser"), email("secretary"), email("roomrequester"), email("forbiddenadmin")].map((value) => `'${value}'`).join(",");
     const remaining = sql(`select id from auth.users where email in (${syntheticEmails})
       union select target_id from private.identity_operations where email in (${syntheticEmails})`)
       .split("\n").filter((id) => /^[a-f0-9-]{36}$/.test(id));
