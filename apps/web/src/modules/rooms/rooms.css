@@ -459,3 +459,35 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* D5-C: seletor de atuação exclusivo da identidade administrativa global. */
+.room-mode-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem 1.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #d9e4db;
+  border-radius: 16px;
+  background: #fff;
+}
+.room-mode-switch strong {
+  color: #173e34;
+}
+.room-mode-switch p {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: #61736a;
+}
+.room-mode-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+@media (max-width: 480px) {
+  .room-mode-actions,
+  .room-mode-actions button {
+    width: 100%;
+  }
+}
