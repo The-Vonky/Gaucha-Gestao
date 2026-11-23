@@ -171,6 +171,12 @@ Usuários/unidades com referências históricas devem normalmente ser **desativa
 
 Negar: usuário inativo, sem papel, sem permissão, unidade incorreta, setor incorreto, acesso a outro módulo por papel indevido e ID adivinhado. Permitir: grant global ou da unidade/setor corretos. Confirmar exportação com escopo, proteção de anexos e auditoria de mutações administrativas.
 
+## Agendamento de Salas — decisão AG-D5-C (23/11/2026)
+
+O `platform_administrator` com atribuição global ativa possui as quatro capacidades do Agendamento, inclusive `room_booking.manage`. O `room_booking_manager` global ativo conserva a gestão; o `room_booking_requester` conserva apenas `schedule.read`, `request.create` e `request.read_own`. Um administrador com ambos os conjuntos pode selecionar, **apenas na UI**, a vista **Room Booking Requester** (padrão ao entrar) ou **Room Booking Manager**. `public.room_booking_admin_context()` identifica o papel administrativo global sem expor dados privados. O seletor não reduz os grants no backend, que continua negando operações indevidas por Core/RPC/RLS.
+
+O cadastro de funcionário GG-05B permite `room_booking_manager` ou `room_booking_requester` com escopo global e **sem unidade/setor**, mediante delegação autorizada, conservando a restrição para outros papéis `global_only` e papéis `admin.%`. Migration incremental `20261123143000_room_booking_admin_modes.sql`; [contrato D5-C](../modules/room-booking/D5C_ADMIN_MODES.md). A alteração **substitui apenas a proibição de gestão administrativa da D5-B**. Os parágrafos seguintes documentam o contrato histórico AG-01/02 e D5-B e não devem ser interpretados como regra atual depois da migration.
+
 ## Agendamento de Salas — fundação AG-01
 
 Catálogo `room_booking.schedule.read`, `room_booking.request.create`, `room_booking.request.read_own` e `room_booking.manage`; solicitante e administrador recebem as três primeiras; gestor recebe as quatro, condicionado à ausência de atribuição administrativa ativa conflitante (D5-B, 26/10/2026). Papéis novos `global_only`, sem atribuição automática. Schema privado e tabelas sem acesso direto, RLS restritiva; RPCs autorizadas e leitura saneada somente em AG-02. Ver [contrato AG-01](../modules/room-booking/AG01_FOUNDATION.md). Implementação autorizada para revisão em 23/10; revisão do titular e merge continuam pendentes, conforme exceção de mantenedor único registrada em `9e20199` (sem parecer independente).
