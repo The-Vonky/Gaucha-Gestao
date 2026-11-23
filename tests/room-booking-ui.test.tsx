@@ -14,6 +14,7 @@ import { dateTime, instant, time } from "../apps/web/src/modules/rooms/api";
 import { visibleNavigation } from "../apps/web/src/app/navigation";
 const state = vi.hoisted(() => ({
   permissions: ["schedule.read"],
+  adminContext: false,
   rpc: vi.fn(),
 }));
 vi.mock("../apps/web/src/core/auth/AuthProvider", () => ({
@@ -33,9 +34,12 @@ vi.mock("../apps/web/src/modules/rooms/api", async (original) => ({
 }));
 beforeEach(() => {
   state.permissions = ["schedule.read"];
+  state.adminContext = false;
   state.rpc.mockReset();
   state.rpc.mockImplementation(async (name) =>
-    name === "summary"
+    name === "admin_context"
+      ? state.adminContext
+      : name === "summary"
       ? {
           name: "Sala de Reunião",
           server_now: "2026-10-23T12:00:00Z",
@@ -145,10 +149,13 @@ it("converte minutos livres e borda 23:59 no fuso de São Paulo", () => {
   expect(time("2099-01-02T17:07:00Z")).toBe("14:07");
   expect(dateTime("2099-01-03T02:59:00Z")).toContain("02/01/2099");
 });
-it("D5-B: administrador recebe três capacidades, sem fila, contador ou ações de gestão", async () => {
-  state.permissions = ["schedule.read", "request.create", "request.read_own"];
+it("D5-C: só o administrador alterna entre solicitante e gestor", async () => {
+  state.adminContext = true;
+  state.permissions = ["schedule.read", "request.create", "request.read_own", "manage"];
   state.rpc.mockImplementation(async (name) =>
-    name === "schedule"
+    name === "admin_context"
+      ? true
+      : name === "schedule"
       ? [
           {
             id: "B",
@@ -171,21 +178,27 @@ it("D5-B: administrador recebe três capacidades, sem fila, contador ou ações 
   );
   render(<RoomsPage />);
   await screen.findByText("Reserva existente");
+  const user = userEvent.setup();
+  const requester = screen.getByRole("button", { name: "Room Booking Requester" });
+  const manager = screen.getByRole("button", { name: "Room Booking Manager" });
+  expect(requester.getAttribute("aria-pressed")).toBe("true");
   expect(screen.getByText("Meus pedidos")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Novo pedido" })).toBeTruthy();
-  for (const name of [
-    "Criar reserva direta",
-    "Editar reserva",
-    "Cancelar reserva",
-    "Aprovar pedido",
-    "Recusar pedido",
-  ])
-    expect(screen.queryByRole("button", { name })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Criar reserva direta" })).toBeNull();
   expect(screen.queryByText("Solicitações pendentes")).toBeNull();
   expect(screen.queryByText("99")).toBeNull();
-  expect(
-    state.rpc.mock.calls.some((c) => c[0] === "requests" && c[1]?.p_queue),
-  ).toBe(false);
+  await user.click(manager);
+  expect(manager.getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByRole("button", { name: "Criar reserva direta" })).toBeTruthy();
+  expect(screen.getByText("Solicitações pendentes")).toBeTruthy();
+  expect(screen.queryByText("Meus pedidos")).toBeNull();
+  await waitFor(() => expect(state.rpc.mock.calls.some(
+    (c) => c[0] === "requests" && c[1]?.p_queue,
+  )).toBe(true));
+  await user.click(requester);
+  expect(requester.getAttribute("aria-pressed")).toBe("true");
+  expect(screen.queryByText("Solicitações pendentes")).toBeNull();
+  expect(screen.getByRole("button", { name: "Novo pedido" })).toBeTruthy();
 });
 it("fecha visualmente o editor de gestão quando a permissão efetiva é revogada", async () => {
   state.permissions = ["schedule.read", "manage"];
