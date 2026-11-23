@@ -91,7 +91,7 @@ O procedimento de atualização deve observar especificamente o [guia de release
 - Backup remoto automático de banco + Auth + Storage e recuperação independente **não comprovados** no registro operacional.
 - RPO/RTO, retenções e tempos de recuperação **sem definição/medição técnica suficiente** para encerrar os gates.
 - Matriz negativa de acessos, visibilidade entre unidades, inativação/revogação e arquivos pendente no ambiente candidato.
-- Provisionamento privilegiado de identidades sem solução arquitetural aprovada e testada; a [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) foi **encerrada administrativamente**, sem resolver o bloqueio técnico descrito nela.
+- **GG-05B já implementada e homologada no DEV** ([PR #127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127)); ainda faltam revisão de segurança aplicável, recuperação emergencial do administrador, adoção segura na C30 e GO operacional. A Issue #49 foi encerrada administrativamente, não autoriza outros ambientes.
 - Monitoramento, alertas, proteção da borda pública e procedimentos operacionais ainda a demonstrar.
 - Aceite humano e operacional P1–P9/O1–O8 e verificações específicas de cada módulo ainda requerem evidências no ambiente candidato.
 
@@ -353,8 +353,8 @@ As decisões abaixo precisam ser registradas explicitamente quando a tarefa cheg
 
 1. **RPO/RTO** aceitáveis para perda do host e para falhas durante o expediente; política de retenção e custo da nuvem.
 2. **Destino e operação do backup**: provedor, contas de serviço, criptografia, responsáveis pelas chaves, alertas e retenção protegida.
-3. **Perfis de Vendas**: confirmar novo Viewer, destino do Operator existente, exportação completa para Viewer e privilégio financeiro do administrador geral.
-4. **Criação de usuários**: aprovação da solução privilegiada definitiva e política temporária para piloto.
+3. **Perfis de Vendas (decisão encerrada no DEV):** Sales Manager e Viewer homologados, Operator removido ([PR #126](https://github.com/The-Vonky/Gaucha-Gestao/pull/126)); resta conferir migração/escopos na release candidata da C30.
+4. **Criação de usuários (decisão de produto e DEV encerrada):** GG-05B homologada e integrada ([PR #127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127)); permanecem revisão de segurança aplicável, recuperação administrativa emergencial e GO nominal da identidade/piloto no ambiente-alvo.
 5. **Agendamento**: nome/ramal oficiais, substituta, filtros desejados para reservas diretas e aceite da secretária.
 6. **Canal de feedback**: endereço corporativo destinatário, retenção, quem vê relatos/anexos e limites dos arquivos.
 7. **Cloudflare**: ameaça/prioridade real, eventual uso de Access e política de acesso externo ao STAGING.
