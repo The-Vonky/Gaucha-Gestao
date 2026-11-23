@@ -7,7 +7,7 @@
 **Classificação:** documento de planejamento, acompanhamento e orientação; **não** é autorização para implantar em produção, alterar ambientes persistentes ou executar operações privilegiadas.  
 **Estado-base para uso produtivo:** **PROD NO-GO**, até fechamento e aceite dos requisitos aplicáveis.
 
-> **Atualização de acompanhamento — 23/11/2026:** a versão-base de 04/11 permanece como histórico. A [matriz atual das 15 GGs](#51-estado-atual-das-15-ggs--23-11-2026) foi reconciliada com a `main` no SHA `df113c2532b5560d96ae8d7e6e34529a35e0b1f7`. Integração à `main`, homologação no notebook e implantação na C30 são evidências distintas.
+> **Atualização de acompanhamento — 23/11/2026:** a versão-base de 04/11 permanece como histórico. A [matriz atual das 15 GGs](#51-estado-atual-das-15-ggs--23112026) foi reconciliada com a `main` no SHA `df113c2532b5560d96ae8d7e6e34529a35e0b1f7`. Integração à `main`, homologação no notebook e implantação na C30 são evidências distintas.
 
 > **Propósito deste documento.** Reunir a análise dos cuidados finais levantados pelo responsável, registrar o estado verificável do projeto e estabelecer um método de trabalho para que o assistente atue como guia técnico no desenvolvimento, na preparação do servidor, na homologação e na liberação gradual. Este documento deve ser consultado junto com o código, os ADRs e os contratos canônicos atualizados, não em substituição a eles.
 
