@@ -1,5 +1,7 @@
 # D5-B — Separação e provisionamento de gestão
 
+> **Nota de vigência (23/11/2026):** este documento descreve a implementação **histórica D5-B de 26/10/2026**. A proibição de gestão por `platform_administrator` foi **substituída pela decisão AG-D5-C**, sem editar esta migration: administrador global passou a ter a capacidade `room_booking.manage` e alterna as vistas Requester/Manager. O cadastro seguro da secretária aceita `room_booking_manager` global. Ver [contrato vigente D5-C](D5C_ADMIN_MODES.md). Para ambientes sem a nova migration, D5-B ainda descreve o comportamento efetivamente implantado.
+
 **D5-A revogada pelo responsável em 26/10/2026. D5-B adotada: o administrador geral não administra reservas; a gestão cabe ao papel `room_booking_manager`, com provisionamento administrativo restrito e auditado.** PR #88, mesma branch. D1–D4, D6–D11 e F2 preservadas. Mantenedor único decide revisão e merge; não houve segunda revisão humana.
 
 ## Contrato implementado
