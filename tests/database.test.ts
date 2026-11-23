@@ -481,6 +481,8 @@ describe("PostgreSQL Core migration and RLS", { concurrent: false }, () => {
         "select public.room_booking_admin_context() as allowed",
       )).rows[0].allowed,
     ).toBe(true);
+    // Contrato interno GG-05B: consultar como proprietário, mantendo auth.uid() do administrador.
+    await db.exec("reset role");
     const roles = await db.query<{ key: string; allowed: boolean; with_unit: boolean }>(`
       select r.key,
         private.identity_can_assign(r.id, null, null) as allowed,
