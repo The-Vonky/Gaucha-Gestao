@@ -1,5 +1,7 @@
 # Agendamento — foto, status temporal e histórico de gestão
 
+> **Atualização de 23/11/2026 (AG-D5-C):** a regra D5-B abaixo é histórica. Administrador global passa a gerir a sala e alterna entre **Room Booking Requester** e **Room Booking Manager**. Para cadastro da secretária e autorização efetiva, prevalece [D5-C](D5C_ADMIN_MODES.md); a interface antiga e seus testes descritos neste documento correspondem à versão de 26/10/2026.
+
 Melhorias aprovadas pelo responsável em 26/10/2026, na mesma PR #88 e branch `feat/ag-01-room-booking-schema-20261023`, após testes manuais do módulo. D5-B permanece vigente: administrador geral não opera gestão, mesmo com atribuição simultânea conflitante. Sem merge/deploy automático; mantenedor único revisa e decide.
 
 ## GG-08 e GG-09 — contato e histórico de gestão
