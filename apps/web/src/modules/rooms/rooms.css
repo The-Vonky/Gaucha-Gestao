@@ -8,7 +8,7 @@
   border-radius: 24px;
   padding: clamp(1.5rem, 4vw, 3.5rem);
   display: grid;
-  grid-template-columns: 1.5fr 1fr;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 3rem;
   align-items: center;
   color: white;
@@ -44,9 +44,6 @@
   font-weight: 700;
   color: #8a7137;
   margin: 0 0 0.7rem;
-}
-.room-hero .room-eyebrow {
-  color: #e2c980;
 }
 .room-hero h1 {
   color: white;
@@ -102,12 +99,6 @@
   color: #61736a;
   font-size: 0.8rem;
 }
-.room-columns {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1.5rem;
-  align-items: start;
-}
 .room-panel {
   background: white;
   border: 1px solid #e0e8e1;
@@ -121,13 +112,6 @@
 }
 .room-panel p {
   line-height: 1.6;
-}
-.room-request-callout {
-  background: linear-gradient(145deg, #fafbf7, #eff5ef);
-}
-.room-request-callout .muted {
-  margin-top: 1.5rem;
-  font-size: 0.8rem;
 }
 .room-list {
   list-style: none;
@@ -180,9 +164,15 @@
 }
 .room-form-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 1rem;
+}
+.room-form-grid > label,
+.room-form-grid input,
+.room-form-grid textarea {
+  min-width: 0;
+  max-width: 100%;
 }
 .room-wide {
   grid-column: 1 / -1;
@@ -193,19 +183,20 @@
   padding: 1rem;
   border-radius: 12px;
 }
-.rooms-page label {
+.rooms-page label,
+.room-form label {
   display: grid;
   gap: 0.4rem;
 }
 .rooms-page textarea {
   min-height: 90px;
 }
-.rooms-page .actions {
+.rooms-page .actions,
+.room-form .actions {
   flex-wrap: wrap;
 }
 @media (max-width: 850px) {
-  .room-hero,
-  .room-columns {
+  .room-hero {
     grid-template-columns: 1fr;
   }
   .room-hero {
@@ -226,16 +217,13 @@
     grid-template-columns: 1fr;
   }
   .room-form-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .room-form-grid > label:first-child {
     grid-column: 1 / -1;
   }
 }
 
-.room-columns-manager {
-  grid-template-columns: 1fr;
-}
 .room-hero-photo,
 .room-photo-overlay {
   position: absolute;
@@ -254,17 +242,17 @@
 .room-hero-card {
   z-index: 1;
 }
-.room-photo-action {
-  position: absolute;
-  bottom: 0.7rem;
-  left: 1.5rem;
-  z-index: 2;
-  color: white;
-  background: #173e34;
-  border: 1px solid #ffffff70;
-  font-size: 0.75rem;
+.room-management-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
-.room-hero:has(.room-photo-action) {
+.room-management-actions > button {
+  max-width: 100%;
+}
+/* Preserva o espaçamento do banner homologado na vista de gestão. */
+.room-management-actions + .room-hero {
   padding-bottom: 3.8rem;
 }
 .room-status {
@@ -287,10 +275,6 @@
 .room-status.is-loading {
   background: #edf0ee;
   color: #46554e;
-}
-.room-hero-card .room-status {
-  margin: 0;
-  font-size: 0.78rem;
 }
 .room-hero-copy .room-countdown {
   color: white;
@@ -339,6 +323,11 @@
 .room-contact-values dd {
   margin: 0;
   font-weight: 600;
+}
+.room-contact-fields input,
+.room-contact-fields > label {
+  min-width: 0;
+  max-width: 100%;
 }
 .room-contact-fields {
   display: grid;
@@ -457,5 +446,77 @@
 @media (max-width: 360px) {
   .room-history-list > li {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* D5-C: seletor de atuação exclusivo da identidade administrativa global. */
+.room-mode-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem 1.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #d9e4db;
+  border-radius: 16px;
+  background: #fff;
+}
+.room-mode-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+@media (max-width: 480px) {
+  .room-mode-actions,
+  .room-mode-actions button {
+    width: 100%;
+  }
+}
+
+.room-agenda-actions {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.room-agenda-actions > label {
+  margin-bottom: 0;
+}
+.room-hero-copy, .room-hero-card > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.room-hero .room-contact h2 {
+  color: #e2ece7;
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+.room-hero .room-contact-values dt {
+  color: #e2ece7;
+}
+.room-hero .room-contact .muted {
+  color: #e2ece7;
+}
+.room-upcoming {
+  grid-column: 1 / -1;
+}
+.room-upcoming-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.room-upcoming-list li {
+  display: grid;
+  gap: 0.25rem;
+}
+.room-upcoming-list span {
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+@media (max-width: 480px) {
+  .room-agenda-actions, .room-agenda-actions > * {
+    width: 100%;
   }
 }

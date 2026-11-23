@@ -3,6 +3,7 @@ import React from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -14,6 +15,7 @@ import { dateTime, instant, time } from "../apps/web/src/modules/rooms/api";
 import { visibleNavigation } from "../apps/web/src/app/navigation";
 const state = vi.hoisted(() => ({
   permissions: ["schedule.read"],
+  adminContext: false,
   rpc: vi.fn(),
 }));
 vi.mock("../apps/web/src/core/auth/AuthProvider", () => ({
@@ -31,10 +33,18 @@ vi.mock("../apps/web/src/modules/rooms/api", async (original) => ({
   ...(await original<object>()),
   rpc: state.rpc,
 }));
+function mockRooms(implementation: NonNullable<ReturnType<typeof state.rpc.getMockImplementation>>) {
+  state.rpc.mockImplementation((name, args) =>
+    name === "admin_context" ? Promise.resolve(state.adminContext) : implementation(name, args),
+  );
+}
 beforeEach(() => {
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+  HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
   state.permissions = ["schedule.read"];
+  state.adminContext = false;
   state.rpc.mockReset();
-  state.rpc.mockImplementation(async (name) =>
+  mockRooms(async (name) =>
     name === "summary"
       ? {
           name: "Sala de Reunião",
@@ -53,6 +63,8 @@ it("leitor vê agenda e não recebe fila nem ações privilegiadas", async () =>
   render(<RoomsPage />);
   await screen.findByText("Nenhuma reserva confirmada nesta data.");
   expect(screen.queryByText("Criar reserva direta")).toBeNull();
+  expect(screen.queryByRole("group", { name: "Ações da sala" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Alterar foto da sala" })).toBeNull();
   expect(screen.queryByText("Meus pedidos")).toBeNull();
   expect(state.rpc.mock.calls.some((c) => c[0] === "requests")).toBe(false);
 });
@@ -61,7 +73,7 @@ it("solicitante envia pedido com chave idempotente e não o apresenta como confi
   render(<RoomsPage />);
   await screen.findByText("Nenhuma reserva confirmada nesta data.");
   const user = userEvent.setup();
-  await user.click(screen.getByRole("button", { name: "Novo pedido" }));
+  await user.click(screen.getByRole("button", { name: "Solicitar horário" }));
   await user.type(screen.getByLabelText("Reservado para"), "Teste");
   const date = screen.getByLabelText("Data da reunião");
   await user.clear(date);
@@ -78,11 +90,11 @@ it("solicitante envia pedido com chave idempotente e não o apresenta como confi
     p_booked_for: "Teste",
     p_key: expect.any(String),
   });
-  expect(screen.queryByText("Solicitações pendentes")).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Solicitações pendentes" })).toBeNull();
 });
 it("gestor vê fila; observações com HTML são texto inerte", async () => {
   state.permissions = ["schedule.read", "manage"];
-  state.rpc.mockImplementation(async (name) =>
+  mockRooms(async (name) =>
     name === "schedule"
       ? [
           {
@@ -110,6 +122,7 @@ it("gestor vê fila; observações com HTML são texto inerte", async () => {
   const { container } = render(<RoomsPage />);
   await screen.findByText("<script>executar()</script>");
   expect(container.querySelector("script")).toBeNull();
+  expect(screen.queryByRole("group", { name: "Modo de atuação" })).toBeNull();
   await userEvent
     .setup()
     .click(screen.getByRole("button", { name: "Editar reserva" }));
@@ -129,7 +142,7 @@ it("nega navegação sem concessão global e limpa agenda após erro de autoriza
       .flatMap((g) => g.destinations)
       .some((d) => d.path === "/rooms"),
   ).toBe(false);
-  state.rpc.mockImplementation(async (name) => {
+  mockRooms(async (name) => {
     if (name === "schedule") throw { code: "42501" };
     return null;
   });
@@ -145,9 +158,10 @@ it("converte minutos livres e borda 23:59 no fuso de São Paulo", () => {
   expect(time("2099-01-02T17:07:00Z")).toBe("14:07");
   expect(dateTime("2099-01-03T02:59:00Z")).toContain("02/01/2099");
 });
-it("D5-B: administrador recebe três capacidades, sem fila, contador ou ações de gestão", async () => {
-  state.permissions = ["schedule.read", "request.create", "request.read_own"];
-  state.rpc.mockImplementation(async (name) =>
+it("D5-C: só o administrador alterna entre solicitante e gestor", async () => {
+  state.adminContext = true;
+  state.permissions = ["schedule.read", "request.create", "request.read_own", "manage"];
+  mockRooms(async (name) =>
     name === "schedule"
       ? [
           {
@@ -171,21 +185,27 @@ it("D5-B: administrador recebe três capacidades, sem fila, contador ou ações 
   );
   render(<RoomsPage />);
   await screen.findByText("Reserva existente");
+  const user = userEvent.setup();
+  const requester = screen.getByRole("button", { name: "Room Booking Requester" });
+  const manager = screen.getByRole("button", { name: "Room Booking Manager" });
+  expect(requester.getAttribute("aria-pressed")).toBe("true");
   expect(screen.getByText("Meus pedidos")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Novo pedido" })).toBeTruthy();
-  for (const name of [
-    "Criar reserva direta",
-    "Editar reserva",
-    "Cancelar reserva",
-    "Aprovar pedido",
-    "Recusar pedido",
-  ])
-    expect(screen.queryByRole("button", { name })).toBeNull();
-  expect(screen.queryByText("Solicitações pendentes")).toBeNull();
+  expect(screen.getByRole("button", { name: "Solicitar horário" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Criar reserva direta" })).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Solicitações pendentes" })).toBeNull();
   expect(screen.queryByText("99")).toBeNull();
-  expect(
-    state.rpc.mock.calls.some((c) => c[0] === "requests" && c[1]?.p_queue),
-  ).toBe(false);
+  await user.click(manager);
+  expect(manager.getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByRole("button", { name: "Criar reserva direta" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Solicitações pendentes" })).toBeTruthy();
+  expect(screen.queryByText("Meus pedidos")).toBeNull();
+  await waitFor(() => expect(state.rpc.mock.calls.some(
+    (c) => c[0] === "requests" && c[1]?.p_queue,
+  )).toBe(true));
+  await user.click(requester);
+  expect(requester.getAttribute("aria-pressed")).toBe("true");
+  expect(screen.queryByRole("heading", { name: "Solicitações pendentes" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Solicitar horário" })).toBeTruthy();
 });
 it("fecha visualmente o editor de gestão quando a permissão efetiva é revogada", async () => {
   state.permissions = ["schedule.read", "manage"];
@@ -212,7 +232,7 @@ it("gestor com todas as permissões não vê cards de solicitante e mantém rese
   await screen.findByText("Nenhuma reserva confirmada nesta data.");
   expect(screen.queryByText("ORGANIZE SEU ENCONTRO")).toBeNull();
   expect(screen.queryByText("Meus pedidos")).toBeNull();
-  expect(screen.queryByRole("button", { name: "Novo pedido" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Solicitar horário" })).toBeNull();
   expect(
     screen.getByRole("heading", { name: "Histórico de solicitações" }),
   ).toBeTruthy();
@@ -242,7 +262,7 @@ it("histórico apresenta estados, decisão e reserva cancelada, pagina por curso
       booking_cancelled_at: i === 1 ? "2019-12-22T12:00:00Z" : null,
     }),
   );
-  state.rpc.mockImplementation(async (name) =>
+  mockRooms(async (name) =>
     name === "history"
       ? { items: entries, has_more: true }
       : name === "summary"
@@ -299,7 +319,7 @@ it("gestora configura contato e vê o valor salvo; leitor só consulta após rem
     version: 0,
   };
   const fallback = state.rpc.getMockImplementation()!;
-  state.rpc.mockImplementation(async (name, args) => {
+  mockRooms(async (name, args) => {
     if (name === "contact") return contact;
     if (name === "save_contact") {
       contact = {
@@ -316,9 +336,7 @@ it("gestora configura contato e vê o valor salvo; leitor só consulta após rem
   await screen.findByText("Contato ainda não informado.");
   const user = userEvent.setup();
   await user.click(screen.getByRole("button", { name: "Editar contato" }));
-  expect(document.activeElement).toBe(
-    screen.getByLabelText("Nome da responsável"),
-  );
+  expect(screen.getByRole("dialog", { name: "Editar contato" }).contains(document.activeElement)).toBe(true);
   await user.type(
     screen.getByLabelText("Nome da responsável"),
     "Nome Institucional",
@@ -348,7 +366,7 @@ it("conflito de contato impede nova gravação até consultar a versão atual", 
   state.permissions = ["schedule.read", "manage"];
   const fallback = state.rpc.getMockImplementation()!;
   let version = 1;
-  state.rpc.mockImplementation(async (name, args) => {
+  mockRooms(async (name, args) => {
     if (name === "contact")
       return {
         room_id: "sala-sintética",
@@ -368,26 +386,27 @@ it("conflito de contato impede nova gravação até consultar a versão atual", 
 
   render(<RoomsPage />);
   const user = userEvent.setup();
-  const contact = screen.getByRole("region", { name: "Contato da sala" });
+  const contact = await screen.findByRole("region", { name: "Contato da sala" });
   await user.click(
-    await within(contact).findByRole("button", { name: "Editar contato" }),
+    await screen.findByRole("button", { name: "Editar contato" }),
   );
-  const save = within(contact).getByRole<HTMLButtonElement>("button", {
+  const modal = screen.getByRole("dialog", { name: "Editar contato" });
+  const save = within(modal).getByRole<HTMLButtonElement>("button", {
     name: "Salvar contato",
   });
   await user.click(save);
-  expect((await within(contact).findByRole("alert")).textContent).toContain(
+  expect((await within(modal).findByRole("alert")).textContent).toContain(
     "O contato mudou",
   );
   expect(save.disabled).toBe(true);
   await user.click(
-    within(contact).getByRole("button", {
+    within(modal).getByRole("button", {
       name: "Consultar contato atualizado",
     }),
   );
   await within(contact).findByText("Contato atualizado por outra sessão");
   expect(
-    within(contact).queryByRole("button", { name: "Salvar contato" }),
+    screen.queryByRole("button", { name: "Salvar contato" }),
   ).toBeNull();
 });
 
@@ -408,7 +427,7 @@ it("aba de diretas usa RPC própria, cursor e filtros sem misturar as origens", 
     secretary_notes: "<b>Somente texto</b>",
   };
   const fallback = state.rpc.getMockImplementation()!;
-  state.rpc.mockImplementation(async (name, args) =>
+  mockRooms(async (name, args) =>
     name === "direct_history"
       ? args.p_before_id
         ? {
@@ -469,4 +488,180 @@ it("aba de diretas usa RPC própria, cursor e filtros sem misturar as origens", 
       p_before_id: null,
     }),
   );
+});
+
+it("aguarda o contexto para consultar a fila e permite repetir uma falha de rede", async () => {
+  state.permissions = ["schedule.read", "request.create", "request.read_own", "manage"];
+  const fallback = state.rpc.getMockImplementation()!;
+  let retry = false;
+  state.rpc.mockImplementation(async (name, args) => {
+    if (name === "admin_context" && !retry) throw new Error("Sem conexão");
+    return fallback(name, args);
+  });
+  render(<RoomsPage />);
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toContain("Não foi possível verificar o modo de atuação");
+  expect(state.rpc.mock.calls.map(([name]) => name)).toEqual(["admin_context"]);
+  retry = true;
+  await userEvent.setup().click(screen.getByRole("button", { name: "Tentar novamente" }));
+  await screen.findByRole("button", { name: "Criar reserva direta" });
+  await waitFor(() => expect(state.rpc).toHaveBeenCalledWith("requests", expect.objectContaining({ p_queue: true })));
+  expect(state.rpc.mock.calls.some(([name, args]) => name === "requests" && !args?.p_queue)).toBe(false);
+});
+
+it("modal do pedido fecha por botão, overlay e Escape e devolve foco ao acionador", async () => {
+  state.permissions = ["schedule.read", "request.create"];
+  render(<RoomsPage />);
+  const user = userEvent.setup();
+  const trigger = await screen.findByRole("button", { name: "Solicitar horário" });
+  for (const close of ["button", "overlay", "escape"]) {
+    await user.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: "Novo pedido" });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    if (close === "button") await user.click(within(dialog).getByRole("button", { name: "Fechar", exact: true }));
+    else if (close === "overlay") fireEvent.click(dialog);
+    else fireEvent(dialog, new Event("cancel", { cancelable: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  }
+});
+
+it("hero integra contato e duas próximas reservas sem depender da data selecionada", async () => {
+  mockRooms(async (name) => name === "summary" ? {
+    name: "Sala", server_now: "2026-11-23T12:00:00Z", in_use: false,
+    today_count: 3, next_start: "2096-01-01T13:00:00Z", upcoming: [
+      { booked_for: "Reserva de Ana", starts_at: "2096-01-01T13:00:00Z", ends_at: "2096-01-01T14:00:00Z" },
+      { booked_for: "Reserva de Bruno", starts_at: "2096-06-01T13:00:00Z", ends_at: "2096-06-01T14:00:00Z" },
+    ],
+  } : name === "contact" ? { responsible_name: "Contato sintético", extension: "1234", version: 1 } : []);
+  const { container } = render(<RoomsPage />);
+  const hero = within(screen.getByRole("banner"));
+  await hero.findByText("Reserva de Ana");
+  expect(hero.getByText("Reserva de Bruno")).toBeTruthy();
+  expect(hero.getByText("Contato sintético")).toBeTruthy();
+  expect(hero.getByText("1234")).toBeTruthy();
+  expect(hero.getByText("3")).toBeTruthy();
+  expect(hero.queryByText("Situação atual")).toBeNull();
+  expect(hero.queryByText("ADMINISTRATIVO · AGENDAMENTO DE SALAS")).toBeNull();
+  expect(container.querySelectorAll(".room-contact")).toHaveLength(1);
+  expect(container.querySelector(".room-panel.room-contact")).toBeNull();
+});
+
+it("erro de validação permanece visível dentro do modal", async () => {
+  state.permissions = ["schedule.read", "request.create"];
+  render(<RoomsPage />);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: "Solicitar horário" }));
+  const dialog = within(screen.getByRole("dialog"));
+  await user.type(dialog.getByLabelText("Reservado para"), "Teste");
+  await user.type(dialog.getByLabelText("Início"), "15:00");
+  await user.type(dialog.getByLabelText("Término"), "14:00");
+  await user.click(dialog.getByRole("button", { name: "Enviar pedido" }));
+  expect(dialog.getByRole("alert").textContent).toContain("posterior ao início");
+  expect(state.rpc.mock.calls.some(([name]) => name === "create_request")).toBe(false);
+});
+
+it("bloqueia fechamento durante envio e mantém falha da RPC dentro do modal", async () => {
+  state.permissions = ["schedule.read", "request.create"];
+  const original = state.rpc.getMockImplementation()!;
+  let rejectSave!: (error: unknown) => void;
+  state.rpc.mockImplementation((name, args) => name === "create_request"
+    ? new Promise((_, reject) => { rejectSave = reject; }) : original(name, args));
+  render(<RoomsPage />);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: "Solicitar horário" }));
+  const modal = screen.getByRole("dialog");
+  const form = within(modal);
+  await user.type(form.getByLabelText("Reservado para"), "Teste");
+  await user.type(form.getByLabelText("Início"), "14:00");
+  await user.type(form.getByLabelText("Término"), "15:00");
+  await user.click(form.getByRole("button", { name: "Enviar pedido" }));
+  expect(form.getByRole<HTMLButtonElement>("button", { name: "Fechar", exact: true }).disabled).toBe(true);
+  fireEvent(modal, new Event("cancel", { cancelable: true }));
+  fireEvent.click(modal);
+  expect(screen.getByRole("dialog")).toBe(modal);
+  rejectSave({ code: "23P01" });
+  expect((await form.findByRole("alert")).textContent).toContain("Horário ocupado");
+  expect(form.getByRole<HTMLButtonElement>("button", { name: "Fechar", exact: true }).disabled).toBe(false);
+});
+
+
+it.each([false, true])("barra acima do hero preserva edição de contato/foto para gestor (admin=%s)", async (admin) => {
+  state.adminContext = admin;
+  state.permissions = ["schedule.read", "request.create", "request.read_own", "manage"];
+  const fallback = state.rpc.getMockImplementation()!;
+  mockRooms(async (name, args) => name === "contact"
+    ? { room_id: "fixture", responsible_name: "Contato", extension: "1234", version: 1 }
+    : name === "cover" ? { asset_id: null, version: 1, position_x: 50, position_y: 50 }
+    : fallback(name, args));
+  const { container } = render(<RoomsPage />);
+  const user = userEvent.setup();
+  if (admin) {
+    await user.click(await screen.findByRole("button", { name: "Room Booking Manager", exact: true }));
+  }
+  const bar = await screen.findByRole("group", { name: "Ações da sala" });
+  const contact = await within(bar).findByRole("button", { name: "Editar contato" });
+  const photo = within(bar).getByRole("button", { name: "Alterar foto da sala" });
+  const hero = container.querySelector(".room-hero")!;
+  expect(bar.nextElementSibling).toBe(hero);
+  expect(within(hero as HTMLElement).queryByRole("button", { name: "Editar contato" })).toBeNull();
+  expect(within(hero as HTMLElement).queryByRole("button", { name: "Alterar foto da sala" })).toBeNull();
+  await user.click(contact);
+  expect(screen.getByRole("dialog", { name: "Editar contato" }).contains(document.activeElement)).toBe(true);
+  await user.click(screen.getByRole("button", { name: "Cancelar edição" }));
+  expect(document.activeElement).toBe(contact);
+  await user.click(photo);
+  expect(screen.getByRole("dialog", { name: "Foto da sala" })).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "Fechar", exact: true }));
+  expect(document.activeElement).toBe(photo);
+  if (admin) {
+    await user.click(screen.getByRole("button", { name: "Room Booking Requester", exact: true }));
+    expect(screen.queryByRole("group", { name: "Ações da sala" })).toBeNull();
+  }
+});
+
+it("contato abre em modal fora do banner e fecha pelos quatro acionamentos", async () => {
+  state.permissions = ["schedule.read", "manage"];
+  const fallback = state.rpc.getMockImplementation()!;
+  mockRooms(async (name, args) => name === "contact"
+    ? { room_id: "fixture", responsible_name: "Contato", extension: "1234", version: 1 }
+    : fallback(name, args));
+  const { container } = render(<RoomsPage />);
+  const user = userEvent.setup();
+  const trigger = await screen.findByRole("button", { name: "Editar contato" });
+  for (const close of ["button", "cancel", "escape", "overlay"]) {
+    await user.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: "Editar contato" });
+    expect(container.querySelector(".room-hero form")).toBeNull();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    if (close === "button") await user.click(within(dialog).getByRole("button", { name: "Fechar", exact: true }));
+    else if (close === "cancel") await user.click(within(dialog).getByRole("button", { name: "Cancelar edição" }));
+    else if (close === "escape") fireEvent(dialog, new Event("cancel", { cancelable: true }));
+    else fireEvent.click(dialog);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  }
+});
+
+it("modal de contato bloqueia fechamento ao salvar e mostra falha dentro do diálogo", async () => {
+  state.permissions = ["schedule.read", "manage"];
+  const fallback = state.rpc.getMockImplementation()!;
+  let rejectSave!: (error: unknown) => void;
+  mockRooms((name, args) => name === "contact"
+    ? Promise.resolve({ room_id: "fixture", responsible_name: "Contato", extension: "1234", version: 1 })
+    : name === "save_contact" ? new Promise((_, reject) => { rejectSave = reject; })
+    : fallback(name, args));
+  render(<RoomsPage />);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: "Editar contato" }));
+  const modal = screen.getByRole("dialog", { name: "Editar contato" });
+  await user.click(within(modal).getByRole("button", { name: "Salvar contato" }));
+  expect(within(modal).getByRole<HTMLButtonElement>("button", { name: "Fechar", exact: true }).disabled).toBe(true);
+  expect(within(modal).getByRole<HTMLButtonElement>("button", { name: "Cancelar edição" }).matches(":disabled")).toBe(true);
+  fireEvent(modal, new Event("cancel", { cancelable: true }));
+  fireEvent.click(modal);
+  expect(screen.getByRole("dialog")).toBe(modal);
+  rejectSave({ code: "42501" });
+  expect((await within(modal).findByRole("alert")).textContent).toContain("Você não tem permissão");
+  expect(within(modal).getByRole<HTMLButtonElement>("button", { name: "Fechar", exact: true }).disabled).toBe(false);
 });

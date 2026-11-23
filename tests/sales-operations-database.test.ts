@@ -54,13 +54,13 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); });
 
 describe("VEN-02 — operações no banco", () => {
-  it("administrador global usa CRUD por permissões Core e preserva D5-B", async () => {
+  it("administrador global usa CRUD por permissões Core e mantém gestão do Agendamento por D5-C", async () => {
     await login(1);
     const e = await create("2022-01-01", A, "0.01");
     expect(await rpc("entry_detail", [e.id])).toMatchObject({ id: e.id, amount: "0.01" });
     const edited = await update(e, "0.02");
     await remove(edited);
-    expect((await db.query<{ allowed: boolean }>("select private.has_global_permission('room_booking.manage') allowed")).rows[0].allowed).toBe(false);
+    expect((await db.query<{ allowed: boolean }>("select private.has_global_permission('room_booking.manage') allowed")).rows[0].allowed).toBe(true);
   });
   it("nega anônimo, sessão sem identidade, sem papel, setor, perfil inativo", async () => {
     for (const [n, role] of [[null, "anon"], [null, "authenticated"], [6, "authenticated"], [7, "authenticated"], [8, "authenticated"]] as const) {

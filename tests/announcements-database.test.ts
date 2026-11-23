@@ -36,10 +36,10 @@ beforeAll(async()=>{
 afterAll(()=>db.close());
 
 describe("GG-10 — autorização e persistência",()=>{
- it("composição exata e D5-B; nenhum outro acesso ao Gestor",async()=>{
+ it("composição exata e D5-C; nenhum outro acesso ao Gestor",async()=>{
   const result=await owner(`select rp.permission_key from core.role_permissions rp join core.roles r on r.id=rp.role_id where r.key='announcement_manager'`);
   expect(result.rows).toEqual([{permission_key:"announcements.notice.manage"}]);
-  expect((await owner(`select 1 from core.role_permissions rp join core.roles r on r.id=rp.role_id where r.key in ('platform_administrator','announcement_manager') and rp.permission_key='room_booking.manage'`)).rows).toEqual([]);
+  expect((await owner(`select r.key from core.role_permissions rp join core.roles r on r.id=rp.role_id where r.key in ('platform_administrator','announcement_manager') and rp.permission_key='room_booking.manage'`)).rows).toEqual([{key:"platform_administrator"}]);
   await login(2); expect((await db.query("select * from core.my_access()")).rows).toHaveLength(1);
   expect((await db.query<{key:string}>("select key from core.roles")).rows).toEqual([{key:"announcement_manager"}]);
   expect((await db.query("update core.roles set name='Tentativa' returning id")).rows).toEqual([]);

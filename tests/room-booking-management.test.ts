@@ -3,7 +3,7 @@ import { it } from "vitest";
 import { createTestDatabase } from "./pglite";
 import { STORAGE_STUB } from "./storage-stub";
 
-it("GG-08 e GG-09 aplicam D5-B, versionamento, auditoria e histórico por origem no banco", async () => {
+it("GG-08 e GG-09 aplicam D5-C, versionamento, auditoria e histórico por origem no banco", async () => {
   const db = createTestDatabase();
   try {
     await db.exec(readFileSync("tests/fixtures/room-booking-auth.sql", "utf8"));

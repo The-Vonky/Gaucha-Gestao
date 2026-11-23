@@ -44,7 +44,7 @@ it("MEL-01: administrador consulta catálogo e Vendas vazios sem criar dados ou 
     const e = (await db.query<{ result: { units: unknown[]; rows: unknown[]; total: string; record_count: number } }>("select public.sales_export_page('full') result")).rows[0].result;
     expect(e).toMatchObject({ units: [], rows: [], total: "0.00", record_count: 0 });
   }
-  expect((await db.query<{ ok: boolean }>("select private.has_global_permission('room_booking.manage') ok")).rows[0].ok).toBe(false);
+  expect((await db.query<{ ok: boolean }>("select private.has_global_permission('room_booking.manage') ok")).rows[0].ok).toBe(true);
 });
 
 it("MEL-01: cadastro autorizado após zero unidades funciona e desaparece por ROLLBACK", async () => {

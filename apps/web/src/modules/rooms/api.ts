@@ -24,6 +24,7 @@ export type Summary = {
   in_use_until?: string | null;
   today_count: number;
   next_start: string | null;
+  upcoming?: Pick<Booking, "booked_for" | "starts_at" | "ends_at">[];
   pending_count?: number;
 };
 export async function rpc<T>(

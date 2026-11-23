@@ -7,7 +7,7 @@ import {
 } from "react";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { can } from "../../core/auth/permissions";
-import { Notice } from "../../shared/ui";
+import { Modal, Notice } from "../../shared/ui";
 import { RequestHistory } from "./RequestHistory";
 import { RoomContact } from "./RoomContact";
 import { RoomPhoto } from "./RoomPhoto";
@@ -54,19 +54,122 @@ export function RoomsPage() {
   const read = allowed("schedule.read"),
     own = allowed("request.read_own"),
     create = allowed("request.create"),
-    manage = allowed("manage");
-  const [date, setDate] = useState(day());
+    manageGranted = allowed("manage");
+  // Remonta os dados da sala quando muda o principal, a sessão ou as capacidades.
+  const access = JSON.stringify([
+    auth.session?.user.id, auth.session?.user.last_sign_in_at, auth.profile?.id,
+    read, own, create, manageGranted,
+  ]);
+  return (
+    <RoomsAccess key={access} read={read} own={own} create={create}
+      manageGranted={manageGranted} />
+  );
+}
+
+type RoomAccess = { read: boolean; own: boolean; create: boolean };
+
+function RoomsAccess({ manageGranted, ...access }: RoomAccess & { manageGranted: boolean }) {
+  const [admin, setAdmin] = useState<boolean>();
+  const [managerMode, setManagerMode] = useState(false);
+  const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [savingContact, setSavingContact] = useState(false);
+  const [date, setDate] = useState(day);
+  useEffect(() => {
+    if (!manageGranted) return;
+    let generation = 0;
+    async function verify() {
+      const current = ++generation;
+      try {
+        const result = await rpc<boolean>("admin_context");
+        if (current !== generation) return;
+        if (typeof result !== "boolean") throw new Error("Resposta de autorização inválida.");
+        setAdmin(result);
+        setError("");
+        if (!result) setManagerMode(false);
+      } catch (e) {
+        if (current !== generation) return;
+        setAdmin(undefined);
+        setManagerMode(false);
+        setError(roomMessage(e));
+      }
+    }
+    const visible = () => {
+      if (document.visibilityState === "visible") void verify();
+    };
+    void verify();
+    document.addEventListener("visibilitychange", visible);
+    const timer = window.setInterval(visible, 60000);
+    return () => {
+      generation++;
+      document.removeEventListener("visibilitychange", visible);
+      clearInterval(timer);
+    };
+  }, [manageGranted, attempt]);
+
+  if (manageGranted && admin === undefined) {
+    return (
+      <div className="rooms-page">
+        {error ? (
+          <>
+            <Notice error>Não foi possível verificar o modo de atuação. {error}</Notice>
+            <button type="button" onClick={() => {
+              setError("");
+              setAttempt((current) => current + 1);
+            }}>Tentar novamente</button>
+          </>
+        ) : <p role="status">Verificando acesso ao Agendamento…</p>}
+      </div>
+    );
+  }
+  const manage = manageGranted && (!admin || managerMode);
+  return (
+    <div className="rooms-page">
+      {admin && (
+        <div className="room-mode-switch" role="group" aria-label="Modo de atuação">
+          <div className="room-mode-actions">
+            <button type="button" className={!manage ? "primary" : ""}
+              aria-pressed={!manage} disabled={busy || savingContact}
+              onClick={() => setManagerMode(false)}>
+              Room Booking Requester
+            </button>
+            <button type="button" className={manage ? "primary" : ""}
+              aria-pressed={manage} disabled={busy || savingContact}
+              onClick={() => setManagerMode(true)}>
+              Room Booking Manager
+            </button>
+          </div>
+        </div>
+      )}
+      <RoomsWorkspace key={`${admin}:${manage}`} {...access} manage={manage}
+        date={date} setDate={setDate} busy={busy} setBusy={setBusy}
+        onContactSaving={setSavingContact} />
+    </div>
+  );
+}
+
+function RoomsWorkspace({
+  read, own, create, manage, date, setDate, busy, setBusy, onContactSaving,
+}: RoomAccess & {
+  manage: boolean;
+  date: string;
+  setDate: (value: string) => void;
+  busy: boolean;
+  setBusy: (value: boolean) => void;
+  onContactSaving: (value: boolean) => void;
+}) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
   const [queue, setQueue] = useState<Request[]>([]);
   const [summary, setSummary] = useState<Summary | null>();
   const [page, setPage] = useState(0),
     [queuePage, setQueuePage] = useState(0);
-  const [loading, setLoading] = useState(true),
-    [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(""),
     [success, setSuccess] = useState("");
   const [editor, setEditor] = useState<Editor>();
+  const [actionsContainer, setActionsContainer] = useState<HTMLDivElement | null>(null);
   const [decision, setDecision] = useState<{
     request: Request;
     action: "approve" | "reject";
@@ -111,6 +214,9 @@ export function RoomsPage() {
       setRequests([]);
       setQueue([]);
       setSummary(null);
+      setEditor(undefined);
+      setDecision(undefined);
+      setHistoryRevision((r) => r + 1);
     } finally {
       if (current === generation.current) setLoading(false);
     }
@@ -144,7 +250,7 @@ export function RoomsPage() {
   }
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!editor) return;
+    if (!editor || busy) return;
     const x = editor;
     if (x.end <= x.start) {
       setError("O término deve ser posterior ao início, no mesmo dia.");
@@ -194,10 +300,7 @@ export function RoomsPage() {
           }
         : emptyEditor(date, direct),
     );
-    window.setTimeout(
-      () => document.getElementById("room-editor-title")?.focus(),
-      0,
-    );
+    setError("");
   }
   const now = summary?.server_now
     ? new Date(summary.server_now).getTime()
@@ -205,13 +308,18 @@ export function RoomsPage() {
   const historical =
     !!editor?.booking && new Date(editor.booking.starts_at).getTime() <= now;
   return (
-    <div className="rooms-page">
+    <>
+      {read && manage && (
+        <div className="room-management-actions" role="group" aria-label="Ações da sala"
+          ref={setActionsContainer} />
+      )}
       <RoomHeroBanner
         summary={summary}
         loading={loading}
         manager={manage}
         onBoundary={refresh}
-        photo={<RoomPhoto manager={manage} read={read} />}
+        photo={<RoomPhoto manager={manage} read={read} actionsContainer={actionsContainer} />}
+        contact={read && <RoomContact manage={manage} onSaving={onContactSaving} actionsContainer={actionsContainer} />}
       />
       <div className="room-toolbar">
         <span>Horários de Brasília · America/Sao_Paulo</span>
@@ -219,17 +327,17 @@ export function RoomsPage() {
           Atualizar agenda
         </button>
       </div>
-      {read && <RoomContact key={auth.profile?.id} manage={manage} />}
-      {error && <Notice error>{error}</Notice>}
+      {error && !editor && <Notice error>{error}</Notice>}
       {success && <Notice>{success}</Notice>}
-      <div className={`room-columns${manage ? " room-columns-manager" : ""}`}>
-        {read && (
-          <section className="room-panel">
-            <div className="room-section-head">
-              <div>
-                <p className="room-eyebrow">HORÁRIOS CONFIRMADOS</p>
-                <h2>Agenda</h2>
-              </div>
+
+      {read && (
+        <section className="room-panel">
+          <div className="room-section-head">
+            <div>
+              <p className="room-eyebrow">HORÁRIOS CONFIRMADOS</p>
+              <h2>Agenda</h2>
+            </div>
+            <div className="room-agenda-actions">
               <label>
                 Data
                 <input
@@ -239,104 +347,84 @@ export function RoomsPage() {
                   required
                 />
               </label>
+              {!manage && create && (
+                <button className="primary" disabled={busy} aria-haspopup="dialog"
+                  onClick={() => openEditor(false)}>Solicitar horário</button>
+              )}
             </div>
-            {loading ? (
-              <p role="status">Consultando agenda…</p>
-            ) : !bookings.length ? (
-              <p className="room-empty">
-                Nenhuma reserva confirmada nesta data.
-              </p>
-            ) : (
-              <ul className="room-list">
-                {bookings.map((b) => (
-                  <li key={b.id} className="room-booking">
-                    <div className="room-time">
-                      {time(b.starts_at)} — {time(b.ends_at)}
-                      <small>Ocupado · confirmado</small>
-                    </div>
-                    <div>
-                      <strong>{b.booked_for}</strong>
-                      {b.secretary_notes && (
-                        <p className="room-text">{b.secretary_notes}</p>
-                      )}
-                      {manage && (
-                        <div className="actions">
+          </div>
+          {loading ? (
+            <p role="status">Consultando agenda…</p>
+          ) : !bookings.length ? (
+            <p className="room-empty">
+              Nenhuma reserva confirmada nesta data.
+            </p>
+          ) : (
+            <ul className="room-list">
+              {bookings.map((b) => (
+                <li key={b.id} className="room-booking">
+                  <div className="room-time">
+                    {time(b.starts_at)} — {time(b.ends_at)}
+                    <small>Ocupado · confirmado</small>
+                  </div>
+                  <div>
+                    <strong>{b.booked_for}</strong>
+                    {b.secretary_notes && (
+                      <p className="room-text">{b.secretary_notes}</p>
+                    )}
+                    {manage && (
+                      <div className="actions">
+                        <button
+                          disabled={busy}
+                          onClick={() => openEditor(true, b)}
+                        >
+                          Editar reserva
+                        </button>
+                        {new Date(b.starts_at).getTime() > now && (
                           <button
                             disabled={busy}
-                            onClick={() => openEditor(true, b)}
-                          >
-                            Editar reserva
-                          </button>
-                          {new Date(b.starts_at).getTime() > now && (
-                            <button
-                              disabled={busy}
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    "Cancelar esta reserva? O horário será liberado e o histórico preservado.",
-                                  )
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  "Cancelar esta reserva? O horário será liberado e o histórico preservado.",
                                 )
-                                  void mutate(
-                                    () =>
-                                      rpc("save_booking", {
-                                        p_id: b.id,
-                                        p_version: b.version,
-                                        p_start: b.starts_at,
-                                        p_end: b.ends_at,
-                                        p_booked_for: b.booked_for,
-                                        p_cancel: true,
-                                      }),
-                                    "Reserva cancelada.",
-                                  );
-                              }}
-                            >
-                              Cancelar reserva
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        )}
-        {!manage && (
-          <aside className="room-panel room-request-callout">
-            <p className="room-eyebrow">ORGANIZE SEU ENCONTRO</p>
-            <h2>Solicitar horário</h2>
-            <p>
-              Envie seu pedido para análise da secretaria. Apenas reservas
-              aprovadas ocupam a agenda.
-            </p>
-            {create ? (
-              <button
-                className="primary"
-                disabled={busy}
-                onClick={() => openEditor(false)}
-              >
-                Novo pedido
-              </button>
-            ) : (
-              <p>Seu acesso não permite enviar solicitações.</p>
-            )}
-            <p className="muted">
-              Nome da reserva e observações da secretaria são visíveis aos
-              leitores autorizados. Evite informações sensíveis.
-            </p>
-          </aside>
-        )}
-      </div>
-      {editor && (editor.direct ? manage : create) && (
+                              )
+                                void mutate(
+                                  () =>
+                                    rpc("save_booking", {
+                                      p_id: b.id,
+                                      p_version: b.version,
+                                      p_start: b.starts_at,
+                                      p_end: b.ends_at,
+                                      p_booked_for: b.booked_for,
+                                      p_cancel: true,
+                                    }),
+                                  "Reserva cancelada.",
+                                );
+                            }}
+                          >
+                            Cancelar reserva
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+      {!read && !manage && create && (
         <section className="room-panel">
-          <h2 id="room-editor-title" tabIndex={-1}>
-            {editor.booking
-              ? "Editar reserva"
-              : editor.direct
-                ? "Reserva direta"
-                : "Novo pedido"}
-          </h2>
+          <button className="primary" disabled={busy} aria-haspopup="dialog"
+            onClick={() => openEditor(false)}>Solicitar horário</button>
+        </section>
+      )}
+      {editor && (editor.direct ? manage : create) && (
+        <Modal title={editor.booking ? "Editar reserva" : editor.direct ? "Reserva direta" : "Novo pedido"}
+          onClose={() => setEditor(undefined)} busy={busy} closeOnBackdrop>
+          {error && <Notice error>{error}</Notice>}
           {historical && (
             <Notice>
               Reunião iniciada: somente nome e observações podem ser corrigidos.
@@ -425,7 +513,7 @@ export function RoomsPage() {
               </div>
             </fieldset>
           </form>
-        </section>
+        </Modal>
       )}
       {own && !manage && (
         <section className="room-panel">
@@ -600,7 +688,7 @@ export function RoomsPage() {
         </section>
       )}
       {manage && <RequestHistory revision={historyRevision} />}
-    </div>
+    </>
   );
 }
 function Pagination({

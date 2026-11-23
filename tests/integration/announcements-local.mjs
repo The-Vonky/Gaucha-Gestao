@@ -75,7 +75,7 @@ try{
  }
  record('Administrador e Gestor: rascunho/publicação/desativação persistentes e histórico real');
  const access=must(await users.manager.client.schema('core').rpc('my_access'));assert.deepEqual(access.map(g=>g.permission),['announcements.notice.manage']);
- assert.equal((await db.query("select count(*)::int n from core.role_permissions rp join core.roles r on r.id=rp.role_id where r.key in ('platform_administrator','announcement_manager') and rp.permission_key='room_booking.manage'")).rows[0].n,0);
+ assert.equal((await db.query("select r.key from core.role_permissions rp join core.roles r on r.id=rp.role_id where r.key in ('platform_administrator','announcement_manager') and rp.permission_key='room_booking.manage'")).rows.map((row) => row.key).join(), 'platform_administrator');
  for(const operation of ['select','insert','update','delete']){
   const table=users.manager.client.schema('announcements').from('notices');
   const result=await(operation==='select'?table.select('id'):operation==='insert'?table.insert({title:'Tentativa sintética'}):operation==='update'?table.update({state:'published'}).eq('id',randomUUID()):table.delete().eq('id',randomUUID()));
@@ -85,7 +85,7 @@ try{
  await db.query('update core.user_role_assignments set active=true where id=any($1::uuid[]) and user_id=$2',[manifest.assignments,users.manager.id]);
  await db.query('update core.profiles set active=false where id=$1',[users.manager.id]);denied(await rpc('manager','published'));denied(await rpc('manager','notice_save',base));await db.query('update core.profiles set active=true where id=$1',[users.manager.id]);
  await db.query('update core.user_role_assignments set active=true where id=any($1::uuid[]) and user_id=$2',[manifest.assignments,users.manager.id]);
- record('Revogação e perfil inativo negados com JWT válido; escrita direta negada; D5-B e isolamento do Gestor');
+ record('Revogação e perfil inativo negados com JWT válido; escrita direta negada; D5-C e isolamento do Gestor');
  for(const changes of [{p_message:'<script>alert(1)</script>'},{p_category:'critical',p_tone:'success'},{p_starts_at:'2030-01-02T00:00:00Z',p_ends_at:'2030-01-01T00:00:00Z'},{p_priority:10001}])denied(await rpc('manager','notice_save',{...base,...changes}),'23514');
  const first=await save('manager');const second=await edit('manager',first,{p_title:`${tag} nova versão`});denied(await rpc('manager','notice_save',{...base,p_id:first.id,p_expected_version:1}),'40001');assert.equal(must(await rpc('manager','notice_history',{p_id:first.id})).total,2);
  await edit('manager',second,{p_state:'archived'});

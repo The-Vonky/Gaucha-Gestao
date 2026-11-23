@@ -52,7 +52,7 @@ try{
   const inactive=must(await rpc(name,'notice_save',{...input,p_id:draft.id,p_expected_version:2,p_state:'inactive'}));assert.equal(inactive.status,'inactive');
   assert.equal(must(await rpc(name,'notice_history',{p_id:draft.id})).total,3);
  }
- phase='schema privado, revogação atual e D5-B';
+ phase='schema privado, revogação atual e D5-C';
  for(const name of ['common','manager']){
   for(const operation of ['select','insert','update','delete']){
    const table=clients[name].schema('announcements').from('notices');
@@ -61,7 +61,7 @@ try{
   }
  }
  const access=must(await clients.manager.schema('core').rpc('my_access'));assert.deepEqual(access.map(g=>g.permission),['announcements.notice.manage']);
- assert.equal((await db.query("select count(*)::int n from core.role_permissions rp join core.roles r on r.id=rp.role_id where r.key in ('platform_administrator','announcement_manager') and rp.permission_key='room_booking.manage'")).rows[0].n,0);
+ assert.equal((await db.query("select r.key from core.role_permissions rp join core.roles r on r.id=rp.role_id where r.key in ('platform_administrator','announcement_manager') and rp.permission_key='room_booking.manage'")).rows.map((row) => row.key).join(), 'platform_administrator');
  await db.query('update core.user_role_assignments set active=false where user_id=$1',[users.manager]);denied(await rpc('manager','notice_save',input));
  await db.query('update core.user_role_assignments set active=true where user_id=$1',[users.manager]);
  for(const changes of [{p_tone:'invalid'},{p_message:'<script>alert(1)</script>'},{p_starts_at:'2030-01-01T00:00:00Z',p_ends_at:'2029-01-01T00:00:00Z'}])denied(await rpc('manager','notice_save',{...input,...changes}),'23514');

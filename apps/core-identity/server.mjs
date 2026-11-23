@@ -205,10 +205,11 @@ async function tokenGrant(request, url) {
 function intentFor(body) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const email = emailAddress(body.email);
-  if (!name || name.length > 160 || (body.roleId !== null && !uuid.test(body.roleId))
-      || (body.unitId !== null && !uuid.test(body.unitId))
-      || (body.sectorId !== null && !uuid.test(body.sectorId))
-      || Boolean(body.roleId) !== Boolean(body.unitId) || (body.sectorId && !body.unitId)
+  // Papéis globais do Agendamento admitem roleId sem unidade; o banco aplica a allowlist.
+  const ids = [body.roleId, body.unitId, body.sectorId];
+  if (!name || name.length > 160
+      || ids.some((value) => value !== null && (typeof value !== "string" || !uuid.test(value)))
+      || (body.unitId && !body.roleId) || (body.sectorId && !body.unitId)
       || body.verified !== true) throw reject(400);
   return [email, name, body.roleId, body.unitId, body.sectorId];
 }

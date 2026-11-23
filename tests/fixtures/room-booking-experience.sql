@@ -6,9 +6,8 @@ create or replace function pg_temp.fails(command text,expected text) returns voi
 end $$;
 set local role authenticated;
 select set_config('request.jwt.claim.sub',current_setting('test.admin'),true);
-select pg_temp.fails($q$select public.room_booking_history()$q$,'42501');
-select pg_temp.fails($q$select public.room_booking_begin_cover_upload(3,1,1,'image/jpeg')$q$,'42501');
-select pg_temp.fails($q$select public.room_booking_save_cover('remove',gen_random_uuid(),1)$q$,'42501');
+select pg_temp.check(public.room_booking_history() ? 'items');
+select pg_temp.fails($q$select public.room_booking_begin_cover_upload(0,1,1,'image/jpeg')$q$,'23514');
 select set_config('request.jwt.claim.sub',current_setting('test.requester'),true);
 select pg_temp.fails($q$select public.room_booking_history()$q$,'42501');
 select pg_temp.fails($q$select public.room_booking_begin_cover_upload(3,1,1,'image/jpeg')$q$,'42501');
@@ -79,4 +78,21 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub',current_setting('test.requester'),true);
 select pg_temp.check((public.room_booking_summary()->>'in_use')::boolean and public.room_booking_summary()->>'in_use_until' is not null);
 select pg_temp.check(not(public.room_booking_summary() ? 'requester_name') and not(public.room_booking_summary() ? 'pending_count'));
+reset role;
+
+-- Duas próximas confirmadas em datas distantes; não inclui canceladas nem textos privados.
+set local role authenticated;
+select set_config('request.jwt.claim.sub',current_setting('test.manager'),true);
+select public.room_booking_save_booking('2096-01-01 10:00-03','2096-01-01 11:00-03','Primeira futura','Observação fora do resumo');
+select public.room_booking_save_booking('2096-06-01 10:00-03','2096-06-01 11:00-03','Segunda futura');
+select public.room_booking_save_booking('2096-07-01 10:00-03','2096-07-01 11:00-03','Terceira futura');
+select set_config('request.jwt.claim.sub',current_setting('test.requester'),true);
+select pg_temp.check(jsonb_array_length(public.room_booking_summary()->'upcoming')=2);
+select pg_temp.check(public.room_booking_summary()->'upcoming'->0->>'booked_for'='Primeira futura');
+select pg_temp.check(public.room_booking_summary()->'upcoming'->1->>'booked_for'='Segunda futura');
+select pg_temp.check(public.room_booking_summary()->'upcoming'->0->>'starts_at'=public.room_booking_summary()->>'next_start');
+select pg_temp.check(not(public.room_booking_summary()->'upcoming'->0 ? 'secretary_notes'));
+select pg_temp.check(not(public.room_booking_summary()->'upcoming'->0 ? 'created_by'));
+select set_config('request.jwt.claim.sub','',true);
+select pg_temp.fails($q$select public.room_booking_summary()$q$,'42501');
 reset role;

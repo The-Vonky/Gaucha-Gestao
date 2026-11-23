@@ -16,8 +16,10 @@ it("D5-B: separação, nomes preservados e provisionamento técnico auditado", a
     for (const file of migrations.filter((f) => f.includes("d5b_access")))
       await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
     expect((await db.query("select id,key,system,active,global_only from core.roles order by key")).rows).toEqual(before.rows);
-    // Migrations posteriores dependem da composição já corrigida pela D5-B.
-    for (const file of migrations.slice(d5bIndex + 1))
+    // Preserva a prova histórica até a última versão que ainda aplicava D5-B.
+    const d5cIndex = migrations.indexOf("20261123143000_room_booking_admin_modes.sql");
+    expect(d5cIndex).toBeGreaterThan(d5bIndex);
+    for (const file of migrations.slice(d5bIndex + 1, d5cIndex))
       await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
     await db.exec(readFileSync("tests/fixtures/room-booking-operations.sql", "utf8"));
     await db.exec(readFileSync("tests/fixtures/room-booking-d5b.sql", "utf8"));

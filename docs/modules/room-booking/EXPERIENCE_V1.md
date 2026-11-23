@@ -1,5 +1,7 @@
 # Agendamento — foto, status temporal e histórico de gestão
 
+> **Atualização de 23/11/2026 (AG-D5-C):** a regra D5-B abaixo é histórica. Administrador global passa a gerir a sala e alterna entre **Room Booking Requester** e **Room Booking Manager**. Para cadastro da secretária e autorização efetiva, prevalece [D5-C](D5C_ADMIN_MODES.md); a interface antiga e seus testes descritos neste documento correspondem à versão de 26/10/2026.
+
 Melhorias aprovadas pelo responsável em 26/10/2026, na mesma PR #88 e branch `feat/ag-01-room-booking-schema-20261023`, após testes manuais do módulo. D5-B permanece vigente: administrador geral não opera gestão, mesmo com atribuição simultânea conflitante. Sem merge/deploy automático; mantenedor único revisa e decide.
 
 ## GG-08 e GG-09 — contato e histórico de gestão
@@ -7,6 +9,18 @@ Melhorias aprovadas pelo responsável em 26/10/2026, na mesma PR #88 e branch `f
 ### GG-08 · Contato da sala
 
 A sala ativa exibe **Responsável** e **Ramal** para quem pode consultar a agenda. Sem cadastro, a interface informa **Contato ainda não informado**. A gestora efetiva usa **Editar contato** e recebe a versão gravada sem recarregar a página. O nome é preenchido no formulário e pode diferir do nome cadastrado no Core. Informe somente o nome institucional e o ramal.
+
+**Refinamento de interface de 23/11/2026, PR #129:** o botão **Editar contato**
+permanece na barra acima do banner e abre o `Modal` compartilhado, centralizado.
+Nome, ramal, mensagens e consulta após conflito ficam no diálogo, com Escape,
+overlay, botão de fechar e **Cancelar edição**; todos os fechamentos ficam
+bloqueados durante o salvamento. O foco segue o padrão do componente e retorna
+ao acionador. O formulário é renderizado fora do banner, cuja altura permanece
+estável ao abrir/reabrir. O contato salvo é atualizado no hero sem recarregar.
+Na agenda, somente a margem inferior do rótulo Data é zerada localmente para
+alinhar a base do input à de **Solicitar horário**; em 320 px os controles quebram
+linha. Sem alterações no contrato de banco ou nas permissões.
+
 
 | RPC pública | Capacidade efetiva | Contrato |
 |---|---|---|
@@ -150,3 +164,79 @@ Capturas de 26/10, sem listas pessoais:
 - [Solicitante — celular](evidence/requester-mobile-20261026.png)
 
 Pendências reais: revisão/merge pelo titular, conclusão dos checks remotos do SHA enviado, homologação humana e celular físico. Restore do bucket e prontidão produtiva não foram comprovados. `supabase/snippets/` permanece preexistente e fora dos commits.
+
+## Refinamento de interface após homologação da PR #129 — 23/11/2026
+
+O hero apresenta o contato da sala no lugar do parágrafo institucional, sem faixa
+separada nem título amarelo. A edição do contato continua exclusiva da gestão,
+com a mesma versão otimista, validação e auditoria. O indicador de disponibilidade
+e o temporizador permanecem no hero; o resumo elimina a repetição da situação.
+
+A RPC `room_booking_summary` acrescenta `upcoming`: até duas reservas confirmadas
+com início posterior a `server_now`, em ordem cronológica, sem limite de distância
+entre datas. Cada item contém somente `booked_for`, `starts_at` e `ends_at`, campos
+já públicos na agenda autorizada. O nome apresentado é o informado em **Reservado
+para**, não a identidade de quem criou a reserva. Contagem de hoje, próxima data e
+lista usam o mesmo instante do servidor e independem da data selecionada na agenda.
+Não inclui canceladas, pedidos pendentes, finalidade privada nem identidade do autor.
+A atualização periódica, retorno à aba, atualização manual e fronteira temporal
+reconsultam o resumo. Ausência de reservas exibe “Nenhuma prevista”.
+
+A agenda e **Solicitar horário** compartilham uma seção. **Novo pedido**, **Reserva
+direta** e **Editar reserva** usam o mesmo `Modal` de Comunicados: diálogo nativo,
+foco contido, retorno ao acionador, fechamento por botão, overlay ou Escape. Enquanto
+a gravação aguarda resposta, os fechamentos ficam bloqueados. Validações e falhas
+ficam dentro do modal. Solicitar, aprovar, recusar e alternar modos preservam D5-C.
+
+```mermaid
+flowchart LR
+    A[Agenda] --> B[Solicitar horário]
+    B --> C[Modal Novo pedido]
+    C --> D[Pedido pendente]
+    D --> E[Decisão da gestão]
+    E --> F[Reserva confirmada na agenda e resumo]
+```
+
+Os papéis `room_booking_manager` e `room_booking_requester` permanecem `global_only`.
+A sala é recurso global sem `unit_id`/`sector_id`; RPCs usam permissões globais do
+Core. Está coerente com AG-01 e ADR-005. Eventual catálogo de salas por unidade
+exigirá contrato próprio, revisão dos escopos, RPCs e RLS; não basta liberar unidade
+no seletor de atribuições.
+
+Migration append-only `20261123175533_room_booking_hero_upcoming.sql`: substitui
+somente a projeção da RPC, conserva assinatura, owner, ACL e autorização existentes,
+e reutiliza o índice parcial `bookings_schedule`. Não muda papéis, políticas RLS,
+atribuições nem dados de reservas. O frontend conserva leitura da data antiga se
+`upcoming` ainda não estiver disponível; duas reservas nominais exigem a migration.
+No DEV local, aplicação incremental deve ser ensaiada com rollback e conferir os
+dados e o ledger. Não aplicar em C30/STAGING/PROD por esta entrega. Reversão visual
+pode usar o commit anterior, mantendo a projeção aditiva; eventual correção de banco
+deve ser uma nova migration, preservando os dados.
+
+Validação de UI reproduzível: `node tests/integration/room-booking-ux-browser.mjs`
+com Vite ativo em `http://127.0.0.1:5173`. Usa Auth/REST sintéticos interceptados,
+sem gravar no banco, e verifica requester, manager e administrador em 1280/320 px,
+hero, integração da agenda, modal, foco, Escape, botão, overlay e estado vazio.
+Capturas ficam em `/tmp/room-booking-ux` ou `ROOM_UX_ARTIFACTS`. A suíte
+`room-booking-experience.test.ts` verifica a projeção real no PGlite, inclusive
+reservas com meses de distância, campos restritos e negativa sem identidade.
+
+Resultado no notebook em 23/11/2026: 70 testes das nove suítes de Salas/Comunicados
+passaram; typecheck, build, verify:build e auditoria npm passaram (zero
+vulnerabilidades). O lint passou excluindo `tmp/**`; a execução sem exclusão
+continua apontando `no-empty` em um script local preexistente de limpeza. O smoke
+Chromium acima passou nas três identidades sintéticas e nas duas larguras. A RPC
+foi ensaiada com sessão local admitida e rollback, verificando formato, negativa
+sem identidade e ACL; em seguida a migration foi aplicada e registrada no ledger
+local. Comparação antes/depois confirmou usuários, atribuições, reservas, pedidos,
+auditoria e objetos preservados. A suíte completa no sandbox teve 1.192 PASS e
+10 falhas em duas suítes fora de Salas; ambas passaram isoladamente fora do sandbox
+(39 testes). A repetição completa fora do sandbox terminou com sinal 143, sem
+resultado conclusivo. A homologação humana desta nova apresentação e o aceite de
+merge permanecem pendentes; o relato de homologação anterior da PR #129 refere-se
+à funcionalidade antes deste refinamento.
+
+A inspeção visual em 320 px também verificou os campos nativos de data/hora:
+colunas e campos do formulário têm largura mínima zero para não extrapolar o
+modal. O smoke exige `dialog.scrollWidth <= dialog.clientWidth`, além de conferir
+a largura da página, evitando aprovar campos cortados dentro do diálogo.

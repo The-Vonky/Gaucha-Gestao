@@ -169,7 +169,7 @@ it("Atribuição setorial do Viewer não concede leitura, dashboard ou exportaç
   await denied(() => exportPage("full"));
 });
 
-it("Platform Administrator mantém suas sete capacidades de Vendas, a administração e a restrição D5-B", async () => {
+it("Platform Administrator mantém suas sete capacidades de Vendas, a administração e a gestão do Agendamento autorizada em D5-C", async () => {
   await db.query("update core.user_role_assignments set active=false where user_id=$1", [manager]);
   await db.query(`insert into core.user_role_assignments(user_id,role_id,scope_type)
     select $1,id,'global' from core.roles where key='platform_administrator'`, [manager]);
@@ -177,6 +177,6 @@ it("Platform Administrator mantém suas sete capacidades de Vendas, a administra
   const permissions = await access();
   expect(permissions.filter(permission => permission.startsWith("sales."))).toEqual(managerPermissions);
   expect(permissions).toContain("admin.role.manage");
-  expect(permissions).not.toContain("room_booking.manage");
+  expect(permissions).toContain("room_booking.manage");
   expect((await entries(B)).map(row => row.id)).toEqual([entryB.id]);
 });

@@ -17,7 +17,9 @@ export function EmployeeRegistration({ token, onClose, onCreated }: {
     const administrative = new Set(permissions.filter((permission) => permission.permission_key.startsWith("admin."))
       .map((permission) => permission.role_id));
     return {
-      roles: roles.filter((role) => role.active && !role.global_only && !administrative.has(role.id)),
+      roles: roles.filter((role) => role.active && role.key !== "platform_administrator"
+        && (!role.global_only || ["room_booking_manager", "room_booking_requester"].includes(role.key))
+        && !administrative.has(role.id)),
       units: units.filter((unit) => unit.active),
       sectors: sectors.filter((sector) => sector.active),
       links,
@@ -27,6 +29,8 @@ export function EmployeeRegistration({ token, onClose, onCreated }: {
   const [unit, setUnit] = useState("");
   const [sector, setSector] = useState("");
   const data = options.data;
+  const selectedRole = data?.roles.find((item) => item.id === role);
+  const globalRoomRole = !!selectedRole?.global_only;
   return (
     <Modal title="Novo usuário" onClose={onClose}>
       {options.loading && <p>Carregando papéis e escopos…</p>}
@@ -36,8 +40,8 @@ export function EmployeeRegistration({ token, onClose, onCreated }: {
           name: String(fields.get("name")),
           email: String(fields.get("email")),
           roleId: role || null,
-          unitId: unit || null,
-          sectorId: sector || null,
+          unitId: globalRoomRole ? null : unit || null,
+          sectorId: globalRoomRole ? null : sector || null,
           verified: fields.get("verified") === "on",
         });
         onCreated(result.temporaryPassword);
@@ -54,7 +58,10 @@ export function EmployeeRegistration({ token, onClose, onCreated }: {
             {data.roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>
-        {role && <label>Unidade
+        {globalRoomRole && (
+          <p className="muted">Este papel é global para a Sala de Reunião; não exige unidade ou setor.</p>
+        )}
+        {role && !globalRoomRole && <label>Unidade
           <select required value={unit} onChange={(event) => {
             setUnit(event.target.value);
             setSector("");
@@ -63,7 +70,7 @@ export function EmployeeRegistration({ token, onClose, onCreated }: {
             {data.units.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>}
-        {unit && <label>Setor
+        {unit && !globalRoomRole && <label>Setor
           <select value={sector} onChange={(event) => setSector(event.target.value)}>
             <option value="">Toda a unidade</option>
             {data.sectors.filter((item) => data.links.some((link) => link.unit_id === unit && link.sector_id === item.id))
