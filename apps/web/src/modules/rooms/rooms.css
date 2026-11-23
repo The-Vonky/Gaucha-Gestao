@@ -240,17 +240,17 @@
 .room-hero-card {
   z-index: 1;
 }
-.room-photo-action {
-  position: absolute;
-  bottom: 0.7rem;
-  left: 1.5rem;
-  z-index: 2;
-  color: white;
-  background: #173e34;
-  border: 1px solid #ffffff70;
-  font-size: 0.75rem;
+.room-management-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
-.room-hero:has(.room-photo-action) {
+.room-management-actions > button {
+  max-width: 100%;
+}
+/* Preserva o espaçamento do banner homologado na vista de gestão. */
+.room-management-actions + .room-hero {
   padding-bottom: 3.8rem;
 }
 .room-status {

@@ -17,6 +17,7 @@ try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, locale: "pt-BR" });
     await context.addInitScript((fixture) => localStorage.setItem("sb-127-auth-token", JSON.stringify(fixture)), session);
     let empty = false;
+    let contact = { room_id: "fixture", responsible_name: "Contato sintético da sala", extension: "1234", version: 1 };
     await context.route("**/*", async (route) => {
       const { pathname } = new URL(route.request().url());
       const endpoint = pathname.split("/").at(-1);
@@ -31,7 +32,14 @@ try {
           case "announcements_published": return json({ version: 1, enabled: false, announcements: [], serverNow: new Date().toISOString(), nextRefreshAt: null });
           case "room_booking_admin_context": return json(role === "admin");
           case "room_booking_summary": return json({ name: "Sala de Reunião", server_now: new Date().toISOString(), in_use: false, today_count: empty ? 0 : 2, next_start: empty ? null : upcoming[0].starts_at, upcoming: empty ? [] : upcoming, pending_count: 0 });
-          case "room_booking_contact": return json({ room_id: "fixture", responsible_name: "Contato sintético da sala", extension: "1234", version: 1 });
+          case "room_booking_contact": return json(contact);
+          case "room_booking_save_contact": {
+            assert.notEqual(role, "requester");
+            const args = route.request().postDataJSON();
+            assert.equal(args.p_version, contact.version);
+            contact = { ...contact, responsible_name: args.p_responsible_name, extension: args.p_extension, version: contact.version + 1 };
+            return json(contact);
+          }
           case "room_booking_cover": return json({ asset_id: null, version: 0 });
           case "room_booking_history": case "room_booking_direct_history": return json({ items: [], has_more: false });
           case "room_booking_schedule": case "room_booking_requests": return json([]);
@@ -52,6 +60,37 @@ try {
     await expect(page.getByRole("group", { name: "Modo de atuação" })).toHaveCount(role === "admin" ? 1 : 0);
     for (const width of [1280, 320]) {
       await page.setViewportSize({ width, height: 1000 });
+      if (role === "admin") await page.getByRole("button", { name: "Room Booking Requester", exact: true }).click();
+      const actions = page.getByRole("group", { name: "Ações da sala" });
+      if (role !== "manager") await expect(actions).toHaveCount(0);
+      if (role === "admin") await page.getByRole("button", { name: "Room Booking Manager", exact: true }).click();
+      if (role !== "requester") {
+        await expect(actions.getByRole("button")).toHaveCount(2);
+        assert.equal(await actions.evaluate((bar) => bar.nextElementSibling.classList.contains("room-hero")), true);
+        if (role === "admin") assert.equal(await actions.evaluate((bar) => bar.previousElementSibling.classList.contains("room-mode-switch")), true);
+        await expect(hero.getByRole("button", { name: "Editar contato" })).toHaveCount(0);
+        await expect(hero.getByRole("button", { name: "Alterar foto da sala" })).toHaveCount(0);
+        const barBounds = await actions.boundingBox();
+        const heroBounds = await hero.boundingBox();
+        for (const button of await actions.getByRole("button").all()) {
+          const bounds = await button.boundingBox();
+          assert.ok(bounds.x >= barBounds.x && bounds.x + bounds.width <= barBounds.x + barBounds.width + 1);
+          assert.ok(bounds.y + bounds.height <= heroBounds.y);
+        }
+        await actions.getByRole("button", { name: "Editar contato" }).click();
+        await expect(page.getByLabel("Nome da responsável")).toBeFocused();
+        await page.getByLabel("Nome da responsável").fill("Contato sintético da sala");
+        await page.getByRole("button", { name: "Salvar contato" }).click();
+        await expect(page.getByText("Contato atualizado.", { exact: true })).toBeVisible();
+        const photo = actions.getByRole("button", { name: "Alterar foto da sala" });
+        await photo.click();
+        await expect(page.getByRole("dialog", { name: "Foto da sala" })).toBeVisible();
+        await expect(page.getByLabel("Arquivo da foto da sala")).toBeVisible();
+        await page.getByRole("dialog").getByRole("button", { name: "Fechar", exact: true }).click();
+        await expect(photo).toBeFocused();
+        await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
+        await page.screenshot({ path: `${artifacts}/${role}-${width}-actions.png`, fullPage: true });
+      }
       if (role === "admin") await page.getByRole("button", { name: "Room Booking Requester", exact: true }).click();
       const trigger = page.getByRole("button", { name: role === "manager" ? "Criar reserva direta" : "Solicitar horário", exact: true });
       if (role !== "manager") assert.equal(await trigger.evaluate((button) => button.closest("section").querySelector("h2").textContent), "Agenda");

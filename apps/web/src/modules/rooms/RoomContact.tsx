@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { Notice } from "../../shared/ui";
 import { roomMessage, rpc } from "./api";
 
@@ -9,9 +10,10 @@ type Contact = {
   version: number;
 };
 
-export function RoomContact({ manage, onSaving }: {
+export function RoomContact({ manage, onSaving, actionsContainer }: {
   manage: boolean;
   onSaving: (value: boolean) => void;
+  actionsContainer?: HTMLElement | null;
 }) {
   const [contact, setContact] = useState<Contact | null>();
   const [editing, setEditing] = useState(false);
@@ -106,6 +108,23 @@ export function RoomContact({ manage, onSaving }: {
     }
   }
 
+  const action = manage && contact && (
+    <button
+      type="button"
+      ref={editButton}
+      aria-expanded={showForm}
+      aria-controls={showForm ? "room-contact-form" : undefined}
+      disabled={saving}
+      onClick={() => {
+        if (showForm) close();
+        else if (conflict) reload();
+        else open();
+      }}
+    >
+      Editar contato
+    </button>
+  );
+
   return (
     <section
       className="room-contact"
@@ -133,22 +152,7 @@ export function RoomContact({ manage, onSaving }: {
             !error && <p className="muted">Contato ainda não informado.</p>
           )}
         </div>
-        {manage && contact && (
-          <button
-            type="button"
-            ref={editButton}
-            aria-expanded={showForm}
-            aria-controls={showForm ? "room-contact-form" : undefined}
-            disabled={saving}
-            onClick={() => {
-              if (showForm) close();
-              else if (conflict) reload();
-              else open();
-            }}
-          >
-            Editar contato
-          </button>
-        )}
+        {actionsContainer ? createPortal(action, actionsContainer) : actionsContainer === undefined ? action : null}
       </div>
       {error && <Notice error>{error}</Notice>}
       {success && <Notice tone="success">{success}</Notice>}

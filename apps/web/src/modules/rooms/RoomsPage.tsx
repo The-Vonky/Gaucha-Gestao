@@ -169,6 +169,7 @@ function RoomsWorkspace({
   const [error, setError] = useState(""),
     [success, setSuccess] = useState("");
   const [editor, setEditor] = useState<Editor>();
+  const [actionsContainer, setActionsContainer] = useState<HTMLDivElement | null>(null);
   const [decision, setDecision] = useState<{
     request: Request;
     action: "approve" | "reject";
@@ -308,13 +309,17 @@ function RoomsWorkspace({
     !!editor?.booking && new Date(editor.booking.starts_at).getTime() <= now;
   return (
     <>
+      {read && manage && (
+        <div className="room-management-actions" role="group" aria-label="Ações da sala"
+          ref={setActionsContainer} />
+      )}
       <RoomHeroBanner
         summary={summary}
         loading={loading}
         manager={manage}
         onBoundary={refresh}
-        photo={<RoomPhoto manager={manage} read={read} />}
-        contact={read && <RoomContact manage={manage} onSaving={onContactSaving} />}
+        photo={<RoomPhoto manager={manage} read={read} actionsContainer={actionsContainer} />}
+        contact={read && <RoomContact manage={manage} onSaving={onContactSaving} actionsContainer={actionsContainer} />}
       />
       <div className="room-toolbar">
         <span>Horários de Brasília · America/Sao_Paulo</span>

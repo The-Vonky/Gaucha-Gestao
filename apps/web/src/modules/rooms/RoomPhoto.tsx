@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { client } from "../../core/client";
 import { identityEnabled } from "../../core/auth/identity";
 import { privateCoverUrl } from "../../core/auth/privateStorage";
@@ -84,9 +85,11 @@ export async function uploadRoomCover(
 export function RoomPhoto({
   manager,
   read,
+  actionsContainer,
 }: {
   manager: boolean;
   read: boolean;
+  actionsContainer?: HTMLElement | null;
 }) {
   const auth = useAuth();
   // Estado somente em memória, vinculado ao principal e às permissões atuais.
@@ -95,9 +98,9 @@ export function RoomPhoto({
     auth.profile?.active,
     auth.grants,
   ]);
-  return read ? <Photo key={access} manager={manager} /> : null;
+  return read ? <Photo key={access} manager={manager} actionsContainer={actionsContainer} /> : null;
 }
-function Photo({ manager }: { manager: boolean }) {
+function Photo({ manager, actionsContainer }: { manager: boolean; actionsContainer?: HTMLElement | null }) {
   const [cover, setCover] = useState<RoomCover>();
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
@@ -132,6 +135,11 @@ function Photo({ manager }: { manager: boolean }) {
       document.removeEventListener("visibilitychange", visible);
     };
   }, [reload]);
+  const action = manager && (
+    <button type="button" onClick={() => setEditing(true)}>
+      Alterar foto da sala
+    </button>
+  );
   return (
     <>
       {cover?.url && failedUrl !== cover.url && (
@@ -145,11 +153,7 @@ function Photo({ manager }: { manager: boolean }) {
           onError={() => setFailedUrl(cover.url)}
         />
       )}
-      {manager && (
-        <button className="room-photo-action" onClick={() => setEditing(true)}>
-          Alterar foto da sala
-        </button>
-      )}
+      {actionsContainer ? createPortal(action, actionsContainer) : actionsContainer === undefined ? action : null}
       {editing &&
         manager &&
         (cover ? (

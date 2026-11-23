@@ -63,6 +63,8 @@ it("leitor vê agenda e não recebe fila nem ações privilegiadas", async () =>
   render(<RoomsPage />);
   await screen.findByText("Nenhuma reserva confirmada nesta data.");
   expect(screen.queryByText("Criar reserva direta")).toBeNull();
+  expect(screen.queryByRole("group", { name: "Ações da sala" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Alterar foto da sala" })).toBeNull();
   expect(screen.queryByText("Meus pedidos")).toBeNull();
   expect(state.rpc.mock.calls.some((c) => c[0] === "requests")).toBe(false);
 });
@@ -388,7 +390,7 @@ it("conflito de contato impede nova gravação até consultar a versão atual", 
   const user = userEvent.setup();
   const contact = await screen.findByRole("region", { name: "Contato da sala" });
   await user.click(
-    await within(contact).findByRole("button", { name: "Editar contato" }),
+    await screen.findByRole("button", { name: "Editar contato" }),
   );
   const save = within(contact).getByRole<HTMLButtonElement>("button", {
     name: "Salvar contato",
@@ -582,4 +584,39 @@ it("bloqueia fechamento durante envio e mantém falha da RPC dentro do modal", a
   rejectSave({ code: "23P01" });
   expect((await form.findByRole("alert")).textContent).toContain("Horário ocupado");
   expect(form.getByRole<HTMLButtonElement>("button", { name: "Fechar", exact: true }).disabled).toBe(false);
+});
+
+
+it.each([false, true])("barra acima do hero preserva edição de contato/foto para gestor (admin=%s)", async (admin) => {
+  state.adminContext = admin;
+  state.permissions = ["schedule.read", "request.create", "request.read_own", "manage"];
+  const fallback = state.rpc.getMockImplementation()!;
+  mockRooms(async (name, args) => name === "contact"
+    ? { room_id: "fixture", responsible_name: "Contato", extension: "1234", version: 1 }
+    : name === "cover" ? { asset_id: null, version: 1, position_x: 50, position_y: 50 }
+    : fallback(name, args));
+  const { container } = render(<RoomsPage />);
+  const user = userEvent.setup();
+  if (admin) {
+    await user.click(await screen.findByRole("button", { name: "Room Booking Manager", exact: true }));
+  }
+  const bar = await screen.findByRole("group", { name: "Ações da sala" });
+  const contact = await within(bar).findByRole("button", { name: "Editar contato" });
+  const photo = within(bar).getByRole("button", { name: "Alterar foto da sala" });
+  const hero = container.querySelector(".room-hero")!;
+  expect(bar.nextElementSibling).toBe(hero);
+  expect(within(hero as HTMLElement).queryByRole("button", { name: "Editar contato" })).toBeNull();
+  expect(within(hero as HTMLElement).queryByRole("button", { name: "Alterar foto da sala" })).toBeNull();
+  await user.click(contact);
+  expect(screen.getByLabelText("Nome da responsável")).toBe(document.activeElement);
+  await user.click(screen.getByRole("button", { name: "Cancelar edição" }));
+  expect(document.activeElement).toBe(contact);
+  await user.click(photo);
+  expect(screen.getByRole("dialog", { name: "Foto da sala" })).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "Fechar", exact: true }));
+  expect(document.activeElement).toBe(photo);
+  if (admin) {
+    await user.click(screen.getByRole("button", { name: "Room Booking Requester", exact: true }));
+    expect(screen.queryByRole("group", { name: "Ações da sala" })).toBeNull();
+  }
 });
