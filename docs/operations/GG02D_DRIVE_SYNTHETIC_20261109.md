@@ -6,9 +6,11 @@
 | --- | --- |
 | Recuperação da conta e verificação em duas etapas | Confirmadas pelo mantenedor, sem detalhes sensíveis |
 | Windows, backend local e cópia lógica | **PASS**, três snapshots, leitura integral e quatro restaurações conferidas |
-| OAuth, quota, pasta, três snapshots, leitura integral e restaurações do Drive | Cliente Desktop publicado pelo mantenedor. Primeiro pré-voo bloqueado com o cliente compartilhado. Novo pré-voo manual pendente. |
+| OAuth, quota, pasta, snapshots e restaurações do Drive | **PASS relatado pelo mantenedor em 10/11/2026**, com cliente Desktop próprio, `Preflight` e `Run` no Google Drive real, somente massa sintética. |
 | Cópia secundária física com restauração sem Drive | **BLOCKED**, mantenedor confirmou que ainda não há segundo computador autorizado |
 | Backup operacional e recuperação da C30 | Fora da autorização da Issue #113 |
+
+> **Atualização posterior de 10/11/2026:** a falha OAuth da primeira tentativa abaixo é histórica. O [registro na PR #114](https://github.com/The-Vonky/Gaucha-Gestao/pull/114) contém relato posterior do mantenedor de **Preflight PASS** (quota 15 GiB) e **Run PASS** (snapshots cifrados, leitura e recuperação sintética no Drive real). A evidência é operacional relatada, não restauração da C30 nem prova de independência física da cópia secundária.
 
 ## Diagnóstico do primeiro pré-voo
 
