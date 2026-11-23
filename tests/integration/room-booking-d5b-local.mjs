@@ -1,3 +1,4 @@
+// Compatibilidade com o runner D5-B: desde D5-C, as negativas anteriores são histórico.
 // Somente gaucha-gestao-local existente. Todos os ensaios são revertidos.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -28,22 +29,17 @@ try {
   const rpc = async (sql, params=[]) => (await db.query(sql,params)).rows[0].result;
   await asUser();
   const access = (await db.query("select permission from core.my_access() where permission like 'room_booking.%'")).rows;
-  assert.equal(access.length,3);
+  assert.equal(access.length,4);
   assert.deepEqual(await rpc("select public.room_booking_schedule('2096-08-04','2096-08-04') result"),[]);
   const request = await rpc("select public.room_booking_create_request('2096-08-04 14:07-03','2096-08-04 14:23-03','Ensaio D5-B',null,gen_random_uuid()) result");
   assert.ok((await rpc("select public.room_booking_requests(false) result")).some(r=>r.id===request));
-  const noManagement = async () => {
-    assert.equal(Object.hasOwn(await rpc("select public.room_booking_summary() result"),"pending_count"),false);
-    await denied("select public.room_booking_requests(true)");
-    for (const action of ["approve","reject"])
-      await denied(`select public.room_booking_decide_request('${request}',1,'${action}')`);
-    await denied("select public.room_booking_save_booking('2096-08-04 15:00-03','2096-08-04 16:00-03','Forjado')");
-    for (const cancel of [false,true])
-      await denied(`select public.room_booking_save_booking(null,null,'Forjado',null,'${request}',1,${cancel})`);
-    assert.equal((await db.query("select * from core.my_access() where permission='room_booking.manage'")).rowCount,0);
+  const adminManagement = async () => {
+    assert.equal(Object.hasOwn(await rpc("select public.room_booking_summary() result"),"pending_count"),true);
+    assert.ok(Array.isArray(await rpc("select public.room_booking_requests(true) result")));
+    assert.equal((await db.query("select * from core.my_access() where permission='room_booking.manage'")).rowCount,1);
   };
-  await noManagement();
-  console.log("PASS administrador: agenda/pedido próprio; gestão/fila/contador negados");
+  await adminManagement();
+  console.log("PASS D5-C administrador: agenda, solicitação própria, fila e capacidade de gestão");
   await technical();
   await db.query(`insert into core.user_role_assignments(user_id,role_id,scope_type)
     select $1,id,'global' from core.roles where key='room_booking_manager'
@@ -51,8 +47,8 @@ try {
   await db.query(`update core.user_role_assignments set active=true where user_id=$1
     and role_id=(select id from core.roles where key='room_booking_manager')`,[user]);
   await asUser();
-  await noManagement();
-  console.log("PASS atribuição simultânea: bloqueio permanece nas RPCs e core.my_access");
+  await adminManagement();
+  console.log("PASS D5-C: atribuição simultânea não retira gestão do administrador");
   await technical();
   await db.query(`update core.user_role_assignments set active=false where user_id=$1
     and role_id in (select id from core.roles where key in ('platform_administrator','room_booking_manager'))`,[user]);
