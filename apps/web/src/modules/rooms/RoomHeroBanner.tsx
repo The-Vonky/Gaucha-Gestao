@@ -1,17 +1,19 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { dateTime, type Summary } from "./api";
+import { dateTime, time, type Summary } from "./api";
 export function RoomHeroBanner({
   summary,
   loading,
   manager,
   onBoundary,
   photo,
+  contact,
 }: {
   summary?: Summary | null;
   loading: boolean;
   manager: boolean;
   onBoundary?: () => void;
   photo?: ReactNode;
+  contact?: ReactNode;
 }) {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [expired, setExpired] = useState(false);
@@ -64,12 +66,8 @@ export function RoomHeroBanner({
       {photo}
       <div className="room-photo-overlay" aria-hidden="true" />
       <div className="room-hero-copy">
-        <p className="room-eyebrow">ADMINISTRATIVO · AGENDAMENTO DE SALAS</p>
         <h1>{summary?.name ?? "Sala de Reunião"}</h1>
-        <p>
-          Reserve seu espaço, organize seus encontros e acompanhe os horários
-          confirmados.
-        </p>
+        {contact}
         <span
           className={`room-status ${loading || !summary || expired ? "is-loading" : summary.in_use ? "is-busy" : "is-free"}`}
         >
@@ -83,36 +81,29 @@ export function RoomHeroBanner({
       </div>
       <dl className="room-hero-card" aria-label="Resumo da sala">
         <div>
-          <dt>Situação atual</dt>
-          <dd>
-            <span
-              className={`room-status ${loading || !summary || expired ? "is-loading" : summary.in_use ? "is-busy" : "is-free"}`}
-            >
-              <span aria-hidden="true">{summary?.in_use ? "◷" : "✓"}</span>{" "}
-              {status}
-            </span>
-          </dd>
-        </div>
-        <div>
           <dt>Reservas confirmadas hoje</dt>
-          <dd>{summary?.today_count ?? "—"}</dd>
-        </div>
-        <div>
-          <dt>Próxima reserva</dt>
-          <dd>
-            {summary
-              ? summary.next_start
-                ? dateTime(summary.next_start)
-                : "Nenhuma prevista"
-              : "—"}
-          </dd>
+          <dd>{loading || expired ? "—" : summary?.today_count ?? "—"}</dd>
         </div>
         {manager && (
           <div>
             <dt>Solicitações pendentes</dt>
-            <dd>{summary?.pending_count ?? "—"}</dd>
+            <dd>{loading || expired ? "—" : summary?.pending_count ?? "—"}</dd>
           </div>
         )}
+        <div className="room-upcoming">
+          <dt>Próximas reservas</dt>
+          <dd>
+            {loading || !summary || expired ? "Consultando agenda…" : summary.upcoming ? (
+              summary.upcoming.length ? <ul className="room-upcoming-list">
+                {summary.upcoming.map((booking) => <li key={booking.starts_at}>
+                  <strong>{booking.booked_for}</strong>
+                  <span>{dateTime(booking.starts_at)} — {time(booking.ends_at)}</span>
+                </li>)}
+              </ul> : "Nenhuma prevista"
+            ) : summary.next_start ? dateTime(summary.next_start) : "Nenhuma prevista"}
+          </dd>
+        </div>
+
       </dl>
     </header>
   );

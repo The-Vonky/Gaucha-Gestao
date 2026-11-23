@@ -3,6 +3,7 @@ import React from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -38,6 +39,8 @@ function mockRooms(implementation: NonNullable<ReturnType<typeof state.rpc.getMo
   );
 }
 beforeEach(() => {
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+  HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
   state.permissions = ["schedule.read"];
   state.adminContext = false;
   state.rpc.mockReset();
@@ -68,7 +71,7 @@ it("solicitante envia pedido com chave idempotente e não o apresenta como confi
   render(<RoomsPage />);
   await screen.findByText("Nenhuma reserva confirmada nesta data.");
   const user = userEvent.setup();
-  await user.click(screen.getByRole("button", { name: "Novo pedido" }));
+  await user.click(screen.getByRole("button", { name: "Solicitar horário" }));
   await user.type(screen.getByLabelText("Reservado para"), "Teste");
   const date = screen.getByLabelText("Data da reunião");
   await user.clear(date);
@@ -185,7 +188,7 @@ it("D5-C: só o administrador alterna entre solicitante e gestor", async () => {
   const manager = screen.getByRole("button", { name: "Room Booking Manager" });
   expect(requester.getAttribute("aria-pressed")).toBe("true");
   expect(screen.getByText("Meus pedidos")).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Novo pedido" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Solicitar horário" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Criar reserva direta" })).toBeNull();
   expect(screen.queryByRole("heading", { name: "Solicitações pendentes" })).toBeNull();
   expect(screen.queryByText("99")).toBeNull();
@@ -200,7 +203,7 @@ it("D5-C: só o administrador alterna entre solicitante e gestor", async () => {
   await user.click(requester);
   expect(requester.getAttribute("aria-pressed")).toBe("true");
   expect(screen.queryByRole("heading", { name: "Solicitações pendentes" })).toBeNull();
-  expect(screen.getByRole("button", { name: "Novo pedido" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Solicitar horário" })).toBeTruthy();
 });
 it("fecha visualmente o editor de gestão quando a permissão efetiva é revogada", async () => {
   state.permissions = ["schedule.read", "manage"];
@@ -227,7 +230,7 @@ it("gestor com todas as permissões não vê cards de solicitante e mantém rese
   await screen.findByText("Nenhuma reserva confirmada nesta data.");
   expect(screen.queryByText("ORGANIZE SEU ENCONTRO")).toBeNull();
   expect(screen.queryByText("Meus pedidos")).toBeNull();
-  expect(screen.queryByRole("button", { name: "Novo pedido" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Solicitar horário" })).toBeNull();
   expect(
     screen.getByRole("heading", { name: "Histórico de solicitações" }),
   ).toBeTruthy();
@@ -503,4 +506,80 @@ it("aguarda o contexto para consultar a fila e permite repetir uma falha de rede
   await screen.findByRole("button", { name: "Criar reserva direta" });
   await waitFor(() => expect(state.rpc).toHaveBeenCalledWith("requests", expect.objectContaining({ p_queue: true })));
   expect(state.rpc.mock.calls.some(([name, args]) => name === "requests" && !args?.p_queue)).toBe(false);
+});
+
+it("modal do pedido fecha por botão, overlay e Escape e devolve foco ao acionador", async () => {
+  state.permissions = ["schedule.read", "request.create"];
+  render(<RoomsPage />);
+  const user = userEvent.setup();
+  const trigger = await screen.findByRole("button", { name: "Solicitar horário" });
+  for (const close of ["button", "overlay", "escape"]) {
+    await user.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: "Novo pedido" });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    if (close === "button") await user.click(within(dialog).getByRole("button", { name: "Fechar", exact: true }));
+    else if (close === "overlay") fireEvent.click(dialog);
+    else fireEvent(dialog, new Event("cancel", { cancelable: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  }
+});
+
+it("hero integra contato e duas próximas reservas sem depender da data selecionada", async () => {
+  mockRooms(async (name) => name === "summary" ? {
+    name: "Sala", server_now: "2026-11-23T12:00:00Z", in_use: false,
+    today_count: 3, next_start: "2096-01-01T13:00:00Z", upcoming: [
+      { booked_for: "Reserva de Ana", starts_at: "2096-01-01T13:00:00Z", ends_at: "2096-01-01T14:00:00Z" },
+      { booked_for: "Reserva de Bruno", starts_at: "2096-06-01T13:00:00Z", ends_at: "2096-06-01T14:00:00Z" },
+    ],
+  } : name === "contact" ? { responsible_name: "Contato sintético", extension: "1234", version: 1 } : []);
+  const { container } = render(<RoomsPage />);
+  const hero = within(screen.getByRole("banner"));
+  await hero.findByText("Reserva de Ana");
+  expect(hero.getByText("Reserva de Bruno")).toBeTruthy();
+  expect(hero.getByText("Contato sintético")).toBeTruthy();
+  expect(hero.getByText("1234")).toBeTruthy();
+  expect(hero.getByText("3")).toBeTruthy();
+  expect(hero.queryByText("Situação atual")).toBeNull();
+  expect(hero.queryByText("ADMINISTRATIVO · AGENDAMENTO DE SALAS")).toBeNull();
+  expect(container.querySelectorAll(".room-contact")).toHaveLength(1);
+  expect(container.querySelector(".room-panel.room-contact")).toBeNull();
+});
+
+it("erro de validação permanece visível dentro do modal", async () => {
+  state.permissions = ["schedule.read", "request.create"];
+  render(<RoomsPage />);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: "Solicitar horário" }));
+  const dialog = within(screen.getByRole("dialog"));
+  await user.type(dialog.getByLabelText("Reservado para"), "Teste");
+  await user.type(dialog.getByLabelText("Início"), "15:00");
+  await user.type(dialog.getByLabelText("Término"), "14:00");
+  await user.click(dialog.getByRole("button", { name: "Enviar pedido" }));
+  expect(dialog.getByRole("alert").textContent).toContain("posterior ao início");
+  expect(state.rpc.mock.calls.some(([name]) => name === "create_request")).toBe(false);
+});
+
+it("bloqueia fechamento durante envio e mantém falha da RPC dentro do modal", async () => {
+  state.permissions = ["schedule.read", "request.create"];
+  const original = state.rpc.getMockImplementation()!;
+  let rejectSave!: (error: unknown) => void;
+  state.rpc.mockImplementation((name, args) => name === "create_request"
+    ? new Promise((_, reject) => { rejectSave = reject; }) : original(name, args));
+  render(<RoomsPage />);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: "Solicitar horário" }));
+  const modal = screen.getByRole("dialog");
+  const form = within(modal);
+  await user.type(form.getByLabelText("Reservado para"), "Teste");
+  await user.type(form.getByLabelText("Início"), "14:00");
+  await user.type(form.getByLabelText("Término"), "15:00");
+  await user.click(form.getByRole("button", { name: "Enviar pedido" }));
+  expect(form.getByRole<HTMLButtonElement>("button", { name: "Fechar", exact: true }).disabled).toBe(true);
+  fireEvent(modal, new Event("cancel", { cancelable: true }));
+  fireEvent.click(modal);
+  expect(screen.getByRole("dialog")).toBe(modal);
+  rejectSave({ code: "23P01" });
+  expect((await form.findByRole("alert")).textContent).toContain("Horário ocupado");
+  expect(form.getByRole<HTMLButtonElement>("button", { name: "Fechar", exact: true }).disabled).toBe(false);
 });

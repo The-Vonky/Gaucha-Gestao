@@ -108,7 +108,7 @@ export function RoomContact({ manage, onSaving }: {
 
   return (
     <section
-      className="room-panel room-contact"
+      className="room-contact"
       aria-labelledby="room-contact-title"
     >
       <div className="room-section-head">

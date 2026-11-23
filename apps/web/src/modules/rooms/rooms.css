@@ -8,7 +8,7 @@
   border-radius: 24px;
   padding: clamp(1.5rem, 4vw, 3.5rem);
   display: grid;
-  grid-template-columns: 1.5fr 1fr;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 3rem;
   align-items: center;
   color: white;
@@ -44,9 +44,6 @@
   font-weight: 700;
   color: #8a7137;
   margin: 0 0 0.7rem;
-}
-.room-hero .room-eyebrow {
-  color: #e2c980;
 }
 .room-hero h1 {
   color: white;
@@ -102,12 +99,6 @@
   color: #61736a;
   font-size: 0.8rem;
 }
-.room-columns {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1.5rem;
-  align-items: start;
-}
 .room-panel {
   background: white;
   border: 1px solid #e0e8e1;
@@ -121,13 +112,6 @@
 }
 .room-panel p {
   line-height: 1.6;
-}
-.room-request-callout {
-  background: linear-gradient(145deg, #fafbf7, #eff5ef);
-}
-.room-request-callout .muted {
-  margin-top: 1.5rem;
-  font-size: 0.8rem;
 }
 .room-list {
   list-style: none;
@@ -204,8 +188,7 @@
   flex-wrap: wrap;
 }
 @media (max-width: 850px) {
-  .room-hero,
-  .room-columns {
+  .room-hero {
     grid-template-columns: 1fr;
   }
   .room-hero {
@@ -233,9 +216,6 @@
   }
 }
 
-.room-columns-manager {
-  grid-template-columns: 1fr;
-}
 .room-hero-photo,
 .room-photo-overlay {
   position: absolute;
@@ -287,10 +267,6 @@
 .room-status.is-loading {
   background: #edf0ee;
   color: #46554e;
-}
-.room-hero-card .room-status {
-  margin: 0;
-  font-size: 0.78rem;
 }
 .room-hero-copy .room-countdown {
   color: white;
@@ -480,6 +456,58 @@
 @media (max-width: 480px) {
   .room-mode-actions,
   .room-mode-actions button {
+    width: 100%;
+  }
+}
+
+.room-agenda-actions {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.room-hero-copy, .room-hero-card > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.room-hero .room-contact h2 {
+  color: #e2ece7;
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+.room-hero .room-contact-values dt {
+  color: #e2ece7;
+}
+.room-hero .room-contact .muted {
+  color: #e2ece7;
+}
+.room-contact form {
+  background: white;
+  color: #173e34;
+  padding: 1rem;
+  border-radius: 12px;
+  margin-top: 1rem;
+}
+.room-upcoming {
+  grid-column: 1 / -1;
+}
+.room-upcoming-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.room-upcoming-list li {
+  display: grid;
+  gap: 0.25rem;
+}
+.room-upcoming-list span {
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+@media (max-width: 480px) {
+  .room-agenda-actions, .room-agenda-actions > * {
     width: 100%;
   }
 }
