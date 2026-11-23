@@ -66,6 +66,72 @@ begin
 end
 $$;
 
+-- O fechamento do cadastro GG-05B deve persistir os novos papéis sem
+-- unidade como atribuições globais. Preserva todo o restante do ciclo de senhas,
+-- admissão, bloqueio, auditoria e reconciliação da implementação anterior.
+create or replace function private.identity_finish(
+  p_actor uuid,p_session uuid,p_operation uuid,p_target uuid,p_confirmed boolean
+) returns boolean language plpgsql security definer set search_path = '' as $
+declare op private.identity_operations;
+begin
+  if not private.identity_enabled() then return false; end if;
+  perform private.identity_lock(p_target, false);
+  select * into op from private.identity_operations
+    where id = p_operation and actor_id = p_actor and actor_session = p_session
+      and target_id = p_target and status = 'in_progress';
+  if not found then return false; end if;
+  perform 1 from core.profiles where id = p_target and active for update;
+  if not found then return false; end if;
+  if not exists (
+    select 1 from private.identity_credentials
+    where user_id = p_target and generation = op.generation and operation_id = p_operation
+      and state = 'quarantined'
+  ) then return false; end if;
+  if op.verb = 'change' then
+    if p_actor <> p_target or not private.identity_live_session(p_actor,p_session) then return false; end if;
+    if not p_confirmed then
+      update private.identity_credentials set state = 'temporary', operation_id = null where user_id = p_target;
+      insert into private.identity_admissions values (p_session,p_target,op.generation,'password_change');
+      update private.identity_operations set status = 'rejected', completed_at = now() where id = p_operation;
+      insert into core.system_audit_log(actor_user_id,module,action,entity_type,entity_id,correlation_id)
+        values (p_actor,'core','identity_change_rejected','identity',p_target::text,p_operation::text);
+      return true;
+    end if;
+  elsif not p_confirmed or not private.identity_actor(p_actor,p_session,op.verb) then
+    return false;
+  end if;
+
+  if op.verb = 'create' then
+    if not exists (
+      select 1 from auth.users where id = p_target and lower(email) = op.email and email_confirmed_at is not null
+    ) or private.identity_protected(p_target) or exists (
+      select 1 from core.user_role_assignments where user_id = p_target
+    ) then return false; end if;
+
+    if not private.identity_can_assign(op.role_id,op.unit_id,op.sector_id) then return false; end if;
+    update core.profiles set display_name = op.profile_name where id = p_target;
+    if op.role_id is not null then
+      insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id,sector_id)
+        values (p_target,op.role_id,case when op.unit_id is null then 'global' when op.sector_id is null then 'unit' else 'sector' end,op.unit_id,op.sector_id);
+    end if;
+  elsif op.verb = 'reset' and private.identity_protected(p_target) then
+    return false;
+  end if;
+
+  update private.identity_credentials
+    set state = case op.verb when 'change' then 'active' else 'temporary' end,
+      generation = generation + 1, operation_id = null
+    where user_id = p_target;
+  update private.identity_operations
+    set status = 'complete', completed_at = now(), email = null, profile_name = null
+    where id = p_operation;
+  insert into core.system_audit_log(actor_user_id,module,action,entity_type,entity_id,correlation_id)
+    values (p_actor,'core','identity_' || op.verb || '_complete','identity',p_target::text,p_operation::text);
+  return true;
+end
+$;
+
+
 -- Projeção da identidade de administrador, não uma concessão de acesso.
 -- O navegador usa a resposta apenas para mostrar o seletor de visualização.
 create function public.room_booking_admin_context() returns boolean
