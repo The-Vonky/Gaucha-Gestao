@@ -2,7 +2,7 @@
 
 **Refinamentos de usabilidade — 03/11/2026:** diário com seletor independente e legendas
 por traçado/competência, marcadores Stone/PIX, toolbar de 44px e seleção visual de mês/ano.
-[Evidências e limitações atuais](VEN04B_VISUAL_FIDELITY.md#refinamentos-de-usabilidade--03112026-rodada-atual).
+[Evidências e limitações atuais](VEN04B_VISUAL_FIDELITY.md#filtros-alinhados-a-lançamentos-e-leitura-do-recorte--03112026-rodada-atual).
 
 **Correção visual — 03/11/2026:** quatro KPIs executivos, Panorama Gaúcha com três
 insights antes dos gráficos, toolbar compacta, SVGs de altura fixa com escala/grade/

@@ -1,6 +1,6 @@
 # Brief — Curva ABC v2: áreas analíticas
 
-**Status:** escopo funcional **solicitado pelo responsável em 21/10/2026** (missão "recuperar e integrar a Curva ABC"); contratos de leitura implementados nas branches `feat/abc-analytics-read-20261021` e seguintes, **aguardando revisão humana nas PRs**. Decisões D1–D7 da [matriz](../modules/abc/MATRIZ_EQUIVALENCIA_LEGADO.md#4-decisoes-que-exigem-aprovacao) continuam **PENDENTES**.
+**Status:** escopo funcional **solicitado pelo responsável em 21/10/2026** (missão "recuperar e integrar a Curva ABC"); contratos de leitura implementados nas branches `feat/abc-analytics-read-20261021` e seguintes, **aguardando revisão humana nas PRs**. Decisões D1–D7 da [matriz](../modules/abc/MATRIZ_EQUIVALENCIA_LEGADO.md#4-decisões-que-exigem-aprovação) continuam **PENDENTES**.
 **Depende de:** [brief v1](ABC_DOMAIN_V1.md) e da correção P0 da importação ([PR #78](https://github.com/The-Vonky/Gaucha-Gestao/pull/78)).
 **Produção:** NO-GO.
 

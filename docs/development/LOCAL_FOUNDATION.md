@@ -1,55 +1,12 @@
 # Fundação v1 — desenvolvimento e validação
 
-> **Guia da fundação, originalmente preparado em 09/10/2026; atualizado para onboarding em 21/10/2026.** A plataforma atual inclui Core v2, Qualidade, Planos de Ação e Curva ABC v1. O passo a passo vigente está no [README principal](../../README.md#primeiros-passos-ambiente-local). **Nunca executar `supabase db reset` em instância compartilhada, STAGING persistente ou qualquer banco a preservar.** Para cenários manuais e dispositivos, veja [Core v2 — teste PC/Android](CORE_V2_MANUAL_TEST.md).
+Para o DEV pessoal persistente `gaucha-gestao-local`, use o [README](../../README.md#primeiros-passos-ambiente-local) e o [runbook compartilhado](../operations/DOCKER_LOCAL_STANDARDIZATION.md). Os procedimentos de instalação e uso diário estão nos guias de plataforma.
 
-Requisitos: Node 22.12+ e npm. Na raiz:
+A CI usa Supabase CLI em integração de aplicação e Compose mínimo ou específico de Identity em infraestrutura. Use os [workflows](../../.github/workflows/) e o [guia de laboratórios](../../infra/README.md) para o contexto descartável. Mantenha comandos de reset e descarte limitados ao alvo sintético explicitamente autorizado. O estado das contas e objetos é próprio de cada ambiente.
 
-```sh
-npm ci
-npm run typecheck
-npm run lint
-npm test
-npm run build
-npm run dev
-```
+## Registro histórico da fundação
 
-Copie `apps/web/.env.example` para `apps/web/.env.local`. Preencha apenas URL
-local/de teste e chave **publishable** (ou JWT legado com papel **anon**).
-Nunca use `service_role`, chave secreta ou credenciais do PostgreSQL no frontend.
-Sem configuração, a aplicação apresenta um estado explícito de ambiente indisponível.
-
-## Supabase local (opcional; requer CLI e Docker)
-
-```sh
-# Somente em um projeto Supabase local exclusivo, com Docker disponível:
-npx --yes supabase@2.117.0 start -x realtime,imgproxy,mailpit,edge-runtime,logflare,vector,supavisor
-npx --yes supabase@2.117.0 status
-```
-
-**Não execute `db reset` como etapa de instalação.** Em um projeto local descartável exclusivo, um reset pode apagar seus dados de teste e requer uma decisão separada. É proibido em ambientes compartilhados/remotos. O `status` exibe URLs e chaves locais; **não publique sua saída integral**. A API padrão escuta em `127.0.0.1:54321` e o Studio em `127.0.0.1:54323` (confirme no `status`).
-O arquivo `supabase/config.toml` expõe `core`, `audit`, `action_plans` e `abc`; mantém `private`, `audit_private`, `action_plans_private` e `abc_private` fora da Data API. Cadastro público está desabilitado. Não provisiona produção.
-
-1. No **Studio local** (`http://127.0.0.1:54323`, Authentication → Users), crie/confirme uma identidade administrativa
-   com `display_name` no metadata (ou use o Admin API em processo confiável).
-2. Como operador do banco local, execute **uma vez**, substituindo o UUID:
-
-```sql
-select private.bootstrap_administrator('UUID_DO_USUARIO_CONFIRMADO'::uuid);
-```
-
-O bootstrap exige conta confirmada e ativa, é serializado, rejeita repetição e
-não é executável por `anon`/`authenticated`. Não escolhe automaticamente o primeiro
-cadastro nem confia em metadata para atribuir privilégios. Nenhum segredo é gerado
-ou armazenado no repositório. Usuários adicionais são criados/convidados pelo
-operador autorizado no Auth; recebem perfil sem atribuições. O administrador
-concede acesso na tela Usuários. Recuperação de senha também usa o fluxo do Auth.
-
-## Diagnóstico rápido da primeira execução
-
-- **Ambiente indisponível:** verifique se `VITE_SUPABASE_URL` é a URL **API Project URL**, e `VITE_SUPABASE_PUBLISHABLE_KEY` é a chave **publishable do mesmo projeto**, em `apps/web/.env.local`. Reinicie o Vite após editar o arquivo. Nunca utilize chave `Secret`/`service_role` no browser.
-- **Login inválido:** usuários do DEV compartilhado **não são replicados** para o Supabase local. Cadastre/confirme um usuário no Auth local e execute o bootstrap local acima para o primeiro administrador.
-- **Sem permissões:** verifique o perfil ativo e os grants concedidos pelo Core; não desabilite RLS para contornar acesso.
-- **Portas ou projetos em conflito:** primeiro inventarie processos, stacks e volumes em uso. Não use `reset`, `down -v` ou `prune` como solução de tentativa e erro.
+O recorte a seguir acompanha a baseline de outubro de 2026. O [registro de outubro do guia](https://github.com/The-Vonky/Gaucha-Gestao/blob/d0573512e97e9d93cc0202411b783d1a6f16d2f5/docs/development/LOCAL_FOUNDATION.md) preserva o roteiro anterior da Supabase CLI. Para autorização vigente e estado de implementação, consulte o [portal](../README.md).
 
 ## Regras operacionais da fundação
 

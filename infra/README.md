@@ -1,12 +1,10 @@
 # Supabase mínimo reproduzível — CI e laboratório descartável
 
-> **Atualização de 30/10/2026:** a C30 mantém STAGING persistente `gaucha-staging` e agora possui **entrada HTTPS externa para testes** por Cloudflare Tunnel → Caddy 4181. **Não executar comandos destrutivos de laboratório neste host.** Ver [AS-BUILT de 30/10](../docs/operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) e [runbook seguro](../docs/operations/C30_STAGING_CLOUDFLARE_RUNBOOK.md); o estado de 22/10 abaixo é histórico. PROD NO-GO.
+Para desenvolvimento diário, use o [Compose DEV pessoal](../docs/operations/DOCKER_LOCAL_STANDARDIZATION.md), com oito serviços no perfil base e nove com Identity. Este guia descreve o Compose mínimo de **cinco serviços** para CI e laboratórios descartáveis: PostgreSQL 17, Kong, Auth, PostgREST e Storage.
 
-**Status:** infraestrutura de validação, **não** receita de produção. Cinco serviços exatos: PostgreSQL 17 (`db`), Kong (`kong`), GoTrue/Auth (`auth`), PostgREST (`rest`) e Storage API (`storage`). Não operar servidor físico, banco preexistente, deploy nem dados produtivos por este procedimento.
+O STAGING persistente da C30 tem [runbook próprio](../docs/operations/C30_STAGING_CLOUDFLARE_RUNBOOK.md) e [AS-BUILT datado](../docs/operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md). A opção `--environment staging` nos exemplos abaixo identifica um perfil sintético exclusivo de laboratório. **PROD NO-GO.**
 
-Referências: [proveniência do upstream](supabase/UPSTREAM.md), [ADR-006 — Proposto](../docs/decisions/ADR-006-infra-v1-reused-hardware.md), [operações](../docs/operations/OPERATIONS_MATRIX.md).
-
-> **Atenção ao STAGING persistente real:** desde 21–22/10/2026 há uma instância **separada** da CI/laboratório na ThinkStation C30, com projeto `gaucha-staging`, HDD persistente, `gaucha-staging.service` e Caddy HTTPS loopback. **Não use o procedimento descartável deste arquivo nesse host/projeto.** Leia [inventário AS-IS](../docs/operations/C30_STAGING_AS_BUILT_20261022.md), [runbook não destrutivo](../docs/operations/C30_STAGING_RUNBOOK.md) e [plano de atualização](../docs/operations/C30_STAGING_RELEASE_GUIDE.md). `scripts/ops/apply-migrations.sh` recusa banco previamente inicializado: não serve para atualizar essa instância.
+Referências: [proveniência do upstream](supabase/UPSTREAM.md), [ADR-006 — Proposto](../docs/decisions/ADR-006-infra-v1-reused-hardware.md) e [operações](../docs/operations/OPERATIONS_MATRIX.md).
 
 ## Pré-requisitos e ciclo de vida
 
