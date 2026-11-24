@@ -29,7 +29,7 @@ VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS=true
 
 O provisionador base gera a flag de transformação na primeira escrita do arquivo. Acrescente a flag de Identity na configuração local do ambiente adotado. Execute `npm run dev` se o Vite estiver parado. O alias `npm run dev:identity` injeta as flags no processo para ensaios específicos. Após o corte, entre novamente para criar uma sessão no ingresso atual.
 
-Se o backend estiver parado, siga o [diagnóstico compartilhado](DOCKER_LOCAL_STANDARDIZATION.md#diagnóstico) usando o base e `compose.identity.yaml` com os arquivos privados `backend.env` e `identity.env` em `${XDG_CONFIG_HOME:-$HOME/.config}/gaucha-gestao`. Preserve a composição em operações de partida e atualização. O [backup do Compose base](DOCKER_LOCAL_STANDARDIZATION.md#limite-do-backup-com-identity) tem escopo próprio e a recuperação completa de Identity ainda precisa de procedimento comprovado.
+Se o backend estiver parado, siga o [diagnóstico compartilhado](DOCKER_LOCAL_STANDARDIZATION.md#diagnóstico) usando o base e `compose.identity.yaml` com os arquivos privados `backend.env` e `identity.env` em `${XDG_CONFIG_HOME:-$HOME/.config}/gaucha-gestao`. Preserve a composição em operações de partida e atualização. O [backup do Compose base](DOCKER_LOCAL_STANDARDIZATION.md#limite-do-backup-com-identity) cobre oito serviços. Um ambiente com Identity exige procedimento de recuperação próprio, ainda sem ensaio integral comprovado.
 
 A disponibilidade do Vite e a configuração das flags foram observadas na auditoria de 24/11/2026. **O login completo com Identity pelo comando `npm run dev` ainda requer evidência de homologação.**
 

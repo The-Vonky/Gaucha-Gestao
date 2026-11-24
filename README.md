@@ -31,7 +31,7 @@ Use Git, Node.js ≥ 22.12, npm, Python ≥ 3.11 e Docker com Linux containers e
 - **Ubuntu nativo:** use Docker Engine e Compose no Linux. O Ubuntu 26.04 LTS é a referência principal de desenvolvimento. [Guia Ubuntu](docs/operations/LOCAL_DEV_UBUNTU.md)
 - **Windows:** use Docker Desktop com integração WSL2 e execute os comandos na distribuição Linux. [Guia Windows](docs/operations/LOCAL_DEV_WINDOWS.md)
 
-Para uma máquina nova ou instalação interrompida, siga o [procedimento compartilhado](docs/operations/DOCKER_LOCAL_STANDARDIZATION.md#instalação-inicial-em-máquina-nova), que registra a dependência do provisionador conforme a revisão Git.
+Use o runbook compartilhado para [instalar em uma máquina nova](docs/operations/DOCKER_LOCAL_STANDARDIZATION.md#instalação-inicial-em-máquina-nova) ou [retomar uma instalação interrompida](docs/operations/DOCKER_LOCAL_STANDARDIZATION.md#retomada-de-instalação-interrompida).
 
 Com o DEV saudável, as dependências instaladas e o Vite parado, execute na raiz do projeto:
 

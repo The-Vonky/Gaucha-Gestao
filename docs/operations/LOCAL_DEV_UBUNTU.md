@@ -28,7 +28,7 @@ git clone https://github.com/The-Vonky/Gaucha-Gestao.git
 cd Gaucha-Gestao
 ```
 
-Execute o [procedimento compartilhado](DOCKER_LOCAL_STANDARDIZATION.md#instalação-inicial-em-máquina-nova) em Bash na raiz do checkout. Ele cobre dependências, arquivo privado, migrations e configuração do Vite. Para uma instalação incompleta, consulte a [retomada por revisão Git](DOCKER_LOCAL_STANDARDIZATION.md#retomada-de-instalação-interrompida). Para acrescentar Identity, siga o [runbook GG-05B](GG_05B_IDENTIDADE_DEV.md).
+Execute o [procedimento compartilhado](DOCKER_LOCAL_STANDARDIZATION.md#instalação-inicial-em-máquina-nova) em Bash na raiz do checkout. Ele cobre dependências, arquivo privado, migrations e configuração do Vite. Para uma instalação incompleta, consulte a [retomada com `install --no-recreate`](DOCKER_LOCAL_STANDARDIZATION.md#retomada-de-instalação-interrompida). Para acrescentar Identity, siga o [runbook GG-05B](GG_05B_IDENTIDADE_DEV.md).
 
 ## Uso diário e após reboot
 

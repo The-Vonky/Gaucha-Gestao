@@ -12,9 +12,9 @@ As portas padrão da API, PostgreSQL e Studio são 54321, 54322 e 54323 em loopb
 
 ## Instalação inicial em máquina nova
 
-Use a revisão do projeto destinada à instalação. **Na main de referência `d057351`, o provisionador rejeita a migration GG-04 com bloco `DO` sem transação externa.** A [PR #130](https://github.com/The-Vonky/Gaucha-Gestao/pull/130), HEAD `6769a91`, contém a correção atômica e estava aberta em rascunho na revisão documental de 24/11/2026. Confirme a presença da correção na revisão escolhida antes de executar `install`. O provisionador pode iniciar serviços antes de verificar todas as migrations.
+A [PR #130](https://github.com/The-Vonky/Gaucha-Gestao/pull/130), integrada à `main` em `cbaeb29`, ampliou os formatos aceitos pelo provisionador. Para migrations com `BEGIN` e `COMMIT` explícitos, ele registra a versão no ledger antes do `COMMIT`. Para uma migration composta de um único `DO` com corpo delimitado por cifrões, como a GG-04, ele abre a transação, executa o bloco e registra a versão antes de confirmar. A migration e sua entrada no ledger são confirmadas juntas. O provisionador pode iniciar serviços antes de verificar todas as migrations.
 
-Confirme portas livres e ausência de instância anterior nas mesmas portas ou com o mesmo nome. Em instalação nova do perfil base, com revisão compatível:
+Confirme portas livres e ausência de instância anterior nas mesmas portas ou com o mesmo nome. Para instalar o perfil base em máquina nova:
 
 ```bash
 npm ci
@@ -36,17 +36,19 @@ O cadastro público permanece desabilitado. Para estender o ambiente com Identit
 
 ## Retomada de instalação interrompida
 
-Identifique a fase da falha e preserve projeto, volumes e arquivo privado originais. Verifique o estado dos serviços e o ledger antes de retomar. No perfil base, em revisão que já implemente a opção, use:
+Identifique a fase da falha e preserve projeto, volumes e arquivo privado originais. Verifique o estado dos serviços e o ledger antes de retomar. No perfil base, use o mesmo projeto e arquivo privado da instalação. Em um novo terminal, defina o caminho para o arquivo existente:
 
 ```bash
+GG_DEV_ENV="${XDG_CONFIG_HOME:-$HOME/.config}/gaucha-gestao/backend.env"
 python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" install --no-recreate
 ```
 
-A opção entrou no HEAD `6769a91` da [PR #130](https://github.com/The-Vonky/Gaucha-Gestao/pull/130) e está ausente em `d057351`. Ela preserva containers existentes e suas configurações, inicia serviços faltantes e mantém o processamento de migrations. Alterações de configuração ou imagem dos containers preservados exigem uma atualização controlada. Se já houver Identity adotado, use o Compose combinado e o [runbook de retomada do perfil](GG_05B_IDENTIDADE_DEV.md#retomada-do-notebook-já-adotado).
+O provisionador repassa `--no-recreate` às duas chamadas de partida do Compose. Containers existentes e suas configurações são preservados, serviços faltantes podem ser iniciados e as migrations pendentes continuam sendo aplicadas. Alterações de configuração ou imagem dos containers preservados exigem uma atualização controlada. Se já houver Identity adotado, use o Compose combinado e o [runbook de retomada do perfil](GG_05B_IDENTIDADE_DEV.md#retomada-do-notebook-já-adotado).
 
 ## Uso diário
 
 Com o backend saudável e o Vite parado, execute `npm run dev`. O Vite atende em [127.0.0.1:5173](http://127.0.0.1:5173), e o Studio em [127.0.0.1:54323](http://127.0.0.1:54323). `vite-env` gera `apps/web/.env.local` com a URL da API em loopback, a chave autorizada de cliente e `VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS=true`. No perfil com Identity, configure também `VITE_GG_IDENTITY_ENABLED=true`. Preserve segredos administrativos fora do frontend e do Git.
+
 
 ## Diagnóstico
 
@@ -104,7 +106,7 @@ O restore confere SHA-256, versão/digest do PostgreSQL e ausência de `postmast
 
 ### Limite do backup com Identity
 
-A recuperação integral do perfil Identity ainda não foi comprovada. O script de backup/restore base não orquestra a parada nem a partida de `identity` e não inclui `identity.env` no pacote. Preserve os insumos privados aplicáveis fora do Git, incluindo os arquivos do backend e da extensão, e registre a revisão dos manifests. Consulte o [runbook GG-05B](GG_05B_IDENTIDADE_DEV.md).
+**O backup e o restore do Compose base cobrem apenas o perfil de oito serviços.** Mesmo com um pacote íntegro, a recuperação do ambiente adotado com Identity exige um procedimento próprio. O script base não coordena a quiescência nem a partida de `identity`, não restaura o complemento `compose.identity.yaml` e não inclui `identity.env` no pacote. A recuperação integral desse perfil ainda precisa ser ensaiada. Preserve os insumos privados aplicáveis fora do Git, incluindo os arquivos do backend e da extensão, e registre a revisão dos manifests. Consulte o [runbook GG-05B](GG_05B_IDENTIDADE_DEV.md).
 
 **Tarefa técnica proposta:** definir e ensaiar a quiescência de escritores com Identity, conservar e validar os insumos privados, estabelecer a ordem de recuperação do banco, objetos, Auth, REST, Kong e Identity, e comprovar login, admissão, revogação e Storage autenticado após a restauração. A tarefa depende de autorização própria. A continuidade do STAGING exige [processo independente da C30](C30_BACKUP_OPERATIONAL_PLAN.md).
 

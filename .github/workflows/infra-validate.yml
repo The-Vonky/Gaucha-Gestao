@@ -27,6 +27,7 @@ jobs:
           node --check scripts/ops/smoke.mjs
           node --check scripts/ops/audit-derivatives.mjs
           node tests/infra/test-local-native-startup.mjs
+          python3 -B -m unittest discover -s tests/infra -p 'test_local_dev.py'
           if bash scripts/ops/gen-secrets.sh --environment ci --output "$GITHUB_WORKSPACE/rejected.env"; then
             echo 'Generator accepted a repository path' >&2; exit 1
           fi

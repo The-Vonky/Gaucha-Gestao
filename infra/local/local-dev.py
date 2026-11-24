@@ -95,6 +95,29 @@ def migrations():
     return sorted((ROOT / "supabase/migrations").glob("*.sql"))
 
 
+def migration_batch(file, version, name):
+    source = file.read_text()
+    entry = f"insert into {LEDGER}(version, name) values ('{version}', '{name}');\n"
+
+    # Accept a single dollar-quoted DO statement. Its PL/pgSQL body cannot
+    # commit inside our transaction, and no other SQL can follow the block.
+    trivia = r"(?:\s|--[^\n]*(?:\n|\Z))*"
+    opening = re.match(trivia + r"do\s+(\$(?:[a-z_][a-z_0-9]*)?\$)", source, re.I)
+    if opening:
+        tag = opening[1]
+        closing = source.find(tag, opening.end())
+        if closing != -1 and re.fullmatch(trivia + ";" + trivia, source[closing + len(tag):]):
+            return "begin;\n" + source + "\n" + entry + "commit;\n"
+
+    controls = re.findall(r"(?im)^\s*(begin|commit|rollback)\s*;", source.lower())
+    if not re.match(trivia + r"begin\s*;", source, re.I) or controls != ["begin", "commit"]:
+        raise SystemExit(f"Revise a transação da migration {file.name}.")
+    terminal = re.search(r"(?im)^commit;\s*\Z", source)
+    if not terminal:
+        raise SystemExit(f"COMMIT terminal ausente na migration {file.name}.")
+    return source[:terminal.start()] + entry + source[terminal.start():]
+
+
 def apply(path, project):
     files = migrations()
     names = [file.stem.split("_", 1) for file in files]
@@ -104,16 +127,7 @@ def apply(path, project):
     if len({version for version, _ in names}) != len(names):
         raise SystemExit("Versões de migrations duplicadas.")
     # Prepare every transaction before touching the target ledger.
-    batches = []
-    for file, (version, name) in zip(files, names):
-        source = file.read_text()
-        if re.findall(r"(?im)^\s*(begin|commit|rollback)\s*;", source.lower()) != ["begin", "commit"]:
-            raise SystemExit(f"Revise a transação da migration {file.name}.")
-        terminal = re.search(r"(?im)^commit;\s*\Z", source)
-        if not terminal:
-            raise SystemExit(f"COMMIT terminal ausente na migration {file.name}.")
-        entry = f"insert into {LEDGER}(version, name) values ('{version}', '{name}');\n"
-        batches.append(source[:terminal.start()] + entry + source[terminal.start():])
+    batches = [migration_batch(file, version, name) for file, (version, name) in zip(files, names)]
     sql(path, project, f"""
       begin;
       do $$ begin
@@ -192,12 +206,15 @@ def capture_cli_secrets(path):
     private_file(path, "".join(f"{key}='{value}'\n" for key, value in values.items()).encode())
 
 
-def install(path, project):
+def install(path, project, no_recreate=False):
     if project == PROJECT and cli_containers():
         raise SystemExit("Instância da Supabase CLI encontrada. Use o procedimento de migração.")
-    compose(path, project, "up", "-d", "--build", "--wait", "--wait-timeout", "160", "db", "auth", "storage")
+    options = ["up", "-d", "--build", "--wait", "--wait-timeout", "160"]
+    if no_recreate:
+        options.append("--no-recreate")
+    compose(path, project, *options, "db", "auth", "storage")
     apply(path, project)
-    compose(path, project, "up", "-d", "--build", "--wait", "--wait-timeout", "160")
+    compose(path, project, *options)
 
 
 def digest(path):
@@ -360,7 +377,9 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     gen = commands.add_parser("secrets")
     gen.add_argument("--ports", type=int, nargs=3, default=[54321, 54322, 54323])
-    commands.add_parser("install")
+    install_command = commands.add_parser("install")
+    install_command.add_argument("--no-recreate", action="store_true",
+                                 help="Preserva os containers existentes ao retomar a instalação.")
     commands.add_parser("cli-secrets")
     vite = commands.add_parser("vite-env")
     vite.add_argument("--output", type=Path, default=ROOT / "apps/web/.env.local")
@@ -392,7 +411,7 @@ def main():
     with os.fdopen(os.open(lock, os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600), "w") as stream:
         fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if args.command == "install":
-            install(path, args.project)
+            install(path, args.project, no_recreate=args.no_recreate)
         else:
             if args.folder.resolve().is_relative_to(ROOT):
                 parser.error("Mantenha o backup fora do checkout.")
