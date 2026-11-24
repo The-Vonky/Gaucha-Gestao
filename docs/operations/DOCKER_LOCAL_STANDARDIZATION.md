@@ -12,6 +12,14 @@ Os oito serviços usam `restart: unless-stopped`. O Compose aguarda os healthche
 
 A [instalação em máquina nova](../../README.md#instalação-inicial-em-máquina-nova) cria os volumes, gera as credenciais e aplica as migrations em ordem. O ledger é escrito na mesma transação de cada migration. O comando `vite-env` escreve a flag nativa e a chave de cliente. `npm run dev` executa só o Vite. O executor anterior segue disponível por `npm run dev:thumbnails`.
 
+O provisionador mantém a transação explícita `BEGIN` / `COMMIT` quando presente. Para uma migration composta de um único `DO` com corpo delimitado por cifrões, o provisionador abre a transação, executa o bloco, escreve o ledger e faz o commit.
+
+Para retomar uma instalação interrompida preservando os containers existentes, use o mesmo arquivo de credenciais e o mesmo projeto Compose. `--no-recreate` mantém a configuração dos containers já criados e inicia os serviços que faltam.
+
+```bash
+python3 -B infra/local/local-dev.py --env-file "$HOME/.config/gaucha-gestao/backend.env" install --no-recreate
+```
+
 ## Diagnóstico
 
 Use o arquivo de segredos do provisionamento e o contexto Docker local.
