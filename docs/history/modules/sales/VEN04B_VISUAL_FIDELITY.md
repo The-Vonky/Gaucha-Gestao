@@ -77,7 +77,7 @@ nenhum cálculo/estilo legado copiado.
 
 Código: `DashboardCharts.tsx`, `SalesDashboardPage.tsx`, `dashboard.css`.
 Testes: `tests/sales-dashboard-ui.test.tsx`, `tests/integration/sales-dashboard-visual.mjs`.
-Este relatório e `evidence/ven04b-filters-scope/` completam a entrega. O código de
+Este relatório e [`docs/modules/sales/evidence/ven04b-filters-scope/`](../../../modules/sales/evidence/ven04b-filters-scope/) completam a entrega. O código de
 `CompetencySelect.tsx` permaneceu intacto; a correção necessária era CSS.
 
 | Largura | Lançamentos (referência) | Dashboard antes | Dashboard depois | Composição com resumo |
