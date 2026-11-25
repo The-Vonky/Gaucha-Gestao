@@ -1,6 +1,6 @@
 # AG-D5-C — Administrador global e modos de atuação no Agendamento
 
-**Decisão do mantenedor: 23/11/2026.** Correção avulsa, fora da numeração GG-01–GG-15. Substitui **somente** a proibição administrativa de AG-D5-B, aprovada em 26/10. D5-A e D5-B permanecem no histórico; não editar migrations ou testes antigos para simular que a regra sempre foi esta.
+**VIGENTE na main · decisão do mantenedor em 23/11/2026.** Correção avulsa, fora da numeração GG-01–GG-15. Substitui **somente** a proibição administrativa de AG-D5-B, aprovada em 26/10. D5-A e D5-B permanecem no histórico; não editar migrations ou testes antigos para simular que a regra sempre foi esta.
 
 ## Motivo
 
@@ -37,13 +37,13 @@ A secretária recebe somente o papel `room_booking_manager` **explicitamente** a
 
 1. Administrador logado vê os dois botões; inicia em Requester, consegue criar pedido; ao selecionar Manager, vê fila/históricos e consegue aprovar, recusar, criar reserva direta e editar contato/foto. Voltar a Requester esconde todos os controles de gestão.
 2. Usuário Manager sem ser administrador não vê o seletor; opera gestão normalmente. Requester não vê seletor, nem tem `room_booking.manage` ou acesso aos dados privados; conta inativa é negada.
-3. Administrador com GG-05B ativa cria secretária com papel Manager global e solicitante com Requester global **sem unidade**, com credencial temporária e primeira troca obrigatória. Atribuição resultante é global, rastreável e única; cadastro privilegiado inválido é negado no servidor.
-4. Acesso por RPC direta: gestor administra; solicitante, usuário sem papel, inativo ou revogado recebe `42501`, inclusive fila, histórico, foto e mutações. O administrador global autorizado exerce gestão; um usuário que só tem parte de `admin.%` não herda permissão nem seletor.
+3. Operador com GG-05B ativa, autorização global de usuários, capacidade privada de cadastro e delegação cria secretária com papel Manager global e solicitante com Requester global **sem unidade**, com credencial temporária e primeira troca obrigatória. Atribuição resultante é global, rastreável e única; cadastro privilegiado inválido é negado no servidor.
+4. Acesso direto: gestor e administrador global efetivos administram. RPCs de gestão negam solicitante, usuário sem papel, inativo e perfil sem gestão após revogação. Leitura de foto segue a permissão de agenda; escrita segue gestão efetiva e políticas de Storage. O administrador global autorizado exerce gestão; um usuário que só tem parte de `admin.%` não herda permissão nem seletor.
 5. Conferir em PostgreSQL + GoTrue reais no DEV autorizado, UI desktop/celular, erro de rede, refresh, histórico e auditoria. Usar fixtures sintéticas e limpeza comprovada; registrar SHA, ambiente, comandos e evidências.
 6. Verificar compatibilidade com a última implementação GG-05B e a CI completa. **PR não é homologação; merge é decisão do mantenedor.**
 
 ## Estado desta correção
 
-Implementação proposta na [PR #129](https://github.com/The-Vonky/Gaucha-Gestao/pull/129). A descrição da PR registra a validação técnica e o estado da homologação no notebook. Ambientes anteriores à migration continuam seguindo D5-B.
+Integrada pela [PR #129](https://github.com/The-Vonky/Gaucha-Gestao/pull/129), com registro de homologação funcional no DEV e verificações datadas por SHA. Instalações cuja última política de Salas é D5-B conservam o comportamento histórico até aplicação autorizada da migration. A [matriz vigente](ACCEPTANCE_V1.md) mantém AG-05 e a Issue #84 com escopo próprio.
 
 Referências: [D5-B histórica](D5B_ACCESS.md) · [EXPERIENCE_V1](EXPERIENCE_V1.md) · [Autorização Core](../../architecture/AUTHORIZATION.md) · [GG-05B](../../architecture/GG05B_IDENTITY_DESIGN.md) · [Registro de decisões](../../planning/DECISION_REGISTER.md).

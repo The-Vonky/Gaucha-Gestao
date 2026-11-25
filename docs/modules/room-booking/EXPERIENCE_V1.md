@@ -1,8 +1,6 @@
 # Agendamento — foto, status temporal e histórico de gestão
 
-> **Atualização de 23/11/2026 (AG-D5-C):** a regra D5-B abaixo é histórica. Administrador global passa a gerir a sala e alterna entre **Room Booking Requester** e **Room Booking Manager**. Para cadastro da secretária e autorização efetiva, prevalece [D5-C](D5C_ADMIN_MODES.md); a interface antiga e seus testes descritos neste documento correspondem à versão de 26/10/2026.
-
-Melhorias aprovadas pelo responsável em 26/10/2026, na mesma PR #88 e branch `feat/ag-01-room-booking-schema-20261023`, após testes manuais do módulo. D5-B permanece vigente: administrador geral não opera gestão, mesmo com atribuição simultânea conflitante. Sem merge/deploy automático; mantenedor único revisa e decide.
+**VIGENTE na main.** A [AG-D5-C](D5C_ADMIN_MODES.md) permite gestão pelo administrador global e alternância entre Requester e Manager. A UI exibe a vista selecionada; o banco preserva a capacidade efetiva do administrador. Os registros de D5-B e as capturas anteriores permanecem como evidências datadas.
 
 ## GG-08 e GG-09 — contato e histórico de gestão
 
@@ -25,7 +23,7 @@ linha. Sem alterações no contrato de banco ou nas permissões.
 | RPC pública | Capacidade efetiva | Contrato |
 |---|---|---|
 | `room_booking_contact` | `room_booking.schedule.read` | Identifica a sala ativa e devolve nome, ramal e versão. Versão 0 indica que ainda não existe contato. |
-| `room_booking_save_contact` | `room_booking.manage` | Revalida D5-B depois de travar a sala. Exige a mesma sala e a versão lida pelo formulário, inclusive na primeira gravação. Conflito retorna `40001` e a interface oferece nova consulta. |
+| `room_booking_save_contact` | `room_booking.manage` | Revalida gestão efetiva com as travas da operação. Exige a mesma sala e a versão lida pelo formulário, inclusive na primeira gravação. Conflito retorna `40001` e a interface oferece nova consulta. |
 
 `room_booking.room_contacts` contém uma configuração por sala, com RLS de negação e sem acesso direto do cliente. O banco apara espaços nas extremidades e normaliza o nome. Aceita até 120 caracteres, com letras, espaços, ponto, apóstrofo e hífen. O ramal contém de 1 a 8 dígitos e preserva zeros iniciais. O evento `contact_save` em `core.system_audit_log` registra sala, autoria, data, versões e quais campos mudaram. O evento guarda indicadores de mudança para evitar duplicar o nome e o ramal no log. A substituta com atribuição de gestão efetiva exerce a mesma função até a revogação prevista em D6.
 
@@ -40,7 +38,7 @@ As duas abas filtram pelo estado do próprio registro e pelo dia de início da r
 ```mermaid
 flowchart LR
     L[Leitor da agenda] --> C[Consultar contato da sala]
-    G[Gestão efetiva D5-B] --> E[Gravar contato com versão esperada]
+    G[Gestão efetiva AG-D5-C] --> E[Gravar contato com versão esperada]
     E --> A[Configuração por sala e auditoria Core]
     G --> H[Histórico do agendamento]
     H --> P[Solicitações e situação da reserva vinculada]
@@ -48,6 +46,8 @@ flowchart LR
 ```
 
 ### Reprodução dos testes de GG-08 e GG-09
+
+**EVIDÊNCIA DATADA.** Os roteiros abaixo foram usados na versão de 10/11. A [matriz de aceite](ACCEPTANCE_V1.md#evidências-de-ag-d5-c-e-pendência-dos-roteiros-de-navegador) identifica seletores obsoletos e o alcance do smoke atualizado da PR #129.
 
 - `npm test -- tests/room-booking-management.test.ts tests/room-booking-ui.test.tsx tests/room-booking-experience.test.ts` cobre as permissões, gravação e conflitos de contato, auditoria, históricos, filtros e cursor em PGlite e na interface.
 - `node tests/integration/room-booking-management-local.mjs` usa exclusivamente o container local identificado no runner. Confere atividade e ausência das duas migrations, executa as novas definições e os casos sintéticos sob `ROLLBACK` com limite de espera por locks, e confirma a ausência das mudanças no schema e no ledger após o teste.
@@ -62,6 +62,8 @@ Capturas com dados sintéticos do ensaio em Chromium de 10/11/2026
 O ensaio no PostgreSQL confirma a releitura depois de gravar dentro da transação e a rejeição de versões antigas. A persistência após reinício de um ambiente, o fluxo integrado Auth/REST com as migrations aplicadas, a corrida entre conexões simultâneas e a homologação em dispositivo físico dependem de ambiente autorizado.
 
 ### Aplicação futura em ambiente autorizado
+
+**EVIDÊNCIA DATADA.** Sequência planejada em 10/11 para a baseline D5-B. Qualquer release atual requer conferir o ledger e a AG-D5-C.
 
 1. Inventariar destino, versão, ledger, dependências do Agendamento e volume de `bookings`. Confirmar a D5-B e a sequência das migrations. Ensaiar a duração da criação do índice com carga representativa e preservar a versão anterior do frontend.
 2. Validar backup independente e restauração antes da janela. Depois de GO específico, aplicar em ordem `20261110131044_room_booking_contact.sql` e `20261110131045_room_booking_direct_history.sql` pelo processo de release autorizado. São mudanças aditivas, sem preenchimento retroativo de contato, escrita em registros de reservas ou conversão de pedidos.
@@ -88,13 +90,13 @@ Cursor composto evita que novas inserções no topo desloquem a próxima página
 
 O módulo é proprietário de `room_booking.cover_assets` e `room_booking.room_covers`, sem SELECT/DML cliente, com RLS de negação. `room_covers` tem versão independente, enquadramento 0–100 e FK composta que só aceita asset da própria sala. Constraint deferred garante uma única foto pronta referenciada. Metadados do arquivo são imutáveis; ciclo `pending → ready → retired` ou `pending → retired`. Triggers auditam estado, autoria, enquadramento e versão em `core.system_audit_log`, sem object key ou URL assinada.
 
-Bucket **`room-covers`**, privado, limite 1 MiB e `image/jpeg`. INSERT exige gestão efetiva D5-B, objeto pendente do uploader com menos de uma hora e operação de upload. SELECT/assinatura exige `room_booking.schedule.read` e foto atual pronta da sala ativa. Não existem políticas cliente de UPDATE/DELETE: sem sobrescrita, upsert, move ou copy. `unit-covers`, permissões de unidades e demais módulos não mudaram.
+Bucket **`room-covers`**, privado, limite 1 MiB e `image/jpeg`. INSERT exige gestão efetiva conforme AG-D5-C, objeto pendente do uploader com menos de uma hora e operação de upload. SELECT exige `room_booking.schedule.read` e foto atual pronta da sala ativa. Não existem políticas cliente de UPDATE/DELETE: sem sobrescrita, upsert, move ou copy. `unit-covers`, permissões de unidades e demais módulos não mudaram.
 
 Confirmação confere objeto existente, uploader, tamanho e MIME registrados pelo Storage; substituição aposenta o anterior e muda a referência atomicamente. Versão esperada protege substituição, enquadramento e remoção; concorrência retorna `40001`. Arquivos aposentados/pendentes expirados não são apagados: expurgo e retenção física continuam fora do escopo, exigindo procedimento autorizado. Operador pode reconciliar `cover_assets` com `storage.objects` pela chave, sem dar acesso bruto ao cliente.
 
 O processamento reutiliza **`core/unitCoverImage.ts`**, sem duplicar o codec: JPEG/PNG/WebP pelos bytes, entrada ≤8 MiB e ≤40 MP, reconversão JPEG com remoção de EXIF, lado ≤2560 px, alvo ≤512 KiB e teto ≤1 MiB. UI reutiliza Modal/Notice e estilos de prévia/enquadramento. Arquivo original não é enviado. A validação física/reconversão ocorre no browser; SQL/Storage verificam limites e metadata, **não decodificam pixels nem comprovam conteúdo/remoção de EXIF de payload forjado**. Sem nova garantia criptográfica ou scanner de malware.
 
-URLs assinadas têm TTL de 300 s, somente em memória, com renovação a cada 240 s e ao voltar à aba. Mudança de principal/permissões remonta o estado e invalida respostas anteriores. Remoção/revogação bloqueia novas assinaturas; URL já emitida continua bearer token até expirar. Erro de assinatura/arquivo ou ausência de foto mantém o fundo institucional. Falha após begin tenta aposentar o pendente sem mascarar o erro original. Falha de cancelamento, inclusive por revogação, deixa pendente para reconciliação técnica.
+No perfil base, as URLs assinadas ficam em memória, com TTL de 300 s e renovação a cada 240 s ou ao voltar à aba. Remoção/revogação bloqueia novas assinaturas e uma URL já emitida pode ser usada até expirar. No perfil Identity, a leitura autenticada da foto exige sessão admitida e autorização atual; o ingresso estrito fecha o resgate por assinatura. Mudança de principal/permissões remonta o estado e invalida respostas anteriores. Erro de assinatura/arquivo ou ausência de foto mantém o fundo institucional. Falha após begin tenta aposentar o pendente sem mascarar o erro original. Falha de cancelamento, inclusive por revogação, deixa pendente para reconciliação técnica.
 
 A ação **Alterar foto da sala** só aparece com `manage` efetivo. Editor permite selecionar, pré-visualizar, centralizar, enquadrar horizontal/verticalmente, substituir e remover. Overlay preserva legibilidade. A foto não é vinculada a unidades nem usada por outros módulos.
 
@@ -106,7 +108,7 @@ O timer local atualiza a cada segundo e nunca solicita o banco a cada segundo. A
 
 ## Visão por permissão
 
-Gestor efetivo não renderiza **ORGANIZE SEU ENCONTRO**, **Novo pedido** ou **Meus pedidos**, nem consulta pedidos próprios. Agenda ocupa a largura disponível. Mantém reserva direta, fila e decisões, edição/cancelamento autorizados, foto e histórico somente leitura. Os grants de solicitante do papel não foram removidos: a mudança é de apresentação. Administrador D5-B e solicitante continuam com seus próprios pedidos e agenda; sem foto editável, fila, contador privado ou histórico geral.
+Gestor efetivo não renderiza **ORGANIZE SEU ENCONTRO**, **Novo pedido** ou **Meus pedidos**, nem consulta pedidos próprios. Agenda ocupa a largura disponível. Mantém reserva direta, fila e decisões, edição/cancelamento autorizados, foto e histórico somente leitura. Os grants de solicitante do papel não foram removidos: a mudança é de apresentação. Com AG-D5-C, o administrador em Manager recebe a vista de gestão. A vista Requester, padrão do administrador e fixa para solicitantes comuns, mostra agenda e pedidos próprios. O administrador mantém gestão efetiva no backend em ambas as vistas.
 
 ```mermaid
 flowchart LR
@@ -125,7 +127,7 @@ flowchart LR
 - `tests/fixtures/room-booking-experience.sql`: negativas diretas de foto/histórico, metadata, versão obsoleta, enquadramento/substituição/remoção, RLS Storage, leitura, cancelamento pendente, auditoria, resumo, estados, passado, filtros e cursor. Executado em PGlite e PostgreSQL local com ROLLBACK e verificação de preservação.
 - `tests/room-banner.test.tsx`: status, contagem, zero sem repetição/negativos, próxima reunião, retorno da aba sem ticks e atraso entre recebimento/renderização.
 - `tests/room-photo-client.test.tsx`: upload falho, cancelamento pendente, `upsert:false`, versão/enquadramento esperados, falha de assinatura e fallback. Validação/codec completos cobertos também pelos testes preexistentes de `unit-cover-image`.
-- `tests/room-booking-ui.test.tsx`: visões gestor/solicitante/D5-B, reserva direta preservada, estados/decisão/cancelamento posterior e filtro/cursor no histórico.
+- `tests/room-booking-ui.test.tsx`: visões de gestor, solicitante e administrador na baseline do ensaio, reserva direta preservada, estados/decisão/cancelamento posterior e filtro/cursor no histórico.
 - `tests/integration/room-booking-experience-browser.mjs`: Auth/REST/Storage reais com contas existentes; upload PNG convertido em JPEG, substituição, enquadramento, versão antiga recusada, leitura por solicitante, anônimo negado, remoção ao encerrar; duas visões em 1440/390 px, sem `pageerror` ou overflow horizontal.
 
 A conta solicitante local acumula `platform_administrator` e `room_booking_requester`; a secretária possui `room_booking_manager` sem conflito. Nenhuma conta/atribuição foi criada ou modificada para os testes. Solicitante sem administração também é testado em memória. O ensaio Storage usa imagem sintética, só quando não existe foto real, e remove logicamente a foto de teste ao fim. Seus assets aposentados e eventos de auditoria são preservados. As capturas mascaram listas com dados potencialmente pessoais e foram incluídas em `evidence/` para revisão. O bloco magenta é máscara de privacidade do teste, não parte da interface. A imagem de fundo nessas capturas é sintética, não a foto real da sala.

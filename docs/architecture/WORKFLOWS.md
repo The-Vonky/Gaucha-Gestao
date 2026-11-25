@@ -4,6 +4,8 @@
 
 ## 1. Login, obtenção de perfil e navegação (AS-IS)
 
+O fluxo abaixo descreve o perfil base. No DEV opt-in, [Identity](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) medeia o login e admite a sessão antes do acesso aos módulos.
+
 ~~~mermaid
 sequenceDiagram
   actor U as Pessoa usuária
@@ -83,7 +85,7 @@ sequenceDiagram
   end
 ~~~
 
-Para download, o código solicita URL assinada e curta à Storage API. Remoção lógica é feita via RPC do domínio; retenção/purge físico e reconciliação operacional continuam exigindo gates. Os **dois fluxos** (Checklist Evidence e Action Plan Evidence) têm limites e políticas distintos: ver [CHECKLIST_EVIDENCE_V1](../modules/audit/CHECKLIST_EVIDENCE_V1.md), [EVIDENCE_STORAGE_V1](../briefs/EVIDENCE_STORAGE_V1.md) e respectivos tests/integration. O terceiro bucket privado identificado pelo planejamento é destinado às imagens de capa de unidade; não o confundir com estes dois fluxos.
+O download usa URL curta assinada no perfil base ou leitura privada autenticada no [DEV com Identity](SECURITY.md#storage-privado-e-miniaturas). Remoção lógica é feita via RPC do domínio; retenção/purge físico e reconciliação operacional continuam exigindo gates. Os **dois fluxos** (Checklist Evidence e Action Plan Evidence) têm limites e políticas distintos: ver [CHECKLIST_EVIDENCE_V1](../modules/audit/CHECKLIST_EVIDENCE_V1.md), [EVIDENCE_STORAGE_V1](../briefs/EVIDENCE_STORAGE_V1.md) e respectivos tests/integration. O terceiro bucket privado identificado pelo planejamento é destinado às imagens de capa de unidade; não o confundir com estes dois fluxos.
 
 ## 4. Plano de Ação, incluindo origem em Auditoria (AS-IS)
 

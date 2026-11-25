@@ -4,6 +4,8 @@
 
 ## Superfícies e fronteiras
 
+O diagrama registra o perfil base. Com Identity no DEV, Kong encaminha Auth e Storage ao serviço interno do Core e o PostgREST usa pre-request. [Contrato vigente](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev).
+
 ~~~mermaid
 flowchart LR
   UI["React / supabase-js"] --> AUTH["GoTrue — Auth / sessão"]
@@ -39,7 +41,7 @@ Este quadro não lista **todas** as RPCs existentes no PostgreSQL e não deve se
 - auth.users autentica; core.profiles determina cadastro ativo; my_access fornece permissões e escopos. Falha de autenticação não deve retornar dados.
 - Roles são conjuntos de permissões, atribuições possuem escopo global/unidade/setor; não autorizar por nome de cargo ou visibilidade de menu.
 - Mutação exige versão/estado quando o domínio requer; erro de concorrência não permite sobrescrever silenciosamente.
-- Upload: RPC de reserva, Storage upload de bytes e RPC de confirmação; não há transação ACID distribuída. Requer tratamento de pendência, reconciliação e URLs assinadas.
+- Upload: RPC de reserva, Storage upload de bytes e RPC de confirmação; não há transação ACID distribuída. Requer tratamento de pendência e reconciliação. A leitura depende da [autorização do objeto e do perfil](SECURITY.md#storage-privado-e-miniaturas).
 - Schemas internos private, audit_private, action_plans_private e abc_private não devem ser expostos à Data API; preservar RLS e grants dos schemas expostos.
 - Instantes com timestamptz, datas de negócio com date e dinheiro com numeric. Não interpretar número de ponto flutuante do browser como fonte contábil definitiva.
 - Logs, exports e erros não devem conter senha, service_role, JWT, PII desnecessária nem URL assinada persistida.

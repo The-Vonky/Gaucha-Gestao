@@ -2,6 +2,8 @@
 
 ## Estado consolidado — 06/11/2026
 
+**EVIDÊNCIA DATADA.** Os resultados medidos usam o executor legado. Para o perfil base atual e o modo estrito de Identity, consulte [Storage privado e miniaturas](../../architecture/SECURITY.md#storage-privado-e-miniaturas).
+
 [Relatório MED-01/AUD-IMG-04 e frontend](MED01_FRONTEND_CLOSURE_20261106.md) · [evidência numérica sanitizada](evidence/med01-frontend-20261106.json).
 
 | Frente | Estado real |
@@ -18,7 +20,7 @@ Originais e limites de acesso/memória preservados. Upload, processamento e down
 Os registros abaixo preservam o diagnóstico e as decisões de 04–05/11. Afirmações de ausência de implementação/medição naqueles SHAs não descrevem a base atual.
 
 
-**DEV atual.** A #120 integrou a transformação privada sob demanda e a #121 a disponibilizou no [Compose DEV](../../operations/DOCKER_LOCAL_STANDARDIZATION.md). A medição de 06/11 usou o [executor legado da #101](AUD_IMG_02_INTEGRATED_DEV_20261106.md). O coletor distingue os GETs de objetos e de transformações nativas. As métricas publicadas de 06/11 correspondem ao executor legado.
+**DEV atual.** A #120 integrou a transformação privada sob demanda e a #121 a disponibilizou no [Compose DEV](../../operations/DOCKER_LOCAL_STANDARDIZATION.md). A medição de 06/11 usou o [executor legado da #101](AUD_IMG_02_INTEGRATED_DEV_20261106.md). O coletor distingue os GETs de objetos e de transformações nativas. As métricas publicadas de 06/11 correspondem ao executor legado. A ativação de Identity troca emissão e resgate por assinatura pelas rotas autenticadas admitidas, inclusive para transformação nativa.
 
 Data: 04/11/2026. Brief: solicitação do mantenedor «Otimização de tráfego de evidências da Auditoria». Base revalidada: `origin/main` em `d9b47359b00fd1516bc773d696d760c1c603ed84`, posterior ao HEAD de 03/11 citado no pedido. Branch: `codex/audit-evidence-traffic`.
 

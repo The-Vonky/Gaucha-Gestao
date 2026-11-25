@@ -1,5 +1,7 @@
 # GG-11 — Relatos e sugestões v1
 
+> **Limite do DEV com Identity.** O bucket privado `feedback-attachments` é usado pelo adaptador no perfil base. A lista permitida do ingresso estrito ainda omite o bucket. Por inspeção do código, isso impede envio e download do anexo nesse perfil. O envio sem anexo segue o contrato de Relatos. [Evidência e escopo](../../architecture/SECURITY.md#storage-privado-e-miniaturas).
+
 Em revisão para homologação. A autorização para o piloto depende do mantenedor.
 
 ## Fluxo e autorização

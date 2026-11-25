@@ -41,6 +41,8 @@ Eventos de lifecycle ficam em `core.system_audit_log`, sem object key: `module=c
 
 ## Storage e URLs assinadas
 
+O fluxo de assinatura abaixo descreve o **perfil base**. No DEV com Identity, a capa usa leitura autenticada e URL `blob:` volátil no navegador, com a mesma autorização por unidade e sessão admitida. O resgate por assinatura é fechado pelo ingresso estrito. [Storage privado e miniaturas](../../architecture/SECURITY.md#storage-privado-e-miniaturas).
+
 Bucket privado `unit-covers`: `public=false`, `file_size_limit=1048576`, `allowed_mime_types={image/jpeg}`.
 
 INSERT apenas na chave pendente vigente do uploader autorizado, usando operação de upload. SELECT/assinatura somente da capa atual pronta e legível. **Sem UPDATE/DELETE cliente:** proibidos overwrite, upsert, move, copy ou exclusão cliente.

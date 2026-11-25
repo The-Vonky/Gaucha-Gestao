@@ -222,7 +222,7 @@ Viewer sem atribuições automáticas. **GG-04 foi homologada pelo mantenedor no
 
 - **GG-08:** responsável e ramal consultáveis na agenda, editáveis pela gestão efetiva com versão e auditoria.
 - **GG-09:** duas abas de histórico — solicitações e reservas diretas, inclusive canceladas — com filtros/paginação; sem pedidos artificiais para reservas diretas.
-- **D5-B preservada:** `room_booking_manager` administra; o Platform Administrator não recebe `room_booking.manage` automaticamente.
+- **AG-D5-C vigente:** `room_booking_manager` e Platform Administrator globais têm gestão efetiva. O administrador alterna as vistas Requester e Manager sem alterar a capacidade no banco. AG-05 mantém o aceite próprio. [Decisão](../modules/room-booking/D5C_ADMIN_MODES.md).
 
 **Pendência operacional:** contato institucional autorizado, aceite da secretária/gestora com dados e dispositivos reais e release na C30. Não reimplementar o histórico já integrado. Ver [contrato](../modules/room-booking/EXPERIENCE_V1.md).
 
@@ -233,7 +233,7 @@ Viewer sem atribuições automáticas. **GG-04 foi homologada pelo mantenedor no
 O funcionário ativo relata um problema ou sugere uma melhoria pela barra de
 comunicados ou pela ação permanente no cabeçalho. O fluxo interno confirma o
 identificador após persistência. O Platform Administrator consulta a fila e os
-anexos em **Administração > Relatos e sugestões**.
+anexos em **Administração > Relatos e sugestões** no perfil base. O ingresso estrito ainda [não encaminha o bucket de anexos](../modules/feedback/FEEDBACK_V1.md).
 
 O aviso institucional mantém categoria e cor independentes e reserva um único
 período de publicação por instante. A fila usa Storage privado e registra

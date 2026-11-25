@@ -1,108 +1,66 @@
 # Linha de base de segurança
 
+**VIGENTE na `main`.** O [modelo de autorização](AUTHORIZATION.md) descreve a composição efetiva dos papéis. O [modelo de ameaças](THREAT_MODEL.md) registra riscos e evidências.
+
 ## Princípios
 
-Dados operacionais, financeiros, contratuais e de Qualidade exigem controles em toda a arquitetura. Postura obrigatória: **menor privilégio e negação por padrão**.
-
-~~~text
-Usuário -> Auth -> sessão -> permissão -> escopo
-        -> autorização do domínio -> banco/Storage -> auditoria
-~~~
-
-Ocultar um botão ou menu **não é autorização**. Ver [modelo](AUTHORIZATION.md).
+Aplicar negação por padrão e menor privilégio da autenticação até a autorização de domínio, Storage e auditoria. O navegador é entrada não confiável. Menus, rotas e modos visuais orientam a experiência. A decisão de acesso cabe aos serviços confiáveis, grants, RLS e RPCs.
 
 ## Identidade
 
-- Cada pessoa deve ter conta identificável. Evitar logins compartilhados.
-- Preservar ativação/inativação e distinguir privilégio de acesso comum.
-- Supabase Auth é a identidade aprovada (ADR-004/005); perfis Core ativos condicionam acesso.
-- Senhas/tokens/sessões usam mecanismos consolidados, **não criptografia própria**.
-- Serviço privilegiado de criação/reset (ADR-007) permanece **NO-GO** até [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49) e decisão humana.
+GoTrue autentica cada pessoa. O Core vincula o perfil ao UUID Auth e exige perfil ativo. No DEV com Identity habilitado, o componente interno do Core medeia login por senha, admissão, troca obrigatória, criação e redefinição. Kong limita os caminhos de Auth e Storage. PostgREST usa `public.identity_pre_request()`; as políticas de Storage também exigem admissão. Cada nova requisição protegida precisa da sessão viva para aquele titular, da finalidade e da geração vigentes e da autorização de domínio.
+
+A PR #24 encerrou uma proposta anterior sem merge e a Issue #49 teve encerramento administrativo. A GG-05B, integrada pela PR #127 e evoluída pela PR #129, foi autorizada para o DEV. A revisão de segurança aplicável, a recuperação administrativa emergencial e a adoção fora do DEV têm gates próprios. [D01](../planning/DECISION_REGISTER.md) · [Contrato GG-05B](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev).
 
 ## Autorização
 
-Avaliar **capacidade + escopo**: `fleet.expense.write` e unidade autorizada. Aplicar grants/RLS/RPC no banco, não apenas visibilidade React.
+Grants, políticas e RPCs reavaliam capacidade e escopo a cada operação. Escritas sensíveis também verificam autoria, versão e invariantes de domínio. Em Salas, a vista Requester oculta controles de gestão do administrador global. A capacidade `room_booking.manage` continua efetiva no servidor. [AG-D5-C](../modules/room-booking/D5C_ADMIN_MODES.md).
 
 ## Segredos
 
-Não versionar: senhas de banco, material de assinatura, chaves API secretas, SMTP, credenciais Storage, envs produtivos, certificados e chaves privados. Injetar via runtime ou gerenciamento aprovado. `service_role`/secret jamais no browser.
+O navegador usa chave pública de cliente publishable/anon e JWT de usuário. A chave administrativa GoTrue fica no runtime servidor e é usada nas chamadas administrativas. A credencial SQL de `gg_identity` é distinta, com acesso aos contratos privados necessários e sem DML direto nas tabelas. Chaves secretas, senhas, arquivos privados de configuração, JWTs e URLs assinadas ficam fora do Git, de artefatos e dos logs. No ciclo de credenciais, a temporária é devolvida uma vez ao operador autorizado para entrega privada ao titular. GoTrue guarda o verificador. [Manifesto Identity](../../infra/local/compose.identity.yaml) · [Serviço](../../apps/core-identity/server.mjs).
 
 ## Dados sensíveis
 
-Antes de cada migração, classificar dados financeiros, contratuais, pessoais, credenciais, arquivos e dados operacionais restritos. Coletar somente com finalidade de negócio.
+Antes de migração ou uso real, classificar os dados financeiros, contratuais, pessoais e operacionais e limitar a coleta à finalidade de negócio. Manter dados e credenciais reais fora de DEV e CI.
 
 ## Uploads
 
-Arquivos recebidos são **não confiáveis**. Contratos: [Evidence/Storage](../briefs/EVIDENCE_STORAGE_V1.md), [Checklist Evidence](../modules/audit/CHECKLIST_EVIDENCE_V1.md), [Unit Cover](../modules/core/UNIT_COVER_V1.md) e [Curva ABC](../briefs/ABC_DOMAIN_V1.md).
+Tratar bytes, metadados e chaves indicadas pelo cliente como entradas não confiáveis. Cada domínio define tipos, tamanhos, chave reservada no servidor, estados de confirmação e capacidades de leitura e remoção. A reserva de metadados e o upload de bytes são etapas distintas. Reconciliação e retenção física seguem procedimento autorizado.
 
-Cada módulo define tipos aceitos, tamanho, chaves de objeto, permissão para download/remoção, propriedade de metadata, riscos de malware e backup. No banco ficam preferencialmente referências/metadados, não bytes grandes.
+Na Curva ABC, o browser interpreta o XLSX e a RPC revalida payload, somas e metadados. O SQL não decodifica nem recalcula o hash do XLSX físico. A conferência posterior é uma prova distinta. [Modelo de ameaças](THREAT_MODEL.md) · [Contrato ABC](../briefs/ABC_DOMAIN_V1.md).
 
-**Curva ABC:** preview XLSX no browser e validação SQL de payload não significam verificação física de bytes pelo servidor; ver [ameaças](THREAT_MODEL.md).
+## Storage privado e miniaturas
+
+| Perfil | Leitura de objetos e autorização | Miniaturas de Auditorias |
+| --- | --- | --- |
+| Base | Buckets privados. As políticas autorizam o download autenticado ou a emissão de uma URL curta, conforme o adaptador do módulo. Uma URL assinada já entregue pode ser usada até o TTL enquanto o resgate estiver disponível. | Com transformação habilitada, Storage verifica a política do original e emite URL de transformação de até 60 s. imgproxy processa sob demanda sem sobrescrever o original. |
+| DEV com Identity | O ingresso estrito permite operações enumeradas por bucket e caminho, com JWT de sessão admitida para os módulos. Storage reavalia a sessão e as políticas de domínio. O ingresso fecha emissão e resgate por assinatura, inclusive de URLs antigas. O proxy responde com `private, no-store` e `nosniff`. | A transformação nativa usa o caminho de renderização autenticado. O browser pede o derivado sob demanda com JWT; o imgproxy usa a montagem de objetos somente leitura. |
+
+Os adaptadores no modo estrito usam leitura autenticada para evidências de Auditorias e Planos de Ação, fotos de Salas, capas de unidade, originais ABC e imagens de relatórios. A autorização preserva estado, escopo e limites dos contratos. Bytes já entregues e arquivos exportados permanecem fora do alcance da revogação. [Gateway Identity](../../apps/core-identity/storage.mjs) · [Cliente de Storage privado](../../apps/web/src/core/auth/privateStorage.ts) · [Runbook imgproxy](../operations/AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md) · [Relatórios com evidências](../modules/audit/REPORT_EVIDENCE_EXPORT.md).
+
+**Divergência em GG-11.** O [adaptador de Relatos](../../apps/web/src/modules/feedback/api.ts) envia e baixa anexos em `feedback-attachments`, bucket privado com políticas próprias. O [ingresso Identity](../../apps/core-identity/storage.mjs) omite o bucket da lista permitida. Por inspeção, envio e download de anexos ficam barrados no perfil estrito antes das políticas do bucket; a decisão de compatibilidade requer tarefa e validação próprias. O [contrato GG-11](../modules/feedback/FEEDBACK_V1.md) descreve o envio sem anexo e as restrições de autoria, gestão e auditoria.
 
 ## Auditoria sistêmica
 
-Mutações sensíveis devem gerar trilha imutável ou resistente a adulteração, com **autor, horário, entidade, ação, dados antes/depois pertinentes e correlação**, sem senhas/segredos. `core.system_audit_log` é diferente do módulo de Auditoria de Qualidade.
+Mutações sensíveis registram autor, horário, entidade, ação, dados antes/depois pertinentes e correlação. O `core.system_audit_log` é distinto da Auditoria de Qualidade. Operações de Identity registram protocolo, resultado e correlação com o alvo sem guardar senha ou token. Falha de confirmação entre Core e Auth exige reconciliação supervisionada. O estado em quarentena fecha admissões e impede repetir o efeito por tentativa cega. [Runbook GG-05B](../operations/GG_05B_IDENTIDADE_DEV.md#reconciliação).
 
 ## Infraestrutura
 
-Não aprovar produção apenas porque o sistema inicia. Exigir SO/runtime suportados e atualizados, firewall/exposição revisados, TLS nas fronteiras de confiança, serviço de menor privilégio, Postgres protegido, backup configurado **e restauração testada**, segredos separados e logs de segurança/operação.
-
-SO legado sem suporte depende de risco documentado e controles compensatórios.
+O DEV usa o [Compose local](../operations/DOCKER_LOCAL_STANDARDIZATION.md). A revisão do estado implantado na C30 usa seu [AS-BUILT datado](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md). Para operação, exigir runtime suportado, exposição/firewall revisados, TLS, isolamento de serviços, proteção de segredos e restauração testada. O ensaio de backup do Compose base tem escopo próprio. A recuperação integral de Identity e o backup/restore independente da C30 ainda exigem prova. [Gates](FOUNDATION_GATES.md).
 
 ## Dependências, erros e incidentes
 
-- Minimizar bibliotecas, usar lockfile e tratar vulnerabilidades conhecidas; CI determinística.
-- Mensagens ao usuário não expõem stack trace, segredo, detalhes internos de DB ou caminhos sensíveis. Logs também não armazenam credenciais.
-- Agentes não fazem implicitamente deploy, migration produtiva, alteração de segredo ou exclusão de dados.
-- Antes do rollout: definir responsáveis por bloqueio de conta, revogação, consulta de logs, rotação de segredos, rollback e restore.
-
-**Produção permanece NO-GO** até gates operacionais e autorização humana.
+Usar dependências justificadas e versionadas. Sanear erros e logs. Definir responsáveis e procedimentos para bloqueio de conta, recuperação administrativa, rotação de segredos, reconciliação e restauração. Mudanças de segurança exigem diff, testes negativos pertinentes, avaliação de risco e aceite do mantenedor, com registro da revisão efetuada e das exigências específicas para identidade privilegiada. CI e homologação têm recortes próprios. **PROD NO-GO.**
 
 ## Login técnico de derivados — PR #101
 
-O [executor local de terminal](../modules/audit/AUD_IMG_02_LOCAL_EXECUTOR_20261105.md) foi autorizado posteriormente: habilita temporariamente o login existente e volta a NOLOGIN ao encerrar, sem grants novos ao processador. Escopo por auditoria e corte do servidor evita seleção acidental de acervo; não é autorização adicional. A RPC mínima de estado usa perfil ativo, evidência available e permissão Core na unidade; não libera manifesto/bytes/execução a leitores indevidos. O decoder mantém limites e quatro tentativas conservadoras; ausência de ganho vira estado terminal explícito, sem fallback ao original.
-
-Credencial SQL técnica não pode ler segredo global por GUC ou catálogo, herdar papel privilegiado ou executar processamento com SET ROLE administrativo. O [runtime e runbook de AUD-IMG-02](../operations/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md) separam emissor one-shot e worker isolado, vinculam lease ao session_user e restringem JWT a lease/bucket/chave/30 s, com revalidação na renovação. [GO C executado em 05/11](../modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md) somente em `gaucha-gestao-local`: GUC legado removido após inspeção/backup, login mínimo e uma evidência sintética, com login novamente NOLOGIN ao final. Não há serviço/timer instalado nem autorização de produção; POST/upsert adicional da matriz local permanece parcial por timeout.
-
-Na opção nativa de miniaturas, o Storage aplica a policy do objeto original ao emitir a URL de transformação. O link vale por até 60 s e funciona como credencial de posse nesse intervalo. O imgproxy fica em loopback no namespace do Storage e recebe apenas uma montagem de objetos somente leitura. A configuração local homologada aplica `private, no-store` à rota Storage do Kong e suprime logs dos três serviços envolvidos. A partida diária confere o namespace efetivo, o isolamento e os cabeçalhos pelo gateway. [Inicialização e reversão](../operations/AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md).
-
-O decoder de AUD-IMG-02 é aberto pelo supervisor como subprocesso irmão em Bubblewrap sem rede/segredos, fora do namespace do worker. Pipes binários têm header até 4 KiB, entrada até 10 MiB e saída até 1 MiB. Escopo fresco de lease e conferência do hash contra o objeto autorizado precedem uma única codificação; timeout/encerramento cancela o subprocesso, sem fallback sem isolamento.
+**EVIDÊNCIA DATADA.** O executor de terminal da PR #101 usa login SQL temporário, emissor com lease e worker isolado. A derivação usa bucket privado próprio, sem fallback automático ao original. O supervisor legado condiciona o processamento ao escopo autorizado e ao corte de novos uploads. A [prova de 05/11](../modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md) registrou a execução e seu alcance. O [contrato do executor](../modules/audit/AUD_IMG_02_LOCAL_EXECUTOR_20261105.md) e a [integração legada](../modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md) conservam os detalhes.
 
 ## Comunicados institucionais — GG-10 / Entrega B (05/11/2026, para revisão)
 
-`announcements.notices`/`notice_history` não são expostos na Data API. RLS
-restritiva + revogação de USAGE/DML impedem manipulação direta; RPCs públicas
-pontuais têm EXECUTE revogado de PUBLIC/anon e concedido somente a authenticated,
-`search_path=''`, relações qualificadas e autorização Core explícita. Gerência
-exige `announcements.notice.manage` global atual e bloqueios compartilhados nas
-referências de autorização; leitura comum exige perfil ativo e período publicado.
-
-Cada escrita usa UUID+versão esperada, trava linha e registra snapshot imutável
-no domínio. Core recebe somente id/estado/versão, sem texto institucional.
-O SQL valida datas, tamanho, categoria e presets Elo independentes e rejeita
-tags HTML. No refinamento GG-10/GG-11, uma constraint de exclusão protege a
-agenda e novas escritas gravam prioridade zero por compatibilidade. A aplicação usa fonte RPC única e invalida dados por identidade;
-JSON público foi retirado, sem fallback/exportação de dados internos.
-
-Teste real adicional usa o stack já descartável do action-plans-integration e
-recusa execução fora de CI hospedado. Testes em memória não comprovam JWT/Auth,
-API nem disputa entre sessões. Migration proposta não autoriza aplicação persistente,
-retenção/expurgo ou deploy. [Contrato](../modules/announcements/ADMINISTRATION_V1.md).
-
-GG-10: [validação real local de 05/11](../modules/announcements/LOCAL_VALIDATION_20261105.md) registra aplicação incremental autorizada, Auth/API reais, negativas, persistência e preservação de dados no gaucha-gestao-local. Nenhuma autorização para outro ambiente.
-
-Desde 06/11, o [supervisor local de desenvolvimento](../modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md) coordena frontend e executor pelo único `npm run dev`. O modo explícito `global_new` exige corte de início/confirmação dos uploads; não usa filtros nulos para selecionar o acervo. LOGIN existente tem validade de dez minutos renovada pelo supervisor enquanto ativo, com NOLOGIN ao encerrar; falhas forçadas exigem recuperação do lock/login e não retomam pendências de sessões anteriores automaticamente. Sem grants extras, credenciais no frontend ou serviço permanente.
-
+**EVIDÊNCIA DATADA.** O [contrato](../modules/announcements/ADMINISTRATION_V1.md) define gestão global e publicação com período. As tabelas privadas usam RLS restritiva e as RPCs gravam histórico versionado com autoria. O log Core recebe identificador, estado e versão. A [validação de 05/11](../modules/announcements/LOCAL_VALIDATION_20261105.md) cobre negativas e persistência no DEV. No perfil estrito, a leitura publicada exige admissão para a aplicação.
 
 ## Relatos dos funcionários — GG-11
 
-O banco registra autoria e horário de recebimento. A trilha sistêmica guarda
-o evento de recepção e o identificador do relato. O conteúdo e o nome do
-arquivo original ficam fora da auditoria. O download reavalia a autorização
-atual e usa o bucket privado com operações limitadas a envio reservado e
-download autenticado. A UI trata os bytes como conteúdo não confiável e entrega
-o arquivo como download. [Contrato e limites GG-11](../modules/feedback/FEEDBACK_V1.md).
-
-## Identidade GG-05B no DEV
-
-O componente interno do Core usa a confirmação direta do GoTrue para trocar a senha e mantém a chave administrativa no runtime. PostgREST e Storage reavaliam a admissão da sessão. O ingresso do DEV em modo estrito fecha o resgate por assinatura, e o navegador lê o objeto pelo caminho autenticado com a autorização da unidade e do domínio. [Operação e limites no notebook](../operations/GG_05B_IDENTIDADE_DEV.md).
+O banco vincula autoria e horário à sessão. O log guarda o evento e o identificador, sem conteúdo nem nome do anexo. A leitura administrativa e o download autenticado reavaliam o acesso atual. Consulte [o contrato GG-11](../modules/feedback/FEEDBACK_V1.md) e [a divergência de Storage](#storage-privado-e-miniaturas).

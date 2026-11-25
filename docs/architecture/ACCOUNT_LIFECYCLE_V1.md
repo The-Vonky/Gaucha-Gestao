@@ -1,6 +1,8 @@
 # Core Account Lifecycle v1
 
-- Status: **DESIGN ONLY — proposta pendente de aprovação do PO**
+> **HISTÓRICO · PROPOSTA de 08/10/2026.** A [GG-05B](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) é a referência implementada para ciclo de credenciais no DEV. Preserve as alternativas abaixo como desenho original. Recuperação emergencial, revisão de segurança e liberação operacional permanecem dependentes da [D01](../planning/DECISION_REGISTER.md).
+
+- Status naquele recorte: **DESIGN ONLY — proposta original**
 - Data: 2026-10-08
 - Brief: [CORE_ACCOUNT_LIFECYCLE_V1.md](../briefs/CORE_ACCOUNT_LIFECYCLE_V1.md)
 - Base funcional do brief: `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`

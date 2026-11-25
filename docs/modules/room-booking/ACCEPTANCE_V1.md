@@ -1,41 +1,27 @@
 # Agendamento de Salas v1 — Critérios de aceite e matriz de testes
 
-**Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](EXPERIENCE_V1.md).
+**VIGENTE na main.** A [AG-D5-C](D5C_ADMIN_MODES.md), integrada pela PR #129, substitui a expectativa de negar gestão ao administrador global. D5-A e D5-B ficam como histórico. O mantenedor único confere diff, CI e negativas de RLS e RPC para o aceite aplicável.
 
-**Decisão vigente — 26/10/2026:** D5-A revogada pelo responsável em 26/10/2026. D5-B adotada: o administrador geral não administra reservas; a gestão cabe ao papel `room_booking_manager`, com provisionamento administrativo restrito e auditado. Atribuição administrativa ativa conflitante nega gestão mesmo com papel adicional. D1–D4, D6–D11 e F2 permanecem aprovadas. Os registros de 23/10 abaixo são históricos.
+**Estado:** esta matriz define critérios. As evidências de AG-01 a AG-04 e os ensaios de D5-B mantêm a data e o resultado originais. A homologação funcional registrada na PR #129 abrange AG-D5-C no DEV. O aceite operacional AG-05 e a [Issue #84](https://github.com/The-Vonky/Gaucha-Gestao/issues/84) mantêm escopo próprio, incluindo secretária, responsável e celular real. O módulo é independente do legado (D11).
 
-
-**Atualização vigente — 26/10/2026:** o responsável ampliou expressamente a PR #88
-para AG-02/AG-03, mantendo a branch existente, e autorizou aplicação incremental
-não destrutiva no `gaucha-gestao-local`. RPCs e interface implementadas; merge cabe
-exclusivamente ao mantenedor. D5-B vigente, sem exigência de segundo revisor.
-Os limites históricos abaixo não revogam essa autorização local. Evidências e
-pendências atuais em [AG-02/AG-03 local](AG02_AG03_LOCAL.md). C30/STAGING/PROD permanecem fora do escopo.
-
-
-**Adendo de fluxo solo — 23/10/2026:** somente um desenvolvedor humano disponível: o responsável do projeto, que já aprovou D5-A e assumiu explicitamente o risco de não haver segunda revisão humana. O parecer independente listado nos registros históricos **não existe e não deve ser inventado nem exigido como bloqueio do AG-01 ou do merge de sua PR**. Agente implementa, abre PR com testes/CI, riscos e checklist de segurança; titular confere e faz merge. Manter RLS default deny, auditoria, testes negativos e isolamento; deploy/bancos compartilhados continuam NO-GO sem autorização separada.
-
-Status: **AG-00 integrado na main, AG-01 em revisão na PR #88.** D5-B aprovada pelo único mantenedor humano, que revisará a PR com CI/testes. O desenvolvimento/preview do módulo usa **o Supabase/Docker local já existente**; não exigir instância nova. Ambientes C30/STAGING/PROD continuam fora de escopo.
-Brief: `docs/briefs/ROOM_BOOKING_V1.md`
-
-Cada critério indica a etapa que o comprova. Uma etapa só é concluída com evidência executada (comando, SHA e resultado) e não com a afirmação de quem implementou. Itens que dependem de decisões ainda pendentes estão marcados com **[Dn]**.
+Cada critério aponta a etapa que o comprova. Registre evidência executada com SHA, ambiente, comando e resultado. O [brief](../../briefs/ROOM_BOOKING_V1.md) define os requisitos de produto.
 
 ## Gate AG-00 — decisões, evidências e aceite humano
 
 - [x] **Decisões atuais dos fluxos, matriz e exposição de `booked_for`/`secretary_notes` validadas com a secretária conforme relato do responsável (23/10)**. Relato não equivale a ata/review assinados; formalizar no aceite documental.
-- [x] **Decisões D2/D3/D8/C1 preservadas; D5-A histórica revogada em 26/10, substituída por D5-B.**
+- [x] **Decisões D2/D3/D8/C1 preservadas; AG-D5-C vigente por decisão de 23/11. D5-A e D5-B são históricas.**
 - [x] **F2 — escolha expressa do responsável:** pedido que conflita com reserva confirmada é rejeitado no envio sem criar registro; validar com a secretária e testar via RPC em AG-02/04. D2 permanece distinta.
 - [x] **D8 — escolhas expressas do responsável:** aprovação tardia bloqueada com pedido mantido `pending` até recusa manual; impedir edição de horário de reunião iniciada/histórica, permitir correção textual auditada; horas e minutos livres, fim até 23:59.
 - [x] **D8 — campos de correção histórica aprovados pelo responsável:** apenas `booked_for` e `secretary_notes`; `purpose`, horários e demais campos não são editáveis na exceção histórica.
 - [ ] **D8 — validação de bordas:** conferir com a secretária e executar futuramente testes de autorização, versão, precisão, relógio do backend, 23:59 e passagem de tempo em AG-02/04.
-- [ ] Revisão do mantenedor sobre D5-B, diff, CI, negativos de permissão e procedimento técnico, sem exigir ou inventar segundo revisor.
+- [ ] Conferir a evidência aplicável de AG-D5-C: diff, CI, negativas de permissão e aceite pelo mantenedor.
 - [x] **Decisões de produto D1/D4/D6/D7/D9/D10/D11 confirmadas pelo responsável em 23/10/2026**, incluindo atribuição individual explícita de `room_booking_requester` no Core, substituta temporária, cancelamento próprio só antes do início, avisos internos, rota `/rooms` e preservação do legado.
 - [x] **Validação operacional da secretária relatada pelo responsável** para as decisões atuais (D1/D2/D3/D4/D6/D7/D8/D9/D10/D11/F2/observações); sem contato direto nesta sessão.
 - [ ] **Evidência humana rastreável da validação**, com papel, data, escopo e aprovação/revisão documental, sem expor nomes ou dados de reuniões.
 - [x] **D11 substituída:** nova implementação totalmente independente do legado; **não** conferir ZIP/agenda, importar/reconciliar reservas ou modificar instalação antiga como gate de AG-00/AG-01.
 - [ ] Prioridade C1 ratificada formalmente, sem afastar Qualidade P1–P9/O1–O8 e PROD NO-GO.
 - [x] PR #85 integrada à main, com decisões do responsável e relato da secretária documentados. Código AG-01 em branch autorizado pelo responsável em 23/10.
-- [ ] Revisão do mantenedor sobre D5-B, diff, CI, negativos de permissão e procedimento técnico, sem exigir ou inventar segundo revisor.
+- [ ] Conferir a autorização efetiva do gestor e do administrador global, revogação e autoria no banco.
 
 ## Critérios funcionais
 
@@ -71,13 +57,14 @@ Cada critério indica a etapa que o comprova. Uma etapa só é concluída com ev
 | S7 | `requester_user_id` enviado pelo cliente é ignorado ou rejeitado; vale `auth.uid()` | AG-02 |
 | S8 | Sem `insert/update/delete` direto nas tabelas para `authenticated`/`anon`; RLS habilitada em todas | AG-01 |
 | S9 | RPCs `SECURITY DEFINER` com `search_path=''` e `execute` revogado de `public`/`anon` | AG-01/02 |
-| S10 | **D5-B:** administrador consulta agenda e pedidos próprios, mas não aprova/recusa/cria/edita/cancela como gestor; RPCs e `core.my_access` negam mesmo com atribuição simultânea. Fila e contador privados não são retornados. | AG-01/02/03/04 |
-| S11 | Concessão temporária e revogação da substituta pelo procedimento técnico restrito e auditado; operador identificado e autorização referenciada, sem RPC pública privilegiada **[D5-B/D6]** | AG-01/05 |
+| S10 | **AG-D5-C:** administrador global ativo tem `manage` em `core.my_access` e pode gerir pela API em qualquer vista. Na UI inicia em Requester com agenda e pedidos próprios e sem fila, contador privado ou controles de gestão. Em Manager, vê fila e histórico e pode aprovar/recusar, criar/alterar/cancelar reservas e mudar contato/foto. Administrador parcial sem grant de Salas e gestor comum não recebem o seletor. | AG-01/02/03/04 |
+| S11 | Concessão temporária explícita de Room Booking Manager global e revogação no retorno por operador autorizado no Core. Conferir trilha, escopo, versão e perda efetiva da gestão **[D6]**. | AG-01/05 |
 | S12 | Auditoria registra ator, ação e entidade de cada mutação, sem `purpose` nem texto integral de `secretary_notes` nos metadados por padrão | AG-02/04 |
 | S13 | `anon` não acessa nada do schema | AG-01 |
 | S14 | Leitor autenticado autorizado vê `booked_for`/`secretary_notes` de confirmadas, mas sem papel, com perfil inativo, anônimo ou após revogação não recebe tais campos via REST/RPC/ID adivinhado; escopo de exposição confirmado pelo responsável | AG-01/02/04 |
 | S15 | `secretary_notes` com HTML/script é renderizado como **texto inerte** na agenda, não vaza a pedidos alheios, fila pública nem logs; solicitante não pode escrever/editar notas por payload forjado | AG-02/03/04 |
-| S16 | Papel `room_booking_requester` não é recebido automaticamente por qualquer usuário ativo/novo; concessão **individual e auditável** pelo administrador no Core, com revogação imediata e sem ampliação implícita de escopo; três permissões de solicitante preservadas no administrador em D5-B | AG-01/02/04 |
+| S16 | Papel `room_booking_requester` não é recebido automaticamente por qualquer usuário ativo/novo; concessão **individual e auditável** pelo administrador no Core, com revogação imediata e sem ampliação implícita de escopo; capacidades de solicitante presentes no administrador global | AG-01/02/04 |
+| S17 | GG-05B cadastra cada um dos dois papéis globais de Salas sem unidade ou setor, quando o operador tem admissão, autoridade de cadastro e delegação. Conferir concessão global única, temporária, primeira troca e direitos mínimos. Negar escopo indevido, operador sem delegação e cadastro administrativo ou de outro papel `global_only`. | GG-05B / AG-D5-C |
 
 ## Integridade e concorrência (PostgreSQL real, não mock)
 
@@ -150,14 +137,14 @@ A numeração **canônica** é **AG-03: interface completa (inclusive secretaria
 
 ## Evidência AG-01 em revisão
 
-Implementação autorizada expressamente pelo responsável em 23/10/2026, após a PR #85. Ver [fundação e roteiro reproduzível](AG01_FOUNDATION.md). Testes da fundação não encerram critérios que dependem de RPC/UI, Auth/REST reais ou homologação. Revisão final do titular ainda pendente, conforme exceção de mantenedor único `9e20199`; nenhum parecer independente ou gate humano foi declarado concluído.
+**EVIDÊNCIA DATADA.** Implementação autorizada expressamente pelo responsável em 23/10/2026, após a PR #85. Ver [fundação e roteiro reproduzível](AG01_FOUNDATION.md). Testes da fundação não encerram critérios que dependem de RPC/UI, Auth/REST reais ou homologação. Revisão final do titular ainda pendente, conforme exceção de mantenedor único `9e20199`; nenhum parecer independente ou gate humano foi declarado concluído.
 
 
 ## Adendo de aceite — experiência e operação (26/10/2026)
 
 | ID | Critério |
 |---|---|
-| U-FOTO | Gestor adiciona/substitui/enquadra/remove foto com versão/auditoria; administrador/solicitante negados no banco; leitor autorizado vê foto privada ou fallback |
+| U-FOTO | Gestor ou administrador global com gestão efetiva adiciona/substitui/enquadra/remove foto com versão e auditoria. Solicitante sem gestão, revogado e inativo não modificam. Leitor autorizado vê foto privada ou fallback. Em Identity, leitura autenticada e resgate de URL assinada negado. |
 | U-TEMPO | Disponível verde / Em uso vermelho, texto e ícone; contador por segundo sem RPC por segundo, zero reconsulta, reunião adjacente e retorno de aba corretos |
 | U-GESTOR | Gestor sem cards de solicitante, com agenda ampliada, fila, reserva direta e histórico; solicitante mantém agenda/pedidos próprios |
 | S-HIST | Histórico somente gestão, inclusive passados e estados terminais, nomes Core/decisão/reserva vinculada; filtros e cursor consistente, sem mutações ou pedidos artificiais |
@@ -170,12 +157,23 @@ Evidências automatizadas e locais no contrato ligado acima; aceite humano desta
 |---|---|
 | GG08-01 | Gestora lê o estado inicial, informa nome e ramal, vê a confirmação sem recarregar e encontra a configuração após nova sessão. O leitor autorizado consulta os mesmos valores e o zero inicial do ramal é preservado. |
 | GG08-02 | Banco recusa nome ou ramal inválido e versões obsoletas, inclusive duas tentativas de primeiro cadastro. O conflito oferece nova consulta na UI. |
-| GG08-03 | Solicitante, administrador isolado ou em conflito D5-B, revogada, inativa e anônimo não gravam pela RPC. Somente leitor efetivo consulta. Substituta efetiva grava enquanto autorizada. A tabela permanece sem acesso direto. |
+| GG08-03 | Gestor, substituta e administrador global gravam com `manage` efetivo e versão válida. Solicitante, administrador parcial sem gestão, perfil revogado, inativo e anônimo têm a gravação negada pela RPC. A consulta exige `schedule.read`; tabela sem acesso direto. |
 | GG08-04 | Auditoria registra autoria, data, sala, versões e campos alterados. As tentativas rejeitadas não geram gravação. |
 | GG09-01 | Solicitações anteriores e seus estados continuam consultáveis, com decisão, recusa e cancelamento da reserva vinculada quando registrados. |
 | GG09-02 | Diretas criadas, editadas ou canceladas aparecem somente na aba correspondente, com a autoria e os dados persistidos. Reservas vinculadas permanecem na aba de solicitações. |
 | GG09-03 | Filtros por estado e datas civis inclusivas em São Paulo, paginação em múltiplas páginas e empate de horário resolvido pelo cursor composto. Datas exibidas em Brasília em navegador com outro fuso. |
-| GG09-04 | Solicitante, administrador sem gestão, anônimo, revogada e inativa não obtêm histórico privado. A interface tem estados de espera, erro e vazio, abas por teclado e cartões sem overflow no celular. |
+| GG09-04 | Gestor e administrador global obtêm histórico privado enquanto mantêm gestão efetiva. Solicitante, administrador parcial sem gestão, anônimo, perfil revogado e inativo são negados. A interface tem estados de espera, erro e vazio, abas por teclado e cartões sem overflow no celular. |
 | GG09-05 | Regressão de criação, aprovação, recusa, edição e cancelamento. Homologar em desktop e celular real com a secretária antes de liberar. |
 
 [Contratos e plano de aplicação](EXPERIENCE_V1.md#gg-08-e-gg-09--contato-e-histórico-de-gestão).
+
+## Evidências de AG-D5-C e pendência dos roteiros de navegador
+
+| Evidência | Alcance |
+| --- | --- |
+| [PR #129](https://github.com/The-Vonky/Gaucha-Gestao/pull/129) | Registro datado de homologação funcional no DEV e validações de UX descritas por SHA. |
+| [Banco de Salas](../../../tests/room-booking-database.test.ts), [operações](../../../tests/room-booking-operations.test.ts), [gestão](../../../tests/room-booking-management.test.ts) e [Identity](../../../tests/integration/gg05b-identity.mjs) | Cobertura versionada de capacidade atual, negativas, autoria, contato/históricos e cadastro global. Consultar a execução correspondente antes de atribuir resultado a qualquer caso. |
+| [UX da PR #129](../../../tests/integration/room-booking-ux-browser.mjs) | Smoke Chromium com Auth/REST sintéticos em 1280/320 px. Cobre modos, barra de ações, modal de contato, abertura do modal de foto e foco. Esse recorte não comprova upload real, celular físico ou todo o aceite AG-05. |
+| [Roteiro de gestão](../../../tests/integration/room-booking-management-browser.mjs) e [roteiro de experiência](../../../tests/integration/room-booking-experience-browser.mjs) | Pendência técnica por inspeção. Ainda esperam a região antiga `Contato da sala` e ações como `Novo pedido` e `Fechar formulário`. A UI integrada usa barra e modais. Atualizar seletores e preservar asserções de persistência, privacidade, histórico e foto em tarefa própria. |
+
+A revisão desta matriz não executa casos nem muda o aceite da Issue #84.
