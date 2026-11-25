@@ -47,11 +47,11 @@ flowchart LR
 
 ### Reprodução dos testes de GG-08 e GG-09
 
-**EVIDÊNCIA DATADA.** Os roteiros abaixo foram usados na versão de 10/11. A [matriz de aceite](ACCEPTANCE_V1.md#evidências-de-ag-d5-c-e-pendência-dos-roteiros-de-navegador) identifica seletores obsoletos e o alcance do smoke atualizado da PR #129.
+**EVIDÊNCIA DATADA.** Os roteiros abaixo foram usados na versão de 10/11. O [roteiro atual de regressão](#regressão-de-navegador-no-dev-com-identity) documenta a reprodução na interface integrada.
 
 - `npm test -- tests/room-booking-management.test.ts tests/room-booking-ui.test.tsx tests/room-booking-experience.test.ts` cobre as permissões, gravação e conflitos de contato, auditoria, históricos, filtros e cursor em PGlite e na interface.
 - `node tests/integration/room-booking-management-local.mjs` usa exclusivamente o container local identificado no runner. Confere atividade e ausência das duas migrations, executa as novas definições e os casos sintéticos sob `ROLLBACK` com limite de espera por locks, e confirma a ausência das mudanças no schema e no ledger após o teste.
-- Para reproduzir a navegação sintética, executar `VITE_SUPABASE_URL=http://127.0.0.1:54321 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_gg0809_fixture npm run build` e então `node tests/integration/room-booking-management-browser.mjs` com Chromium do Playwright disponível. O runner intercepta o carregamento do bundle, Auth e REST. Nenhum servidor é iniciado e nenhum registro persistente é usado.
+- O ensaio de navegação sintética de 10/11 usou o bundle, Auth e REST interceptados. Consulte os comandos atuais na seção de regressão.
 
 Capturas com dados sintéticos do ensaio em Chromium de 10/11/2026
 
@@ -242,3 +242,27 @@ A inspeção visual em 320 px também verificou os campos nativos de data/hora:
 colunas e campos do formulário têm largura mínima zero para não extrapolar o
 modal. O smoke exige `dialog.scrollWidth <= dialog.clientWidth`, além de conferir
 a largura da página, evitando aprovar campos cortados dentro do diálogo.
+
+
+## Regressão de navegador no DEV com Identity
+
+A atualização de 25/11/2026 usa a barra **Ações da sala** para abrir **Editar contato** e **Alterar foto da sala**. Os campos e ações de gravação são buscados pelo nome dentro de cada diálogo. **Contato da sala** continua sendo uma região de leitura no banner. Na agenda, **Solicitar horário** abre o diálogo **Novo pedido**. Os diálogos **Novo pedido** e **Reserva direta** mantêm **Fechar formulário** como ação interna, além do botão **Fechar** do Modal compartilhado. A fila e o histórico dependem da vista de gestão. A API do administrador global mantém a capacidade de gestão na vista Requester.
+
+Com Chromium do Playwright disponível e a partir da raiz do checkout:
+
+```bash
+VITE_SUPABASE_URL=http://127.0.0.1:54321 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_gg0809_fixture VITE_GG_IDENTITY_ENABLED=false npm run build
+node tests/integration/room-booking-management-browser.mjs
+node tests/integration/room-booking-ux-browser.mjs
+node tests/integration/room-booking-experience-browser.mjs
+```
+
+- **Gestão.** O bundle é servido pelo próprio Playwright. Auth e REST são interceptados. O contato permanece em memória durante a recarga da página. São conferidos ramal inválido, zero inicial, foco, cursor, filtros, teclado, fuso e ausência de histórico para o leitor.
+- **UX.** Usa o Vite ativo em `http://127.0.0.1:5173`, com Auth/REST interceptados e sem gravação. Cobre as três vistas em 1280/320 px, foco contido e devolvido, Escape, botão e overlay, alinhamento, largura interna dos diálogos e bloqueio durante o salvamento.
+- **Experiência.** Usa o mesmo Vite e o Compose pessoal `gaucha-gestao-local` com Identity ativo. Exige a sala ativa sem foto atual e sem contato cadastrado. Cria apenas contas sintéticas admitidas por senha. Exercita agenda, pedidos próprios e privacidade, cancelamento, aprovação, recusa, reserva direta, edição e históricos. Grava e relê contato e foto pelo caminho real, confere a recarga, o JPEG entregue pelo Storage, o enquadramento, a rejeição de versão antiga e as negativas de leitura ou escrita. Ao encerrar, remove apenas as fixtures e sua trilha, restaura a configuração de foto e verifica a ausência dos registros e objetos do ensaio.
+
+Os roteiros `room-booking-browser.mjs` (AG-03) e `room-booking-d5b-browser.mjs` mantêm o recorte histórico documentado em [AG-02/03](AG02_AG03_LOCAL.md). Foram escritos para o runtime anterior e para a interface com **Novo pedido** como botão. A negativa de fila para administrador no roteiro D5-B descreve a política revogada. Use a experiência integrada acima para a regressão das operações e dos modos vigentes.
+
+A largura de 320 px é emulada pelo Chromium. O ensaio real comprova persistência entre requisições e depois de recarregar a página. O aceite AG-05 continua na [Issue #84](https://github.com/The-Vonky/Gaucha-Gestao/issues/84).
+
+Em 25/11/2026, os três roteiros de navegador passaram no notebook. O ensaio real confirmou a remoção dos registros, identidades, sessões, auditoria e objetos sintéticos, com restauração da configuração de foto. As nove suítes de Salas e Comunicados passaram com 74 testes, incluindo as negativas em banco em memória. O ledger local já continha GG-08/GG-09, GG-05B, AG-D5-C e a projeção de reservas do banner.
