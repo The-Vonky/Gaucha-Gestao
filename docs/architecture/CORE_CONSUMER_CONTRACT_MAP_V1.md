@@ -8,6 +8,8 @@
 - Snapshot documental analisado: `102c57684ec631b6637ddd4b93fbe232e9005153` (inclui o brief).
 - Integração prevista pelo brief: `integration/core-foundation-v2`; este documento não realiza integração.
 
+> **Leitura atual (25/11/2026).** Este inventário de consumidores e legados preserva outubro de 2026. A [PR #38](https://github.com/The-Vonky/Gaucha-Gestao/pull/38) consolidou os contratos Core da onda 2. O [Mapa de Implementação](IMPLEMENTATION_MAP.md) registra consumidores atuais, incluindo ABC, Vendas, Salas, Comunicados e Relatos. A decisão AG-D11 tornou Salas independente do legado.
+
 ## 1. Resultado e limite do levantamento
 
 Antes do próximo módulo, estabilizar identidade/profile, autorização por atribuição e escopo, referências organizacionais e preservação dos atores históricos. Datas, dinheiro e arquivos precisam de convenções técnicas compatíveis, não de novos domínios universais no Core. Não há evidência para promover clientes comerciais, responsáveis de negócio, serviços, produtos, competências ou workflows ao Core.

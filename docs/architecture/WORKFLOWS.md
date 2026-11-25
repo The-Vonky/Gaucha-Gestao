@@ -1,6 +1,6 @@
 # Fluxos funcionais, técnicos e de exceção
 
-**Baseline dos fluxos originais:** main após PR #69 (`fed0e0f`, 20/10/2026), com evoluções indicadas por perfil ou seção. Os diagramas descrevem contratos. Evidências de testes manuais e implantação são registradas por ambiente.
+**Baseline atual de referência:** [Mapa de Implementação](IMPLEMENTATION_MAP.md), `e0b6f5c`. Os fluxos originais foram registrados em `fed0e0f` (20/10/2026). Os diagramas descrevem contratos. Evidências de testes manuais e implantação são registradas por ambiente.
 
 ## 1. Login, obtenção de perfil e navegação (AS-IS)
 
@@ -41,14 +41,14 @@ sequenceDiagram
 ~~~mermaid
 flowchart TD
   S["Selecionar unidade permitida"] --> C["create_inspection: criar inspeção"]
-  C --> FORM["Checklist versionado (9 seções / 158 critérios)"]
+  C --> FORM["Checklist versionado"]
   FORM --> ANSWER["Salvar respostas / observações sob RLS"]
   ANSWER --> EVID["Anexar evidências, se necessário"]
   EVID --> READY{"Finalização atende regras e versão?"}
   READY -- "Não" --> ERR["Modal/erro: revisar pendências; preservar dados"]
   ERR --> ANSWER
   READY -- "Sim" --> FINAL["finalize_inspection"]
-  FINAL --> REPORT["Relatórios / XLSX / impressão"]
+  FINAL --> REPORT["Relatórios / XLSX e PDF"]
   FINAL --> PLAN["Plano corretivo quando aplicável"]
   FINAL --> REOPEN{"Reabertura autorizada?"}
   REOPEN -- "Sim" --> OPEN["reopen_inspection / novo ciclo controlado"]
@@ -87,7 +87,7 @@ sequenceDiagram
   end
 ~~~
 
-O download usa URL curta assinada no perfil base ou leitura privada autenticada no [DEV com Identity](SECURITY.md#storage-privado-e-miniaturas). Remoção lógica é feita via RPC do domínio; retenção/purge físico e reconciliação operacional continuam exigindo gates. Os **dois fluxos** (Checklist Evidence e Action Plan Evidence) têm limites e políticas distintos: ver [CHECKLIST_EVIDENCE_V1](../modules/audit/CHECKLIST_EVIDENCE_V1.md), [EVIDENCE_STORAGE_V1](../briefs/EVIDENCE_STORAGE_V1.md) e respectivos tests/integration. O terceiro bucket privado identificado pelo planejamento é destinado às imagens de capa de unidade; não o confundir com estes dois fluxos.
+O download usa URL curta assinada no perfil base ou leitura privada autenticada no [DEV com Identity](SECURITY.md#storage-privado-e-miniaturas). Remoção lógica é feita via RPC do domínio; retenção/purge físico e reconciliação operacional continuam exigindo gates. Os **dois fluxos** (Checklist Evidence e Action Plan Evidence) têm limites e políticas distintos: ver [CHECKLIST_EVIDENCE_V1](../modules/audit/CHECKLIST_EVIDENCE_V1.md), [EVIDENCE_STORAGE_V1](../briefs/EVIDENCE_STORAGE_V1.md) e respectivos tests/integration. Capas, originais XLSX, fotos de salas e anexos de Relatos seguem seus próprios contratos de Storage. O [mapa](IMPLEMENTATION_MAP.md#storage-privado) identifica os buckets e o fluxo nativo de miniaturas.
 
 ## 4. Plano de Ação, incluindo origem em Auditoria (AS-IS)
 
@@ -125,7 +125,7 @@ sequenceDiagram
   end
 ~~~
 
-**Não afirmar** que existe serviço backend confiável para *criar ou recuperar contas Auth com privilégio*: design de Identity Boundary v1 permanece pendente de GO humano. Alterações de perfis, papéis e atribuições são distintas de criar uma identidade Auth. Consulte [ACCESS_GOVERNANCE_V1](ACCESS_GOVERNANCE_V1.md), [ACCESS_GOVERNANCE_READ_V1](../modules/core/ACCESS_GOVERNANCE_READ_V1.md) e [ACCOUNT_LIFECYCLE_V1](ACCOUNT_LIFECYCLE_V1.md).
+No perfil opt-in, GG-05B fornece cadastro e reset pelo serviço interno de Identity. A alteração de perfis, papéis e atribuições continua no Core, com privilégios auditados. Recuperação emergencial do administrador, recuperação integral do perfil e adoção operacional continuam pendentes. Consulte [ACCESS_GOVERNANCE_V1](ACCESS_GOVERNANCE_V1.md), [ACCESS_GOVERNANCE_READ_V1](../modules/core/ACCESS_GOVERNANCE_READ_V1.md) e [ACCOUNT_LIFECYCLE_V1](ACCOUNT_LIFECYCLE_V1.md).
 
 ## 6. Publicação e conferência da Curva ABC v1 (AS-IS)
 
@@ -200,7 +200,10 @@ Fontes: [MODULE_ROADMAP](../migration/MODULE_ROADMAP.md), [CORE_CONSUMER_CONTRAC
 | Evidências | arquivo não aceito, upload parcial, objeto não confirmado, cross-unit, download negado | tests/integration/audit-evidence.mjs; tests/integration/evidence.mjs |
 | Planos | status/transição indevida, escopo errado, conflito e evidência inválida | tests/action-plans-*.test.ts; tests/integration/action-plans.mjs |
 | Relatórios | escopo indevido, strings maliciosas em XLSX, impressão mobile | tests/audit-reporting-*.test.*; tests/integration/reporting.mjs |
-| Curva ABC | XLSX bloqueado, acesso indevido, conflito, original divergente, checagem registrada | tests/abc-*.test.*; tests/integration/abc.mjs; Issue #70 |
+| Curva ABC | XLSX bloqueado, acesso indevido, conflito, original divergente, checagem registrada | tests/abc-*.test.*; tests/integration/abc.mjs; [D13/#86](https://github.com/The-Vonky/Gaucha-Gestao/issues/86) |
+| Vendas | escopo de unidade, criação/edição negadas, recorte de agregados e exportação | tests/sales-*.test.* e job sales-integration |
+| Salas | escopo e gestão indevida, conflito de reserva, foto aposentada negada | [PR #134](https://github.com/The-Vonky/Gaucha-Gestao/pull/134) e [aceite](../modules/room-booking/ACCEPTANCE_V1.md) |
+| Comunicados e Relatos | publicação/consulta indevida, anexo sem reserva, usuário inativo ou sem admissão | tests/integration/announcements-security.mjs e gg05b-identity.mjs |
 | Infra | dependência Storage derrubada, migração em alvo indevido | .github/workflows/infra-validate.yml |
 
 **Não registrar PASS baseado apenas nesta lista.** Execute CI no SHA de entrega, P1–P9 nos dispositivos e O1–O8 no ambiente real, conforme [aceite](../modules/audit/QUALITY_ACCEPTANCE_V1.md).

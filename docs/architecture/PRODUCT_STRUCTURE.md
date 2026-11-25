@@ -1,6 +1,6 @@
 # Estrutura do produto e navegação
 
-**Estado: baseline de produto aceita em 24/09/2026.** A árvore representa **áreas previstas**, não prova que todas foram implementadas. Curva ABC v1 já entrou no código; Agendamento de Salas possui [AG-00 proposto](../briefs/ROOM_BOOKING_V1.md).
+**Estado: baseline de produto aceita em 24/09/2026.** A árvore representa **áreas previstas**, não prova que todas foram implementadas. A [navegação implementada](IMPLEMENTATION_MAP.md#domínios-integrados-à-main) inclui Curva ABC, Vendas, Salas, Comunicados e Relatos, além de Core, Auditorias e Planos.
 
 ## Arquitetura da informação para a pessoa usuária
 

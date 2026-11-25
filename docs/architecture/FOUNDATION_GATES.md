@@ -6,7 +6,7 @@
 
 **Baseline de revisão original:** 02/10/2026, `22334995b5b239274c5c1adc98495357ec0d7980`. Contagens de testes e status antigos são **fotografias históricas**, não o HEAD atual.
 
-Fontes: [conclusão factual da Qualidade](../modules/audit/QUALITY_COMPLETION_V1.md), [aceite P1–P9/O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md), [Plano Diretor](../planning/PLANO_DIRETOR_2026.md). O software Qualidade v1 e Core estão na `main`; Curva ABC v1 foi integrada posteriormente. **Nenhuma CI descartável comprova produção. PROD NO-GO.**
+Fontes: [conclusão factual da Qualidade](../modules/audit/QUALITY_COMPLETION_V1.md), [aceite P1–P9/O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md), [Plano Diretor](../planning/PLANO_DIRETOR_2026.md). O [Mapa de Implementação](IMPLEMENTATION_MAP.md) acompanha as capacidades integradas, com evidência por ambiente. O [Guia Mestre GG-01–GG-15](../planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md) acompanha os bloqueadores e a próxima ação de cada etapa. **PROD NO-GO.**
 
 ## Objetivo
 

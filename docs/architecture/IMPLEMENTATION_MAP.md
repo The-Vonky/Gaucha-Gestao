@@ -1,95 +1,46 @@
-# Mapa rastreável: funcionalidades, contratos e código
+# Mapa rastreável de implementação
 
-**VEN-05A — 03/11/2026:** `modules/sales/export/{api,types,workbook,download,SalesExportActions}`
-e `public.sales_export_page`, migration `20261103175405_sales_excel_export.sql`:
-Excel filtrado/histórico autorizado, separado do read-model analítico; testes
-`sales-export-*` e integração CI Auth/PostgREST/Chromium. [Contrato](../modules/sales/VEN05A_EXCEL_EXPORT.md).
-Refinamento de 04/11: exportação somente em Lançamentos, ações após filtros,
-XLSX com nome legível/total/criador; `20261104122256` acrescenta nome às RPCs
-sem ampliar escopos. Aplicação e conferência somente no Supabase local autorizado;
-revisão/merge e homologação visual de Excel pendentes. VEN-04B integrada #94
-(`91bd16b`); as referências a revisão prévia abaixo são registros históricos.
+**Baseline de código e GitHub em 25/11/2026:** `origin/main` em [`e0b6f5c`](https://github.com/The-Vonky/Gaucha-Gestao/commit/e0b6f5cf563eb66a45a16e03a9137d36211d9ef3), merge da PR #134. O mapa descreve o que o checkout contém. Os resultados de testes, disponibilidade no DEV e aceites abaixo correspondem aos recortes citados. O [Guia Mestre](../planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md) define os estados e mantém as pendências de liberação. **PROD NO-GO.**
 
-**MEL-01 — 30/10/2026:** limpeza autorizada somente no notebook, catálogo de unidades
-vazio, fixtures com teardown físico dirigido e correção de consultas globais sem unidades
-(`20261030145036_sales_empty_units.sql`). [Evidências](../modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md).
-Na data deste registro, a PR #94 ainda estava em revisão e sem deploy.
+## Aplicações e fronteiras
 
-**Vendas — adendo de 29/10/2026:** VEN-01/02/03 integradas nas PRs #90/#91/#92.
-VEN-04A integrada pela PR #93 (`7ddcd31`). O [dashboard gerencial VEN-04B](../modules/sales/VEN04B_DASHBOARD_UI.md) foi integrado à `main` em 03/11/2026 pela [PR #94](https://github.com/The-Vonky/Gaucha-Gestao/pull/94) (`91bd16b`). As [evidências sintéticas locais](../modules/sales/VEN04B_LOCAL_VALIDATION.md) registram a validação técnica. A homologação funcional VEN-07 e a liberação operacional VEN-08 têm aceite próprio.
-O administrador mantém sete capacidades de Vendas. A
-[GG-04](AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04) define Sales Manager
-e Sales Viewer como os dois perfis operacionais protegidos.
-[Histórico VEN-04B](../modules/sales/VEN04B_ACCESS_CORRECTION.md).
-Sem homologação VEN-07 ou alterações em STAGING/PROD. O restante mantém sua fotografia histórica.
+- [`apps/web`](../../apps/web) reúne App Shell, Core web, Shared e módulos na mesma SPA React. [`navigation.ts`](../../apps/web/src/app/navigation.ts) e [`App.tsx`](../../apps/web/src/app/App.tsx) compõem a navegação e carregam as entradas dos módulos. Shared fornece UI e utilitários neutros. O shell apresenta somente caminhos autorizados pela sessão, e o banco aplica a autorização efetiva.
+- [`apps/core-identity`](../../apps/core-identity) é o componente interno do Core para cadastro e ciclo de credenciais e admissão de sessões. O perfil estrito é opt-in no DEV. Kong roteia Auth e Storage por Identity e o PostgREST verifica admissão por pre-request. GoTrue possui a identidade Auth, e cadastro, perfis, papéis, atribuições e auditoria sistêmica pertencem ao Core. [Contrato e fronteiras](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev).
+- A aplicação usa PostgreSQL, PostgREST, Storage, GoTrue e Kong. O Compose local acrescenta Studio, pg_meta e imgproxy ao perfil base. [Ambientes e dependências](STACK_INTEGRATION.md) · [ADR-001](../decisions/ADR-001-modular-monolith.md).
 
-**Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. A autorização vigente é [AG-D5-C](../modules/room-booking/D5C_ADMIN_MODES.md). [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).
+## Domínios integrados à main
 
-**Fotografia:** main após PR #69 (`fed0e0f`, 20/10/2026). Inventário de arquivos/contratos, **não relatório de aprovação de deploy ou de testes executados agora**.
-
-## Limites da implementação atual
-
-| Superfície | Implementação encontrada | Contratos/DDL e testes correspondentes | Estado |
+| Domínio e rotas | Adaptadores, schema e operações representativas | Contrato e validação registrada | Aceite e pendência |
 | --- | --- | --- | --- |
-| Shell, login e navegação | apps/web/src/app/{App.tsx,navigation.ts}; core/auth/{AuthProvider.tsx,Login.tsx}; core/client.ts | core.profiles, core.my_access, [autorização](AUTHORIZATION.md); tests/login.test.tsx, tests/authorization.test.ts | AS-IS |
-| Avisos institucionais GG-10 | app/AnnouncementLayout.tsx; shared/announcements/; modules/announcements/ | [Contrato GG-10](../ui/GG10_INSTITUTIONAL_ANNOUNCEMENTS.md); tests/announcements.test.tsx; tests/integration/announcements-browser.mjs | Barra compacta, administração por RPC e refinamento de agenda/cores integrados na PR #117 |
-| Relatos e sugestões GG-11 | modules/feedback/; app/App.tsx; app/navigation.ts | [Contrato GG-11](../modules/feedback/FEEDBACK_V1.md); tests/integration/announcements-security.mjs | Recebimento interno e consulta exclusiva por Platform Administrator integrados na PR #117 |
-| Administração Core | apps/web/src/core/admin/ (usuários, papéis, permissões, unidades, setores, logs, revisões de acesso) | supabase/migrations/*core*.sql; [ACCESS_GOVERNANCE_READ](../modules/core/ACCESS_GOVERNANCE_READ_V1.md); tests/admin*.test.*, tests/integration/admin.mjs | AS-IS |
-| Auditorias | apps/web/src/modules/audit/; api.ts (create_inspection, finalize_inspection, reopen_inspection, inspection_summaries), scoring.ts | supabase/migrations/*audit*.sql; [fonte funcional](../modules/audit/AUDIT_SOURCE_OF_TRUTH.md); tests/audit*.test.*, tests/integration/audit.mjs | AS-IS |
-| Login/issuer e executor local de miniaturas | scripts/audit-derivative-runtime-*.mjs; scripts/audit-derivative-dev.mjs; migrations 20261104192428/20261105194432 | [Iniciar/parar e prova automática](../modules/audit/AUD_IMG_02_LOCAL_EXECUTOR_20261105.md) | Sessão de terminal, auditoria/corte explícitos; mesmos cinco grants; NOLOGIN ao encerrar; sem serviço permanente |
-| Executor legado de miniaturas AUD-IMG-02 | scripts/dev.mjs; scripts/audit-derivative-{dev,runtime,worker,encoder,decoder}.mjs; RPCs de miniatura/estado; flag versionada VITE_AUDIT_EVIDENCE_THUMBNAILS=false | [Contrato e prova em duas auditorias](../modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md), global_new com corte, validade renovável/NOLOGIN e polling | PR #101 integrada; migration 20261111125540 preservada pela #120; escrita negada adicional parcial por timeout; sem backfill/deploy |
-| Miniaturas nativas do checklist | evidenceImages.ts; Storage v1.72.1; imgproxy v4.0.17; npm run dev com o Compose DEV | [Runbook do Compose](../operations/DOCKER_LOCAL_STANDARDIZATION.md), assinatura via RLS do original, render sob demanda e cache volátil | Integradas pela #120 e disponibilizadas no Compose DEV pela #121; homologação no localhost com Galaxy S24 Ultra registrada na #120 |
-| Medição de tráfego e carregamento de rotas | scripts/benchmark-{audit-evidence,frontend}-local.mjs; tests/integration/audit-evidence-traffic.mjs; apps/web/src/app/App.tsx | [Resultados 10/30/100, HTTP e antes/depois](../modules/audit/MED01_FRONTEND_CLOSURE_20261106.md) | MED-01 e revisão AUD-IMG-04 locais; React.lazy/Suspense; sem mudança de Auth/RLS/infra, homologação física pendente |
-| Checklist e suas evidências | apps/web/src/modules/audit/{InspectionChecklist.tsx,evidence.ts,useChecklistEvidence.ts,EvidenceImage.tsx,evidenceImages.ts}; cache neutro shared/privateImageCache.ts; RPCs begin/confirm/remove | [CHECKLIST_EVIDENCE_V1](../modules/audit/CHECKLIST_EVIDENCE_V1.md); [tráfego e estado dos derivados](../modules/audit/EVIDENCE_IMAGE_TRAFFIC.md); tests/integration/audit-evidence.mjs | AS-IS |
-| Planos de Ação | apps/web/src/modules/action-plans/{api.ts,lifecycle.ts,ActionPlanPage.tsx} | schemas/migrations action_plans; [brief](../briefs/ACTION_PLAN_DOMAIN_V1.md); tests/action-plans*.test.*, tests/integration/action-plans.mjs | AS-IS |
-| Evidências dos planos | apps/web/src/modules/action-plans/evidence.ts, PlanEvidence.tsx; begin/confirm/remove | [evidence brief](../briefs/EVIDENCE_STORAGE_V1.md); tests/integration/evidence.mjs | AS-IS |
-| Relatórios / exportação | apps/web/src/modules/audit/reporting/{api.ts,workbook.ts,PrintSurface.tsx,download.ts} | [reporting brief](../briefs/AUDIT_EXPORT_REPORTING_V1.md); tests/audit-reporting*.test.*, tests/integration/reporting.mjs | AS-IS |
-| Curva ABC v1 + áreas v2 (em PR) | apps/web/src/modules/abc/{AbcModule.tsx,AbcOverview.tsx,AbcImports.tsx,AbcCompare.tsx,AbcReports.tsx,AbcProducts.tsx,AbcCategories.tsx,AbcImport.tsx,AbcRevision.tsx,scope.tsx,charts.tsx,api.ts,import/*} | migrations 20261020120000_abc_domain_v1.sql e 20261021120000_abc_analytics_read_v1.sql; abc/abc_private, bucket abc-source-files; [brief](../briefs/ABC_DOMAIN_V1.md); tests/abc-*.test.*; tests/integration/abc.mjs | AS-IS integrado, aceite manual pendente |
-| Unidade e imagens de capa | apps/web/src/core/unitCovers.ts, unitCoverImage.ts, apps/web/src/core/admin/UnitCoverEditor.tsx | [UNIT_COVER_V1](../modules/core/UNIT_COVER_V1.md); tests/integration/unit-cover.mjs | AS-IS |
-| Infraestrutura mínima | infra/supabase/docker-compose.yml, scripts/ops/*, .github/workflows/infra-validate.yml | [infra/README](../../infra/README.md), [UPSTREAM](../../infra/supabase/UPSTREAM.md), ADR-006 Proposed | AS-IS **CI/lab**, NÃO PROD |
-| Serviço interno Core Identity | `apps/core-identity/`, com Auth, Kong, PostgREST e Storage | [GG-05B](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) e [runbook](../operations/GG_05B_IDENTIDADE_DEV.md) | Integrado e homologado no DEV pela PR #127. Recuperação emergencial, revisão aplicável e adoção operacional pendentes. |
-| Agendamento de Salas AG-01/02/03 | apps/web/src/modules/rooms/; rota /rooms | [AG-D5-C](../modules/room-booking/D5C_ADMIN_MODES.md) sobre a fundação e operações da PR #88 | PR #129 integrada e homologada funcionalmente no DEV; [AG-05 pendente](../modules/room-booking/ACCEPTANCE_V1.md) |
-| Vendas / Maquininhas VEN-01/02/03/04A/04B | `sales` privado; `apps/web/src/modules/sales/`; `SalesModule`, `SalesPage`, `EntryEditor`, `SalesDashboardPage`, `DashboardCharts`; `/sales` como entrada, `/sales/entries` e `/sales/dashboard` no módulo Comercial expansível | [papéis GG-04](AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04); `tests/sales-*`, job `sales-integration`; [operação](../modules/sales/VEN04A_OPERATIONS_UI.md) e [dashboard/matriz EQ01–22](../modules/sales/VEN04B_DASHBOARD_UI.md) | VEN-01/02/03/04A integradas #90–93. VEN-04B integrada pela [PR #94](https://github.com/The-Vonky/Gaucha-Gestao/pull/94). Homologação funcional VEN-07 e liberação operacional VEN-08 pendentes. |
-| ISO, satisfação, frota, planejado-realizado, contratos | Sem integração desses domínios na main (ABC já integrada) | [roadmap de migração](../migration/MODULE_ROADMAP.md) e mapa de consumidores Core | **FUTURO** |
+| **Core e shell** — `/`, `/admin/users`, `/admin/roles`, `/admin/permissions`, `/admin/units`, `/admin/sectors`, `/admin/logs` | [`core/auth`](../../apps/web/src/core/auth) e [`core/admin`](../../apps/web/src/core/admin). `auth.users` vincula-se a `core.profiles`. `core.my_access`, `core.user_directory`, `core.unit_access_summary`, `core.audit_log_page` e resolvedores de referências. Capas por `unit_covers` e RPCs de reserva e confirmação. | [Core v2](CORE_FOUNDATION_V2.md), [governança](../modules/core/ACCESS_GOVERNANCE_READ_V1.md), [capas](../modules/core/UNIT_COVER_V1.md). `tests/*access*`, `tests/audit-log-read-model-database.test.ts`, `tests/integration/admin.mjs` e `unit-cover.mjs`. | Fundação integrada. Conferir escopos e negativas na matriz GG-06 da candidata. |
+| **Identity GG-05A/B** — cadastro e reset na administração de usuários, login e troca obrigatória | `apps/core-identity`, `core` e `private`, Auth e admissão por sessão/geração. O serviço mantém a administração privilegiada de credenciais e encaminha o acesso permitido. | [PR #127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127) (`df113c2`), [runbook DEV](../operations/GG_05B_IDENTIDADE_DEV.md), `tests/integration/gg05b-identity.mjs` e job `identity-integration`. | Homologação DEV nos recortes registrados. Pendem ciclo integral pelo Vite (`npm run dev`), recuperação emergencial do administrador, restore completo com Identity, revisão de segurança e adoção com GO explícito. |
+| **Auditorias e Qualidade** — `/audit`, `/audit/units/:unitId`, `/audit/inspections/:inspectionId` | [`audit/api.ts`](../../apps/web/src/modules/audit/api.ts), `evidence.ts`, `reporting/api.ts`. `audit`/`audit_private`, `inspection_summaries`, `create_inspection`, `finalize_inspection`, `reopen_inspection`, `inspection_export`, `unit_history_export`. Checklists com revisões, evidências privadas e exportação PDF/Excel com fotos. Origem rastreável de planos. | [Fonte funcional](../modules/audit/AUDIT_SOURCE_OF_TRUTH.md), [evidências](../modules/audit/CHECKLIST_EVIDENCE_V1.md), [exportação](../modules/audit/REPORT_EVIDENCE_EXPORT.md). `tests/audit-*`, `audit.mjs`, `audit-evidence.mjs`, `reporting.mjs` e [PR #125](https://github.com/The-Vonky/Gaucha-Gestao/pull/125). As referências estruturadas [v1](../reference/AUDIT_CHECKLIST_V1.json) e [revisões v2](../reference/AUDIT_CHECKLIST_V2_REVISIONS.json) sustentam testes/contratos. | Miniaturas nativas validadas no localhost com Galaxy S24 Ultra na [PR #120](https://github.com/The-Vonky/Gaucha-Gestao/pull/120). Exportação e relatórios têm prova técnica datada. [P1–P9/O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md) mantêm aceite próprio. |
+| **Planos de Ação** — `/action-plans`, `/action-plans/:planId` | [`action-plans/api.ts`](../../apps/web/src/modules/action-plans/api.ts), `evidence.ts`, `lifecycle.ts`. `action_plans`/`action_plans_private`, `creation_scopes`, `create_manual_plan`, `plan_summaries`, `set_plan_status`, `verify_plan`. Origem manual ou Auditoria, atribuição/responsabilidade por escopo, tratamento, verificação, evidências e listagem/detalhe com filtros. | [Domínio](../briefs/ACTION_PLAN_DOMAIN_V1.md), [evidências](../briefs/EVIDENCE_STORAGE_V1.md), `tests/action-plans*`, `tests/integration/action-plans.mjs`, `evidence.mjs`. | Validação em memória e via integração Auth/REST/Storage e Chromium na CI. A operação segue o aceite da Qualidade. Exportação própria Excel/PDF de planos permanece fora do recorte integrado. |
+| **Curva ABC** — `/abc`, `overview`, `imports`, `compare`, `reports`, `products`, `categories`, importação por unidade e detalhe de revisão | [`abc/api.ts`](../../apps/web/src/modules/abc/api.ts), `import/*`. `abc`/`abc_private`, `unit_series`, `revision_detail`, `publish_revision`, `record_file_check`, `overview`, `compare`, `product_history`. O navegador interpreta o XLSX. SQL valida payload e invariantes, e o original fica privado com conferência posterior. Permissões de leitura/publicação são distintas e limitadas por unidade. | [Contrato](../briefs/ABC_DOMAIN_V1.md), [guia](../modules/abc/OPERATOR_GUIDE_V1.md), [matriz de equivalência](../modules/abc/MATRIZ_EQUIVALENCIA_LEGADO.md), `tests/abc-*`, `tests/integration/abc.mjs`. PRs #69, #78–81 integradas. | SQL não reinterpreta os bytes físicos do XLSX nem garante equivalência com o legado. [#70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) encerrada. A validação de amostras ERP/Excel [D13/#86](https://github.com/The-Vonky/Gaucha-Gestao/issues/86) segue aberta. |
+| **Vendas e Maquininhas** — `/sales`, `/sales/entries`, `/sales/dashboard` | [`sales/api.ts`](../../apps/web/src/modules/sales/api.ts) e [`export/api.ts`](../../apps/web/src/modules/sales/export/api.ts). `sales`/`sales_private` e `public.sales_*`, como `sales_entries_list`, `sales_entry_update`, `sales_dashboard` e `sales_export_page`. Lançamentos Stone/PIX, agregados/ajustes autorizados e Excel por filtros ou histórico autorizado. | [VEN-00](../briefs/VEN-00_consolidada_vendas_maquininhas_2026-10-28.md), [dashboard](../modules/sales/VEN04B_DASHBOARD_UI.md), [Excel](../modules/sales/VEN05A_EXCEL_EXPORT.md). PRs #89–94, #98 e #126. `tests/sales-*` e job `sales-integration`. | GG-04 homologada no DEV para Sales Manager/Viewer e Platform Administrator. Sales Operator é histórico. VEN-05B e VEN-06 planejadas. VEN-07 (homologação integral) e VEN-08 (operação/corte) pendentes. |
+| **Agendamento de Salas** — `/rooms` | [`rooms/api.ts`](../../apps/web/src/modules/rooms/api.ts), `public.room_booking_*` sobre `room_booking` privado. Agenda, pedidos, gestão, histórico de pedidos e reservas diretas, contato, foto privada com enquadramento e projeção de reservas no banner. Em AG-D5-C o administrador global tem gestão efetiva e alterna as vistas Requester/Manager. | [Fundação](../modules/room-booking/AG01_FOUNDATION.md), [AG-D5-C](../modules/room-booking/D5C_ADMIN_MODES.md), [experiência](../modules/room-booking/EXPERIENCE_V1.md). PRs #88, #116 e #129. [PR #134](https://github.com/The-Vonky/Gaucha-Gestao/pull/134) registra regressão Gestão e UX simuladas e integração real no Vite com Identity, persistência, troca/enquadramento/remoção da foto, objeto aposentado negado e limpeza/restauração de fixtures. | AG-D5-C homologada no DEV. Chromium a 320 px é prova de viewport. [AG-05/#84](../modules/room-booking/ACCEPTANCE_V1.md) depende de secretária, responsável e aparelho físico. Módulo independente do legado. |
+| **Comunicados** — cabeçalho e `/admin/announcements` | [`announcements/api.ts`](../../apps/web/src/modules/announcements/api.ts), `announcements`/`announcements_private` e `public.announcements_published`, `announcements_manage_list`, `announcements_notice_save`. Administração, histórico e vigência exclusiva, categorias e cores independentes, leitura autenticada por perfil ativo autorizado. | [Contrato](../modules/announcements/ADMINISTRATION_V1.md), `tests/announcements.test.tsx`, `announcements-browser.mjs`, `announcements-security.mjs`. PRs #102, #103, #117. | Ensaios DEV e CI nos recortes citados. Publicação institucional, responsáveis e aceite no ambiente-alvo pendentes. |
+| **Relatos e sugestões** — ação permanente do cabeçalho e `/admin/feedback` | [`feedback/api.ts`](../../apps/web/src/modules/feedback/api.ts), `feedback` privado, `public.feedback_*`. Recebimento idempotente por perfil ativo e consulta/download por Platform Administrator global. Anexo fica em bucket privado. | [Contrato GG-11](../modules/feedback/FEEDBACK_V1.md), PRs #117 e [#133](https://github.com/The-Vonky/Gaucha-Gestao/pull/133). `identity-storage-path.test.ts`, `announcements-security.mjs` e `gg05b-identity.mjs`. | Upload e download no perfil estrito corrigidos, testados e homologados pelo mantenedor em DEV. Retenção, responsáveis e aceite operacional integral pendentes. |
 
-## Chamadas RPC representativas, verificadas nos adaptadores
+A integração Auditorias → Planos de Ação usa contrato de origem. Cada módulo consulta referências organizacionais e autorizações no Core. Auditorias de Qualidade e `core.system_audit_log` são domínios distintos. Veja [contratos da API](API_CONTRACTS.md) e [roadmap de módulos futuros](../migration/MODULE_ROADMAP.md).
 
-| Domínio | Operações observadas | Notas |
-| --- | --- | --- |
-| Core/Sessão | my_access; leitura de profiles | Resolver permissões da sessão |
-| Audit | units, inspection_summaries, create_inspection, finalize_inspection, reopen_inspection | Acesso por autorização/versão no backend |
-| Checklist Evidence | checklist_evidence, checklist_evidence_pending_count, begin_checklist_evidence_upload, confirm_checklist_evidence_upload, remove_checklist_evidence | Reserva → Storage → confirmação |
-| Action Plans | plan_summaries, creation_scopes, create_manual_plan, update_plan, set_plan_status, verify_plan | Dependências/transições regidas pelo domínio |
-| Action Plan Evidence | plan_evidence, begin_evidence_upload, confirm_evidence_upload, remove_evidence | Bucket privado + download assinado |
-| Curva ABC | units, unit_series, revision_detail, begin_source_upload, confirm_source_upload, publish_revision, record_file_check; v2 (leitura): overview, competency_products, product_history, compare, unit_revisions | Histórico imutável, upload privado e conferência posterior |
+## Storage privado
 
-Este quadro é uma **amostra rastreada do frontend**, não um OpenAPI completo, autorização para chamada direta ou contrato de estabilidade de todas as assinaturas. As migrations SQL e as funções exportadas pelos adaptadores são a evidência executável; qualquer implementação nova exige consultar assinaturas/parâmetros reais e executar testes.
+| Bucket versionado | Domínio e uso |
+| --- | --- |
+| `unit-covers` | Core, capas privadas de unidades. |
+| `audit-checklist-evidence` | Auditorias, originais das evidências por critério. A miniatura nativa transforma esse original sob demanda via Storage/imgproxy. |
+| `audit-evidence-thumbnails` | Derivados do executor anterior, preservado com suas migrations e ferramentas de laboratório. O fluxo nativo atual usa o original e cache volátil. [Histórico e padrão DEV](../operations/DOCKER_LOCAL_STANDARDIZATION.md). |
+| `action-plan-evidence` | Anexos de Planos de Ação. |
+| `abc-source-files` | XLSX originais da Curva ABC. |
+| `room-covers` | Fotos privadas de salas. |
+| `feedback-attachments` | PNG/JPEG de Relatos. No ingresso estrito só upload reservado sem upsert e download autenticado no contrato do módulo. O navegador verifica assinatura dos bytes, Storage limita MIME declarado e tamanho, e SQL confere objeto e metadados. |
 
-## Propriedade do dado
+Os modos de leitura se apoiam nas políticas de cada bucket e no [perfil de Storage](SECURITY.md#storage-privado-e-miniaturas). A disponibilidade em um ambiente depende do ledger, do runtime e da configuração aplicada.
 
-~~~mermaid
-flowchart LR
-  AUTH["auth — usuários/sessão"] --> CORE["core — perfis e escopos"]
-  CORE --> AUD["audit — inspeções, respostas, checklist/evidence metadata"]
-  CORE --> PLAN["action_plans — planos e evidence metadata"]
-  AUD -. "origem rastreável de plano, contrato autorizado" .-> PLAN
-  AUD --> S["Storage API — checklist-evidence"]
-  PLAN --> S2["Storage API — action-plan-evidence"]
-  CORE --> S3["Storage API — capas de unidade"]
-  CORE --> ROOMS["room_booking — sala, pedidos e reservas privados"]
-  API["public.room_booking_* — RPCs autorizadas"] --> ROOMS
-  CORE --> ABC["abc — séries/revisões/linhas"]
-  ABC --> S4["Storage API — abc-source-files"]
-  CORE --> SALES["sales — agregados diários privados"]
-  SALES_UI["Comercial /sales/entries — operações VEN-04A"] --> SALES_API
-  SALES_DASH["Comercial /sales/dashboard — gerencial VEN-04B"] --> SALES_API
-  SALES_API["public.sales_* — cinco RPCs VEN-02 + dashboard VEN-03 + referências VEN-04A"] --> SALES
-~~~
+## Evidência por ambiente
 
-Relações representam dependência/autorização, **não ownership compartilhado nem join livre**. Os quatro buckets privados e seus nomes/limites devem ser confirmados pelas migrations aplicáveis. **Audit (domínio de qualidade)** não é a mesma coisa que core.system_audit_log (trilha de segurança).
-
-## Evidência e atualização
-
-A evidência histórica de implementação fica em [QUALITY_COMPLETION_V1](../modules/audit/QUALITY_COMPLETION_V1.md) e briefs Core v2; a evidência de **aceite final** depende de [QUALITY_ACCEPTANCE_V1](../modules/audit/QUALITY_ACCEPTANCE_V1.md). Para cada funcionalidade nova, incluir neste mapa arquivo público, migration/RPC, grants/RLS, testes, usuário/fluxo e estado do gate. Não marcar implementação futura como presente por constar da navegação pretendida em [PRODUCT_STRUCTURE](PRODUCT_STRUCTURE.md).
-
-GG-10 Entrega B: [persistência, autorização e fonte única](../modules/announcements/ADMINISTRATION_V1.md); migration append-only `20261105131548_announcements_administration.sql`; testes de domínio/API/UI e matriz real no CI existente.
+- **DEV pessoal.** A [PR #133](https://github.com/The-Vonky/Gaucha-Gestao/pull/133) registrou `gaucha-gestao-local`, nove serviços saudáveis com Identity, Vite por `npm run dev` e 47 migrations aplicadas naquele recorte. A [PR #134](https://github.com/The-Vonky/Gaucha-Gestao/pull/134) confirmou o runtime e o ledger pertinente ao Agendamento. Ubuntu nativo é o ambiente principal, com Windows/WSL2 e Docker Desktop também suportados.
+- **CI descartável.** [`validate.yml`](../../.github/workflows/validate.yml) e [`infra-validate.yml`](../../.github/workflows/infra-validate.yml) definem checks e integrações. Banco em memória, serviços reais descartáveis e navegação simulada cobrem recortes diferentes.
+- **DEV compartilhado.** A [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) é evidência histórica de duas contas. Conferir ambiente e versão antes de qualquer uso.
+- **C30/STAGING persistente.** [AS-BUILT de 30/10](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) e [inventário de 05/11](../operations/C30_GG01_INVENTORY_20261105.md) são registros datados. A versão implantada e o ledger atual dependem da GG-01, com autorização própria. Os gates e próximos passos estão no [Guia Mestre](../planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md).

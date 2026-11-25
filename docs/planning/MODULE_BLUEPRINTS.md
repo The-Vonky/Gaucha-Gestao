@@ -4,20 +4,20 @@
 
 ## Sequência e situação
 
-| Domínio | Situação registrada | Descoberta necessária antes de implementar |
+| Domínio | Situação registrada | Próxima descoberta ou aceite |
 | --- | --- | --- |
 | Auditoria / Qualidade | Integrado na plataforma | Prioridade é fechar gates físicos P1–P9 e operacionais O1–O8; não reimplementar |
 | Planos de Ação | Integrado como domínio transversal | Preservar interfaces públicas ao integrar futuros módulos |
 | ISO / Propostas ISO | Legado funcional concluído; nome histórico ambíguo | Resolver se trata propostas comerciais/clientes, ownership, navegação, política de dados |
-| Vendas / Maquininhas | Standalone concluído | Levantar importação, conciliação, totais, unidades, autorização e paridade |
+| Vendas / Maquininhas | VEN-01–04B e VEN-05A integradas | Acompanhar VEN-05B–08 no [roadmap](../migration/MODULE_ROADMAP.md). |
 | Pesquisa de Satisfação | Standalone concluído | Levantar questionários, anonimato, indicadores, períodos e tratamento de dados |
-| Reserva de Salas | Brief AG-00 integrado como documentação na PR #72, **PROPOSTO**, não implementado | [ROOM_BOOKING_V1](../briefs/ROOM_BOOKING_V1.md) e [ACCEPTANCE_V1](../modules/room-booking/ACCEPTANCE_V1.md): validar legado, secretária, permissões, privacidade, horário, conflitos e sequência do roadmap antes do AG-01 |
+| Agendamento de Salas | Fundação, operações e interface integradas, AG-D5-C vigente | Homologar [AG-05](../modules/room-booking/ACCEPTANCE_V1.md). O módulo é independente do legado (AG-D11). |
 | Frota | Origem em desenvolvimento | Identificar sistema-fonte, entidades, responsáveis, escopos e fluxos reais |
 | Planejado × Realizado | Standalone concluído, requer revisão | Levantar fórmulas, periodização, versões, centavos/precisão e conciliação |
-| Curva ABC | **Módulo v1 integrado à main pela PR #69; sem histórico migrado** | Homologar amostras ERP, versões, regras, RLS; comparações/exportação/categorias são etapas posteriores |
+| Curva ABC | **Módulo v1 integrado à main pela PR #69; sem histórico migrado** | Homologar amostras ERP/Excel, versões, regras e RLS. Comparações por unidade e classificação A/B/C são integradas |
 | ERP de Contratos | Standalone concluído; risco alto | Verificar backup/restore do legado, contratos, anexos, permissões e integridade |
 
-As descrições de funcionalidades em futuro são **perguntas de discovery**, não requisitos validados. A PR #72 acrescentou somente o brief e a matriz de aceite de Agendamento de Salas, ainda sem aprovação da secretária/dono funcional; não antecipar AG-01 nem alterar a ordem canônica do roadmap por inferência. A Curva ABC saiu da lista de módulos futuros ao integrar a PR #69 em 20/10/2026. Os outros domínios permanecem sem migração concluída; o merge não equivale a liberação produtiva.
+As descrições de funcionalidades futuras orientam a descoberta. O [mapa](../architecture/IMPLEMENTATION_MAP.md) identifica contratos já integrados e os recortes de validação.
 
 ## Template obrigatório antes de cada módulo
 
@@ -39,4 +39,4 @@ flowchart LR
 
 Core não depende de negócio; business modules só consomem Core/Shared e contratos públicos aprovados de outros módulos. Novos schemas e permissões surgem **quando implementados**, não por antecedência. A migração não é big bang e não deve eliminar standalone antes de backup íntegro, testes, validação de dados e janela de reversão. Não prometer que R2, backup físico, integração com ERP e relatórios cross-module existem antes de comprovação.
 
-**Ordem de expansão candidata:** após Qualidade aceita, resolver gate ISO/Propostas → Vendas → Satisfação → Salas → Frota → Planejado×Realizado → Contratos; prioridade pode mudar por decisão formal e risco do inventário.
+**Ordem histórica de expansão:** ISO/Propostas → Vendas → Satisfação → Salas → Frota → Planejado×Realizado → Contratos. Prioridades atuais seguem o [roadmap](../migration/MODULE_ROADMAP.md) e decisões específicas por domínio.

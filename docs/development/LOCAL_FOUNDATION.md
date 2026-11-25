@@ -35,6 +35,16 @@ O recorte a seguir acompanha a baseline de outubro de 2026. O [registro de outub
   e a prontidão operacional O1–O8 permanecem abertas conforme `docs/modules/audit/QUALITY_ACCEPTANCE_V1.md`.
   Production ready: NÃO.
 
+## Concorrência em testes locais
+
+Para repetir uma suíte com timeouts intermitentes, reduza a concorrência local e registre SHA, comando, falha e resultado da repetição. Exemplo verificado no notebook:
+
+```bash
+npm test -- --maxWorkers=4
+```
+
+Quatro workers são um exemplo. Ajuste à capacidade da máquina e evite sobrepor a suíte a integrações pesadas no mesmo runtime. Preserve as asserções e os comandos da CI. Na PR #130, Auditorias passou isoladamente e a suíte completa passou com dois workers. Na PR #133, timeouts e um HTTP 502 de origem indeterminada passaram em repetições isoladas. Na PR #134, a rodada inicial com 84 workers teve quatro timeouts. No SHA final da PR, a repetição com quatro workers aprovou 1.231 testes em 85 suítes. Esses recortes registram a recuperação dos ensaios, com diagnóstico causal ainda incompleto. [PR #130](https://github.com/The-Vonky/Gaucha-Gestao/pull/130) · [PR #133](https://github.com/The-Vonky/Gaucha-Gestao/pull/133) · [PR #134](https://github.com/The-Vonky/Gaucha-Gestao/pull/134).
+
 ## Testes de banco
 
 `npm run test:rls` cria um PostgreSQL efêmero via PGlite e aplica as migrations,

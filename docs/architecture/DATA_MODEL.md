@@ -12,7 +12,7 @@ audit         Auditorias de Qualidade
 action_plans  módulo transversal Planos de Ação
 ~~~
 
-O schema `abc` e seu schema privado `abc_private` foram integrados **depois** (PR #69). Módulos futuros recebem schemas próprios. Tabelas expostas exigem **RLS e grants explícitos**.
+O [Mapa de Implementação](IMPLEMENTATION_MAP.md) identifica os schemas de domínio integrados após essa baseline. O [contrato de API](API_CONTRACTS.md) identifica a exposição efetiva da Data API. Tabelas expostas exigem **RLS e grants explícitos**.
 
 ## Relacionamentos
 

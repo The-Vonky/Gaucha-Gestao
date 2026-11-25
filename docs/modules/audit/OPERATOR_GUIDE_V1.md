@@ -1,6 +1,6 @@
 # Guia do operador — Qualidade v1
 
-**Status: pré-homologação.** Descreve a navegação da Qualidade na main após PR #69, 20/10/2026; **não é manual de produção nem comprova aceite em Android/iOS**. Validação final: [P1–P9 / O1–O8](QUALITY_ACCEPTANCE_V1.md).
+**Status: guia de uso no DEV.** A navegação original foi documentada após PR #69. Para a implementação vigente, consulte o [mapa](../../architecture/IMPLEMENTATION_MAP.md). Validação final: [P1–P9 / O1–O8](QUALITY_ACCEPTANCE_V1.md).
 
 ## Ambiente e acesso
 
@@ -24,7 +24,7 @@ A visualização depende também do escopo efetivo; ver [AUTHORIZATION](../../ar
 flowchart TD
   LOGIN["Login e perfil ativo"] --> UNIT["Escolher unidade permitida"]
   UNIT --> AUD["Abrir / criar inspeção conforme permissão"]
-  AUD --> CHECK["Preencher checklist, 9 seções / 158 critérios"]
+  AUD --> CHECK["Preencher checklist da revisão atribuída"]
   CHECK --> EVID["Vincular evidências autorizadas"]
   EVID --> CONF{"Finalização válida e versão atual?"}
   CONF -- "Não" --> FIX["Revisar itens pendentes ou conflito; preservar registros"]
@@ -37,7 +37,7 @@ Em inspeção incompleta, resolver critérios e mensagens de bloqueio; não for�
 
 ## Evidência de checklist
 
-O fluxo atual reserva metadados por RPC, faz upload privado via Supabase Storage e só então confirma a evidência. Em erro de confirmação, **não anunciar sucesso**; seguir o retry compatível com o contrato e, se necessário, encaminhar para reconciliação. Downloads usam URL assinada temporária. Remoções são lógicas sob permissão e retenção; não apagar diretamente objetos no storage. Tipos, limites e regras exatas: [CHECKLIST_EVIDENCE_V1](CHECKLIST_EVIDENCE_V1.md). Câmera/galeria em Android/iOS e HEIC precisam dos testes físicos P3–P4.
+O fluxo atual reserva metadados por RPC, faz upload privado via Supabase Storage e só então confirma a evidência. Em erro de confirmação, **não anunciar sucesso**; seguir o retry compatível com o contrato e, se necessário, encaminhar para reconciliação. A leitura usa URL assinada temporária no perfil base e acesso autenticado no DEV com Identity. Miniaturas nativas derivam do original via Storage/imgproxy conforme o perfil. [Storage privado](../../architecture/SECURITY.md#storage-privado-e-miniaturas). Remoções são lógicas sob permissão e retenção; não apagar diretamente objetos no storage. Tipos, limites e regras exatas: [CHECKLIST_EVIDENCE_V1](CHECKLIST_EVIDENCE_V1.md). Câmera/galeria em Android/iOS e HEIC precisam dos testes físicos P3–P4.
 
 ## Jornada de Plano de Ação
 
@@ -56,7 +56,7 @@ No código, os estados são **Pendente, Em andamento, Concluído**; a avaliaçã
 
 ## Relatórios e suporte
 
-XLSX de inspeção/histórico e impressão são produzidos a partir de dados autorizados; a impressão/PDF é superfície do navegador, não backend de PDFs. Verificar conteúdo, unidade, período e abertura real em dispositivos antes de compartilhar. P7–P9 continuam pendentes de homologação física.
+XLSX de inspeção e histórico e impressão/PDF usam dados autorizados. A exportação com fotos segue o [contrato e os limites](REPORT_EVIDENCE_EXPORT.md). O PDF é gerado pela impressão do navegador. Verificar conteúdo, unidade, período e abertura real em dispositivos antes de compartilhar. P7–P9 continuam pendentes de homologação física.
 
 | Problema | Ação segura |
 | --- | --- |
