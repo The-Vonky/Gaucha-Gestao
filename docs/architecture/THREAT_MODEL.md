@@ -20,7 +20,7 @@ flowchart LR
   P --> L["Core system audit log"]
 ~~~
 
-Kong é a fronteira de ingresso da aplicação nos perfis locais. GoTrue confirma a identidade. Core e cada domínio avaliam admissão, capacidade, escopo, autoria e invariantes. O operador de infraestrutura e o destino de backup possuem autoridade própria. [Segurança](SECURITY.md) · [Autorização](AUTHORIZATION.md).
+Kong é a fronteira de ingresso da aplicação nos perfis locais. GoTrue confirma a identidade. Core e cada domínio avaliam admissão, capacidade, escopo, autoria e invariantes. A operação privilegiada de infraestrutura e backup tem fronteira de confiança própria e deve ser isolada da aplicação. [Segurança](SECURITY.md) · [Autorização](AUTHORIZATION.md).
 
 ## 2. Registro de ameaças e controles
 
@@ -37,24 +37,29 @@ Kong é a fronteira de ingresso da aplicação nos perfis locais. GoTrue confirm
 | Upload hostil ou estado divergente de metadados e bytes | Tipos/tamanhos por domínio, reserva e confirmação, políticas de origem e transformação de imagens com limites. | Validar original privado, bytes e cabeçalhos no perfil-alvo. Arquivos órfãos, reconciliação e retenção física permanecem operacionais. |
 | Curva ABC: payload coerente alheio ao XLSX ou arquivo trocado | SQL revalida payload e metadata; parser e conferência posterior operam no cliente. | O servidor não reprocessa nem re-hasheia os bytes do original. Algumas restrições de competência e limites da prévia não são simétricas no SQL. Validação física confiável ou mudança de invariantes exige decisão própria. [Contrato ABC](../briefs/ABC_DOMAIN_V1.md). |
 | Fórmulas em planilhas ou conteúdo injetado em relatório | Exportações usam contratos de projeção, escopo atual e escrita segura das células. | Revalidar no SHA candidato. Arquivos exportados passam à custódia de quem os recebeu. |
-| Perda de host, dados, objetos ou logs | Logs auditados e volumes com escopo de backup definido. | Backup/restore independente da C30, retenção, monitoramento, recuperação e RPO/RTO exigem provas próprias. |
+| Perda de host, dados ou objetos | Volumes com escopo de backup definido. | Criptografia, proteção contra exclusão e backup/restore independente da C30 exigem prova, além de RPO/RTO. [Backup e recuperação](BACKUP_RECOVERY.md). |
+| Perda ou adulteração de trilha | Gravações confiáveis e leitura restrita de `core.system_audit_log`. | Um operador privilegiado do banco pode alterar registros. Acesso operacional, retenção, exportação, proteção e monitoramento da trilha exigem política e validação. [Auditoria sistêmica](SECURITY.md#auditoria-sistêmica). |
 | Revisão limitada e cadeia de dependências | Diff, CI, testes negativos e aceite do mantenedor único; lockfiles e validações de dependências. | A ausência de segunda revisão é risco registrado. A revisão aplicável à identidade privilegiada é um gate específico. CI cobre somente os casos executados. |
 | Exposição de serviços ou dados reais em ensaio | Separação DEV/CI/C30, dados sintéticos, ingresso e acesso por perfil. | Inventariar exposição, TLS, firewall, logging e segredos no ambiente operacional. Conferir o estado implantado com evidência do próprio ambiente. |
 
 ## 3. Cenários de autorização que não podem falhar
 
-1. Perfil inativo, sessão não admitida ou revogada e credenciais temporárias não devem conseguir dados de módulos no perfil estrito.
+1. Sem sessão ou com perfil inativo, negar acesso aos dados de negócio. No perfil estrito, negar também sessão não admitida, revogada ou restrita à troca de credencial.
 2. Grants de uma unidade ou setor não devem liberar outra unidade ou registros não cobertos. Exportação e Storage aplicam a mesma fronteira do domínio.
 3. A interface reflete a projeção do acesso. Cada chamada direta deve obedecer à autorização efetiva, inclusive quando o administrador de Salas estiver em Requester.
-4. Concessão fora da autoridade, reset de conta protegida e autor informado pelo cliente devem ser recusados pelo contrato correspondente.
-5. A evidência de concorrência deve conferir resultados após revogação, versão obsoleta e efeito remoto incerto no ambiente aplicável.
-6. Relatórios, logs e erros devem excluir credenciais, identificadores desnecessários e URLs assinadas persistentes, preservando a autoria autorizada.
+4. Negar concessão fora da autoridade e reset de conta protegida. A autoria deve vir do contexto confiável da sessão ou do mecanismo produtor. Um valor arbitrário informado pelo cliente não atribui autoria.
+5. Testar a próxima operação após revogação ou desativação, inclusive com estado de UI obsoleto. Conferir rejeição de versão obsoleta e contenção de resultado remoto incerto.
+6. Negar uploads incompatíveis com tipos, tamanhos ou chaves autorizados, objetos de outra unidade, bucket indevido e acesso por ID ou chave adivinhados. No perfil base, rejeitar URL expirada. Em Identity, testar também a negativa de emissão e resgate por assinatura. A validação física de bytes segue os limites de cada contrato.
+7. Restringir acesso à trilha e a metadados históricos aos escopos autorizados. A desativação ordinária preserva o histórico.
+8. Relatórios, logs e erros devem excluir credenciais, identificadores desnecessários e URLs assinadas persistentes, preservando a autoria autorizada.
 
-[GG-05B](../../tests/integration/gg05b-identity.mjs) · [Matriz Core](../../tests/integration/core-security-matrix.mjs) · [P1–P9 e O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md).
+Vincular os cenários aos testes de regressão e às integrações com JWT real nas superfícies aplicáveis. [GG-05B](../../tests/integration/gg05b-identity.mjs) · [Matriz Core](../../tests/integration/core-security-matrix.mjs) · [P1–P9 e O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md).
 
 ## 4. Recomendações TO-BE, não implementações
 
-O candidato operacional requer revisão de segurança aplicável, recuperação emergencial do administrador, testes negativos por superfície e gates de backup, recuperação, retenção, monitoramento, ingresso e operação. Cada prova requer ambiente, escopo e GO próprios. [Gates de fundação](FOUNDATION_GATES.md).
+- **Ingresso e exposição.** Verificar firewall, portas e superfícies administrativas, TLS e origens, WAF, CSP, cabeçalhos e cache antes de PROD. Validar a exposição e as negativas em login, Auth, REST e Storage, inclusive os domínios de objetos, TTL e resgate por assinatura nas versões que o permitem. O HTTPS de testes na C30 tem evidência datada e a proteção adicional via Cloudflare Access exige evidência própria. Respostas privadas ficam fora do cache compartilhado. Se R2 for adotado, a validação de autorização e recuperação de objetos deve abranger esse destino. [Runbook da C30](../operations/C30_STAGING_CLOUDFLARE_RUNBOOK.md#segurança-dados-e-validações-pendentes).
+- **Logs e recuperação.** Verificar os requisitos de proteção da trilha, retenção, monitoramento e recuperação definidos em Segurança e Backup. O ensaio deve abranger banco e objetos e seguir as condições do ambiente-alvo. [Segurança](SECURITY.md#auditoria-sistêmica) · [Backup e recuperação](BACKUP_RECOVERY.md).
+- **Mudanças de segurança.** Conferir gestão e rotação de segredos, revisão aplicável, recuperação emergencial do administrador e testes negativos de RLS/RPC por papel, unidade e ciclo de vida no SHA candidato. Cada prova requer ambiente, escopo e GO próprios. [Gates de fundação](FOUNDATION_GATES.md).
 
 ## Foto da Sala de Reunião — 26/10/2026
 

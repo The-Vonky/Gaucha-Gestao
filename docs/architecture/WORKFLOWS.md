@@ -1,10 +1,10 @@
 # Fluxos funcionais, técnicos e de exceção
 
-**AS-IS no código da main após PR #69 (`fed0e0f`, 20/10/2026)**, exceto quando indicado **TO-BE / PENDENTE**. Diagramas descrevem contratos; não provam testes manuais ou deploy real.
+**Baseline dos fluxos originais:** main após PR #69 (`fed0e0f`, 20/10/2026), com evoluções indicadas por perfil ou seção. Os diagramas descrevem contratos. Evidências de testes manuais e implantação são registradas por ambiente.
 
 ## 1. Login, obtenção de perfil e navegação (AS-IS)
 
-O fluxo abaixo descreve o perfil base. No DEV opt-in, [Identity](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) medeia o login e admite a sessão antes do acesso aos módulos.
+O diagrama descreve o login no perfil base do Compose.
 
 ~~~mermaid
 sequenceDiagram
@@ -32,7 +32,9 @@ sequenceDiagram
   end
 ~~~
 
-**Barreira real:** grants, RLS e RPCs, não a lista de menus. Arquivos de referência: apps/web/src/core/auth/AuthProvider.tsx, apps/web/src/app/App.tsx, apps/web/src/app/navigation.ts e [AUTHORIZATION](AUTHORIZATION.md). Criar/redefinir credenciais administrativas via serviço privilegiado é **TO-BE BLOQUEADO**, não um fluxo implementado. Ver [ACCOUNT_LIFECYCLE_V1](ACCOUNT_LIFECYCLE_V1.md) e [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49).
+- **Perfil base.** O frontend usa GoTrue para login e consulta o perfil e as permissões do Core. O serviço de cadastro e redefinição GG-05B fica desabilitado nesse perfil. [AuthProvider](../../apps/web/src/core/auth/AuthProvider.tsx).
+- **DEV opt-in com Identity.** A GG-05B, integrada pela PR #127, medeia o login, o cadastro e a redefinição por operador autorizado. A troca obrigatória usa sessão restrita e o acesso aos módulos exige admissão para a geração atual. Em ambos os perfis, grants, RLS e RPCs aplicam a autorização de domínio. [Contrato GG-05B](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) · [Autorização](AUTHORIZATION.md).
+- **Decisão anterior e limites operacionais.** A PR #24 foi encerrada sem merge. A Issue #49 teve encerramento administrativo. Permanecem pendentes a revisão de segurança aplicável, a recuperação emergencial do administrador, o ensaio de recuperação integral do DEV com Identity e a homologação completa do login via `npm run dev`. A autorização da GG-05B cobre o DEV. Adoção em outros ambientes ou uso com contas reais depende de pacote operacional e GO específico. [D01](../planning/DECISION_REGISTER.md) · [Gates](FOUNDATION_GATES.md#gate-4--autenticação-e-autorização).
 
 ## 2. Criação, preenchimento e finalização de Auditoria (AS-IS)
 

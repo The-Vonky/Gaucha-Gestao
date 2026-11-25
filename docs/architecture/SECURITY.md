@@ -8,7 +8,7 @@ Aplicar negação por padrão e menor privilégio da autenticação até a autor
 
 ## Identidade
 
-GoTrue autentica cada pessoa. O Core vincula o perfil ao UUID Auth e exige perfil ativo. No DEV com Identity habilitado, o componente interno do Core medeia login por senha, admissão, troca obrigatória, criação e redefinição. Kong limita os caminhos de Auth e Storage. PostgREST usa `public.identity_pre_request()`; as políticas de Storage também exigem admissão. Cada nova requisição protegida precisa da sessão viva para aquele titular, da finalidade e da geração vigentes e da autorização de domínio.
+Cada pessoa deve usar uma conta individual identificável. Evite contas compartilhadas para preservar autoria e revogação individual. Use os mecanismos consolidados do GoTrue para autenticação, senhas, tokens e sessões, sem criptografia própria. O Core vincula o perfil ao UUID Auth e exige perfil ativo. No DEV com Identity habilitado, o componente interno do Core medeia login por senha, admissão, troca obrigatória, criação e redefinição. Kong limita os caminhos de Auth e Storage. PostgREST usa `public.identity_pre_request()`; as políticas de Storage também exigem admissão. Cada nova requisição protegida precisa da sessão viva para aquele titular, da finalidade e da geração vigentes e da autorização de domínio.
 
 A PR #24 encerrou uma proposta anterior sem merge e a Issue #49 teve encerramento administrativo. A GG-05B, integrada pela PR #127 e evoluída pela PR #129, foi autorizada para o DEV. A revisão de segurança aplicável, a recuperação administrativa emergencial e a adoção fora do DEV têm gates próprios. [D01](../planning/DECISION_REGISTER.md) · [Contrato GG-05B](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev).
 
@@ -43,15 +43,19 @@ Os adaptadores no modo estrito usam leitura autenticada para evidências de Audi
 
 ## Auditoria sistêmica
 
-Mutações sensíveis registram autor, horário, entidade, ação, dados antes/depois pertinentes e correlação. O `core.system_audit_log` é distinto da Auditoria de Qualidade. Operações de Identity registram protocolo, resultado e correlação com o alvo sem guardar senha ou token. Falha de confirmação entre Core e Auth exige reconciliação supervisionada. O estado em quarentena fecha admissões e impede repetir o efeito por tentativa cega. [Runbook GG-05B](../operations/GG_05B_IDENTIDADE_DEV.md#reconciliação).
+Mutações sensíveis devem produzir trilha imutável ou resistente à adulteração, com autor, horário, entidade, ação, dados antes/depois pertinentes e correlação. O `core.system_audit_log` é a trilha do Core, distinta da Auditoria de Qualidade, com gravações por mecanismos confiáveis e leitura por capacidade e escopo. A proteção contra mutação pelo cliente comum tem alcance distinto da autoridade do operador privilegiado do PostgreSQL, que pode alterar o banco. Política de acesso operacional, retenção, exportação e monitoramento de alterações sensíveis ainda requer definição e validação. [Contrato da trilha Core](CORE_FOUNDATION_V2.md#11-contrato-da-trilha-de-sistema) · [Gate de auditoria sistêmica](FOUNDATION_GATES.md#gate-7--auditoria-sistêmica).
+
+Operações de Identity registram protocolo, resultado e correlação com o alvo sem guardar senha ou token. Falha de confirmação entre Core e Auth exige reconciliação supervisionada. O estado em quarentena fecha admissões e impede repetir o efeito por tentativa cega. [Runbook GG-05B](../operations/GG_05B_IDENTIDADE_DEV.md#reconciliação).
 
 ## Infraestrutura
 
-O DEV usa o [Compose local](../operations/DOCKER_LOCAL_STANDARDIZATION.md). A revisão do estado implantado na C30 usa seu [AS-BUILT datado](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md). Para operação, exigir runtime suportado, exposição/firewall revisados, TLS, isolamento de serviços, proteção de segredos e restauração testada. O ensaio de backup do Compose base tem escopo próprio. A recuperação integral de Identity e o backup/restore independente da C30 ainda exigem prova. [Gates](FOUNDATION_GATES.md).
+O DEV usa o [Compose local](../operations/DOCKER_LOCAL_STANDARDIZATION.md). A revisão do estado implantado na C30 usa seu [AS-BUILT datado](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md). Para operação, exigir SO e runtime suportados e atualizados, exposição e firewall revisados, TLS nas fronteiras de confiança, isolamento de serviços, PostgreSQL protegido e credenciais separadas. Uso de SO legado sem suporte depende de risco documentado e controles compensatórios. A verificação de WAF, origens, CSP, cabeçalhos, cache e superfícies expostas integra os [requisitos operacionais do modelo de ameaças](THREAT_MODEL.md#4-recomendações-to-be-não-implementações).
+
+A proteção de banco e objetos exige destino independente, criptografia, controle de acesso, proteção contra exclusão e restauração consistente testada. O ensaio do Compose base tem escopo próprio. A recuperação integral de Identity e o backup/restore independente da C30 ainda exigem prova. [Backup e recuperação](BACKUP_RECOVERY.md#propriedades-exigidas) · [Gates](FOUNDATION_GATES.md).
 
 ## Dependências, erros e incidentes
 
-Usar dependências justificadas e versionadas. Sanear erros e logs. Definir responsáveis e procedimentos para bloqueio de conta, recuperação administrativa, rotação de segredos, reconciliação e restauração. Mudanças de segurança exigem diff, testes negativos pertinentes, avaliação de risco e aceite do mantenedor, com registro da revisão efetuada e das exigências específicas para identidade privilegiada. CI e homologação têm recortes próprios. **PROD NO-GO.**
+Minimizar dependências, usar lockfile e tratar vulnerabilidades conhecidas. Mensagens ao usuário devem omitir stack traces, detalhes internos do banco, caminhos sensíveis e segredos. Logs devem excluir credenciais e dados pessoais excedentes. Antes do rollout, definir responsáveis e procedimentos para bloqueio de conta, revogação, consulta de logs, recuperação administrativa, rotação de segredos, reconciliação, rollback e restauração. Mudanças de segurança exigem diff, testes negativos pertinentes, avaliação de risco e aceite do mantenedor, com registro da revisão efetuada e das exigências específicas para identidade privilegiada. CI e homologação têm recortes próprios. **PROD NO-GO.**
 
 ## Login técnico de derivados — PR #101
 

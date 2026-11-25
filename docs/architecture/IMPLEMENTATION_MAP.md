@@ -13,12 +13,10 @@ revisão/merge e homologação visual de Excel pendentes. VEN-04B integrada #94
 **MEL-01 — 30/10/2026:** limpeza autorizada somente no notebook, catálogo de unidades
 vazio, fixtures com teardown físico dirigido e correção de consultas globais sem unidades
 (`20261030145036_sales_empty_units.sql`). [Evidências](../modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md).
-PR #94 continua para revisão; sem merge ou deploy.
+Na data deste registro, a PR #94 ainda estava em revisão e sem deploy.
 
 **Vendas — adendo de 29/10/2026:** VEN-01/02/03 integradas nas PRs #90/#91/#92.
-VEN-04A integrada pela PR #93 (`7ddcd31`). VEN-04B implementada para revisão:
-[dashboard gerencial completo](../modules/sales/VEN04B_DASHBOARD_UI.md), com
-[evidências sintéticas locais](../modules/sales/VEN04B_LOCAL_VALIDATION.md).
+VEN-04A integrada pela PR #93 (`7ddcd31`). O [dashboard gerencial VEN-04B](../modules/sales/VEN04B_DASHBOARD_UI.md) foi integrado à `main` em 03/11/2026 pela [PR #94](https://github.com/The-Vonky/Gaucha-Gestao/pull/94) (`91bd16b`). As [evidências sintéticas locais](../modules/sales/VEN04B_LOCAL_VALIDATION.md) registram a validação técnica. A homologação funcional VEN-07 e a liberação operacional VEN-08 têm aceite próprio.
 O administrador mantém sete capacidades de Vendas. A
 [GG-04](AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04) define Sales Manager
 e Sales Viewer como os dois perfis operacionais protegidos.
@@ -51,7 +49,7 @@ Sem homologação VEN-07 ou alterações em STAGING/PROD. O restante mantém sua
 | Infraestrutura mínima | infra/supabase/docker-compose.yml, scripts/ops/*, .github/workflows/infra-validate.yml | [infra/README](../../infra/README.md), [UPSTREAM](../../infra/supabase/UPSTREAM.md), ADR-006 Proposed | AS-IS **CI/lab**, NÃO PROD |
 | Serviço interno Core Identity | `apps/core-identity/`, com Auth, Kong, PostgREST e Storage | [GG-05B](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) e [runbook](../operations/GG_05B_IDENTIDADE_DEV.md) | Integrado e homologado no DEV pela PR #127. Recuperação emergencial, revisão aplicável e adoção operacional pendentes. |
 | Agendamento de Salas AG-01/02/03 | apps/web/src/modules/rooms/; rota /rooms | [AG-D5-C](../modules/room-booking/D5C_ADMIN_MODES.md) sobre a fundação e operações da PR #88 | PR #129 integrada e homologada funcionalmente no DEV; [AG-05 pendente](../modules/room-booking/ACCEPTANCE_V1.md) |
-| Vendas / Maquininhas VEN-01/02/03/04A/04B | `sales` privado; `apps/web/src/modules/sales/`; `SalesModule`, `SalesPage`, `EntryEditor`, `SalesDashboardPage`, `DashboardCharts`; `/sales` como entrada, `/sales/entries` e `/sales/dashboard` no módulo Comercial expansível | [papéis GG-04](AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04); `tests/sales-*`, job `sales-integration`; [operação](../modules/sales/VEN04A_OPERATIONS_UI.md) e [dashboard/matriz EQ01–22](../modules/sales/VEN04B_DASHBOARD_UI.md) | VEN-01/02/03/04A integradas #90–93; VEN-04B para revisão; não homologada |
+| Vendas / Maquininhas VEN-01/02/03/04A/04B | `sales` privado; `apps/web/src/modules/sales/`; `SalesModule`, `SalesPage`, `EntryEditor`, `SalesDashboardPage`, `DashboardCharts`; `/sales` como entrada, `/sales/entries` e `/sales/dashboard` no módulo Comercial expansível | [papéis GG-04](AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04); `tests/sales-*`, job `sales-integration`; [operação](../modules/sales/VEN04A_OPERATIONS_UI.md) e [dashboard/matriz EQ01–22](../modules/sales/VEN04B_DASHBOARD_UI.md) | VEN-01/02/03/04A integradas #90–93. VEN-04B integrada pela [PR #94](https://github.com/The-Vonky/Gaucha-Gestao/pull/94). Homologação funcional VEN-07 e liberação operacional VEN-08 pendentes. |
 | ISO, satisfação, frota, planejado-realizado, contratos | Sem integração desses domínios na main (ABC já integrada) | [roadmap de migração](../migration/MODULE_ROADMAP.md) e mapa de consumidores Core | **FUTURO** |
 
 ## Chamadas RPC representativas, verificadas nos adaptadores

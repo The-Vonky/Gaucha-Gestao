@@ -53,11 +53,11 @@ Escrita operacional revalida o perfil e o escopo atual, incluindo origem e desti
 
 ## Navegação e aplicação no banco
 
-O menu e os Guards usam capacidades efetivas para orientar a navegação. As superfícies expostas aplicam ACLs/grants, RLS e RPCs de contrato explícito. Os schemas internos ficam fora da Data API. Funções `SECURITY DEFINER` exigem `search_path` fixo, referências qualificadas e `EXECUTE` restrito. Os [manifests](../../infra/local/compose.yaml) definem os schemas expostos por perfil. O [contrato de integração](API_CONTRACTS.md) aponta os consumidores das APIs.
+O menu e os Guards usam capacidades efetivas para orientar a navegação. Para autorizar, valide a permissão específica da operação e seu escopo com os helpers do Core e a regra de domínio. Evite verificações genéricas por nome de papel. Restrições explícitas do catálogo e do domínio seguem o contrato aprovado. Cada tabela exposta à Data API exige grants explícitos, RLS ativo e políticas de permissão e escopo. Schemas internos ficam fora da Data API. Funções `SECURITY DEFINER` exigem `search_path` fixo, referências qualificadas e `EXECUTE` restrito. Os [manifests](../../infra/local/compose.yaml) definem os schemas expostos por perfil. O [contrato de integração](API_CONTRACTS.md) aponta os consumidores das APIs.
 
 ## Exportação, arquivos e Realtime
 
-O escopo de leitura limita exportações. Os objetos privados herdam autorização de domínio, de unidade quando aplicável e do estado da referência. [Storage no perfil base e no estrito](SECURITY.md#storage-privado-e-miniaturas). Realtime exigiria inventário e validação próprios de autorização.
+O escopo de leitura limita exportações. Os objetos privados herdam autorização de domínio, de unidade quando aplicável e do estado da referência. Leitura, escrita e remoção exigem as capacidades previstas para cada operação. Conhecer a chave ou o ID do objeto não concede acesso. [Storage no perfil base e no estrito](SECURITY.md#storage-privado-e-miniaturas). Qualquer adoção de Realtime exige inventário e validação das políticas de escopo e RLS aplicáveis à leitura.
 
 ## Administração e ciclo de vida
 
@@ -65,7 +65,7 @@ Concessão e revogação exigem `admin.user.manage` global e autoridade sobre as
 
 ## Testes de autorização
 
-A cobertura de regressão deve incluir perfil inativo, sessão revogada, grants insuficientes ou revogados, unidade ou setor incorretos, acesso a registro de outro autor e mutações administrativas auditadas. Casos em banco em memória sustentam regressão de SQL. As integrações reproduzem as fronteiras Auth/API/Storage que exercitam. [Matriz Core](../../tests/integration/core-security-matrix.mjs) · [Identity](../../tests/integration/gg05b-identity.mjs) · [Fundação](FOUNDATION_GATES.md#gate-4--autenticação-e-autorização).
+A cobertura de regressão deve negar acesso anônimo ou com perfil inativo, sessão revogada, grants insuficientes ou revogados, unidade ou setor incorretos e registro de outro autor sem capacidade para consultá-lo. Confira também os casos permitidos por escopo e a auditoria de mutações administrativas. Os [cenários negativos por superfície](THREAT_MODEL.md#3-cenários-de-autorização-que-não-podem-falhar) incluem chamadas diretas e acesso a objetos. Casos em banco em memória sustentam regressão de SQL. As integrações reproduzem as fronteiras Auth/API/Storage que exercitam. [Matriz Core](../../tests/integration/core-security-matrix.mjs) · [Identity](../../tests/integration/gg05b-identity.mjs) · [Fundação](FOUNDATION_GATES.md#gate-4--autenticação-e-autorização).
 
 ## Agendamento de Salas — decisão AG-D5-C (23/11/2026)
 

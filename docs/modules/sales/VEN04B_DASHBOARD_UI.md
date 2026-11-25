@@ -14,8 +14,9 @@ Não representa homologação ou avanço de VEN-05–08.
 retornar o estado vazio. Sem criar fixtures permanentes ou conceder novas permissões.
 [Migration incremental e provas locais](VEN04B_MEL01_LOCAL_CLEANUP.md).
 
-**Estado:** implementada para revisão do mantenedor, sem homologação VEN-07.
-Autorização expressa em 29/10/2026 para desenvolvimento, fixtures e testes no
+**Estado:** integrada à `main` pela [PR #94](https://github.com/The-Vonky/Gaucha-Gestao/pull/94) (`91bd16b`). Homologação VEN-07 e liberação operacional VEN-08 têm aceite próprio.
+
+**Registro da rodada original.** Autorização expressa em 29/10/2026 para desenvolvimento, fixtures e testes no
 notebook, branch e PR. Baseline `origin/main` reconferida por fetch:
 `7ddcd3155da91561ba94f088ff277ee4fc659f90`, merge da VEN-04A ([PR #93](https://github.com/The-Vonky/Gaucha-Gestao/pull/93)).
 VEN-00/01/02/03 integradas nas PRs #89/#90/#91/#92. A entrega original de UI não
