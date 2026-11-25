@@ -86,6 +86,7 @@ const direct = {
 };
 
 let manage = true;
+let contactWrites = 0;
 let contact = {
   room_id: "00000000-0000-4000-8000-000000000099",
   responsible_name: null,
@@ -146,6 +147,8 @@ try {
             serverNow: new Date().toISOString(),
             nextRefreshAt: null,
           });
+        case "room_booking_admin_context":
+          return json(false);
         case "room_booking_summary":
           return json({
             name: "Sala de Reunião",
@@ -165,6 +168,7 @@ try {
         case "room_booking_save_contact": {
           const data = request.postDataJSON();
           assert.equal(manage, true);
+          contactWrites++;
           assert.equal(data.p_room_id, contact.room_id);
           assert.equal(data.p_version, contact.version);
           contact = {
@@ -211,8 +215,11 @@ try {
   const history = page.getByRole("region", {
     name: "Histórico do agendamento",
   });
-  const edit = contactRegion.getByRole("button", { name: "Editar contato" });
-  const name = contactRegion.getByLabel("Nome da responsável");
+  const edit = page.getByRole("group", { name: "Ações da sala" })
+    .getByRole("button", { name: "Editar contato", exact: true });
+  const modal = page.getByRole("dialog", { name: "Editar contato", exact: true });
+  const name = modal.getByLabel("Nome da responsável");
+  const save = modal.getByRole("button", { name: "Salvar contato", exact: true });
   const requestsTab = history.getByRole("tab", { name: "Solicitações" });
   const directTab = history.getByRole("tab", { name: "Reservas diretas" });
   const assertNoOverflow = async (width) => {
@@ -231,17 +238,22 @@ try {
     contactRegion.getByText("Contato ainda não informado."),
   ).toBeVisible();
   await edit.click();
-  await expect(name).toBeFocused();
+  await expect(modal.getByRole("button", { name: "Fechar", exact: true })).toBeFocused();
   await name.fill("Nome institucional de exemplo");
-  const extension = contactRegion.getByLabel(/^Ramal/);
+  const extension = modal.getByLabel(/^Ramal/);
   await extension.fill("teste");
   assert.equal(
     await extension.evaluate((input) => input.validity.valid),
     false,
   );
+  await save.click();
+  await expect(modal).toBeVisible();
+  assert.equal(contactWrites, 0);
   await extension.fill("0042");
-  await contactRegion.screenshot({ path: `${artifacts}/contato-desktop.png` });
-  await contactRegion.getByRole("button", { name: "Salvar contato" }).click();
+  await modal.screenshot({ path: `${artifacts}/contato-desktop.png` });
+  await save.click();
+  await expect(modal).toBeHidden();
+  assert.equal(contactWrites, 1);
   await expect(contactRegion.getByText("Contato atualizado.")).toBeVisible();
   await expect(edit).toBeFocused();
   await expect(contactRegion.getByText("0042")).toBeVisible();
@@ -253,8 +265,8 @@ try {
     history.getByText("Cancelada posteriormente", { exact: false }),
   ).toBeVisible();
   await history
+    .getByRole("listitem").filter({ hasText: "Encontro de integração" })
     .getByText("Detalhes da solicitação", { exact: true })
-    .last()
     .click();
   await expect(history.getByText(/Reunião transferida/)).toBeVisible();
   await assertNoOverflow(1440);
@@ -284,9 +296,10 @@ try {
     await edit.click();
     await expect(name).toBeVisible();
     await assertNoOverflow(width);
-    await contactRegion
-      .getByRole("button", { name: "Cancelar edição" })
-      .click();
+    assert.equal(await modal.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth), true);
+    await modal.getByRole("button", { name: "Cancelar edição" }).click();
+    await expect(modal).toBeHidden();
+    await expect(edit).toBeFocused();
     await history.screenshot({
       path: `${artifacts}/diretas-${width}.png`,
       style: ".topbar, .skip { visibility: hidden; }",

@@ -167,13 +167,14 @@ Evidências automatizadas e locais no contrato ligado acima; aceite humano desta
 
 [Contratos e plano de aplicação](EXPERIENCE_V1.md#gg-08-e-gg-09--contato-e-histórico-de-gestão).
 
-## Evidências de AG-D5-C e pendência dos roteiros de navegador
+## Evidências de AG-D5-C e regressão de navegador
 
 | Evidência | Alcance |
 | --- | --- |
 | [PR #129](https://github.com/The-Vonky/Gaucha-Gestao/pull/129) | Registro datado de homologação funcional no DEV e validações de UX descritas por SHA. |
-| [Banco de Salas](../../../tests/room-booking-database.test.ts), [operações](../../../tests/room-booking-operations.test.ts), [gestão](../../../tests/room-booking-management.test.ts) e [Identity](../../../tests/integration/gg05b-identity.mjs) | Cobertura versionada de capacidade atual, negativas, autoria, contato/históricos e cadastro global. Consultar a execução correspondente antes de atribuir resultado a qualquer caso. |
-| [UX da PR #129](../../../tests/integration/room-booking-ux-browser.mjs) | Smoke Chromium com Auth/REST sintéticos em 1280/320 px. Cobre modos, barra de ações, modal de contato, abertura do modal de foto e foco. Esse recorte não comprova upload real, celular físico ou todo o aceite AG-05. |
-| [Roteiro de gestão](../../../tests/integration/room-booking-management-browser.mjs) e [roteiro de experiência](../../../tests/integration/room-booking-experience-browser.mjs) | Pendência técnica por inspeção. Ainda esperam a região antiga `Contato da sala` e ações como `Novo pedido` e `Fechar formulário`. A UI integrada usa barra e modais. Atualizar seletores e preservar asserções de persistência, privacidade, histórico e foto em tarefa própria. |
+| [Banco de Salas](../../../tests/room-booking-database.test.ts), [operações](../../../tests/room-booking-operations.test.ts), [gestão](../../../tests/room-booking-management.test.ts) e [Identity](../../../tests/integration/gg05b-identity.mjs) | Cobertura de permissões efetivas, negativas de perfil inativo, revogado, sem papel e administrador parcial, autoria, contato, históricos e cadastro global. |
+| [Gestão](../../../tests/integration/room-booking-management-browser.mjs) | Chromium com bundle, Auth e REST interceptados em 1440/390/320 px. Validação de ramal, foco, releitura após recarga da fixture, históricos, cursor, filtros, teclado e fuso. |
+| [UX](../../../tests/integration/room-booking-ux-browser.mjs) | Vite real com Auth e REST simulados em 1280/320 px. Vista inicial e retorno a Requester, barra de ações, alinhamento da agenda, modais, foco, Escape, overlay e bloqueio durante a gravação de contato. |
+| [Experiência integrada](../../../tests/integration/room-booking-experience-browser.mjs) | Vite, GoTrue, Identity, PostgREST, PostgreSQL e Storage reais no DEV pessoal. Operações a 1440/390 px, visões e modais também a 320 px, contato e foto após recarga, remoção real com retorno ao banner institucional, negativa de leitura do objeto aposentado, restauração verificada das fixtures e fila disponível ao administrador na vista Requester. |
 
-A revisão desta matriz não executa casos nem muda o aceite da Issue #84.
+[Comandos, pré-requisitos e limites dos ensaios de navegador](EXPERIENCE_V1.md#regressão-de-navegador-no-dev-com-identity). A Issue [#84](https://github.com/The-Vonky/Gaucha-Gestao/issues/84) permanece aberta para o aceite AG-05 com secretária, responsável e celular físico.

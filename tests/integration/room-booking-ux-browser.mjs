@@ -17,6 +17,7 @@ try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, locale: "pt-BR" });
     await context.addInitScript((fixture) => localStorage.setItem("sb-127-auth-token", JSON.stringify(fixture)), session);
     let empty = false;
+    let contactResponse;
     let contact = { room_id: "fixture", responsible_name: "Contato sintético da sala", extension: "1234", version: 1 };
     await context.route("**/*", async (route) => {
       const { pathname } = new URL(route.request().url());
@@ -37,6 +38,7 @@ try {
             assert.notEqual(role, "requester");
             const args = route.request().postDataJSON();
             assert.equal(args.p_version, contact.version);
+            await contactResponse;
             contact = { ...contact, responsible_name: args.p_responsible_name, extension: args.p_extension, version: contact.version + 1 };
             return json(contact);
           }
@@ -58,12 +60,25 @@ try {
     await expect(page.getByText("Situação atual")).toHaveCount(0);
     await expect(page.locator(".room-panel.room-contact")).toHaveCount(0);
     await expect(page.getByRole("group", { name: "Modo de atuação" })).toHaveCount(role === "admin" ? 1 : 0);
+    const asRequester = page.getByRole("button", { name: "Room Booking Requester", exact: true });
+    const asManager = page.getByRole("button", { name: "Room Booking Manager", exact: true });
+    if (role === "admin") {
+      await expect(asRequester).toHaveAttribute("aria-pressed", "true");
+      await expect(page.getByRole("heading", { name: "Meus pedidos", exact: true })).toBeVisible();
+    }
     for (const width of [1280, 320]) {
       await page.setViewportSize({ width, height: 1000 });
-      if (role === "admin") await page.getByRole("button", { name: "Room Booking Requester", exact: true }).click();
+      if (role === "admin") {
+        await expect(asRequester).toHaveAttribute("aria-pressed", "true");
+      }
       const actions = page.getByRole("group", { name: "Ações da sala" });
       if (role !== "manager") await expect(actions).toHaveCount(0);
-      if (role === "admin") await page.getByRole("button", { name: "Room Booking Manager", exact: true }).click();
+      if (role === "admin") {
+        await asManager.click();
+        await expect(asManager).toHaveAttribute("aria-pressed", "true");
+        await expect(page.getByRole("heading", { name: "Solicitações pendentes", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Meus pedidos", exact: true })).toHaveCount(0);
+      }
       if (role !== "requester") {
         await expect(actions.getByRole("button")).toHaveCount(2);
         assert.equal(await actions.evaluate((bar) => bar.nextElementSibling.classList.contains("room-hero")), true);
@@ -96,31 +111,52 @@ try {
           await expect(edit).toBeFocused();
         }
         await edit.click();
-        await page.getByLabel("Nome da responsável").fill("Contato atualizado no modal");
-        await page.getByRole("button", { name: "Salvar contato" }).click();
-        await expect(page.getByRole("dialog", { name: "Editar contato", exact: true })).toHaveCount(0);
+        const contactModal = page.getByRole("dialog", { name: "Editar contato", exact: true });
+        await contactModal.getByLabel("Nome da responsável").fill("Contato atualizado no modal");
+        const { promise, resolve } = Promise.withResolvers();
+        contactResponse = promise;
+        try {
+          await contactModal.getByRole("button", { name: "Salvar contato", exact: true }).click();
+          await expect(contactModal.getByRole("button", { name: "Salvando…", exact: true })).toBeDisabled();
+          await expect(contactModal.getByRole("button", { name: "Fechar", exact: true })).toBeDisabled();
+          await expect(contactModal.getByRole("button", { name: "Cancelar edição" })).toBeDisabled();
+          if (role === "admin") await expect(asRequester).toBeDisabled();
+          await page.keyboard.press("Escape");
+          await page.mouse.click(2, 2);
+          await expect(contactModal).toBeVisible();
+        } finally {
+          resolve();
+        }
+        await expect(contactModal).toHaveCount(0);
+        await expect(edit).toBeFocused();
         await expect(hero.getByText("Contato atualizado no modal", { exact: true })).toBeVisible();
         await expect(page.getByText("Contato atualizado.", { exact: true })).toBeVisible();
         const photo = actions.getByRole("button", { name: "Alterar foto da sala" });
         await photo.click();
-        await expect(page.getByRole("dialog", { name: "Foto da sala" })).toBeVisible();
-        await expect(page.getByLabel("Arquivo da foto da sala")).toBeVisible();
-        await page.getByRole("dialog").getByRole("button", { name: "Fechar", exact: true }).click();
+        const photoModal = page.getByRole("dialog", { name: "Foto da sala", exact: true });
+        await expect(photoModal.getByLabel("Arquivo da foto da sala")).toBeVisible();
+        await photoModal.getByRole("button", { name: "Fechar", exact: true }).click();
+        await expect(photoModal).toHaveCount(0);
         await expect(photo).toBeFocused();
         await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
         await page.screenshot({ path: `${artifacts}/${role}-${width}-actions.png`, fullPage: true });
       }
-      if (role === "admin") await page.getByRole("button", { name: "Room Booking Requester", exact: true }).click();
+      if (role === "admin") {
+        await asRequester.click();
+        await expect(asRequester).toHaveAttribute("aria-pressed", "true");
+        await expect(actions).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: "Solicitações pendentes", exact: true })).toHaveCount(0);
+      }
       const trigger = page.getByRole("button", { name: role === "manager" ? "Criar reserva direta" : "Solicitar horário", exact: true });
       if (role !== "manager") {
         assert.equal(await trigger.evaluate((button) => button.closest("section").querySelector("h2").textContent), "Agenda");
-        const inputBounds = await page.locator(".room-agenda-actions input[type=date]").boundingBox();
+        const inputBounds = await page.getByLabel("Data", { exact: true }).boundingBox();
         const buttonBounds = await trigger.boundingBox();
         if (width > 480) assert.ok(Math.abs(inputBounds.y + inputBounds.height - buttonBounds.y - buttonBounds.height) <= 1, "Bases de Data e Solicitar horário alinhadas");
         else assert.ok(buttonBounds.y >= inputBounds.y + inputBounds.height, "Quebra de linha sem sobreposição");
       }
       await trigger.click();
-      const modal = page.getByRole("dialog");
+      const modal = page.getByRole("dialog", { name: role === "manager" ? "Reserva direta" : "Novo pedido", exact: true });
       await expect(modal).toBeVisible();
       assert.equal(await modal.evaluate((dialog) => dialog.contains(document.activeElement)), true);
       for (let i = 0; i < 12; i++) {
@@ -134,16 +170,20 @@ try {
       await expect(modal).toHaveCount(0);
       await expect(trigger).toBeFocused();
       await trigger.click();
-      await page.getByRole("dialog").getByRole("button", { name: "Fechar", exact: true }).click();
+      await modal.getByRole("button", { name: "Fechar", exact: true }).click();
       await expect(trigger).toBeFocused();
       await trigger.click();
       await page.mouse.click(2, 2);
       await expect(modal).toHaveCount(0);
       if (role === "admin") {
-        await page.getByRole("button", { name: "Room Booking Manager", exact: true }).click();
+        await asManager.click();
         await page.getByRole("button", { name: "Criar reserva direta" }).click();
-        await expect(page.getByRole("dialog", { name: "Reserva direta" })).toBeVisible();
+        const reservation = page.getByRole("dialog", { name: "Reserva direta", exact: true });
+        await expect(reservation).toBeVisible();
         await page.keyboard.press("Escape");
+        await expect(reservation).toHaveCount(0);
+        await asRequester.click();
+        await expect(asRequester).toHaveAttribute("aria-pressed", "true");
       }
       await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
       await page.screenshot({ path: `${artifacts}/${role}-${width}.png`, fullPage: true });
