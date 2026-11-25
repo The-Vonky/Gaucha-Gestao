@@ -66,7 +66,7 @@ export function workTree(root, report) {
           report("DOC-PATH", path, 1, previous, "colisão por capitalização ou normalização Unicode");
         }
         folded.set(key, path);
-        if (/[<>:"\\|?*\x00-\x1f]|[. ]$/u.test(part) ||
+        if (/[<>:"\\|?*\p{Cc}]|[. ]$/u.test(part) ||
             /^(?:con|prn|aux|nul|(?:com|lpt)[1-9¹²³]) *(?:\.|$)/i.test(part)) {
           report("DOC-PATH", path, 1, path, "nome incompatível com Windows");
         }

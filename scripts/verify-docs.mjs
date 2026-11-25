@@ -37,7 +37,7 @@ export async function verifyDocs(root, { render = false, rules = policy } = {}) 
 }
 
 export function formatIssue({ code, file, line, target, reason }, level) {
-  const safe = (value) => value.replace(/[\x00-\x1f\x7f-\x9f]/g, "")
+  const safe = (value) => value.replace(/\p{Cc}/gu, "")
     .replace(/(https?:\/\/[^\s?#]+)[?#]\S*/gi, "$1[parâmetros omitidos]")
     .replace(/eyJ[A-Za-z\d_-]+\.[A-Za-z\d_-]+\.[A-Za-z\d_-]+/g, "[JWT omitido]");
   const detail = target ? ` → ${safe(target)}` : "";

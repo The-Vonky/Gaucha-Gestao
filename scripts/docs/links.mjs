@@ -7,7 +7,7 @@ const rawUrl = /^(?:https?:)?\/\/raw\.githubusercontent\.com\/The-Vonky\/Gaucha-
 const shaPattern = /^[0-9a-f]{7,40}$/i;
 
 export function resolvePath(base, path) {
-  if (/[\\\x00-\x1f]/u.test(path) || /^[a-z]:/i.test(path)) return undefined;
+  if (/[\\\p{Cc}]/u.test(path) || /^[a-z]:/i.test(path)) return undefined;
   const absolute = path.startsWith("/");
   const target = posix.normalize(absolute ? path.slice(1) : posix.join(base, path)).replace(/\/$/, "");
   if (target === ".." || target.startsWith("../") || target.startsWith("/")) return undefined;
