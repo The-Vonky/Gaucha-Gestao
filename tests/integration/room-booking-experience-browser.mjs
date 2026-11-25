@@ -74,6 +74,8 @@ async function verifyContact(page, manager, requester) {
   await expect(page.getByText(input.p_extension, { exact: true })).toBeVisible();
 }
 
+const coverObject = (cover) => "/storage/v1/object/authenticated/room-covers/" + cover.object_key;
+
 async function verifyPhoto(page, manager, requester) {
   const png = await sharp({
     create: { width: 900, height: 350, channels: 3, background: "#376e62" },
@@ -95,16 +97,15 @@ async function verifyPhoto(page, manager, requester) {
   }, "42501");
   const first = await setPhoto();
   assert.ok(first.object_key.endsWith(".jpg"));
-  const object = (cover) => "/storage/v1/object/authenticated/room-covers/" + cover.object_key;
-  const readable = await call(object(first), requester);
+  const readable = await call(coverObject(first), requester);
   assert.equal(readable.status, 200);
   assert.match(readable.headers.get("content-type"), /^image\/jpeg\b/i);
   assert.equal((await sharp(Buffer.from(await readable.arrayBuffer())).metadata()).format, "jpeg");
-  assert.equal((await call(object(first))).status, 401);
+  assert.equal((await call(coverObject(first))).status, 401);
   assert.equal((await call("/storage/v1/object/sign/room-covers/" + first.object_key, requester, { expiresIn: 60 })).status, 404);
   const replaced = await setPhoto();
   assert.notEqual(first.asset_id, replaced.asset_id);
-  assert.ok([400, 403, 404].includes((await call(object(first), requester)).status), "Objeto aposentado deve deixar de ser legível");
+  assert.ok([400, 403, 404].includes((await call(coverObject(first), requester)).status), "Objeto aposentado deve deixar de ser legível");
   await open();
   await modal.getByLabel("Posição horizontal", { exact: true }).fill("70");
   await modal.getByLabel("Posição vertical", { exact: true }).fill("30");
@@ -121,6 +122,51 @@ async function verifyPhoto(page, manager, requester) {
   }, "42501");
   await page.reload();
   await expect(page.locator(".room-hero-photo")).toHaveCSS("object-position", "70% 30%");
+  return framed;
+}
+
+async function verifyPhotoRemoval(page, requester, frame, institutionalBackground) {
+  const banner = page.locator(".room-hero");
+  const modal = dialog(page, "Foto da sala");
+  const coverRpc = (name) => api + "/rest/v1/rpc/room_booking_" + name;
+  const saveEndpoint = coverRpc("save_cover");
+  await expect(banner.locator(".room-hero-photo")).toBeVisible();
+  await action(page.getByRole("group", { name: "Ações da sala" }), "Alterar foto da sala").click();
+  await expect(action(modal, "Remover foto")).toBeEnabled();
+  // Encaminha à API real somente a remoção do ativo e da versão desta fixture.
+  await page.route(saveEndpoint, (route) => {
+    const args = route.request().postDataJSON();
+    return args?.p_action === "remove" && args.p_asset === frame.asset_id && args.p_version === frame.version
+      ? route.continue()
+      : route.abort();
+  }, { times: 1 });
+  const [removal] = await Promise.all([
+    page.waitForResponse((response) => response.url() === saveEndpoint),
+    action(modal, "Remover foto").click(),
+  ]);
+  assert.ok(removal.ok(), `RPC de remoção da foto: HTTP ${removal.status()}`);
+  await expect(modal).toBeHidden();
+
+  async function expectInstitutionalBanner() {
+    await expect(banner.getByRole("heading", { name: "Sala de Reunião" })).toBeVisible();
+    await expect(banner.locator(".room-hero-photo")).toHaveCount(0);
+    await expect(banner).toHaveCSS("background-image", institutionalBackground);
+  }
+
+  await expectInstitutionalBanner();
+  const [reloaded] = await Promise.all([
+    page.waitForResponse((response) => response.url() === coverRpc("cover")),
+    page.reload(),
+  ]);
+  assert.ok(reloaded.ok(), `Consulta da foto após recarga: HTTP ${reloaded.status()}`);
+  const cover = await reloaded.json();
+  assert.equal(cover.asset_id, null);
+  assert.equal(cover.object_key, null);
+  assert.equal(cover.version, frame.version + 1);
+  await expectInstitutionalBanner();
+  assert.ok([400, 403, 404].includes((await call(coverObject(frame), requester)).status),
+    "A leitora autorizada deve perder acesso ao objeto aposentado pela remoção");
+  console.log("PASS remoção real: banner institucional, recarga, versão incrementada e leitura do objeto aposentado negada.");
 }
 
 async function verifyOperations(requester, manager, admin, actors, width) {
@@ -268,7 +314,9 @@ try {
       console.log("PASS contato real: gravação, releitura, recarga, versão e negativa de solicitante.");
 
       phase = "foto real";
-      await verifyPhoto(manager, actors.manager.session, actors.requester.session);
+      const institutionalBackground = await manager.locator(".room-hero").evaluate((el) => getComputedStyle(el).backgroundImage);
+      assert.notEqual(institutionalBackground, "none");
+      const frame = await verifyPhoto(manager, actors.manager.session, actors.requester.session);
       console.log("PASS foto real: bytes JPEG, substituição, enquadramento, recarga, versão e negativas de leitura/escrita.");
 
       phase = "operações reais a 1440px";
@@ -318,6 +366,8 @@ try {
           await page.context().close();
         }
       }
+      phase = "remoção real da foto";
+      await verifyPhotoRemoval(manager, actors.requester.session, frame, institutionalBackground);
       assert.deepEqual(errors, []);
     } finally {
       await browser.close();
