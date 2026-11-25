@@ -1,6 +1,6 @@
 # Gaúcha Gestão — Guia mestre de preparação para uso real
 
-**Versão:** 1.0  
+**Versão:** 1.2\
 **Data-base da análise:** 04/11/2026  
 **Responsável pelas decisões de produto, aprovações e liberação:** mantenedor/titular do projeto  
 **Repositório de referência:** [The-Vonky/Gaucha-Gestao](https://github.com/The-Vonky/Gaucha-Gestao)  
@@ -261,7 +261,7 @@ Cada módulo incluído no piloto deve ter uma pequena matriz de **fluxos felizes
 
 ## 7. Plano de execução por etapas e dependências
 
-**Ordem recomendada para avaliação do mantenedor.** A sequência organiza a evidência exigida e depende dos briefs e autorizações de cada tarefa.
+**Ordem recomendada para avaliação do mantenedor.** DOC-04, DOC-05 e as próximas tarefas funcionais dependem dos respectivos briefs e autorizações.
 
 | Ordem proposta | Frente e ambiente | Dependência e risco tratado |
 | --- | --- | --- |

@@ -24,6 +24,21 @@
 
 A integração Auditorias → Planos de Ação usa contrato de origem. Cada módulo consulta referências organizacionais e autorizações no Core. Auditorias de Qualidade e `core.system_audit_log` são domínios distintos. Veja [contratos da API](API_CONTRACTS.md) e [roadmap de módulos futuros](../migration/MODULE_ROADMAP.md).
 
+## Rastreabilidade do DDL
+
+| Domínio | Migrations representativas e referências |
+| --- | --- |
+| Core e Identity | [Fundação Core](../../supabase/migrations/202609240001_core_foundation.sql), [governança de acesso](../../supabase/migrations/20261008130000_core_access_governance_read_v1.sql) e [admissão GG-05B](../../supabase/migrations/20261123114457_gg05b_identity_admission.sql). O [contrato vigente de Identity](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) identifica também bloqueio de temporária e evolução da delegação de Salas. |
+| Auditorias e evidências | [Domínio de inspeções](../../supabase/migrations/202609240004_audit_domain.sql), [evidências do checklist](../../supabase/migrations/20260930114000_audit_checklist_evidence_v1.sql) e [checklist v2](../../supabase/migrations/20261113182401_audit_checklist_v2.sql). |
+| Planos de Ação | [Domínio e origem de planos](../../supabase/migrations/202609240006_action_plans_domain.sql) e [evidências](../../supabase/migrations/202609250008_action_plans_evidence.sql). |
+| Curva ABC | [Séries, revisões e originais](../../supabase/migrations/20261020120000_abc_domain_v1.sql) e [leituras analíticas](../../supabase/migrations/20261021120000_abc_analytics_read_v1.sql). |
+| Vendas | [Operações](../../supabase/migrations/20261028140147_sales_operations.sql), [exportação](../../supabase/migrations/20261103175405_sales_excel_export.sql) e [papéis GG-04](../../supabase/migrations/20261118132509_gg04_sales_institutional_roles.sql). |
+| Agendamento de Salas | [Fundação](../../supabase/migrations/20261023190247_room_booking_foundation.sql), [AG-D5-C](../../supabase/migrations/20261123143000_room_booking_admin_modes.sql) e as migrations referenciadas no [contrato de contato e histórico](../modules/room-booking/EXPERIENCE_V1.md#gg-08-e-gg-09--contato-e-histórico-de-gestão). |
+| Comunicados | [Administração](../../supabase/migrations/20261105131548_announcements_administration.sql) e [refinamento de vigência e apresentação](../../supabase/migrations/20261110134857_gg10_announcements_refinement.sql). |
+| Relatos | [Recebimento e anexos](../../supabase/migrations/20261110134859_gg11_employee_feedback.sql). A compatibilidade de ingresso do perfil estrito está no [contrato GG-11](../modules/feedback/FEEDBACK_V1.md). |
+
+O DDL identifica a propriedade das tabelas e as funções que implementam os contratos. A lista de schemas expostos fica nos [contratos da Data API](API_CONTRACTS.md#convenções-testáveis). Grants, RLS e validações nas RPCs definem o acesso efetivo. Atualize este mapa na mesma PR que alterar rotas, contratos, schemas ou autorização relevantes, vinculando o DDL representativo e a evidência aplicável.
+
 ## Storage privado
 
 | Bucket versionado | Domínio e uso |

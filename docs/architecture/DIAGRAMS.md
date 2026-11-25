@@ -77,20 +77,22 @@ flowchart TB
   AUTHUI --> API
   SHARED -. "consumido internamente" .-> AUDITUI
   API --> KONG["Kong"]
-  KONG --> AUTH["GoTrue — perfil base"]
-  KONG --> REST["PostgREST — RPCs e tabelas expostas"]
-  KONG --> STORAGE["Storage API — perfil base"]
-  KONG -. "Auth e Storage no DEV estrito" .-> ID["Core Identity — opt-in"]
+  KONG -->|"Auth no perfil base"| AUTH["GoTrue"]
+  KONG -->|"REST e GraphQL nos dois perfis"| REST["PostgREST — Data API"]
+  KONG -->|"Storage no perfil base"| STORAGE["Storage API"]
+  KONG -->|"Auth e Storage no perfil estrito"| ID["Core Identity — opt-in no DEV"]
   ID --> AUTH
   ID --> STORAGE
-  ID -. "pre-request: admissão de sessão" .-> REST
-  AUTH --> DB[("PostgreSQL 17")]
-  REST --> DB
+  ID -->|"Contratos SQL internos"| DB[("PostgreSQL 17 · grants, RLS e RPCs")]
+  AUTH --> DB
+  REST -->|"SQL · no perfil estrito, executa public.identity_pre_request()"| DB
   STORAGE --> DB
   STORAGE --> OBJ["Objetos: backend local em CI/lab"]
 ~~~
 
-*Ambientes:* o pipeline de aplicação usa Supabase CLI descartável; o pipeline de infraestrutura valida, isoladamente, um Compose mínimo de **db, kong, auth, rest, storage**. O DEV com Identity acrescenta admissão de sessão em REST/GraphQL por pre-request. A C30 tem topologia própria conforme seu AS-BUILT. [Mapa de Implementação](IMPLEMENTATION_MAP.md).
+No perfil estrito, o pre-request SQL avalia a admissão da sessão antes da operação. Grants, RLS e as regras das RPCs continuam aplicando a autorização de domínio. [Rotas do Kong](../../infra/local/config/kong.yml) · [Configuração do ingresso estrito](../../infra/local/config/kong-entrypoint.sh) · [Compose Identity](../../infra/local/compose.identity.yaml) · [Modelo de ameaças](THREAT_MODEL.md#1-ativos-e-limites-de-confiança).
+
+O pipeline de aplicação usa Supabase CLI descartável. O pipeline de infraestrutura valida o Compose base de **db, kong, auth, rest, storage** e mantém um job de integração de Identity. A C30 tem topologia própria conforme seu AS-BUILT. [Mapa de Implementação](IMPLEMENTATION_MAP.md).
 
 ## 3. Infraestrutura prevista para produção (TO-BE, NÃO IMPLANTADA)
 
