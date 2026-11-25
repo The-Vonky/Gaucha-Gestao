@@ -1,41 +1,120 @@
 # Docker Compose de desenvolvimento local
 
-A [PR #121](https://github.com/The-Vonky/Gaucha-Gestao/pull/121) implementa o Compose de DEV. Em 12/11/2026, o mantenedor autorizou uma instalação limpa no notebook. O Docker Desktop passou a operar com o grupo `gaucha-gestao-local` e os oito serviços do Compose. **PROD NO-GO.**
+Procedimentos comuns a [Ubuntu nativo](LOCAL_DEV_UBUNTU.md) e [Windows com WSL2](LOCAL_DEV_WINDOWS.md), na raiz do checkout. Confirme o contexto Docker e o projeto pessoal `gaucha-gestao-local` antes de operar.
 
 ## Topologia e operação
 
-O [manifesto de DEV](../../infra/local/compose.yaml) fixa seis imagens por digest e duas imagens locais (PostgreSQL/Kong), construídas a partir de bases fixadas por digest. O projeto `gaucha-gestao-local` reúne PostgreSQL, Auth, REST, Storage, Kong, Studio, pg_meta e imgproxy. A API, o banco e o Studio escutam em IPv4 e IPv6 loopback nas portas 54321, 54322 e 54323. Os volumes nomeados `db-data`, `storage-data` e `studio-snippets` guardam PostgreSQL, objetos e snippets do Studio. A Supabase CLI continua disponível para a CI. [Referência de versões do laboratório de CI](../../infra/supabase/UPSTREAM.md).
+- **Base:** PostgreSQL (`db`), Auth, REST, Storage, Kong, Studio, pg_meta e imgproxy. Os volumes nomeados `db-data`, `storage-data` e `studio-snippets` guardam banco, objetos e snippets. PostgreSQL e Kong usam imagens locais construídas de bases fixadas, com configuração incorporada. [Manifesto base](../../infra/local/compose.yaml)
+- **Identity:** mesmo projeto com nove serviços. A extensão acrescenta `identity` sem porta publicada e configura Auth, REST e Kong. Preserve os dois manifests em operações do ambiente adotado. [Manifesto Identity](../../infra/local/compose.identity.yaml) · [Runbook GG-05B](GG_05B_IDENTIDADE_DEV.md)
+- **CI e laboratórios:** usam perfis e volumes descartáveis, com procedimentos próprios no [guia de infra](../../infra/README.md). C30/STAGING é persistente e segue [runbook próprio](C30_STAGING_RUNBOOK.md).
 
-Storage e imgproxy se comunicam em um bridge IPv4 dedicado com `internal: true` e gateway `isolated`. O Storage resolve `http://imgproxy:8080` via DNS do Docker. O imgproxy tem namespace próprio, sem publicação, e monta o volume de objetos somente para leitura. Os controles continuam em [audit-imgproxy.env](../../infra/local/audit-imgproxy.env) e [audit-storage-transforms.env](../../infra/local/audit-storage-transforms.env). O [Kong](../../infra/local/config/kong.yml) aplica `Cache-Control: private, no-store` e remove `Expires` na rota Storage comum. A rota S3 mantém sua assinatura própria. [Modo de gateway isolated](https://docs.docker.com/engine/network/port-publishing/#gateway-modes).
+As portas padrão da API, PostgreSQL e Studio são 54321, 54322 e 54323 em loopback IPv4/IPv6. Storage usa imgproxy em bridge interna com gateway `isolated` e montagem de objetos somente para leitura no imgproxy. [Controles do imgproxy](../../infra/local/audit-imgproxy.env) · [Controles do Storage](../../infra/local/audit-storage-transforms.env)
 
-Os oito serviços usam `restart: unless-stopped`. O Compose aguarda os healthchecks de `depends_on` durante suas próprias operações de partida. Ao abrir o Docker Desktop, o Engine aplica as políticas de reinício individualmente, e os serviços dependentes precisam se reconectar. Uma parada explícita com `docker compose stop` requer partida explícita dos serviços parados. [Políticas de reinício](https://docs.docker.com/engine/containers/start-containers-automatically/) · [Ordem de partida do Compose](https://docs.docker.com/compose/how-tos/startup-order/).
+## Instalação inicial em máquina nova
 
-A [instalação em máquina nova](../../README.md#instalação-inicial-em-máquina-nova) cria os volumes, gera as credenciais e aplica as migrations em ordem. O ledger é escrito na mesma transação de cada migration. O comando `vite-env` escreve a flag nativa e a chave de cliente. `npm run dev` executa só o Vite. O executor anterior segue disponível por `npm run dev:thumbnails`.
+A [PR #130](https://github.com/The-Vonky/Gaucha-Gestao/pull/130), integrada à `main` em `cbaeb29`, ampliou os formatos aceitos pelo provisionador. Para migrations com `BEGIN` e `COMMIT` explícitos, ele registra a versão no ledger antes do `COMMIT`. Para uma migration composta de um único `DO` com corpo delimitado por cifrões, como a GG-04, ele abre a transação, executa o bloco e registra a versão antes de confirmar. A migration e sua entrada no ledger são confirmadas juntas. O provisionador pode iniciar serviços antes de verificar todas as migrations.
 
-O provisionador mantém a transação explícita `BEGIN` / `COMMIT` quando presente. Para uma migration composta de um único `DO` com corpo delimitado por cifrões, o provisionador abre a transação, executa o bloco, escreve o ledger e faz o commit.
-
-Para retomar uma instalação interrompida preservando os containers existentes, use o mesmo arquivo de credenciais e o mesmo projeto Compose. `--no-recreate` mantém a configuração dos containers já criados e inicia os serviços que faltam.
+Confirme portas livres e ausência de instância anterior nas mesmas portas ou com o mesmo nome. Para instalar o perfil base em máquina nova:
 
 ```bash
-python3 -B infra/local/local-dev.py --env-file "$HOME/.config/gaucha-gestao/backend.env" install --no-recreate
+npm ci
+GG_DEV_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/gaucha-gestao"
+GG_DEV_ENV="$GG_DEV_DIR/backend.env"
+mkdir -p -m 700 "$GG_DEV_DIR"
+python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" secrets
+python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" install
+python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" vite-env
 ```
 
-## Diagnóstico
+Prossiga para cada passo apenas após sucesso do anterior. `secrets` e `vite-env` recusam sobrescrita. Confira o ledger e os oito serviços saudáveis. Para o primeiro administrador de **um DEV base novo**, crie e confirme uma conta de teste em **Authentication → Users** no Studio local. Execute uma vez no SQL Editor com o UUID dessa conta:
 
-Use o arquivo de segredos do provisionamento e o contexto Docker local.
+```sql
+select private.bootstrap_administrator('UUID_DO_USUARIO_CONFIRMADO'::uuid);
+```
+
+O cadastro público permanece desabilitado. Para estender o ambiente com Identity, siga o [runbook de adoção GG-05B](GG_05B_IDENTIDADE_DEV.md).
+
+## Retomada de instalação interrompida
+
+Identifique a fase da falha e preserve projeto, volumes e arquivo privado originais. Verifique o estado dos serviços e o ledger antes de retomar. No perfil base, use o mesmo projeto e arquivo privado da instalação. Em um novo terminal, defina o caminho para o arquivo existente:
 
 ```bash
 GG_DEV_ENV="${XDG_CONFIG_HOME:-$HOME/.config}/gaucha-gestao/backend.env"
-docker compose -f infra/local/compose.yaml --env-file "$GG_DEV_ENV" config --quiet
-docker compose -f infra/local/compose.yaml --env-file "$GG_DEV_ENV" ps
+python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" install --no-recreate
+```
+
+O provisionador repassa `--no-recreate` às duas chamadas de partida do Compose. Containers existentes e suas configurações são preservados, serviços faltantes podem ser iniciados e as migrations pendentes continuam sendo aplicadas. Alterações de configuração ou imagem dos containers preservados exigem uma atualização controlada. Se já houver Identity adotado, use o Compose combinado e o [runbook de retomada do perfil](GG_05B_IDENTIDADE_DEV.md#retomada-do-notebook-já-adotado).
+
+## Uso diário
+
+Com o backend saudável e o Vite parado, execute `npm run dev`. O Vite atende em [127.0.0.1:5173](http://127.0.0.1:5173), e o Studio em [127.0.0.1:54323](http://127.0.0.1:54323). `vite-env` gera `apps/web/.env.local` com a URL da API em loopback, a chave autorizada de cliente e `VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS=true`. No perfil com Identity, configure também `VITE_GG_IDENTITY_ENABLED=true`. Preserve segredos administrativos fora do frontend e do Git.
+
+
+## Diagnóstico
+
+Selecione os arquivos correspondentes ao perfil já adotado. Confira contexto e portas antes de qualquer partida.
+
+```bash
+GG_DEV_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/gaucha-gestao"
+GG_DEV_ENV="$GG_DEV_DIR/backend.env"
+GG_DEV_COMPOSE=(docker compose -p gaucha-gestao-local --env-file "$GG_DEV_ENV" -f infra/local/compose.yaml)
+# Somente se o projeto já usar Identity, acrescente o complemento:
+# GG_DEV_COMPOSE+=(--env-file "$GG_DEV_DIR/identity.env" -f infra/local/compose.identity.yaml)
+"${GG_DEV_COMPOSE[@]}" config --quiet
+"${GG_DEV_COMPOSE[@]}" ps -a
 curl -fsS http://127.0.0.1:54321/auth/v1/health -o /dev/null
 curl -fsS http://127.0.0.1:54321/storage/v1/status -o /dev/null
 curl -fsS http://127.0.0.1:54323/api/platform/profile -o /dev/null
 ```
 
-Se o Docker indicar portas ocupadas, identifique quem as usa antes de prosseguir. Se a configuração Vite divergir, confira URL, chave de cliente e flag, depois reinicie o Vite. Em falha de transformação, a aplicação oferece **Abrir original**. Consulte os estados e healthchecks sem divulgar a saída de `docker compose config` sem `--quiet`, envs, JWTs ou URLs assinadas. Kong, Storage e imgproxy têm driver de logs `none`.
+Use as portas efetivas se forem diferentes das padrão. `restart: unless-stopped` permite que o Engine retome os serviços existentes após reboot. Uma parada explícita requer partida explícita. Se os containers esperados já existem e foram parados, use `"${GG_DEV_COMPOSE[@]}" start` com o perfil correto após conferir o alvo. Verifique novamente os estados. Diagnostique containers ausentes, falhas de configuração ou conflitos antes de decidir por reconstrução. Limite a saída pública a estados e resultados sanitizados. Kong, Storage e imgproxy usam driver de logs `none`.
+
+## Atualização de infraestrutura e adoção
+
+Para imagem/configuração nova, identifique o diff, a revisão, o perfil, as dependências, o ledger e a necessidade de preservar dados. `up --build` pode recriar serviços. Use janela e plano de recuperação adequados. Um ambiente saudável segue a rotina diária acima.
+
+Se existir uma instância anterior da Supabase CLI, planeje adoção separadamente. O [registro de migração com preservação](#referência-histórica-da-migração-com-preservação-de-dados) guarda o roteiro histórico. Para Identity, siga a ordem e os limites de reversão do [runbook GG-05B](GG_05B_IDENTIDADE_DEV.md). Qualquer laboratório que exija isolamento adicional precisa de escopo próprio.
+
+## Dados descartáveis no DEV pessoal
+
+O grupo `gaucha-gestao-local` no notebook é o **ambiente de desenvolvimento pessoal**; o mantenedor pode pedir a exclusão permanente de dados usados em testes. Quando houver pedido explícito para apagar unidades, usuários, registros, anexos, auditorias ou histórico **de teste**, executá-lo sem reter cópias de rotina, exigir soft delete ou pedir nova autorização apenas por existir histórico. Limpar as dependências efetivamente pertencentes ao alvo, de maneira delimitada, e verificar o resultado. Para contas de teste, distinguir `auth.users`, `core.profiles` e as atribuições de acesso; para evidências, conferir também os objetos associados no Storage. Não remover dados diferentes dos solicitados nem resetar o banco/volumes inteiros sem pedido explícito.
+
+A regra não alcança DEV compartilhado, C30, STAGING, PROD ou dados reais. Consultar [AGENTS.md](../../AGENTS.md) para a instrução obrigatória aos agentes. O procedimento de backup abaixo continua **opcional para os dados descartáveis do DEV pessoal**, e necessário apenas quando o mantenedor desejar preservar dados ou executar uma operação que exija cópia por outro motivo.
+
+## Backup e restauração de um DEV Compose
+
+**Escopo: Compose base de oito serviços.** O provisionador usa somente `compose.yaml`, para os serviços base, captura os três volumes e guarda o arquivo privado base, o dump, os globals e o manifesto.
+
+Pause o Vite, uploads, clientes SQL e outros escritores antes da janela. O comando `backup` para os serviços da aplicação, guarda dump lógico e globals, encerra o PostgreSQL e arquiva os volumes a frio com permissões e proprietários. Retoma a origem ao final. Mantenha o pacote cifrado fora do checkout, com cópia independente do armazenamento do Docker.
+
+```bash
+GG_BACKUP_DIR="$HOME/backups/gaucha-gestao/dev-$(date +%Y%m%d-%H%M%S)"
+mkdir -p -m 700 "$(dirname "$GG_BACKUP_DIR")"
+python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" backup "$GG_BACKUP_DIR"
+```
+
+Em um Docker local sem instância ou volumes do nome de destino, restaure o pacote íntegro com a credencial original. Prepare `GG_DEV_DIR` com o modo indicado na instalação e preserve qualquer arquivo privado existente. O exemplo copia o arquivo do pacote somente se o destino estiver livre.
+
+```bash
+if [ ! -e "$GG_DEV_ENV" ] && [ ! -L "$GG_DEV_ENV" ]; then
+  (umask 077; set -C; cat "$GG_BACKUP_DIR/secrets.env" > "$GG_DEV_ENV") &&
+    python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" restore "$GG_BACKUP_DIR"
+fi
+```
+
+O restore confere SHA-256, versão/digest do PostgreSQL e ausência de `postmaster.pid` no arquivo. Ele cria containers parados, preenche os volumes e só então inicia o Compose. Para ensaiar com a origem ativa, use `--project gg-dev-lab-<id>` antes de `restore`, com uma cópia privada de `secrets.env` alterando apenas as três portas para valores livres. Compare ledger, roles/grants, Auth, buckets, RLS e hashes dos originais. Se a restauração falhar depois de criar recursos, preserve-os para diagnóstico e use outro destino vazio para o próximo ensaio.
+
+### Limite do backup com Identity
+
+**O backup e o restore do Compose base cobrem apenas o perfil de oito serviços.** Mesmo com um pacote íntegro, a recuperação do ambiente adotado com Identity exige um procedimento próprio. O script base não coordena a quiescência nem a partida de `identity`, não restaura o complemento `compose.identity.yaml` e não inclui `identity.env` no pacote. A recuperação integral desse perfil ainda precisa ser ensaiada. Preserve os insumos privados aplicáveis fora do Git, incluindo os arquivos do backend e da extensão, e registre a revisão dos manifests. Consulte o [runbook GG-05B](GG_05B_IDENTIDADE_DEV.md).
+
+**Tarefa técnica proposta:** definir e ensaiar a quiescência de escritores com Identity, conservar e validar os insumos privados, estabelecer a ordem de recuperação do banco, objetos, Auth, REST, Kong e Identity, e comprovar login, admissão, revogação e Storage autenticado após a restauração. A tarefa depende de autorização própria. A continuidade do STAGING exige [processo independente da C30](C30_BACKUP_OPERATIONAL_PLAN.md).
+
+## Registros anteriores
 
 ## Retomada nativa após reboot Windows/WSL2
+
+**Registro histórico da PR #122.** As instruções abaixo pertencem à janela de correção do incidente de 13/11/2026. Para uso atual, siga o [guia Windows](LOCAL_DEV_WINDOWS.md).
 
 O reboot físico de 13/11/2026 identificou falha exit 127 (`not a directory`) nos bind mounts de `99-gg-roles.sql` e `kong-entrypoint.sh`: o Docker Engine tentou restaurar os containers antes de o proxy WSL disponibilizar os arquivos da distro Ubuntu. Abrir o Ubuntu e iniciar os containers **existentes** recuperou os oito serviços sem alteração dos volumes. O monitor com Agendador tentado nesta PR era apenas um contorno, não a solução definitiva.
 
@@ -79,32 +158,9 @@ O operador/agente com acesso ao notebook deve conferir `git status`, checkout, p
 
 Reiniciar o Windows, entrar na conta usual e abrir **somente o Docker Desktop**. Não abrir Ubuntu, não rodar comandos de recuperação e não manter tarefa externa. Os oito serviços precisam voltar a `healthy` nativamente, sem prazo fixo de espera de quatro minutos. Após a partida, comparar volumes, checar API e login; em erro, salvar `docker inspect` e logs antes de restart manual. Manter a PR em rascunho e sem merge até o teste físico do mantenedor e CI.
 
-## Dados descartáveis no DEV pessoal
-
-O grupo `gaucha-gestao-local` no notebook é o **ambiente de desenvolvimento pessoal**; o mantenedor pode pedir a exclusão permanente de dados usados em testes. Quando houver pedido explícito para apagar unidades, usuários, registros, anexos, auditorias ou histórico **de teste**, executá-lo sem reter cópias de rotina, exigir soft delete ou pedir nova autorização apenas por existir histórico. Limpar as dependências efetivamente pertencentes ao alvo, de maneira delimitada, e verificar o resultado. Para contas de teste, distinguir `auth.users`, `core.profiles` e as atribuições de acesso; para evidências, conferir também os objetos associados no Storage. Não remover dados diferentes dos solicitados nem resetar o banco/volumes inteiros sem pedido explícito.
-
-A regra não alcança DEV compartilhado, C30, STAGING, PROD ou dados reais. Consultar [AGENTS.md](../../AGENTS.md) para a instrução obrigatória aos agentes. O procedimento de backup abaixo continua **opcional para os dados descartáveis do DEV pessoal**, e necessário apenas quando o mantenedor desejar preservar dados ou executar uma operação que exija cópia por outro motivo.
-
-## Backup e restauração de um DEV Compose
-
-Pause o Vite, uploads, clientes SQL e outros escritores antes da janela. O comando `backup` para os serviços da aplicação, guarda dump lógico e globals, encerra o PostgreSQL e arquiva os volumes a frio com permissões e proprietários. Retoma a origem ao final. Mantenha o pacote cifrado fora do checkout, com cópia independente do Docker Desktop.
-
-```bash
-GG_BACKUP_DIR="$HOME/backups/gaucha-gestao/dev-2026-11-12"
-mkdir -p -m 700 "$(dirname "$GG_BACKUP_DIR")"
-python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" backup "$GG_BACKUP_DIR"
-```
-
-Em um Docker local sem instância com o nome de destino, restaure o pacote íntegro e a credencial original em volumes novos.
-
-```bash
-install -m 600 "$GG_BACKUP_DIR/secrets.env" "$GG_DEV_ENV"
-python3 -B infra/local/local-dev.py --env-file "$GG_DEV_ENV" restore "$GG_BACKUP_DIR"
-```
-
-O restore confere SHA-256, versão/digest do PostgreSQL e ausência de `postmaster.pid` no arquivo. Ele cria containers parados, preenche os volumes e só então inicia o Compose. Para ensaiar com a origem ativa, use `--project gg-dev-lab-<id>` antes de `restore`, com uma cópia privada de `secrets.env` alterando apenas as três portas para valores livres. Compare ledger, roles/grants, Auth, buckets, RLS e hashes dos originais. Se a restauração falhar depois de criar recursos, preserve-os para diagnóstico e use outro destino vazio para o próximo ensaio.
-
 ## Instalação limpa no notebook em 12/11/2026
+
+**Registro histórico da PR #121**, referente ao notebook Windows naquela data.
 
 O ambiente anterior da Supabase CLI foi desligado e removido. A limpeza incluiu os sete serviços da CLI, os dois containers de reversão de Kong e Storage, o imgproxy avulso, os dois volumes legados de banco e objetos e a rede legada. Foram recriados os volumes `db-data` e `storage-data` do Compose. O volume `studio-snippets` foi preservado. Os dados anteriores foram descartados conforme a decisão do mantenedor.
 

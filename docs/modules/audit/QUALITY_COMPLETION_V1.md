@@ -30,7 +30,7 @@ A PR #14 concluiu o hardening de touch targets/mobile, o tratamento do limite >5
 | O7 | OPEN |
 | O8 | OPEN |
 
-O1 permanece PARTIAL: responsáveis e janela provisória foram definidos, mas faltam RPO/RTO numéricos e retenções. O2 continua exigindo verificação do ambiente real; a PR #16 validou somente um stack descartável/reproduzível e não fecha esse gate. Decisões/provisões operacionais e o requisito de preservação dos dados confirmados como salvos estão em [Backup and Recovery](../../architecture/BACKUP_RECOVERY.md#operational-decisions-and-provisions--2026-10-01). A infraestrutura esperada ligada 24x7 não comprova disponibilidade nem atendimento contínuo.
+O1 permanece PARTIAL: responsáveis e janela provisória foram definidos, mas faltam RPO/RTO numéricos e retenções. O2 continua exigindo verificação do ambiente real; a PR #16 validou somente um stack descartável/reproduzível e não fecha esse gate. Decisões/provisões operacionais e o requisito de preservação dos dados confirmados como salvos estão em [Backup and Recovery](../../architecture/BACKUP_RECOVERY.md#decisões-operacionais-de-01102026). A infraestrutura esperada ligada 24x7 não comprova disponibilidade nem atendimento contínuo.
 
 ## Como ler
 

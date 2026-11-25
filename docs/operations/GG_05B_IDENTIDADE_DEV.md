@@ -20,17 +20,18 @@ Incremento na [PR #127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127), br
 
 ### Retomada do notebook já adotado
 
-Com o Docker do notebook ativo e os arquivos privados `backend.env` e `identity.env` já preparados, use o Compose base e o complemento na mesma chamada.
+Com o backend adotado e saudável, mantenha em `apps/web/.env.local` a URL loopback e a chave de cliente do projeto, com as flags públicas:
 
-```bash
-docker compose --env-file "$HOME/.config/gaucha-gestao/backend.env" \
-  --env-file "$HOME/.config/gaucha-gestao/identity.env" \
-  -p gaucha-gestao-local -f infra/local/compose.yaml -f infra/local/compose.identity.yaml \
-  up -d --build --wait kong
-npm run dev:identity
+```dotenv
+VITE_GG_IDENTITY_ENABLED=true
+VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS=true
 ```
 
-Entre novamente quando havia sessão anterior ao corte. O fluxo normal do DEV com identidade passa a usar o comando acima.
+O provisionador base gera a flag de transformação na primeira escrita do arquivo. Acrescente a flag de Identity na configuração local do ambiente adotado. Execute `npm run dev` se o Vite estiver parado. O alias `npm run dev:identity` injeta as flags no processo para ensaios específicos. Após o corte, entre novamente para criar uma sessão no ingresso atual.
+
+Se o backend estiver parado, siga o [diagnóstico compartilhado](DOCKER_LOCAL_STANDARDIZATION.md#diagnóstico) usando o base e `compose.identity.yaml` com os arquivos privados `backend.env` e `identity.env` em `${XDG_CONFIG_HOME:-$HOME/.config}/gaucha-gestao`. Preserve a composição em operações de partida e atualização. O [backup do Compose base](DOCKER_LOCAL_STANDARDIZATION.md#limite-do-backup-com-identity) cobre oito serviços. Um ambiente com Identity exige procedimento de recuperação próprio, ainda sem ensaio integral comprovado.
+
+A disponibilidade do Vite e a configuração das flags foram observadas na auditoria de 24/11/2026. **O login completo com Identity pelo comando `npm run dev` ainda requer evidência de homologação.**
 
 ## Reconciliação
 
