@@ -145,10 +145,10 @@ sequenceDiagram
     DB-->>UI: Caminho reservado
     UI->>S: Upload privado do XLSX
     UI->>DB: confirm_source_upload
-    Note over DB,S: Confirma metadados; não interpreta bytes XLSX
+    Note over DB,S: Confirma metadados. A interpretação dos bytes XLSX ocorre na UI.
     UI->>DB: publish_revision(payload, versão, motivo)
     alt negação ou conflito 40001
-      DB-->>UI: Erro; revisar série
+      DB-->>UI: Erro ao publicar. Revisar a série.
     else sucesso
       DB->>DB: Calcula ABC e grava revisão imutável
       DB->>L: Registra publicação
