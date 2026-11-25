@@ -2,6 +2,8 @@
 
 PR #120, branch `codex/aud-img-02-imgproxy`. O mantenedor homologou miniatura, ampliação e download em `gaucha-gestao-local` com fotos reais do Galaxy S24 Ultra de 9 MP e aproximadamente 50 MP. **PROD NO-GO.** [POC de referência](../modules/audit/AUD_IMG_02_STORAGE_IMGPROXY_POC_20261111.md).
 
+> **EVIDÊNCIA DATADA da PR #120.** Os comandos de ativação e reversão abaixo descrevem o perfil avaliado. A rotina atual usa o [Compose DEV](DOCKER_LOCAL_STANDARDIZATION.md). Com Identity, a transformação é autenticada e o resgate por assinatura é bloqueado, conforme o [contrato de Storage](../architecture/SECURITY.md#storage-privado-e-miniaturas).
+
 ## Uso diário
 
 Abra o Docker Desktop. No checkout do notebook, pelo WSL com acesso ao socket local do Docker, execute:

@@ -87,6 +87,6 @@ Detalhes: [DIAGRAMS](DIAGRAMS.md), [STACK_INTEGRATION](STACK_INTEGRATION.md), [T
 
 ## Decisões abertas
 
-Backup/PITR e retenção, RPO/RTO, observabilidade/alertas, política de exclusão de evidências, STAGING/PROD, capacidade física da C30 (RAM/SSD) e identidade privilegiada ADR-007 (NO-GO). Não reabrir stack aceita para resolver detalhe sem requisito/novo ADR.
+Backup/PITR e retenção, RPO/RTO, observabilidade/alertas, política de exclusão de evidências, STAGING/PROD, capacidade física da C30 (RAM/SSD) e liberação operacional da identidade privilegiada. A [GG-05B](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) está integrada e homologada no DEV opt-in. Não reabrir stack aceita para resolver detalhe sem requisito/novo ADR.
 
 **Produção NO-GO** até evidências P1–P9/O1–O8 e liberação humana.

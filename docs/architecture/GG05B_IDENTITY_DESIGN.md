@@ -1,8 +1,50 @@
 # GG-05B · D01 · Cadastro administrativo e ciclo de senhas
 
-> **Adendo de 23/11/2026 (AG-D5-C):** a criação segura aceita excepcionalmente os papéis globais `room_booking_manager` e `room_booking_requester` com `unitId = sectorId = null`. A interface, o serviço de identidade e `private.identity_can_assign` validam a lista fechada; outros papéis globais/administrativos seguem proibidos. A implementação original da PR #127 continua registrada abaixo como fotografia histórica. [Contrato vigente da correção](../modules/room-booking/D5C_ADMIN_MODES.md).
+**VIGENTE para o DEV.** A [PR #127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127) integrou a GG-05B autorizada e homologada no notebook. A [PR #129](https://github.com/The-Vonky/Gaucha-Gestao/pull/129) integrou a exceção de cadastro dos dois papéis globais de Salas. A proposta anterior da PR #24 foi encerrada sem merge, e a Issue #49 foi encerrada administrativamente. A [D01](../planning/DECISION_REGISTER.md) preserva revisão de segurança, recuperação emergencial do administrador, pacote para outros ambientes e GO operacional. **PROD NO-GO.**
 
-**D01 aprovada para implementação no DEV em 23/11/2026.** A senha temporária permanece válida até a troca, substituição ou bloqueio. O GoTrue mantém a credencial e o componente interno do Core, atrás do Kong, controla a admissão da sessão. A implantação fora do DEV, a recuperação administrativa emergencial e o piloto dependem de decisões próprias. A descrição da base e os casos de aceite abaixo preservam o contexto do desenho de 18/11. [Registro D01](../planning/DECISION_REGISTER.md) · [execução e evidências GG-05B](../operations/GG_05B_IDENTIDADE_DEV.md).
+## Contrato vigente no DEV
+
+### Fronteira e ativação
+
+O [Compose Identity](../../infra/local/compose.identity.yaml) é uma extensão opt-in do mesmo projeto DEV. As migrations instalam o estado com o perfil estrito desabilitado e `gg_identity` sem login. O [runbook de adoção](../operations/GG_05B_IDENTIDADE_DEV.md) vincula configuração do runtime, ingresso e adoção explícita das identidades. A presença das migrations no ledger, por si só, preserva os fluxos do perfil base.
+
+GoTrue autentica. No modo estrito, o [Kong](../../infra/local/config/kong-entrypoint.sh) encaminha Auth e Storage ao [serviço interno do Core](../../apps/core-identity/server.mjs), sem publicar a porta do serviço. O serviço permite um conjunto fechado de comandos, valida formato e claims do JWT e delega ao GoTrue interno a validação criptográfica e confere o titular retornado. A chave pública do navegador, a chave administrativa usada nas chamadas GoTrue Admin e o login SQL do serviço cumprem funções distintas. `gg_identity` executa funções privadas de contrato fechado, sem acesso direto às tabelas. A interface consome as capacidades projetadas pelo servidor.
+
+O PostgREST exige `public.identity_pre_request()`. A RLS de `storage.objects` tem uma política restritiva adicional de admissão. O gateway de Storage verifica a finalidade e só encaminha caminhos permitidos com o JWT do usuário. A autorização de domínio continua a cargo das políticas e RPCs. [Perfis de Storage](SECURITY.md#storage-privado-e-miniaturas).
+
+### Cadastro e delegação
+
+O operador precisa de perfil ativo, sessão viva admitida para módulos, `admin.user.manage` global efetiva e a capacidade do verbo correspondente em `private.identity_operators` (`provision` ou `reset_password`). O operador confirma a identidade e o e-mail por canal conhecido. O cadastro reserva um UUID e vincula a confirmação no GoTrue ao perfil Core e ao protocolo. A autorização é conferida na preparação e na finalização.
+
+| Cadastro | Condições |
+| --- | --- |
+| Sem papel operacional | Sem papel, unidade ou setor. Após troca e admissão, pode receber os Comunicados publicados, conforme autorização comum. |
+| Papel organizacional | Um papel ativo e delegável, sem permissões `admin.%`. Unidade ativa obrigatória. Setor opcional, ativo e vinculado à unidade. `private.can_delegate` exige cobertura das permissões no escopo solicitado. |
+| Papel global de Salas | Apenas `room_booking_requester` ou `room_booking_manager`, com unidade e setor nulos, delegação efetiva e atribuição global explícita. |
+| Administração e demais papéis globais protegidos | `platform_administrator`, papéis com `admin.%` e os demais `global_only` são recusados nesse cadastro. Atribuições a contas existentes seguem o contrato Core. |
+
+As regras estão em [admissão GG-05B](../../supabase/migrations/20261123114457_gg05b_identity_admission.sql), [bloqueio de temporária](../../supabase/migrations/20261123120627_gg05b_block_temporary.sql) e [AG-D5-C](../../supabase/migrations/20261123143000_room_booking_admin_modes.sql).
+
+### Credenciais e sessões
+
+| Operação | Efeito implementado |
+| --- | --- |
+| Emissão | Cadastro e reset retornam uma senha temporária aleatória de 22 caracteres uma vez na resposta de sucesso. Entrega individual por canal privado. A temporária vale até troca, substituição ou bloqueio. GoTrue guarda o verificador. Core guarda estado, geração, admissão e protocolo. |
+| Login e refresh | O login por senha observa a geração antes de chamar o GoTrue. A admissão confirma o mesmo UUID, sessão viva, estado e geração. Refresh conserva a finalidade de uma sessão admitida. Uma resposta tardia de login perde a admissão se a geração mudou. |
+| Troca obrigatória | A sessão de finalidade `password_change` pode consultar seu estado, renovar, trocar a senha e sair. Dados de negócio e Storage exigem `application`. A troca usa a temporária atual, uma definitiva diferente com pelo menos 8 caracteres e até 72 bytes UTF-8, e confirmação do GoTrue ao serviço. A finalização invalida a sessão restrita e exige login novo. |
+| Redefinição | Apenas alvo ativo, com versão vigente, confirmação de identidade e login do operador por senha nos últimos 15 minutos. A restrição protege a própria conta, operadores Identity e contas com atribuição histórica ou atual a papel administrativo conforme `private.identity_protected`. A admissão anterior fecha antes do efeito externo. O reset preserva grants e exige nova troca. |
+| Revogação, desativação e reativação | Revogar um grant retira seu acesso efetivo e conserva os demais grants válidos. Inativar revoga atribuições, avança a geração e remove admissões. Se a credencial era temporária, passa a `needs_reset`. Reativar preserva as revogações. A conta com credencial apta faz login novo. A conta em `needs_reset` requer nova temporária. |
+| Resultado incerto | O protocolo durável reserva uma operação exclusiva. Falha incerta após despacho conserva o alvo em quarentena. O operador confere o UUID, o log e a situação no Auth por procedimento autorizado. O serviço não repete automaticamente a chamada nem recupera uma temporária perdida. Rejeições de senha reconhecidas no GoTrue podem devolver a sessão ao fluxo restrito. |
+
+O JWT pode continuar criptograficamente válido após revogação. O perfil estrito aplica estado atual da sessão e autorização a novas requisições protegidas. PostgREST e RLS de Storage usam o lock compartilhado da identidade na transação, enquanto comandos de credencial usam lock exclusivo para mudar a geração. A revogação rege novos acessos. Bytes já entregues permanecem com o destinatário. [Sessões do GoTrue](https://supabase.com/docs/guides/auth/sessions). [Integração GG-05B](../../tests/integration/gg05b-identity.mjs) · [Runbook DEV](../operations/GG_05B_IDENTIDADE_DEV.md).
+
+### Evidências e condições de liberação
+
+O [registro da PR #127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127) distingue o ensaio inicial do GoTrue, a matriz integrada Auth/Kong/REST/Storage e a homologação anterior. A PR #129 cobre cadastro dos dois papéis de Salas e evolução de UX. A configuração no notebook foi observada na DOC-01. Permanecem pendentes a homologação completa do login com `npm run dev`, o ensaio integral de recuperação do DEV com Identity e um procedimento aprovado de recuperação emergencial administrativa. Outros ambientes exigem seu pacote e autorização explícita. [Gates](FOUNDATION_GATES.md#gate-4--autenticação-e-autorização).
+
+## Desenho e evidências anteriores
+
+**HISTÓRICO / PROPOSTA.** As seções abaixo registram a baseline anterior, alternativas de desenho, requisitos candidatos e provas datadas da proposta D01. Prazos, rotas, garantias e gates propostos nesse recorte devem ser lidos no contexto da época. Use o contrato vigente acima para o comportamento integrado.
 
 ## O que já existe
 

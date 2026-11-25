@@ -48,4 +48,4 @@ Papel inativo pode manter atribuições ativas: `currently_effective_user_count=
 
 `tests/access-governance-database.test.ts` (PGlite, RLS/grants reais) cobre administradores globais/somente leitura, somente papel/unidade/usuário, anônimo/sem grant/inativo; escopos global/unidade/setor; revogações com/sem logs, inativos, papel sem permissões; sobreposição, composição restrita; ausência de vazamento/enumeration por ID adivinhado; paginação e índice de revogação.
 
-**Este contrato é histórico de implementação do Core. Para status corrente, consultar código, CI e [mapa](../../architecture/IMPLEMENTATION_MAP.md).**
+A projeção `effective` descreve a atribuição no recorte legível. A autorização por operação e linha, inclusive admissão do operador no perfil Identity, segue [o modelo vigente](../../architecture/AUTHORIZATION.md). A validação integradora GG-06 permanece pendente.

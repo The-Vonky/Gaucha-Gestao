@@ -1,8 +1,10 @@
 # Agendamento de Salas — AG-02/AG-03 local
 
+> **EVIDÊNCIA DATADA.** Contratos, comandos e resultados da PR #88. A regra de autorização atual e os critérios de homologação estão em [AG-D5-C](D5C_ADMIN_MODES.md) e na [matriz vigente](ACCEPTANCE_V1.md).
+
 **Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](EXPERIENCE_V1.md).
 
-**Decisão vigente — 26/10/2026:** D5-A revogada pelo responsável em 26/10/2026. D5-B adotada: o administrador geral não administra reservas; a gestão cabe ao papel `room_booking_manager`, com provisionamento administrativo restrito e auditado. Atribuição administrativa ativa conflitante nega gestão mesmo com papel adicional. D1–D4, D6–D11 e F2 permanecem aprovadas. Os registros de 23/10 abaixo são históricos.
+**Decisão histórica — 26/10/2026:** D5-A revogada pelo responsável em 26/10/2026. D5-B adotada: o administrador geral não administra reservas; a gestão cabe ao papel `room_booking_manager`, com provisionamento administrativo restrito e auditado. Atribuição administrativa ativa conflitante nega gestão mesmo com papel adicional. D1–D4, D6–D11 e F2 permanecem aprovadas. Os registros de 23/10 abaixo são históricos.
 
 
 ## Escopo autorizado e entrega

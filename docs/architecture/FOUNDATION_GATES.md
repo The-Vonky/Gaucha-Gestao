@@ -2,7 +2,8 @@
 
 > **Atualização operacional, 30/10/2026:** já existe acesso HTTPS público **de testes** via Cloudflare Tunnel regular Free à C30; ver [AS-BUILT](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md). Esse avanço de STAGING **não** comprova gates de backup/restore, RLS negativo, segurança externa, carga ou operação PROD. As exigências normativas abaixo continuam aplicáveis; **PROD NO-GO**.
 
-**Estado: vigente como referência de gates, atualizado editorialmente em 21/10/2026.**  
+**VIGENTE como referência de gates.**
+
 **Baseline de revisão original:** 02/10/2026, `22334995b5b239274c5c1adc98495357ec0d7980`. Contagens de testes e status antigos são **fotografias históricas**, não o HEAD atual.
 
 Fontes: [conclusão factual da Qualidade](../modules/audit/QUALITY_COMPLETION_V1.md), [aceite P1–P9/O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md), [Plano Diretor](../planning/PLANO_DIRETOR_2026.md). O software Qualidade v1 e Core estão na `main`; Curva ABC v1 foi integrada posteriormente. **Nenhuma CI descartável comprova produção. PROD NO-GO.**
@@ -31,7 +32,9 @@ Explicitar as decisões mínimas da fundação antes de ampliar os domínios. N�
 
 **MODELO v1 DECIDIDO:** Supabase Auth; perfil Core ativo; negação padrão; múltiplos papéis por usuário; permissões granulares; escopo **global/unidade/setor em cada atribuição**; navegação filtrada e aplicação confiável no banco/RLS. Papel de administrador é atribuição global privilegiada.
 
-**PENDENTE:** serviço de identidade privilegiada e UX completo de convite/recuperação dependem de novo desenho aprovado; **ADR-007 NO-GO** ([Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49)).
+**INTEGRADO E HOMOLOGADO NO DEV:** [GG-05B](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) (PR #127), com a evolução dos papéis globais de Salas pela PR #129. A proposta anterior da PR #24 encerrou sem merge e a Issue #49 foi encerrada administrativamente.
+
+**PENDENTE:** validação integradora de permissões GG-06, revisão aplicável de identidade privilegiada, recuperação emergencial do administrador com procedimento aprovado, ensaio integral de recuperação do DEV com Identity e evidência de homologação completa de login via `npm run dev`. Piloto e adoção em outros ambientes exigem pacote operacional e GO específico.
 
 ## Gate 5 — Core organizacional
 
@@ -41,7 +44,9 @@ Explicitar as decisões mínimas da fundação antes de ampliar os domínios. N�
 
 **DECIDIDO:** Supabase Storage privado; Cloudflare R2 preferencial para produção futura; DB guarda metadados/referências, não blobs grandes; backup de arquivos separado do banco.
 
-**Implementado:** `action-plan-evidence` (10 MiB, tipos JPEG/PNG/PDF/XLSX/DOCX, até 20 evidências ativas por plano, download assinado e remoção lógica); `audit-checklist-evidence` (até 10 ativas por critério, 100 por inspeção, 10 MiB, versão de lifecycle/assinatura); `unit-covers` e `abc-source-files` entraram em etapas posteriores. A verificação de assinatura/magic bytes no browser **não** é atestado dos bytes no servidor.
+**Implementado:** `action-plan-evidence` (10 MiB, tipos JPEG/PNG/PDF/XLSX/DOCX, até 20 evidências ativas por plano, remoção lógica e leitura privada segundo o perfil); `audit-checklist-evidence` (até 10 ativas por critério, 100 por inspeção, 10 MiB, versão de lifecycle/assinatura); `unit-covers` e `abc-source-files` entraram em etapas posteriores. A verificação de assinatura/magic bytes no browser **não** é atestado dos bytes no servidor.
+
+No perfil base, o download pode usar URL assinada. No DEV estrito, exige sessão admitida e leitura autenticada nas rotas permitidas. [Perfis, evidências e lacunas](SECURITY.md#storage-privado-e-miniaturas).
 
 **PENDENTE:** retenção/expurgo, cópias produtivas, cabeçalhos, reconciliação e restauração para todos os buckets. Nenhuma tabela universal de anexos está autorizada.
 
@@ -57,7 +62,7 @@ Falta política/rotina operacional de retenção, monitoramento e expurgo autori
 
 **Ensaio registrado:** [Issue #51 e DR-01–DR-09](../planning/02_RESTORE_DRILL.md) com 8 PASS/DR-08 PARCIAL no snapshot de 17 migrations, sem ABC. **Não comprova** RPO/RTO, off-site nem host perdido.
 
-Faltam ferramenta/destino, retenção, RPO/RTO quantitativos por janela, frequência de drill e runbook produtivo.
+A C30 requer backup e restore independentes. O ensaio do Compose base tem escopo próprio e o DEV com Identity ainda requer recuperação integral comprovada. Faltam ferramenta/destino, retenção, RPO/RTO quantitativos por janela, frequência de drill e runbook produtivo.
 
 Responsável de operação/backup: responsável atual do projeto; alertas ao responsável e supervisor; expediente provisório e requisito de preservação em [BACKUP_RECOVERY](BACKUP_RECOVERY.md#decisões-operacionais-de-01102026). **O1 não foi fechado.**
 

@@ -68,7 +68,7 @@ Global usa ambos os IDs de organização nulos. Escopo de setor exige o par do v
 
 ### 4.1 Identidade Auth e cadastro Core
 
-**S —** `auth.users.id` é a identidade autenticada; `core.profiles.id` é PK/FK com o mesmo UUID. A base cria o cadastro por trigger após a criação da identidade Auth. Não há fluxo de criação de conta implementado neste contrato.
+**S —** `auth.users.id` é a identidade autenticada; `core.profiles.id` é PK/FK com o mesmo UUID. A base cria o cadastro por trigger após a criação da identidade Auth. A GG-05B complementa a fundação com cadastro autorizado, troca obrigatória e admissão no DEV opt-in. [Contrato vigente](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev).
 
 O cadastro tem `display_name`, `active`, `version`, `created_at` e `updated_at`. O nome é obrigatório, com 1–160 caracteres após desconsiderar espaços nas extremidades para a validação. E-mail e `last_sign_in_at` pertencem ao Auth; a projeção administrativa os consulta sem copiá-los ao cadastro. Último sign-in não representa última atividade de negócio.
 
@@ -202,7 +202,7 @@ Os resolvedores de referência por UUID conhecido da seção 8.1 ([Core Referenc
 
 ## 9. Invariantes de autorização
 
-**S —** O acesso depende de identidade autenticada, cadastro ativo, atribuição ativa, papel ativo, permissão ativa, cobertura do escopo e regra de linha/domínio. Falta ou ambiguidade nega.
+**S —** O acesso depende de identidade autenticada, cadastro ativo, atribuição ativa, papel ativo, permissão ativa, cobertura do escopo e regra de linha/domínio. Falta ou ambiguidade nega. Em Identity, os módulos também exigem sessão viva admitida para aplicação na geração atual.
 
 - Visibilidade de navegação, `can`, `hasAnyScope` e `my_access` são apoio de UX. Banco/servidor decide com o estado vigente.
 - Um grant setorial não lê uma auditoria de unidade inteira nem uma capa unitária. Planos de Ação usa a autorização setorial quando o plano possui setor.

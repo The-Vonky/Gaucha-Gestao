@@ -1,5 +1,7 @@
 # Implementation Brief — Evidence / Storage v1
 
+> **Transporte vigente.** O contrato de metadados e autorização permanece aplicável. Os critérios de assinatura abaixo descrevem o **perfil base**. No DEV com Identity, download de evidência usa JWT de sessão admitida, leitura privada autenticada e nome de download no cliente. As políticas de plano e unidade continuam vigentes. [Perfis de Storage](../architecture/SECURITY.md#storage-privado-e-miniaturas).
+
 Status: CLOSED FOR IMPLEMENTATION  
 Date: 2026-09-25  
 Baseline: `main` at or after `00c05d529eab8ce2b77507a252ce38c004d0248f`

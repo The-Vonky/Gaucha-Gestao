@@ -13,19 +13,17 @@ revisão/merge e homologação visual de Excel pendentes. VEN-04B integrada #94
 **MEL-01 — 30/10/2026:** limpeza autorizada somente no notebook, catálogo de unidades
 vazio, fixtures com teardown físico dirigido e correção de consultas globais sem unidades
 (`20261030145036_sales_empty_units.sql`). [Evidências](../modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md).
-PR #94 continua para revisão; sem merge ou deploy.
+Na data deste registro, a PR #94 ainda estava em revisão e sem deploy.
 
 **Vendas — adendo de 29/10/2026:** VEN-01/02/03 integradas nas PRs #90/#91/#92.
-VEN-04A integrada pela PR #93 (`7ddcd31`). VEN-04B implementada para revisão:
-[dashboard gerencial completo](../modules/sales/VEN04B_DASHBOARD_UI.md), com
-[evidências sintéticas locais](../modules/sales/VEN04B_LOCAL_VALIDATION.md).
+VEN-04A integrada pela PR #93 (`7ddcd31`). O [dashboard gerencial VEN-04B](../modules/sales/VEN04B_DASHBOARD_UI.md) foi integrado à `main` em 03/11/2026 pela [PR #94](https://github.com/The-Vonky/Gaucha-Gestao/pull/94) (`91bd16b`). As [evidências sintéticas locais](../modules/sales/VEN04B_LOCAL_VALIDATION.md) registram a validação técnica. A homologação funcional VEN-07 e a liberação operacional VEN-08 têm aceite próprio.
 O administrador mantém sete capacidades de Vendas. A
 [GG-04](AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04) define Sales Manager
 e Sales Viewer como os dois perfis operacionais protegidos.
 [Histórico VEN-04B](../modules/sales/VEN04B_ACCESS_CORRECTION.md).
 Sem homologação VEN-07 ou alterações em STAGING/PROD. O restante mantém sua fotografia histórica.
 
-**Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. D5-B, agenda, pedidos próprios e decisões anteriores preservados. [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).
+**Melhorias aprovadas em 26/10/2026 após teste manual:** foto privada da sala gerida somente por `room_booking.manage`, status verde/vermelho e contagem pelo relógio do servidor, visão da secretária sem cards de solicitante e histórico geral paginado somente para gestão. A autorização vigente é [AG-D5-C](../modules/room-booking/D5C_ADMIN_MODES.md). [Contrato, segurança e validação](../modules/room-booking/EXPERIENCE_V1.md).
 
 **Fotografia:** main após PR #69 (`fed0e0f`, 20/10/2026). Inventário de arquivos/contratos, **não relatório de aprovação de deploy ou de testes executados agora**.
 
@@ -49,9 +47,9 @@ Sem homologação VEN-07 ou alterações em STAGING/PROD. O restante mantém sua
 | Curva ABC v1 + áreas v2 (em PR) | apps/web/src/modules/abc/{AbcModule.tsx,AbcOverview.tsx,AbcImports.tsx,AbcCompare.tsx,AbcReports.tsx,AbcProducts.tsx,AbcCategories.tsx,AbcImport.tsx,AbcRevision.tsx,scope.tsx,charts.tsx,api.ts,import/*} | migrations 20261020120000_abc_domain_v1.sql e 20261021120000_abc_analytics_read_v1.sql; abc/abc_private, bucket abc-source-files; [brief](../briefs/ABC_DOMAIN_V1.md); tests/abc-*.test.*; tests/integration/abc.mjs | AS-IS integrado, aceite manual pendente |
 | Unidade e imagens de capa | apps/web/src/core/unitCovers.ts, unitCoverImage.ts, apps/web/src/core/admin/UnitCoverEditor.tsx | [UNIT_COVER_V1](../modules/core/UNIT_COVER_V1.md); tests/integration/unit-cover.mjs | AS-IS |
 | Infraestrutura mínima | infra/supabase/docker-compose.yml, scripts/ops/*, .github/workflows/infra-validate.yml | [infra/README](../../infra/README.md), [UPSTREAM](../../infra/supabase/UPSTREAM.md), ADR-006 Proposed | AS-IS **CI/lab**, NÃO PROD |
-| Serviço privilegiado de criação/recuperação Auth | Nenhum runtime aprovado na main | [ACCOUNT_LIFECYCLE_V1](ACCOUNT_LIFECYCLE_V1.md), Issue #49; PR #24 fechado sem merge | **BLOQUEADO / DESIGN ONLY** |
-| Agendamento de Salas AG-01/02/03 | apps/web/src/modules/rooms/; rota /rooms | migrations room_booking_foundation, room_booking_operations e room_booking_d5b_access; [separação D5-B e provisionamento](../modules/room-booking/D5B_ACCESS.md); [contrato e validação local](../modules/room-booking/AG02_AG03_LOCAL.md) | PR #88; funcional em desenvolvimento local, merge/homologação pendentes |
-| Vendas / Maquininhas VEN-01/02/03/04A/04B | `sales` privado; `apps/web/src/modules/sales/`; `SalesModule`, `SalesPage`, `EntryEditor`, `SalesDashboardPage`, `DashboardCharts`; `/sales` como entrada, `/sales/entries` e `/sales/dashboard` no módulo Comercial expansível | mesmas sete RPCs; migration institucional `20261029180613`; `tests/sales-*`, job `sales-integration`; [operação](../modules/sales/VEN04A_OPERATIONS_UI.md) e [dashboard/matriz EQ01–22](../modules/sales/VEN04B_DASHBOARD_UI.md) | VEN-01/02/03/04A integradas #90–93; VEN-04B para revisão; não homologada |
+| Serviço interno Core Identity | `apps/core-identity/`, com Auth, Kong, PostgREST e Storage | [GG-05B](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) e [runbook](../operations/GG_05B_IDENTIDADE_DEV.md) | Integrado e homologado no DEV pela PR #127. Recuperação emergencial, revisão aplicável e adoção operacional pendentes. |
+| Agendamento de Salas AG-01/02/03 | apps/web/src/modules/rooms/; rota /rooms | [AG-D5-C](../modules/room-booking/D5C_ADMIN_MODES.md) sobre a fundação e operações da PR #88 | PR #129 integrada e homologada funcionalmente no DEV; [AG-05 pendente](../modules/room-booking/ACCEPTANCE_V1.md) |
+| Vendas / Maquininhas VEN-01/02/03/04A/04B | `sales` privado; `apps/web/src/modules/sales/`; `SalesModule`, `SalesPage`, `EntryEditor`, `SalesDashboardPage`, `DashboardCharts`; `/sales` como entrada, `/sales/entries` e `/sales/dashboard` no módulo Comercial expansível | [papéis GG-04](AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04); `tests/sales-*`, job `sales-integration`; [operação](../modules/sales/VEN04A_OPERATIONS_UI.md) e [dashboard/matriz EQ01–22](../modules/sales/VEN04B_DASHBOARD_UI.md) | VEN-01/02/03/04A integradas #90–93. VEN-04B integrada pela [PR #94](https://github.com/The-Vonky/Gaucha-Gestao/pull/94). Homologação funcional VEN-07 e liberação operacional VEN-08 pendentes. |
 | ISO, satisfação, frota, planejado-realizado, contratos | Sem integração desses domínios na main (ABC já integrada) | [roadmap de migração](../migration/MODULE_ROADMAP.md) e mapa de consumidores Core | **FUTURO** |
 
 ## Chamadas RPC representativas, verificadas nos adaptadores

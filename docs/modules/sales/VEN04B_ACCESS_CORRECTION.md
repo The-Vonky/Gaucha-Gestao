@@ -1,5 +1,7 @@
 # VEN-04B — Correção de acesso e catálogo institucional
 
+> **EVIDÊNCIA DATADA · 29/10/2026.** Sales Operator e a restrição D5-B descrevem aquela versão. Para composição de Manager, Viewer e Platform Administrator após a GG-04, consulte a [matriz vigente de Vendas](../../architecture/AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04). Para Salas, consulte [AG-D5-C](../room-booking/D5C_ADMIN_MODES.md).
+
 Registro histórico de outubro de 2026. A
 [GG-04](../../architecture/AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04)
 define a composição institucional vigente.

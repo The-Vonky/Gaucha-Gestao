@@ -1,74 +1,66 @@
 # Modelo de ameaças e requisitos verificáveis — Gaúcha Gestão
 
-> **Revisão de superfície exposta — 30/10/2026:** o STAGING já recebe tráfego HTTPS externo em `teste.gauchagestao.online` via Cloudflare Tunnel e Caddy (ver [AS-BUILT](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md)). A borda Cloudflare **de produção** continua TO-BE e **não** há evidência de Cloudflare Access configurado no teste. A tela de login pública, Auth, REST, Storage, URLs assinadas e dados requerem teste de RLS/grants negativo, política de usuários, WAF/cache e recuperação; sucesso de login/foto não é pentest nem aprovação de segurança. PROD NO-GO.
-
-**Escopo de revisão:** main após PR #69 (`fed0e0f`, 20/10/2026), stacks decididas e TO-BE de produção. **Não é pentest, auditoria de infraestrutura, nem atestado de segurança ou liberação PROD.** Guias canônicos: [SECURITY](SECURITY.md), [AUTHORIZATION](AUTHORIZATION.md), [ADR-005](../decisions/ADR-005-core-authorization.md).
+**VIGENTE para a baseline de código da `main`.** As evidências referem-se aos ambientes, datas e revisões dos respectivos ensaios. O [AS-BUILT de 30/10/2026](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) registra HTTPS público de testes na C30 via Caddy e Cloudflare Tunnel. A instalação e os controles daquele ambiente exigem evidência própria. **PROD NO-GO.**
 
 ## 1. Ativos e limites de confiança
 
 ~~~mermaid
 flowchart LR
-  B["Browser não confiável"] --> EDGE["Cloudflare/WAF/Tunnel previsto"]
-  EDGE -. "ingress TO-BE" .-> G["Kong — gateway"]
-  B --> API["supabase-js / PostgREST / Storage"]
-  G --> API
-  API --> RLS["PostgreSQL grants + RLS + RPCs"]
-  API --> AUTH["GoTrue/Auth"]
-  API --> ST["Storage API e buckets privados"]
-  RLS --> LOG["Core system audit log"]
-  ST -. "R2 planejado" .-> R2["R2"]
-  OPS["Operador com credenciais privilegiadas"] -. "fronteira administrativa distinta" .-> RLS
+  B["Browser · entrada não confiável"] --> K["Kong"]
+  K --> R["PostgREST"]
+  K -->|"perfil base"| A["GoTrue · autenticador"]
+  K -->|"perfil base"| S["Storage · buckets privados"]
+  K -->|"perfil estrito DEV · Auth e Storage"| I["Identity · serviço interno Core"]
+  I --> A
+  I --> S
+  I -->|"contratos SQL privados"| P["PostgreSQL · grants, RLS e RPCs"]
+  R -->|"pre-request em Identity"| P
+  S --> P
+  S --> M["imgproxy · leitura de objetos"]
+  P --> L["Core system audit log"]
 ~~~
 
-A parte browser/URL assinada/JWT é controlada pelo cliente e **não confiável**. GoTrue autentica; RLS/contratos confiáveis autorizam. A borda Cloudflare é defesa perimetral futura e não substitui controle aplicativo. O operador humano e backup/cofre têm privilégio maior que a aplicação e devem ser isolados. O fluxograma representa fronteiras, não configurações já ativadas em produção.
+Kong é a fronteira de ingresso da aplicação nos perfis locais. GoTrue confirma a identidade. Core e cada domínio avaliam admissão, capacidade, escopo, autoria e invariantes. A operação privilegiada de infraestrutura e backup tem fronteira de confiança própria e deve ser isolada da aplicação. [Segurança](SECURITY.md) · [Autorização](AUTHORIZATION.md).
 
 ## 2. Registro de ameaças e controles
 
-| Ameaça / superfície | Modo de falha | Controle existente / previsto | Evidência faltante |
-| --- | --- | --- | --- |
-| Escalada por manipulação de role/escopo | Usuário forja pedido para unidade diferente ou autoeleva privilégio | Permissão por operação, escopo em atribuição, grants/RLS/RPC; checagens de versão | Reexecutar matriz JWT real no commit candidato e testar novos contratos |
-| Credenciais privilegiadas no browser | service_role, segredo DB ou token administrativo acaba em bundle/log | client.ts aceita chave publishable/anon; verify-build; políticas do repositório | Revisar configuração e telemetria do ambiente final |
-| Conta inativa ou sessão revogada | Token ainda válido recebe dados em negócio | Core profile ativo + avaliação de permissão/RLS | Evidência real após inativação e interleavings contra Auth |
-| Provisionamento/reset privilegiado | Contas indevidas, último admin removido, corrida de sessões/Auth | **Bloqueado**: ADR-007 não aprovado; nenhum serviço privilegiado de contas autorizado | [Issue #49](https://github.com/The-Vonky/Gaucha-Gestao/issues/49): GoTrue real, locks, AMR, orphan sessions, parecer independente |
-| Acesso indevido a arquivos | URL assinada compartilhada, ID adivinhado ou bucket aberto | Buckets privados, emissão autorizada e chaves geradas no servidor | Headers, TTL/cache, expiração, R2 real e teste cross-unit em staging |
-| Upload malicioso | Conteúdo inesperado / spoof de MIME, XLSX/PDF hostil | Limites por domínio, extensões/MIME e contratos de Storage; tratamento de XLSX | Evidência de validação confiável de bytes; limitar expectativa sobre checagem client-side |
-| ABC: payload falso ou XLSX trocado | Publicador autorizado pode enviar linhas coerentes não extraídas do original; servidor revalida payload, mas não reprocessa nem re-hasheia bytes do XLSX | Conferir com o arquivo posteriormente; homologação das amostras e avaliar necessidade de validação confiável server-side |
-| ABC: validações não simétricas | Parser do navegador impõe competência fechada e limites numéricos não espelhados integralmente pela RPC | UI restringe fluxo normal, mas chamada API direta por publicador autorizado contorna parte das checagens de prévia | Harmonizar invariantes no SQL mediante migration incremental e teste negativo |
-| Corrida entre metadata/Storage | Byte órfão ou metadata confirmada sem objeto | Reserva → upload → confirmação; reconciliação planejada | O5 agenda/alertas, processo de purge auditado e prova operacional |
-| Dado malicioso em exportação | Formula injection no XLSX ou HTML/print injection | Escrita segura de células e testes de exportação | Revalidar casos maliciosos no SHA de liberação |
-| Ingresso indevido / superfícies administrativas | Banco, Studio ou painel expostos externamente | Banco sem porta publicada em Compose; Tunnel/WAF/controle de portas previstos | Configuração real, firewall, TLS e exposições verificadas |
-| CI/supply chain | Dependência comprometida ou workflow inseguro | npm audit em dev+prod, scripts de validação, imagens pinadas em infra | Proveniência de deploy, controle de credenciais CI, revisão de upgrade |
-| Comprometimento do host único | Perda de serviço, dados ou chaves por falha física/ransomware | C30 dedicada prevista; backup off-site/PITR/Ansible no desenho | Backup PROD independente/imutabilidade, restore ensaiado, RPO/RTO/capacidade |
-| Perda/alteração dos logs | Privilegiado apaga evidência ou baixa visibilidade | core.system_audit_log, writes confiáveis | Retenção, exportação/monitoramento, acesso e recuperação operacional |
-| Vazamento via teste / migração | Dados reais copiados para DEV/CI ou logs de agentes | Dados sintéticos, exclusão de secrets, política de PROD limpa | Processo futuro de classificação/mascaramento e validação do corte |
-
-**Prioridades:** P0 (Identity Boundary, preservação C30, backups/restore e controle PROD); P1 (Storage headers/reconciliação, testes RLS e capacidade); demais riscos exigem avaliação antes de release. Não interpretar enumeração de controle existente como prova de eficácia em produção.
+| Ameaça | Controle implementado | Evidência e risco residual |
+| --- | --- | --- |
+| Autoelevação ou delegação excessiva | Grants, RLS e RPCs. Core confere composição e escopo. Identity exige capacidade privada por verbo, operador ativo, permissão global e regra fechada de cadastro. | [Matriz Core](../../tests/integration/core-security-matrix.mjs) e [GG-05B](../../tests/integration/gg05b-identity.mjs). GG-06 requer verificação integradora. |
+| Usar a vista Requester como barreira | O backend usa autorização atual. O seletor de Salas só muda a UI. | Na [AG-D5-C](../modules/room-booking/D5C_ADMIN_MODES.md), o administrador continua apto a gerir por RPC em Requester. Redução de privilégio por sessão exigiria nova decisão. |
+| Perfil inativo, JWT anterior ou corrida de credenciais | Perfil ativo é condição de domínio. Em Identity, admissão por sessão viva, finalidade e geração. O bloqueio avança a geração e invalida admissões. Pre-request e RLS de Storage verificam novas requisições. | A [PR #127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127) registra negativa do mesmo JWT após reativação. No perfil base, o token mantém validade criptográfica e os controles dependem do estado do Core. |
+| Acesso cruzado entre unidades, setores ou autores | Escopo na atribuição, filtros e políticas por recurso. Vendas exige global/unidade e revalida interseções na exportação. Salas vincula pedidos próprios ao titular da sessão. | [Testes de Vendas](../../tests/sales-institutional-database.test.ts) e [aceite de Salas](../modules/room-booking/ACCEPTANCE_V1.md). Revalidar no candidato operacional. |
+| Objeto privado ou URL repassada | Buckets privados, chave reservada, autorização do objeto. Identity fecha assinatura e exige sessão admitida no ingresso e em Storage. | No perfil base, URL emitida pode ser usada até o TTL. Em qualquer perfil, revogação não recolhe bytes já recebidos. O bucket GG-11 fica fora da lista de ingresso estrito atual. [Perfis e lacuna](SECURITY.md#storage-privado-e-miniaturas). |
+| Alteração de credencial com resultado incerto | Operação exclusiva e auditada, quarentena até confirmação por UUID e geração, sem repetição automática do efeito remoto. | [GG-05B](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev). Recuperação e liberação de quarentena exigem procedimento autorizado. |
+| Conta administrativa indisponível | Reset ordinário recusa a própria conta e alvos protegidos. Adoção DEV exige conferir administrador ativo e login novo. | Recuperação emergencial, custódia e ensaio integral de recuperação com Identity permanecem pendentes. [Gates](FOUNDATION_GATES.md). |
+| Credenciais privilegiadas em bundle, respostas ou logs | Chave pública no cliente, chave Admin no serviço, login SQL dedicado e trilha saneada. Somente a resposta autorizada de criação/reset inclui a temporária. | A [PR #127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127) registra inspeção de logs sintéticos. Segredo GoTrue Admin tem autoridade ampla. Revisar exposição, custódia e rotação para o ambiente-alvo. |
+| Upload hostil ou estado divergente de metadados e bytes | Tipos/tamanhos por domínio, reserva e confirmação, políticas de origem e transformação de imagens com limites. | Validar original privado, bytes e cabeçalhos no perfil-alvo. Arquivos órfãos, reconciliação e retenção física permanecem operacionais. |
+| Curva ABC: payload coerente alheio ao XLSX ou arquivo trocado | SQL revalida payload e metadata; parser e conferência posterior operam no cliente. | O servidor não reprocessa nem re-hasheia os bytes do original. Algumas restrições de competência e limites da prévia não são simétricas no SQL. Validação física confiável ou mudança de invariantes exige decisão própria. [Contrato ABC](../briefs/ABC_DOMAIN_V1.md). |
+| Fórmulas em planilhas ou conteúdo injetado em relatório | Exportações usam contratos de projeção, escopo atual e escrita segura das células. | Revalidar no SHA candidato. Arquivos exportados passam à custódia de quem os recebeu. |
+| Perda de host, dados ou objetos | Volumes com escopo de backup definido. | Criptografia, proteção contra exclusão e backup/restore independente da C30 exigem prova, além de RPO/RTO. [Backup e recuperação](BACKUP_RECOVERY.md). |
+| Perda ou adulteração de trilha | Gravações confiáveis e leitura restrita de `core.system_audit_log`. | Um operador privilegiado do banco pode alterar registros. Acesso operacional, retenção, exportação, proteção e monitoramento da trilha exigem política e validação. [Auditoria sistêmica](SECURITY.md#auditoria-sistêmica). |
+| Revisão limitada e cadeia de dependências | Diff, CI, testes negativos e aceite do mantenedor único; lockfiles e validações de dependências. | A ausência de segunda revisão é risco registrado. A revisão aplicável à identidade privilegiada é um gate específico. CI cobre somente os casos executados. |
+| Exposição de serviços ou dados reais em ensaio | Separação DEV/CI/C30, dados sintéticos, ingresso e acesso por perfil. | Inventariar exposição, TLS, firewall, logging e segredos no ambiente operacional. Conferir o estado implantado com evidência do próprio ambiente. |
 
 ## 3. Cenários de autorização que não podem falhar
 
-1. Usuário sem sessão ou com profile inativo: nenhuma leitura/mutação de negócio.
-2. Usuário com permissão em unidade A: não consultar/editar/unificar evidências de unidade B.
-3. Navegação oculta **não** impede chamada manual: API deve negar.
-4. Revogação/desativação: próximo acesso e mutações devem refletir política de revogação do contrato Core, mesmo com UI obsoleta.
-5. Administrador com capacidade limitada: não conceder papel com poder que não controla, nem se autoelevar.
-6. Tentativa de upload inválido, nome arbitrário, bucket alheio, atualização de versão obsoleta ou URL expirada: falha sem dar privilégio.
-7. Para ABC, a conferência posterior não equivale à prova criptográfica de origem antes de publicar; usuários e clientes autorizados também são entradas não confiáveis.
-8. Auditoria e metadados históricos permanecem acessíveis apenas nos escopos autorizados; sem exclusão em cascata por desativação ordinária.
-9. API e logs nunca retornam senha, service_role, segredos, JWTs completos ou URLs assinadas persistentes.
+1. Sem sessão ou com perfil inativo, negar acesso aos dados de negócio. No perfil estrito, negar também sessão não admitida, revogada ou restrita à troca de credencial.
+2. Grants de uma unidade ou setor não devem liberar outra unidade ou registros não cobertos. Exportação e Storage aplicam a mesma fronteira do domínio.
+3. A interface reflete a projeção do acesso. Cada chamada direta deve obedecer à autorização efetiva, inclusive quando o administrador de Salas estiver em Requester.
+4. Negar concessão fora da autoridade e reset de conta protegida. A autoria deve vir do contexto confiável da sessão ou do mecanismo produtor. Um valor arbitrário informado pelo cliente não atribui autoria.
+5. Testar a próxima operação após revogação ou desativação, inclusive com estado de UI obsoleto. Conferir rejeição de versão obsoleta e contenção de resultado remoto incerto.
+6. Negar uploads incompatíveis com tipos, tamanhos ou chaves autorizados, objetos de outra unidade, bucket indevido e acesso por ID ou chave adivinhados. No perfil base, rejeitar URL expirada. Em Identity, testar também a negativa de emissão e resgate por assinatura. A validação física de bytes segue os limites de cada contrato.
+7. Restringir acesso à trilha e a metadados históricos aos escopos autorizados. A desativação ordinária preserva o histórico.
+8. Relatórios, logs e erros devem excluir credenciais, identificadores desnecessários e URLs assinadas persistentes, preservando a autoria autorizada.
 
-Mapear cada cenário a testes unitários, RLS e integrações com **JWT real**; acompanhar [core-security-matrix](../../tests/integration/core-security-matrix.mjs), [Quality Acceptance](../modules/audit/QUALITY_ACCEPTANCE_V1.md) e novos cenários para cada módulo.
+Vincular os cenários aos testes de regressão e às integrações com JWT real nas superfícies aplicáveis. [GG-05B](../../tests/integration/gg05b-identity.mjs) · [Matriz Core](../../tests/integration/core-security-matrix.mjs) · [P1–P9 e O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md).
 
 ## 4. Recomendações TO-BE, não implementações
 
-- Separar identidade privilegiada em serviço confiável **somente após** decisão arquitetural e provas (#49), sem expor admin key no frontend.
-- Aplicar gestão de secrets, rotação, TLS/origins, CSP/cabeçalhos e proteção dos domínios de Storage em STAGING antes de PROD.
-- Definir política de logging sem dados pessoais excedentes, retenção, acesso e monitoramento de alterações sensíveis.
-- Definir backup independente de DB e objetos com criptografia, proteção contra exclusão e testes de restauração consistentes.
-- Formalizar política de mudanças de RLS/RPC, revisão independente e testes negativos por papel/unidade/ciclo de vida.
-
-Esses itens exigem brief/ADR/issue, dono, testes e aceite. Não habilitar tecnologia ou superfície privilegiada apenas porque constou da análise.
-
+- **Ingresso e exposição.** Verificar firewall, portas e superfícies administrativas, TLS e origens, WAF, CSP, cabeçalhos e cache antes de PROD. Validar a exposição e as negativas em login, Auth, REST e Storage, inclusive os domínios de objetos, TTL e resgate por assinatura nas versões que o permitem. O HTTPS de testes na C30 tem evidência datada e a proteção adicional via Cloudflare Access exige evidência própria. Respostas privadas ficam fora do cache compartilhado. Se R2 for adotado, a validação de autorização e recuperação de objetos deve abranger esse destino. [Runbook da C30](../operations/C30_STAGING_CLOUDFLARE_RUNBOOK.md#segurança-dados-e-validações-pendentes).
+- **Logs e recuperação.** Verificar os requisitos de proteção da trilha, retenção, monitoramento e recuperação definidos em Segurança e Backup. O ensaio deve abranger banco e objetos e seguir as condições do ambiente-alvo. [Segurança](SECURITY.md#auditoria-sistêmica) · [Backup e recuperação](BACKUP_RECOVERY.md).
+- **Mudanças de segurança.** Conferir gestão e rotação de segredos, revisão aplicável, recuperação emergencial do administrador e testes negativos de RLS/RPC por papel, unidade e ciclo de vida no SHA candidato. Cada prova requer ambiente, escopo e GO próprios. [Gates de fundação](FOUNDATION_GATES.md).
 
 ## Foto da Sala de Reunião — 26/10/2026
 
-Bucket privado `room-covers`, independente de `unit-covers`, usa D5-B para mutação e leitura de agenda para assinatura. Arquivos imutáveis, confirmação de metadata, referência/versionamento e auditoria no PostgreSQL. Reconversão JPEG/remoção de EXIF é feita pelo browser reutilizando o codec Core; o servidor não decodifica pixels e não prova essas propriedades em payload forjado. URL já assinada é bearer token até TTL de 300 s, mesmo após revogação. Pendentes/aposentados retidos, sem expurgo automático. Histórico de pedidos e nomes Core restritos à gestão; agenda pública autorizada não ganha identidades nem finalidade privada. [Contrato e limites](../modules/room-booking/EXPERIENCE_V1.md).
+**EVIDÊNCIA DATADA.** A versão de 26/10 usou D5-B e URLs assinadas de até 300 s. Na `main`, AG-D5-C autoriza gestão a administrador global e gestor efetivos. Leitura da foto exige leitura da agenda; Identity usa a rota autenticada. O SQL verifica metadata e o browser reconverte a imagem, com os limites de validação física do [contrato de experiência](../modules/room-booking/EXPERIENCE_V1.md#foto-e-storage-privado).

@@ -12,10 +12,10 @@
 | --- | --- | --- | --- |
 | Interface | React 19 + TypeScript 5 + Vite 6 + Router 7 (apps/web/package.json) | Renderização, formulários, UI de permissão; não é boundary de autorização | **Implementada** |
 | Acesso do frontend | @supabase/supabase-js 2 (apps/web/src/core/client.ts) | Cliente de Auth, Data API (PostgREST) e Storage; deve receber só chave publishable/anon | **Implementado** |
-| Sessão | Supabase GoTrue/Auth + AuthProvider | Login, sessão, perfil ativo e permissões efetivas via my_access | **Implementado**, gestão privilegiada de credenciais pendente |
+| Sessão | Supabase GoTrue/Auth + AuthProvider | Login, sessão, perfil ativo e permissões efetivas via my_access | **Implementado**. [Identity opt-in no DEV](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) |
 | Regras e acesso a dados | PostgreSQL + RLS + funções SQL/RPC + PostgREST | Mutação transacional, escopo, isolamento por unidade/setor, versões/conflitos | **Implementado** conforme migrations e testes |
 | Dados | PostgreSQL 17, schemas auth/core/audit/action_plans/abc; schemas internos privados | Identidade, Core corporativo, auditorias, planos, metadados de evidências | **Implementado**, produção não instalada |
-| Arquivos | Supabase Storage API; buckets privados | Upload de bytes e download assinado; metadata e autorização ficam em contratos de domínio | **Implementado em laboratório/CI** |
+| Arquivos | Supabase Storage API; buckets privados | Upload e leitura privada segundo o perfil. Metadados e autorização pertencem aos domínios | **Implementado em laboratório/CI** |
 | Armazenamento físico | Filesystem no laboratório e HDD dedicado no STAGING C30; R2 preferido em PROD | Persistência dos objetos distinta do banco; precisa de backup independente | **HDD local em STAGING**; **R2 TO-BE** |
 | Curva ABC v1 | Parser XLSX no navegador, schema abc e bucket abc-source-files | Revisões por unidade/competência, classificação em SQL; conferência posterior do arquivo | **Código na main; homologação pendente** |
 | Gateway self-hosted | Kong + GoTrue + PostgREST + Storage + PostgreSQL | Perfil mínimo de 5 serviços no Compose | **CI + STAGING persistente real na C30**; **PROD NO-GO** |
@@ -35,7 +35,7 @@ Para critérios, alternativas e trade-offs das decisões tecnológicas, veja o [
 2. apps/web/src/core/client.ts cria supabase-js com VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY. Sem configuração válida, o cliente fica indisponível; service_role nunca entra no bundle.
 3. Auth autentica e entrega sessão/JWT. AuthProvider carrega o perfil em core.profiles e consulta core.my_access. Login **não equivale** a permissão de negócio.
 4. A UI de um domínio invoca RPC específica ou consulta permitida em schema core/audit/action_plans/abc via PostgREST. Cada operação depende de grants, RLS e regras transacionais no PostgreSQL.
-5. Para anexos, uma RPC reserva/confirma metadata autorizada; o browser envia os bytes à Storage API no bucket privado. Downloads usam URL assinada de curta duração, sem torná-la pública ou persistente.
+5. Para anexos, uma RPC reserva/confirma metadata autorizada; o browser envia os bytes à Storage API no bucket privado. Downloads seguem o [perfil de Storage](SECURITY.md#storage-privado-e-miniaturas).
 6. Erros de versão, autorização, conteúdo e rede precisam ser tratados como operações falhas ou pendentes, não como sucesso otimista.
 
 ~~~mermaid
@@ -102,4 +102,4 @@ O script scripts/ops/apply-migrations.sh e os scripts associados **recusam produ
 
 ## Questões ainda abertas
 
-Ferramenta WAL/PITR, política de retenção de DB/objetos/logs, recuperação off-site, alvo p95/carga, capacidade da C30, operação de STAGING/PROD, verificações de headers/cache, governança privilegiada de Auth (ADR-007 pendente), monitoramento e alertas. Ver [registro de decisões](../planning/DECISION_REGISTER.md) e [gates](../modules/audit/QUALITY_ACCEPTANCE_V1.md). Não converter plano em configuração ativa.
+Ferramenta WAL/PITR, política de retenção de DB/objetos/logs, recuperação off-site, alvo p95/carga, capacidade da C30, operação de STAGING/PROD, verificações de headers/cache, gates operacionais de identidade privilegiada (D01), monitoramento e alertas. O [DEV com Identity](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) já implementa o ciclo de credenciais. Ver [registro de decisões](../planning/DECISION_REGISTER.md) e [gates](../modules/audit/QUALITY_ACCEPTANCE_V1.md). Não converter plano em configuração ativa.

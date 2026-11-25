@@ -4,6 +4,8 @@
 **Status:** PROPOSTA DOCUMENTAL; revisão humana e gates de arquitetura/produção pendentes.  
 **Escopo:** desenho para a futura instância PROD. **Não autoriza provisionar, migrar, resetar, limpar, executar SQL em produção nem cadastrar identidades reais.**
 
+> **Referências datadas.** Este desenho registra a proposta de 16/10/2026. As menções à PR #24 e à Issue #49 descrevem aquela etapa. Para o ciclo de credenciais integrado no DEV e os gates vigentes, consulte [GG-05B](../architecture/GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) e [D01](DECISION_REGISTER.md). A C30/STAGING é persistente e tem [AS-BUILT próprio](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md).
+
 ## 1. Decisão e critério de aceite
 
 A primeira instância de produção será criada **do zero**, com banco PostgreSQL 17 novo, volumes novos, Auth novo, Storage novo e identidade/configurações específicas de PROD. Não copiar, restaurar ou aproveitar volumes, dumps, identidades, objetos, anexos, perfis, unidades, auditorias, planos ou usuários de DEV, STAGING, ambiente local ou do antigo Windows/WSL2 da C30.

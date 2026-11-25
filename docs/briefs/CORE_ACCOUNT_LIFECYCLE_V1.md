@@ -2,7 +2,8 @@
 
 # Brief de desenho — Ciclo de contas do Core v1
 
-**Estado histórico: SOMENTE DESENHO**  
+**Estado histórico: SOMENTE DESENHO**. Para cadastro, credenciais e sessão implementados, consulte a [GG-05B no DEV](../architecture/GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev).
+
 **Base:** `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`  
 **Branch planejada:** `integration/core-foundation-v2`
 

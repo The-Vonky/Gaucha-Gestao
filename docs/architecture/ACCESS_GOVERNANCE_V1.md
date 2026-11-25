@@ -1,5 +1,7 @@
 # Governança de acesso — Core v1 / Fundação Core v2
 
+> **HISTÓRICO / PROPOSTA.** Este desenho registra a revisão de 08/10/2026. Os [contratos de leitura integrados](../modules/core/ACCESS_GOVERNANCE_READ_V1.md) cobrem um recorte das projeções. [Autorização vigente](AUTHORIZATION.md) e [admissão GG-05B](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) regem decisões de acesso. Admissão para a aplicação e autorização efetiva continuam sendo avaliadas por requisição. GG-06 ainda requer validação integradora.
+
 - Status: **DESIGN ONLY — proposta para revisão, sem autorização de implementação**.
 - Data: 2026-10-08.
 - Branch: `docs/core-access-governance-v1`.
