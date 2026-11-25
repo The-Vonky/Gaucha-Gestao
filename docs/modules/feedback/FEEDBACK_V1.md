@@ -73,6 +73,16 @@ orientação ao usuário continua necessária.
 
 ## Provas da compatibilidade com Identity
 
+Em 25/11/2026, no Compose pessoal `gaucha-gestao-local` em Ubuntu e com
+Identity ativo, o código de `da04c3d` passou pela integração GG-05B. No Vite
+do mesmo checkout (`npm run dev`), o Chromium comprovou envio por conta sem
+papel operacional a 320 px, recibo, negativa administrativa e consulta e
+download por administrador no desktop. O PNG sintético baixado teve os mesmos
+95 bytes e SHA-256 do original. O ledger tinha 47 migrations, compatíveis
+com o checkout, e as fixtures foram removidas. O ensaio cobre o login
+admitido e o ciclo de Relatos. O aceite do mantenedor e a homologação
+completa de Identity pelo Vite seguem pendentes. [Registro da PR #133](https://github.com/The-Vonky/Gaucha-Gestao/pull/133).
+
 - [Teste de rotas](../../../tests/identity-storage-path.test.ts) cobre as duas
   operações, formato da chave, variantes negadas e rotas dos seis buckets existentes.
 - [Integração GG-05B](../../../tests/integration/gg05b-identity.mjs) cobre o fluxo
