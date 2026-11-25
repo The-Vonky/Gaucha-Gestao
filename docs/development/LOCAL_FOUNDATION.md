@@ -79,7 +79,7 @@ isso não substitui a API real. A CI inclui `tests/integration/action-plans.mjs`
 Storage e Chromium a 375px (Admin também a 768/1024/1440).
 `audit-evidence.mjs` acrescenta bytes reais de Storage, concorrência em duas sessões
 PostgreSQL, matriz de acesso, reconciliation e restauração de um arquivo. Seu runner
-recusa endpoints fora de `127.0.0.1`. O workflow também executa `npm audit --omit=dev`.
+recusa endpoints fora de `127.0.0.1`. O workflow audita também as dependências de desenvolvimento com `npm audit --audit-level=moderate`.
 A presença de uma suíte no workflow não comprova que sua execução passou; consulte
 os jobs da revisão correspondente.
 Dispositivos reais iOS/Android exigem validação manual separada.
