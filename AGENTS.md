@@ -98,3 +98,5 @@ Seguir [PARALLEL_AGENT_WORKFLOW](docs/development/PARALLEL_AGENT_WORKFLOW.md) e 
 ## 6. Manutenção documental
 
 Use a [política de fontes](docs/README.md#regra-de-manutenção-documental) e o [Guia Mestre GG-01–GG-15](docs/planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md). Preserve o recorte de evidências históricas. P1–P9, O1–O8, recuperação, identidade privilegiada e GO explícito continuam como condições de liberação aplicáveis.
+
+Siga a [regra de manutenção documental](docs/README.md#regra-de-manutenção-documental) e inclua o resultado de `npm run verify:docs` na PR.

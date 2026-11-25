@@ -1,6 +1,7 @@
 // Intervenção autorizada da PR #94, SOMENTE notebook. Não é migration/seed.
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { salesCatalogSources } from "./sales-catalog-sources.mjs";
 import { SalesLocalDatabase } from "./sales-local.mjs";
 import { retireSalesRoles } from "./sales-role-cleanup.mjs";
 
@@ -12,16 +13,8 @@ const local = await SalesLocalDatabase.open(), db = local.client;
 await db.query("rollback"); local.rollbackOnly = false;
 try {
   if (process.argv[2] === "inventory") {
-    const sources = [
-      { tag: "VEN03-542fa7d6", suffixes: ["op", "read"], people: ["global", "reader", "denied"], doc: "docs/modules/sales/VEN03_LOCAL_VALIDATION.md" },
-      ...["c3ee065b", "65d16aa2", "db29681c", "52472d04", "8e9668d6", "3d364035", "8b441b99"].map(t => ({
-        tag: `VEN04A-${t}`, suffixes: ["operator", "creator", "reader", "editor", "deleter", "denied", "sector"],
-        people: ["operator", "creator", "reader", "editor", "deleter", "denied", "sector"], doc: "docs/modules/sales/VEN04A_LOCAL_VALIDATION.md",
-      })),
-      { tag: "VEN04B-8b441b99", suffixes: ["global", "unita", "unitb", "operations", "creator", "denied", "sector"], people: [], doc: "docs/modules/sales/VEN04B_LOCAL_VALIDATION.md" },
-    ];
     const roles = [], users = [];
-    for (const source of sources) {
+    for (const source of salesCatalogSources) {
       assert.ok(readFileSync(source.doc, "utf8").includes(source.tag), "Tag não documentada");
       for (const suffix of source.suffixes) {
         const key = `${source.tag}-${suffix}`.toLowerCase();

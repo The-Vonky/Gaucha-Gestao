@@ -24,7 +24,7 @@
 - Testes unitários / banco RLS:
 - Testes de integração / E2E:
 - Build, verify:build e `npm audit`:
-- Links e renderização de diagramas (se documental):
+- `npm run verify:docs` e renderização Mermaid (informar avisos e provas aplicáveis):
 - Revisão de diff e autorização/escopo:
 - Homologação manual/dispositivos (ou **NÃO EXECUTADO**):
 
