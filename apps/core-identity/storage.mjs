@@ -5,6 +5,7 @@ const buckets = new Set([
   "abc-source-files", "action-plan-evidence", "audit-checklist-evidence",
   "audit-evidence-thumbnails", "room-covers", "unit-covers",
 ]);
+const feedbackObject = /^feedback-attachments\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\.(?:png|jpg)$/;
 const readableHeaders = ["content-type", "content-length", "content-range", "accept-ranges", "etag"];
 
 export function storagePath(request) {
@@ -13,6 +14,13 @@ export function storagePath(request) {
   const match = /^\/storage\/(object|render\/image)\/(.*)$/.exec(path);
   if (!match) return null;
   const [, kind, rest] = match;
+  // Relatos usa upload sem upsert e download direto pelo SDK. O domínio autoriza no Storage.
+  if (kind === "object" && query === undefined && feedbackObject.test(rest)) {
+    const upsert = request.headers?.["x-upsert"];
+    if (request.method === "GET" || (request.method === "POST" && (upsert === undefined || upsert === "false"))) {
+      return path.slice("/storage".length);
+    }
+  }
   const read = request.method === "GET" || request.method === "HEAD";
   const write = request.method === "POST" || request.method === "PUT";
   const parts = rest.split("/");

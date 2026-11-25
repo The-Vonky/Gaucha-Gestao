@@ -1,13 +1,16 @@
 # GG-11 — Relatos e sugestões v1
 
-> **Limite do DEV com Identity.** O bucket privado `feedback-attachments` é usado pelo adaptador no perfil base. A lista permitida do ingresso estrito ainda omite o bucket. Por inspeção do código, isso impede envio e download do anexo nesse perfil. O envio sem anexo segue o contrato de Relatos. [Evidência e escopo](../../architecture/SECURITY.md#storage-privado-e-miniaturas).
+No DEV com Identity, o ingresso que antes omitia `feedback-attachments` aceita agora
+o upload simples e o download autenticado do adaptador. A mudança está em
+validação pré-merge. [Segurança do Storage](../../architecture/SECURITY.md#storage-privado-e-miniaturas).
 
 Em revisão para homologação. A autorização para o piloto depende do mantenedor.
 
 ## Fluxo e autorização
 
 O perfil ativo abre o formulário por **Relatar problema ou melhoria**, à direita
-na barra de navegação, com ou sem comunicado ativo. Seleciona problema ou sugestão,
+na barra de navegação, com ou sem comunicado ativo e mesmo sem papel operacional.
+No perfil estrito, exige sessão admitida para a aplicação. Seleciona problema ou sugestão,
 módulo/tela e descrição de 10 a 4.000 caracteres. O formulário orienta a
 ocultar dados pessoais e confidenciais antes de anexar uma imagem. O servidor
 deriva o autor de `auth.uid()` e o horário de recebimento do PostgreSQL. O
@@ -52,6 +55,13 @@ reservado e download autenticado de relatos recebidos. O acesso exige token
 vigente e autorização atual. A URL temporária do browser contém somente o
 objeto já transferido e é revogada após iniciar o download.
 
+No ingresso estrito, as únicas chamadas desse bucket são
+`POST /storage/v1/object/feedback-attachments/<uuid>.<png|jpg>` sem upsert e
+`GET` no mesmo caminho, com o JWT da sessão admitida. SQL e Storage reavaliam
+admissão, autoria da reserva e privilégios administrativos. O ingresso bloqueia
+substituição, exclusão, listagem, variantes públicas, transformação e assinatura.
+O perfil base continua usando o adaptador e as políticas do bucket.
+
 A primeira RPC reserva o conteúdo e a chave. A última RPC confirma o
 recebimento depois de encontrar o anexo, quando declarado. O UUID é mantido no
 formulário em falhas de conexão e o reenvio idempotente devolve o mesmo recibo.
@@ -60,6 +70,16 @@ cuja confirmação se perdeu pode ser recuperado na mesma tentativa. Uma reserva
 abandonada e o eventual objeto ficam retidos até decisão do mantenedor. O
 arquivo original pode conter metadados ou conteúdo sensível, portanto a
 orientação ao usuário continua necessária.
+
+## Provas da compatibilidade com Identity
+
+- [Teste de rotas](../../../tests/identity-storage-path.test.ts) cobre as duas
+  operações, formato da chave, variantes negadas e rotas dos seis buckets existentes.
+- [Integração GG-05B](../../../tests/integration/gg05b-identity.mjs) cobre o fluxo
+  com e sem anexo, PNG/JPEG, autoria, recibo idempotente, auditoria, hash e revogação.
+  A opção `GG_IDENTITY_TEST_UI=feedback` exercita o ciclo real pelo Vite em Chromium.
+- [Matriz do perfil base](../../../tests/integration/announcements-security.mjs)
+  cobre o contrato separado no Storage e PostgREST da CI.
 
 ## Critérios para release candidata
 
