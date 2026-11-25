@@ -1,6 +1,6 @@
 # C30 STAGING — Cloudflare Tunnel: estado observado em 30/10/2026
 
-**Natureza:** registro AS-BUILT do ambiente de **testes** relatado pelo operador e confirmado por saídas de terminal e testes manuais nesta data. Não constitui inspeção independente, auditoria de segurança, homologação integral, garantia de disponibilidade nem autorização de produção. **PROD NO-GO.** Histórico anterior: [fotografia de 22/10](C30_STAGING_AS_BUILT_20261022.md).
+**Natureza:** registro AS-BUILT do ambiente de **testes** relatado pelo operador e confirmado por saídas de terminal e testes manuais nesta data. Não constitui inspeção independente, auditoria de segurança, homologação integral, garantia de disponibilidade nem autorização de produção. **PROD NO-GO.** Histórico anterior: [fotografia de 22/10](../history/operations/C30_STAGING_AS_BUILT_20261022.md).
 
 ## Resultado e escopo
 
@@ -50,7 +50,7 @@ A rota Cloudflare **Published application** usa hostname `teste.gauchagestao.onl
 | Entrada local preservada | `127.0.0.1:4180`, hostname `127.0.0.1`, release original; entradas HTTPS locais anteriores 443/4443 mantidas |
 | Backend | Compose `gaucha-staging`: `db`, `auth`, `rest`, `storage`, `kong` — cinco `healthy` após alteração |
 | Variáveis de runtime | `/etc/gaucha-gestao/staging/staging.env`, `root:root`, `0600` |
-| Persistência | PostgreSQL e bytes Storage permanecem no HDD persistente documentado no [AS-BUILT de 22/10](C30_STAGING_AS_BUILT_20261022.md) |
+| Persistência | PostgreSQL e bytes Storage permanecem no HDD persistente documentado no [AS-BUILT de 22/10](../history/operations/C30_STAGING_AS_BUILT_20261022.md) |
 
 **Separação da arquitetura futura:** este STAGING usa Caddy para servir assets e Storage em disco da C30. **Não** implantamos Cloudflare Workers Static Assets, R2, novos WAF Rules ou uma política Cloudflare Access nesta operação. A arquitetura TO-BE de produção do [ADR-004](../decisions/ADR-004-platform-stack.md) permanece distinta.
 

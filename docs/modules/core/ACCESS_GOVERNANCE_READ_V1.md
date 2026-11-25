@@ -2,7 +2,7 @@
 
 **Status histórico:** implementado na branch `feat/core-access-governance-read-v1`, PR #26, integração original `integration/core-foundation-v2-wave2`. Contratos **somente de leitura**, sem UI, exportação, mutação ou produção autorizada. Não recriar branch antiga.
 
-Fontes: [brief](../../briefs/CORE_ACCESS_GOVERNANCE_READ_V1.md), [desenho](../../architecture/ACCESS_GOVERNANCE_V1.md), [revisão original](../../briefs/CORE_FOUNDATION_V2_INTEGRATION_REVIEW.md).
+Fontes: [brief](../../briefs/CORE_ACCESS_GOVERNANCE_READ_V1.md), [desenho](../../architecture/ACCESS_GOVERNANCE_V1.md), [revisão original](../../history/development/core-v2/CORE_FOUNDATION_V2_INTEGRATION_REVIEW.md).
 
 ## Contratos — migration `20261008130000_core_access_governance_read_v1.sql`
 

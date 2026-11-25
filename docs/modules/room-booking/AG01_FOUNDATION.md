@@ -28,13 +28,15 @@ erDiagram
 
 ## Matriz de permissões
 
+A matriz e o provisionamento abaixo documentam a baseline D5-B. Use [AG-D5-C](D5C_ADMIN_MODES.md) para a capacidade atual do administrador global e a concessão de gestão pelo Core.
+
 | Papel Core | schedule.read | request.create | request.read_own | manage |
 |---|---|---|---|---|
 | `room_booking_requester` | sim | sim | sim | não |
 | `room_booking_manager` | sim | sim | sim | sim |
 | `platform_administrator` | sim | sim | sim | não |
 
-Prefixo de todas as permissões: `room_booking.`. Novos papéis de sistema são `global_only`. Nenhuma atribuição automática a usuários. O administrador delega apenas solicitantes pelo Core existente (`private.can_delegate`). Gestores exigem [procedimento técnico D5-B](D5B_ACCESS.md). A separação D5-B é uma restrição explícita do Core: exige papel gestor e ausência de atribuição ativa ao administrador; nunca concede acesso só pelo nome. Nenhuma atribuição legada é apagada. Os nomes atuais são `Room Booking Manager` e `Room Booking Requester`, mantendo descrições em português.
+Prefixo de todas as permissões: `room_booking.`. Novos papéis de sistema são `global_only`. Nenhuma atribuição automática a usuários. O administrador delega apenas solicitantes pelo Core existente (`private.can_delegate`). Gestores exigem [procedimento técnico D5-B](../../history/modules/room-booking/D5B_ACCESS.md). A separação D5-B é uma restrição explícita do Core: exige papel gestor e ausência de atribuição ativa ao administrador; nunca concede acesso só pelo nome. Nenhuma atribuição legada é apagada. Os nomes atuais são `Room Booking Manager` e `Room Booking Requester`, mantendo descrições em português.
 
 RLS habilitada nas três tabelas, políticas restritivas de negação para clientes, sem grants de schema/tabelas/funções a `anon`/`authenticated`/`PUBLIC`. Mesmo gestores não consultam tabelas brutas. Permissões de negócio não equivalem a privilégios SQL de tabela. O schema não é adicionado ao PostgREST nesta etapa.
 

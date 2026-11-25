@@ -894,6 +894,10 @@ Only unit + improvement point are required to create a pending plan.
 
 The form should make it clear which fields are still required before moving to `Em andamento`.
 
+**Política atual do formulário (PR #65).** Datas novas ou alteradas de prazo e acompanhamento seguem a faixa provisória de 01/01/2000 a 31/12 do ano atual mais cinco. Valores antigos fora da faixa podem ser preservados ao editar outros campos. A faixa é validada no cliente e sua confirmação definitiva cabe ao mantenedor. O acompanhamento é opcional. Quando informado, exige início e fim, com início igual ou anterior ao fim. A duração usa dias decorridos de calendário (zero no mesmo dia) e mostra meses e anos completos, sem conversão pelo fuso local.
+
+A listagem carrega independentemente dos escopos de criação. A consulta de escopos ocorre ao abrir **Novo plano** e tem tratamento próprio de erro e repetição. Consulte a [evidência da alteração e a medição em memória](../history/development/DAY2_ACTION_PLAN_VALIDATION.md).
+
 ### Status actions
 
 Use explicit application dialogs/confirmation where the transition has material consequences.

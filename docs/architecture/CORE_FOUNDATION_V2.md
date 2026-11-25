@@ -3,10 +3,10 @@
 Status na origem: DESIGN ONLY — consolidação da arquitetura aceita e recomendações para revisão.
 > **Estado vigente em 25/11/2026.** A [PR #38](https://github.com/The-Vonky/Gaucha-Gestao/pull/38) consolidou o Core v2. Diretório, governança de acesso, resolvedores e log sistêmico são capacidades integradas. Identity GG-05B entrou depois pela PR #127, no perfil DEV opt-in. Consulte [implementação](IMPLEMENTATION_MAP.md) e [contrato Identity](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev). As recomendações de arquitetura e decisões PO continuam com a classificação original.
 
-> **Snapshot histórico de 2026-10-09, anterior à PR #38:** esta peça permanece um documento de arquitetura com recomendações e decisões PO não aprovadas; `DESIGN ONLY` identifica a natureza original deste documento, **não** o estado de todas as funcionalidades da plataforma. Na branch de integração `integration/core-foundation-v2-wave2` foram implementados os contratos de leitura Core descritos nos briefs [Governança](../briefs/CORE_ACCESS_GOVERNANCE_READ_V1.md), [Referências](../briefs/CORE_REFERENCE_RESOLVERS_V1.md) e [Logs](../briefs/CORE_AUDIT_LOG_READ_MODEL_V1.md), bem como consumidores administrativos. Consulte o [registro de prontidão](../briefs/CORE_V2_CONSOLIDATION_READINESS.md) para evidências e pendências. Essa implementação ainda não está na `main` e não aprova automaticamente propostas arquiteturais restantes.
+> **Snapshot histórico de 2026-10-09, anterior à PR #38:** esta peça permanece um documento de arquitetura com recomendações e decisões PO não aprovadas; `DESIGN ONLY` identifica a natureza original deste documento, **não** o estado de todas as funcionalidades da plataforma. Na branch de integração `integration/core-foundation-v2-wave2` foram implementados os contratos de leitura Core descritos nos briefs [Governança](../briefs/CORE_ACCESS_GOVERNANCE_READ_V1.md), [Referências](../history/development/core-v2/CORE_REFERENCE_RESOLVERS_V1.md) e [Logs](../history/development/core-v2/CORE_AUDIT_LOG_READ_MODEL_V1.md), bem como consumidores administrativos. Consulte o [registro de prontidão](../history/development/core-v2/CORE_V2_CONSOLIDATION_READINESS.md) para evidências e pendências. Essa implementação ainda não está na `main` e não aprova automaticamente propostas arquiteturais restantes.
 
 Data: 2026-10-08.
-Brief: [Core Foundation Contract v2](../briefs/CORE_FOUNDATION_CONTRACT_V2.md).
+Brief original: [Core Foundation Contract v2](../history/development/core-v2/CORE_FOUNDATION_CONTRACT_V2.md).
 Base examinada: `d2e30774eb7ab354f13edc7968a5b47f1d2a0891`.
 Branch deste documento: `docs/core-foundation-contract-v2`.
 Integração prevista pelo brief: `integration/core-foundation-v2`.
@@ -187,7 +187,7 @@ Criar atribuição exige usuário/papel ativos, organização ativa quando infor
 | Seleção de responsável com conta | UUID e nome de exibição; atividade para explicar elegibilidade | Leitor autorizado para a operação; candidato conforme política PO-02/PO-03. Sem e-mail, último sign-in ou papéis por padrão. |
 | Resolução de referência histórica | UUID e rótulo autorizado; estado inativo quando pertinente | Permissão de leitura do registro que contém a referência; não exigir atividade do alvo. Sem revelar cadastro completo. |
 
-Os resolvedores de referência por UUID conhecido da seção 8.1 ([Core Reference Resolvers v1](../briefs/CORE_REFERENCE_RESOLVERS_V1.md)) não implementam seleção de novo alvo nem de responsável. Não há diretório operacional implementado. Estes são contratos semânticos recomendados; nomes, assinaturas e regras de visibilidade serão especificados somente no brief aprovado da capacidade necessária.
+Os resolvedores de referência por UUID conhecido da seção 8.1 ([Core Reference Resolvers v1](../history/development/core-v2/CORE_REFERENCE_RESOLVERS_V1.md)) não implementam seleção de novo alvo nem de responsável. Não há diretório operacional implementado. Estes são contratos semânticos recomendados; nomes, assinaturas e regras de visibilidade serão especificados somente no brief aprovado da capacidade necessária.
 
 **R — Regras para qualquer futura leitura aprovada:**
 

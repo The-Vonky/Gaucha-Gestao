@@ -62,4 +62,4 @@ Migrations da aplicação autenticam como `postgres` via hostname `db`; marcador
 
 ## AUD-IMG-02 — segredo e login SQL técnico
 
-A continuação da PR #101 remove de `jwt.sql` apenas o armazenamento global de JWT_SECRET em `ALTER DATABASE ... SET app.settings.jwt_secret`; esse GUC/catálogo é legível a logins SQL. Auth/REST/Storage mantêm seus segredos próprios. Stacks existentes não são alterados por editar o init; remoção do legado, inventário de dependências e login mínimo exigem o [GO C local e runbook](../../docs/operations/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md). Não reiniciar/recriar ambientes persistentes para reaplicar init.
+A continuação da PR #101 remove de `jwt.sql` apenas o armazenamento global de JWT_SECRET em `ALTER DATABASE ... SET app.settings.jwt_secret`; esse GUC/catálogo é legível a logins SQL. Auth/REST/Storage mantêm seus segredos próprios. Stacks existentes não são alterados por editar o init; remoção do legado, inventário de dependências e login mínimo exigem o [GO C local e runbook](../../docs/history/modules/audit/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md). Não reiniciar/recriar ambientes persistentes para reaplicar init.

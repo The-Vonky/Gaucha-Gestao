@@ -4,7 +4,7 @@
 
 **EVIDÊNCIA DATADA.** Os resultados medidos usam o executor legado. Para o perfil base atual e o modo estrito de Identity, consulte [Storage privado e miniaturas](../../architecture/SECURITY.md#storage-privado-e-miniaturas).
 
-[Relatório MED-01/AUD-IMG-04 e frontend](MED01_FRONTEND_CLOSURE_20261106.md) · [evidência numérica sanitizada](evidence/med01-frontend-20261106.json).
+[Relatório MED-01/AUD-IMG-04 e frontend](../../history/modules/audit/MED01_FRONTEND_CLOSURE_20261106.md) · [evidência numérica sanitizada](evidence/med01-frontend-20261106.json).
 
 | Frente | Estado real |
 | --- | --- |
@@ -20,7 +20,7 @@ Originais e limites de acesso/memória preservados. Upload, processamento e down
 Os registros abaixo preservam o diagnóstico e as decisões de 04–05/11. Afirmações de ausência de implementação/medição naqueles SHAs não descrevem a base atual.
 
 
-**DEV atual.** A #120 integrou a transformação privada sob demanda e a #121 a disponibilizou no [Compose DEV](../../operations/DOCKER_LOCAL_STANDARDIZATION.md). A medição de 06/11 usou o [executor legado da #101](AUD_IMG_02_INTEGRATED_DEV_20261106.md). O coletor distingue os GETs de objetos e de transformações nativas. As métricas publicadas de 06/11 correspondem ao executor legado. A ativação de Identity troca emissão e resgate por assinatura pelas rotas autenticadas admitidas, inclusive para transformação nativa.
+**DEV atual.** A #120 integrou a transformação privada sob demanda e a #121 a disponibilizou no [Compose DEV](../../operations/DOCKER_LOCAL_STANDARDIZATION.md). A medição de 06/11 usou o [executor legado da #101](../../history/modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md). O coletor distingue os GETs de objetos e de transformações nativas. As métricas publicadas de 06/11 correspondem ao executor legado. A ativação de Identity troca emissão e resgate por assinatura pelas rotas autenticadas admitidas, inclusive para transformação nativa.
 
 Data: 04/11/2026. Brief: solicitação do mantenedor «Otimização de tráfego de evidências da Auditoria». Base revalidada: `origin/main` em `d9b47359b00fd1516bc773d696d760c1c603ed84`, posterior ao HEAD de 03/11 citado no pedido. Branch: `codex/audit-evidence-traffic`.
 
@@ -71,7 +71,7 @@ flowchart LR
 
 Ferramentas entregues:
 
-1. `scripts/generate-audit-evidence-fixtures.mjs`: PNGs RGB determinísticos 960×640, entropia elevada, seeds fixas e manifesto com bytes/SHA-256; somente filesystem, sem upload. Limita a 10, 30 ou 100 arquivos e não sobrescreve existentes. Execução verificada para 10/30/100 em diretórios distintos de `/tmp`: 1.844.468 bytes por arquivo; totais registrados na [validação](EVIDENCE_IMAGE_VALIDATION_20261104.md). São ruído sintético para volume, não teste de legibilidade ou câmera.
+1. `scripts/generate-audit-evidence-fixtures.mjs`: PNGs RGB determinísticos 960×640, entropia elevada, seeds fixas e manifesto com bytes/SHA-256; somente filesystem, sem upload. Limita a 10, 30 ou 100 arquivos e não sobrescreve existentes. Execução verificada para 10/30/100 em diretórios distintos de `/tmp`: 1.844.468 bytes por arquivo; totais registrados na [validação](../../history/modules/audit/EVIDENCE_IMAGE_VALIDATION_20261104.md). São ruído sintético para volume, não teste de legibilidade ou câmera.
 2. `tests/integration/audit-evidence-traffic.mjs`: coletor opt-in Chromium CDP, categorias separadas app/API/Auth/assinatura/upload/GET/HEAD, alias numérico por objeto, etapa, status, falha, TTFB/duração, bytes codificados do corpo e bytes de rede incluindo headers. Upload tem tamanho de corpo fornecido por Playwright, sem leitura do conteúdo. Não emite paths, URLs, querystrings, tokens, filenames, headers Auth, cookies ou corpos.
 3. `scripts/measure-audit-evidence.mjs`: conecta ao Chromium **já aberto** pelo mantenedor via CDP local, sem iniciar servidor, alterar cache do browser ou acessar banco. Seleciona a aba da aplicação local, permite marcar etapas e grava relatório sanitizado. Restringe origens a loopback; Storage esperado em `127.0.0.1:54321`. CDP é apropriado somente a um perfil de teste sem contas reais. Não habilitar tracing/HAR/vídeo/screenshots com sessões reais.
 
@@ -163,7 +163,7 @@ Executar no Chrome e Edge desktop, Android Chrome físico e iOS Safari físico, 
 
 Testes adicionados/ampliados: cache (deduplicação, TTL, LRU, limites, timeout, fila e contexto), transporte (no-store, MIME/tamanho, 401/403/404/500, retry, remoção/reconciliação), UI (viewport, referência estável, reabertura/modal, logout e controles), AuthProvider e negações SQL de imagem por inativação/unidade/grants. E2E real estendido com PNG sintético, GET contado no modal/revisita e download com comparação de bytes. O coletor também tem testes de sanitização e contagem.
 
-Resultados finais por SHA estão em [validação de 04/11](EVIDENCE_IMAGE_VALIDATION_20261104.md). Integração Storage/Chromium real, baseline 10/30/100, headers de arquivo autorizado e dispositivos físicos permanecem pendentes até execução documentada. Não há afirmação de homologação, backup comprovado ou PROD pronta.
+Resultados finais por SHA estão em [validação de 04/11](../../history/modules/audit/EVIDENCE_IMAGE_VALIDATION_20261104.md). Integração Storage/Chromium real, baseline 10/30/100, headers de arquivo autorizado e dispositivos físicos permanecem pendentes até execução documentada. Não há afirmação de homologação, backup comprovado ou PROD pronta.
 
 Riscos principais: exceção restrita E3/inline registrada com risco residual aceito pelo mantenedor em 04/11/2026; janela residual de revogação; orçamento de blobs não equivale a limite total do processo; decodificação de originais não confiáveis continua; thumbnail visual ainda transfere original na primeira visita. Não foi provada redução percentual. A Política A é diretriz de produto; miniaturas físicas com processamento privilegiado, migrations, bucket e infraestrutura aguardam proposta e autorização técnica/operacional específica. Políticas B/C não aprovadas.
 

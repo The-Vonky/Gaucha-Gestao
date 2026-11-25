@@ -9,7 +9,7 @@ Autoridades: [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md), [ADR-008](..
 
 ## Adendo operacional — C30 STAGING real (22/10/2026)
 
-A fotografia principal desta matriz foi produzida antes da instalação real. **Mudança comprovada no STAGING, sem GO de produção:** C30/Ubuntu Server 22.04.5 LTS, cinco serviços Compose `gaucha-staging` com persistência em HDD, 18 migrations `f9f041e`, administrador testado, Caddy ativo/habilitado e HTTPS validado **somente por loopback/SSH**; firewall UFW inativo, nenhuma publicação LAN/internet validada, nem backup off-site ou restore do conjunto atual. A versão `main` avançou e não foi implantada na C30. Ver [inventário](C30_STAGING_AS_BUILT_20261022.md), [runbook](C30_STAGING_RUNBOOK.md), [backups](C30_BACKUP_GAPS.md), [releases](C30_STAGING_RELEASE_GUIDE.md) e [acesso público](STAGING_PUBLIC_ACCESS_PLAN.md). Frases históricas desta matriz indicando STAGING ainda não instalado devem ser lidas como **snapshot de planejamento anterior**, não status atual.
+A fotografia principal desta matriz foi produzida antes da instalação real. **Mudança comprovada no STAGING, sem GO de produção:** C30/Ubuntu Server 22.04.5 LTS, cinco serviços Compose `gaucha-staging` com persistência em HDD, 18 migrations `f9f041e`, administrador testado, Caddy ativo/habilitado e HTTPS validado **somente por loopback/SSH**; firewall UFW inativo, nenhuma publicação LAN/internet validada, nem backup off-site ou restore do conjunto atual. A versão `main` avançou e não foi implantada na C30. Ver [inventário](../history/operations/C30_STAGING_AS_BUILT_20261022.md), [runbook](C30_STAGING_RUNBOOK.md), [backups](C30_BACKUP_GAPS.md), [releases](C30_STAGING_RELEASE_GUIDE.md) e [acesso público](../history/operations/STAGING_PUBLIC_ACCESS_PLAN.md). Frases históricas desta matriz indicando STAGING ainda não instalado devem ser lidas como **snapshot de planejamento anterior**, não status atual.
 
 ## 1. Superfícies operacionais
 
@@ -27,7 +27,7 @@ A fotografia principal desta matriz foi produzida antes da instalação real. **
 
 ## 2. Ambientes e isolamento
 
-**DEV pessoal:** Ubuntu nativo ou Windows/WSL2 com Docker Desktop. **DEV compartilhado (Issue #68):** registro histórico de duas contas independentes. Confirmar versão e autorização para qualquer reuso. **Não rodar db reset/down -v/migrações exploratórias** na instância compartilhada. [Matriz de ambientes](../architecture/STACK_INTEGRATION.md#ambientes-e-topologias). **CI:** efêmera e destrutível somente dentro de seus recursos isolados. **STAGING persistente (C30):** localização e instância já identificadas em 22/10/2026 (ver [AS-BUILT](C30_STAGING_AS_BUILT_20261022.md)); isolamento, hardening, retenção, restauração e aprovação formal continuam em aberto. Não usar dados reais de produção. **PROD:** não existe autorização de provisionamento neste estado.
+**DEV pessoal:** Ubuntu nativo ou Windows/WSL2 com Docker Desktop. **DEV compartilhado (Issue #68):** registro histórico de duas contas independentes. Confirmar versão e autorização para qualquer reuso. **Não rodar db reset/down -v/migrações exploratórias** na instância compartilhada. [Matriz de ambientes](../architecture/STACK_INTEGRATION.md#ambientes-e-topologias). **CI:** efêmera e destrutível somente dentro de seus recursos isolados. **STAGING persistente (C30):** localização e instância já identificadas em 22/10/2026 (ver [AS-BUILT](../history/operations/C30_STAGING_AS_BUILT_20261022.md)); isolamento, hardening, retenção, restauração e aprovação formal continuam em aberto. Não usar dados reais de produção. **PROD:** não existe autorização de provisionamento neste estado.
 
 Recursos existentes na C30, inclusive Windows/WSL2, discos e dados não pertencentes ao projeto, são **intocáveis** até inventário completo, restauração verificável e consentimento. A issue #52 registra ERP deslocado para outro computador e validação operacional relatada, mas **não aprova destruir o volume antigo** nem os demais dados. Não executar prune, down -v, reset, wipe ou inicialização de HD fora de um projeto sintético inequivocamente identificado e autorizado. Para o ensaio sintético, obedecer à [issue #51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51) e ao [PR #62](https://github.com/The-Vonky/Gaucha-Gestao/pull/62).
 
@@ -84,7 +84,7 @@ Etapas obrigatórias antes de declarar operação:
 4. **Medir o ensaio:** início/fim, tempos separados, perda de dados relativa ao último ponto, RPO/RTO observados, falhas, responsáveis, data, SHA, aprovação e plano corretivo.
 5. **Repetir periodicamente:** agenda, alerta em falha, teste de substituição de host, controle da retenção e documentação de incidentes.
 
-**Evidência histórica:** a Issue #51, encerrada, e a PR #62, integrada em `f9f041e`, registram ensaio sintético a frio com DR-08 parcial. O recorte usou 17 migrations, anterior ao bucket ABC. O perfil base do DEV tem procedimento próprio. Ainda faltam recuperação integral do DEV com Identity, backup e restauração independentes da C30, retenção, alertas e metas medidas. [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md) · [Relatório sintético](../planning/02_RESTORE_DRILL.md) · [Guia Mestre](../planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md).
+**Evidência histórica:** a Issue #51, encerrada, e a PR #62, integrada em `f9f041e`, registram ensaio sintético a frio com DR-08 parcial. O recorte usou 17 migrations, anterior ao bucket ABC. O perfil base do DEV tem procedimento próprio. Ainda faltam recuperação integral do DEV com Identity, backup e restauração independentes da C30, retenção, alertas e metas medidas. [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md) · [Relatório sintético](../history/operations/02_RESTORE_DRILL.md) · [Guia Mestre](../planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md).
 
 ## 6. Resposta inicial a incidente — processo de decisão
 
@@ -108,7 +108,7 @@ Entregar procedimentos testados de start/stop somente em ambiente autorizado, lo
 
 - [infra/README](../../infra/README.md): runbook de **laboratório descartável**. O STAGING persistente C30 usa [runbook próprio de consulta](C30_STAGING_RUNBOOK.md) e [guia de mudança ainda sujeito a validação](C30_STAGING_RELEASE_GUIDE.md).
 - [LOCAL_FOUNDATION](../development/LOCAL_FOUNDATION.md) e [PARALLEL_AGENT_WORKFLOW](../development/PARALLEL_AGENT_WORKFLOW.md): limites em DEV/agentes.
-- [01_DADOS_LIMPOS](../planning/01_DADOS_LIMPOS.md): proposta documental de PROD inicial limpo, sem seeds operacionais.
+- [01_DADOS_LIMPOS](../history/planning/01_DADOS_LIMPOS.md): proposta documental de PROD inicial limpo, sem seeds operacionais.
 - [QUALITY_ACCEPTANCE_V1](../modules/audit/QUALITY_ACCEPTANCE_V1.md): gates reais e artefatos de aceite.
 
 Todo comando de infraestrutura produtiva deverá surgir em runbook validado e autorizado **em PR futura**; esta matriz não transforma uma intenção em permissão operacional.

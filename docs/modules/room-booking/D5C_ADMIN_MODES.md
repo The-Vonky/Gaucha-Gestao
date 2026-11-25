@@ -46,4 +46,4 @@ A secretária recebe somente o papel `room_booking_manager` **explicitamente** a
 
 Integrada pela [PR #129](https://github.com/The-Vonky/Gaucha-Gestao/pull/129), com registro de homologação funcional no DEV e verificações datadas por SHA. Instalações cuja última política de Salas é D5-B conservam o comportamento histórico até aplicação autorizada da migration. A [matriz vigente](ACCEPTANCE_V1.md) mantém AG-05 e a Issue #84 com escopo próprio.
 
-Referências: [D5-B histórica](D5B_ACCESS.md) · [EXPERIENCE_V1](EXPERIENCE_V1.md) · [Autorização Core](../../architecture/AUTHORIZATION.md) · [GG-05B](../../architecture/GG05B_IDENTITY_DESIGN.md) · [Registro de decisões](../../planning/DECISION_REGISTER.md).
+Referências: [D5-B histórica](../../history/modules/room-booking/D5B_ACCESS.md) · [EXPERIENCE_V1](EXPERIENCE_V1.md) · [Autorização Core](../../architecture/AUTHORIZATION.md) · [GG-05B](../../architecture/GG05B_IDENTITY_DESIGN.md) · [Registro de decisões](../../planning/DECISION_REGISTER.md).

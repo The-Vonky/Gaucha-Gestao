@@ -23,13 +23,13 @@ Migrations VEN-05A aplicadas somente no notebook autorizado (03–04/11);
 sem STAGING/PROD ou VEN-05B.
 
 O fluxo de autorização de Vendas com catálogo de unidades vazio está no
-[diagrama MEL-01](../modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md#correção-funcional-e-ciclo-das-fixtures).
+[diagrama MEL-01](../history/modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md#correção-funcional-e-ciclo-das-fixtures).
 
 **Baseline reconciliada:** `e0b6f5c`, em 25/11/2026. **Produção: NO-GO.**
 **Autoridades:** [ADR-001](../decisions/ADR-001-modular-monolith.md), [ADR-002](../decisions/ADR-002-core-and-module-ownership.md), [ADR-004](../decisions/ADR-004-platform-stack.md), [ADR-005](../decisions/ADR-005-core-authorization.md), [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md).
 Diagramas lógicos, **não diagramas as-built de servidor em produção**. Linhas pontilhadas identificam relações opcionais, lógicas ou planejadas conforme o rótulo e a seção.
 
-**Snapshots de STAGING:** o [AS-BUILT 22/10](../operations/C30_STAGING_AS_BUILT_20261022.md) documenta o estado **anterior** ao túnel público. Em **30/10/2026**, foi implantado o [Cloudflare Tunnel → Caddy HTTP loopback 4181 → Supabase](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md), com URL HTTPS externa de testes. Essa topologia **AS-IS** é distinta da topologia **TO-BE de PROD** com Cloudflare Workers Static Assets/R2 desenhada neste arquivo. **PROD NO-GO**.
+**Snapshots de STAGING:** o [AS-BUILT 22/10](../history/operations/C30_STAGING_AS_BUILT_20261022.md) documenta o estado **anterior** ao túnel público. Em **30/10/2026**, foi implantado o [Cloudflare Tunnel → Caddy HTTP loopback 4181 → Supabase](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md), com URL HTTPS externa de testes. Essa topologia **AS-IS** é distinta da topologia **TO-BE de PROD** com Cloudflare Workers Static Assets/R2 desenhada neste arquivo. **PROD NO-GO**.
 
 ## 1. Contexto da plataforma
 

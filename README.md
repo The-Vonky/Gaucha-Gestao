@@ -51,4 +51,4 @@ Frontend em [127.0.0.1:5173](http://127.0.0.1:5173), API Supabase em `127.0.0.1:
 
 ## Onde encontrar cada resposta
 
-O [portal documental](docs/README.md) reúne guias, arquitetura, contratos, planejamento e registros de evidência. Leia [AGENTS.md](AGENTS.md) para contribuição, homologação local, revisão e regras de segurança. Use o [template de PR](.github/pull_request_template.md) para registrar as validações aplicáveis.
+O [portal documental](docs/README.md) reúne guias, arquitetura, contratos e planejamento. Consulte o [índice histórico](docs/HISTORY.md) para decisões anteriores, ensaios e evidências datadas. Leia [AGENTS.md](AGENTS.md) para contribuição, homologação local, revisão e regras de segurança. Use o [template de PR](.github/pull_request_template.md) para registrar as validações aplicáveis.

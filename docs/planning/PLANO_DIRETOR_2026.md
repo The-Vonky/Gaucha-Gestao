@@ -160,7 +160,7 @@ A liberação segue estas dependências estratégicas.
 3. Preparar procedimento de release, verificação de ingresso e alertas, reversão e simulação de incidentes. Aplicar ou ensaiar no ambiente aprovado com autoridade própria.
 4. Registrar P1–P9 e O1–O8 e os aceites de domínio aplicáveis. O mantenedor decide sobre piloto ou corte e operação assistida.
 
-Datas, responsáveis e aplicação dessa ordem dependem de decisão registrada. A coordenação Dev A/Dev B do plano de cinco dias está no [Mapa de Execução histórico](EXECUTION_MAP.md).
+Datas, responsáveis e aplicação dessa ordem dependem de decisão registrada. A coordenação Dev A/Dev B do plano de cinco dias está no [Mapa de Execução histórico](../history/planning/EXECUTION_MAP.md).
 
 ## 9. Checklist operacional obrigatório
 
@@ -199,7 +199,7 @@ Responsabilidades atuais (BACKUP_RECOVERY, 01/10): o responsável do projeto acu
 
 3. <https://github.com/The-Vonky/Gaucha-Gestao/blob/main/docs/modules/audit/QUALITY_ACCEPTANCE_V1.md>
 
-4. <https://github.com/The-Vonky/Gaucha-Gestao/blob/main/docs/briefs/CORE_V2_CONSOLIDATION_READINESS.md>
+4. <https://github.com/The-Vonky/Gaucha-Gestao/blob/main/docs/history/development/core-v2/CORE_V2_CONSOLIDATION_READINESS.md>
 
 5. <https://github.com/The-Vonky/Gaucha-Gestao/commit/aee20eca3824e4f482b26d1e19f2a0615526432f>
 
@@ -257,8 +257,8 @@ Resumo de docs/modules/audit/QUALITY_ACCEPTANCE_V1.md; status conforme a matriz 
 
 ## Acompanhamento de tráfego de evidências — 04/11/2026
 
-**Continuação local autorizada em 05/11:** [executor temporário e atualização automática do checklist](../modules/audit/AUD_IMG_02_LOCAL_EXECUTOR_20261105.md), limitado a novos uploads de uma auditoria explícita. Migration incremental e mesmos grants técnicos; NOLOGIN ao encerrar. Prova Chromium: JPEG 77.834 → 39.929 bytes; JPEG 11.028 bytes sem redução viável, estado terminal claro e original preservado. Sem serviço permanente/backfill/deploy; a pendência HTTP de escrita negada anterior não foi declarada resolvida.
+**Continuação local autorizada em 05/11:** [executor temporário e atualização automática do checklist](../history/modules/audit/AUD_IMG_02_LOCAL_EXECUTOR_20261105.md), limitado a novos uploads de uma auditoria explícita. Migration incremental e mesmos grants técnicos; NOLOGIN ao encerrar. Prova Chromium: JPEG 77.834 → 39.929 bytes; JPEG 11.028 bytes sem redução viável, estado terminal claro e original preservado. Sem serviço permanente/backfill/deploy; a pendência HTTP de escrita negada anterior não foi declarada resolvida.
 
-O [GO C local de 05/11](../modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md) registrou duas migrations, uma imagem sintética `ready` e redução de 92,6463% para aquela imagem. Em 06/11, a [integração ao `npm run dev`](../modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md) registrou a prova em duas auditorias. Esses ensaios antecedem o lote MED-01.
+O [GO C local de 05/11](../history/modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md) registrou duas migrations, uma imagem sintética `ready` e redução de 92,6463% para aquela imagem. Em 06/11, a [integração ao `npm run dev`](../history/modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md) registrou a prova em duas auditorias. Esses ensaios antecedem o lote MED-01.
 
-[MED-01 / AUD-IMG-01–05](../modules/audit/EVIDENCE_IMAGE_TRAFFIC.md). As PRs #99/#101 integraram o cache volátil e o executor legado de derivados, com Política A e exceção restrita E3 autorizadas. As PRs #120/#121 disponibilizaram a transformação privada nativa no Compose DEV. Na [medição de 06/11](../modules/audit/MED01_FRONTEND_CLOSURE_20261106.md), o executor legado foi avaliado em 10/30/100 imagens com três repetições por modo. A redução de corpo foi de **77,47%** neste lote sintético, abaixo da meta de 80%. As rotas sob demanda reduziram o JS inicial gzip de 272.112 para 164.605 bytes (39,51%). O aviso de chunk acima de 500 kB permanece. A revisão HTTP local foi concluída. A captura da API nas transições de sessão e o POST/upsert negado pelo gateway permanecem parciais. AUD-IMG-03/05, homologação ampliada em dispositivos físicos, backfill, restore e validação de headers/cache na borda seguem na Issue #100. Políticas B/C seguem sem aprovação. PROD NO-GO.
+[MED-01 / AUD-IMG-01–05](../modules/audit/EVIDENCE_IMAGE_TRAFFIC.md). As PRs #99/#101 integraram o cache volátil e o executor legado de derivados, com Política A e exceção restrita E3 autorizadas. As PRs #120/#121 disponibilizaram a transformação privada nativa no Compose DEV. Na [medição de 06/11](../history/modules/audit/MED01_FRONTEND_CLOSURE_20261106.md), o executor legado foi avaliado em 10/30/100 imagens com três repetições por modo. A redução de corpo foi de **77,47%** neste lote sintético, abaixo da meta de 80%. As rotas sob demanda reduziram o JS inicial gzip de 272.112 para 164.605 bytes (39,51%). O aviso de chunk acima de 500 kB permanece. A revisão HTTP local foi concluída. A captura da API nas transições de sessão e o POST/upsert negado pelo gateway permanecem parciais. AUD-IMG-03/05, homologação ampliada em dispositivos físicos, backfill, restore e validação de headers/cache na borda seguem na Issue #100. Políticas B/C seguem sem aprovação. PROD NO-GO.
