@@ -39,7 +39,7 @@ Na Curva ABC, o browser interpreta o XLSX e a RPC revalida payload, somas e meta
 
 Os adaptadores no modo estrito usam leitura autenticada para evidências de Auditorias e Planos de Ação, fotos de Salas, capas de unidade, originais ABC e imagens de relatórios. A autorização preserva estado, escopo e limites dos contratos. Bytes já entregues e arquivos exportados permanecem fora do alcance da revogação. [Gateway Identity](../../apps/core-identity/storage.mjs) · [Cliente de Storage privado](../../apps/web/src/core/auth/privateStorage.ts) · [Runbook imgproxy](../operations/AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md) · [Relatórios com evidências](../modules/audit/REPORT_EVIDENCE_EXPORT.md).
 
-**Divergência em GG-11.** O [adaptador de Relatos](../../apps/web/src/modules/feedback/api.ts) envia e baixa anexos em `feedback-attachments`, bucket privado com políticas próprias. O [ingresso Identity](../../apps/core-identity/storage.mjs) omite o bucket da lista permitida. Por inspeção, envio e download de anexos ficam barrados no perfil estrito antes das políticas do bucket; a decisão de compatibilidade requer tarefa e validação próprias. O [contrato GG-11](../modules/feedback/FEEDBACK_V1.md) descreve o envio sem anexo e as restrições de autoria, gestão e auditoria.
+Para Relatos, a omissão de `feedback-attachments` no ingresso estrito barrava o envio e o download antes das políticas do bucket. O ingresso admite agora apenas upload sem upsert e download autenticado no caminho de objeto com UUID canônico e extensão `.png` ou `.jpg`. A sessão admitida e o JWT do titular continuam obrigatórios. A RLS exige reserva pendente do titular no upload e Platform Administrator global com autoridade atual no download de relato recebido. [Ingresso Identity](../../apps/core-identity/storage.mjs) · [Contrato GG-11 e testes](../modules/feedback/FEEDBACK_V1.md#provas-da-compatibilidade-com-identity).
 
 ## Auditoria sistêmica
 
@@ -67,4 +67,4 @@ Minimizar dependências, usar lockfile e tratar vulnerabilidades conhecidas. Men
 
 ## Relatos dos funcionários — GG-11
 
-O banco vincula autoria e horário à sessão. O log guarda o evento e o identificador, sem conteúdo nem nome do anexo. A leitura administrativa e o download autenticado reavaliam o acesso atual. Consulte [o contrato GG-11](../modules/feedback/FEEDBACK_V1.md) e [a divergência de Storage](#storage-privado-e-miniaturas).
+O banco vincula autoria e horário à sessão. O log guarda o evento e o identificador, sem conteúdo nem nome do anexo. A leitura administrativa e o download autenticado reavaliam o acesso atual. [Contrato GG-11](../modules/feedback/FEEDBACK_V1.md) · [Perfis de Storage](#storage-privado-e-miniaturas).

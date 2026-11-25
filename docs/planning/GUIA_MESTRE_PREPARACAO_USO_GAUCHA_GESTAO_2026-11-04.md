@@ -233,7 +233,10 @@ Viewer sem atribuições automáticas. **GG-04 foi homologada pelo mantenedor no
 O funcionário ativo relata um problema ou sugere uma melhoria pela barra de
 comunicados ou pela ação permanente no cabeçalho. O fluxo interno confirma o
 identificador após persistência. O Platform Administrator consulta a fila e os
-anexos em **Administração > Relatos e sugestões** no perfil base. O ingresso estrito ainda [não encaminha o bucket de anexos](../modules/feedback/FEEDBACK_V1.md).
+anexos em **Administração > Relatos e sugestões**. A correção pré-merge no DEV
+com Identity habilita somente o upload reservado e o download autenticado
+desse bucket. O aceite do mantenedor e os critérios da release candidata
+seguem pendentes. [Contrato e provas GG-11](../modules/feedback/FEEDBACK_V1.md#provas-da-compatibilidade-com-identity).
 
 O aviso institucional mantém categoria e cor independentes e reserva um único
 período de publicação por instante. A fila usa Storage privado e registra

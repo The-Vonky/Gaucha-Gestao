@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
+import sharp from "sharp";
 
 const project = process.argv[2];
 const authorized = project === "gaucha-gestao-local"
@@ -37,6 +39,17 @@ const identities = [...actors];
 const assets = [];
 let requesterPassword;
 const jpeg = Buffer.from("/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=", "base64");
+const feedbackObject = (key) => `/storage/v1/object/feedback-attachments/${key}`;
+const feedbackInput = (extension = null) => ({
+  p_id: uuid(), p_kind: "problem", p_module: "home", p_origin: "home",
+  p_description: "Relato exclusivamente sintético para a integração GG-11.",
+  p_app_version: null, p_extension: extension,
+});
+const feedbackDenied = (name, token, json, statuses = [403]) =>
+  responseOf(`/rest/v1/rpc/feedback_${name}`, { token, method: "POST", json }, statuses);
+const feedback = async (name, token, json) => (await rest(`feedback_${name}`, token, json, "public")).json();
+const feedbackFilters = { p_kind: null, p_module: null, p_from: null, p_until: null, p_before: null, p_before_id: null };
+const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
 function runDocker(args, input) {
   return execFileSync("docker", args, { input, stdio: ["pipe", "pipe", "ignore"], encoding: "utf8" });
@@ -57,7 +70,7 @@ function internal(service, path, method, payload) {
   return JSON.parse(output);
 }
 
-async function http(path, { token, method = "GET", json, body, schema = "public", contentType } = {}) {
+async function http(path, { token, method = "GET", json, body, schema = "public", contentType, upsert } = {}) {
   return fetch(base + path, {
     method, headers: {
       origin,
@@ -65,6 +78,7 @@ async function http(path, { token, method = "GET", json, body, schema = "public"
       "Content-Profile": schema,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(json !== undefined || contentType ? { "Content-Type": contentType ?? "application/json" } : {}),
+      ...(upsert !== undefined ? { "x-upsert": String(upsert) } : {}),
     },
     ...(json !== undefined ? { body: JSON.stringify(json) } : body ? { body } : {}),
     redirect: "error",
@@ -73,7 +87,7 @@ async function http(path, { token, method = "GET", json, body, schema = "public"
 async function responseOf(path, options, statuses) {
   const response = await http(path, options);
   if (!statuses.includes(response.status)) {
-    const surface = path.split("?")[0].split("/").slice(1, 4).join("/");
+    const surface = path.split("?")[0].split("/").slice(1, path.startsWith("/rest/v1/rpc/") ? 5 : 4).join("/");
     throw Object.assign(new Error("status inesperado"), {
       actualStatus: response.status, expectedStatuses: statuses, surface,
     });
@@ -111,6 +125,155 @@ async function assertBarriers(token, path) {
   await responseOf(path, { token }, [401, 403]);
 }
 
+async function assertFeedbackBarrier(token, key, png) {
+  const input = feedbackInput("png");
+  await feedbackDenied("prepare", token, input);
+  await feedbackDenied("list", token, feedbackFilters);
+  await feedbackDenied("detail", token, { p_id: key.slice(0, -4) });
+  const path = feedbackObject(key);
+  const options = { token, method: "POST", body: png, contentType: "image/png" };
+  await responseOf(path, options, [401, 403]);
+  await responseOf(path, { token }, [401, 403]);
+}
+
+async function verifyFeedbackStorage({ admin, reader, readerId, other, png, jpg }) {
+  const noAttachment = feedbackInput();
+  assert.equal((await feedback("prepare", reader, noAttachment)).attachmentKey, null);
+  const textReceipt = await feedback("receive", reader, { p_id: noAttachment.p_id });
+  assert.equal(textReceipt.id, noAttachment.p_id);
+  assert.ok(textReceipt.receivedAt);
+
+  const denied = [400, 403, 404];
+  const upload = (path, token, bytes, contentType, statuses, upsert = false) =>
+    responseOf(path, { token, method: "POST", body: bytes, contentType, upsert }, statuses);
+  const reports = [noAttachment.p_id];
+  for (const [extension, mime, bytes] of [["png", "image/png", png], ["jpg", "image/jpeg", jpg]]) {
+    const input = feedbackInput(extension);
+    const id = { p_id: input.p_id };
+    reports.push(input.p_id);
+    const key = `${input.p_id}.${extension}`;
+    const path = feedbackObject(key);
+    const reservation = { id: input.p_id, receivedAt: null, attachmentKey: key };
+    assert.deepEqual(await feedback("prepare", reader, input), reservation);
+    assert.deepEqual(await feedback("prepare", reader, input), reservation);
+    await feedbackDenied("prepare", undefined, input, [401]);
+    await feedbackDenied("prepare", other, input);
+    await feedbackDenied("receive", other, id);
+    assert.equal((await (await feedbackDenied("receive", reader, id, [500])).json()).code, "P0002");
+    await upload(path, undefined, bytes, mime, [401]);
+    await responseOf(path, {}, [401]);
+    await upload(path, other, bytes, mime, denied);
+    await upload(feedbackObject(`${uuid()}.${extension}`), reader, bytes, mime, denied);
+    await upload(feedbackObject(`${input.p_id}.jpeg`), reader, bytes, mime, [404]);
+    if (extension === "png") {
+      await upload(path, reader, bytes, "text/html", [400, 415]);
+      await upload(path, reader, Buffer.alloc(5 * 1024 * 1024 + 1), mime, [400, 413]);
+    }
+    await upload(path, reader, bytes, mime, [200]);
+    assert.equal(sql(`select owner_id from storage.objects where bucket_id='feedback-attachments' and name='${key}'`), readerId);
+    assert.equal((await (await feedbackDenied("detail", admin, id, [500])).json()).code, "P0002");
+    await responseOf(path, { token: admin }, denied);
+
+    const receipt = await feedback("receive", reader, id);
+    assert.equal(receipt.id, input.p_id);
+    assert.ok(receipt.receivedAt);
+    assert.deepEqual(await feedback("receive", reader, id), receipt);
+    assert.equal((await feedback("prepare", reader, input)).receivedAt, receipt.receivedAt);
+    assert.equal((await feedback("detail", admin, id)).attachment_key, key);
+    for (const token of [reader, other]) {
+      await feedbackDenied("detail", token, id);
+      await feedbackDenied("list", token, feedbackFilters);
+      await responseOf(path, { token }, denied);
+    }
+    const downloaded = await responseOf(path, { token: admin }, [200]);
+    const received = Buffer.from(await downloaded.arrayBuffer());
+    assert.equal(downloaded.headers.get("cache-control"), "private, no-store");
+    assert.equal(received.length, bytes.length);
+    assert.equal(sha256(received), sha256(bytes));
+    await upload(path, reader, bytes, mime, denied);
+    await upload(path, reader, bytes, mime, [404], true);
+  }
+  const list = await feedback("list", admin, feedbackFilters);
+  assert.ok(reports.every((id) => list.some((row) => row.id === id)));
+  for (const id of reports) {
+    assert.equal(sql(`select count(*) from core.system_audit_log where module='feedback' and action='report.receive'
+      and entity_id='${id}' and actor_user_id='${readerId}'`), "1");
+  }
+
+  // Metadados incompatíveis podem chegar ao bucket. O SQL precisa negar o recibo.
+  const mismatch = feedbackInput("png");
+  const reserved = await feedback("prepare", reader, mismatch);
+  await upload(feedbackObject(reserved.attachmentKey), reader, jpg, "image/jpeg", [200]);
+  assert.equal((await (await feedbackDenied("receive", reader, { p_id: mismatch.p_id }, [500])).json()).code, "P0002");
+
+  const key = `${reports[1]}.png`;
+  for (const [method, path] of [
+    ["PUT", `object/feedback-attachments/${key}`],
+    ["DELETE", "object/feedback-attachments"],
+    ["POST", "object/list/feedback-attachments"],
+    ["GET", `object/public/feedback-attachments/${key}`],
+    ["POST", `object/sign/feedback-attachments/${key}`],
+    ["GET", `object/unknown-bucket/${key}`],
+  ]) await responseOf(`/storage/v1/${path}`, { token: admin, method }, [404]);
+
+  const legacy = internal("storage", `/object/sign/feedback-attachments/${key}`, "POST", { expiresIn: 60 });
+  assert.equal(legacy.status, 200);
+  const signed = new URL(legacy.data.signedURL, base);
+  await responseOf(`/storage/v1${signed.pathname}${signed.search}`, { token: admin }, [404]);
+  return { id: reports[1], key };
+}
+
+async function verifyFeedbackBrowser(adminSecret, readerSecret, png) {
+  const browser = await chromium.launch();
+  try {
+    const signIn = async (name, secret, width) => {
+      const page = await browser.newPage({ viewport: { width, height: 800 } });
+      page.setDefaultTimeout(10_000);
+      await page.goto(origin);
+      await page.locator('input[name="email"]').fill(email(name));
+      await page.locator('input[name="password"]').fill(secret);
+      await page.getByRole("button", { name: "Entrar", exact: true }).click();
+      return page;
+    };
+    const readerPage = await signIn("reader", readerSecret, 320);
+    await readerPage.getByRole("button", { name: /^Relatar problema/ }).click();
+    const form = readerPage.getByRole("dialog", { name: "Relatar problema ou sugerir melhoria" });
+    const description = "Relato sintético GG-11 enviado e baixado pelo app no notebook.";
+    await form.getByLabel("Descrição detalhada").fill(description);
+    const attachment = form.getByLabel("Anexo opcional");
+    await attachment.setInputFiles({ name: "invalido.png", mimeType: "image/png", buffer: Buffer.from("inválido") });
+    await form.getByRole("button", { name: "Enviar relato" }).click();
+    await form.getByText("Escolha uma imagem PNG ou JPEG válida.").waitFor();
+    await attachment.setInputFiles({ name: "sintetico.png", mimeType: "image/png", buffer: png });
+    await form.getByRole("button", { name: "Enviar relato" }).click();
+    await form.getByText("Relato recebido.", { exact: true }).waitFor();
+    const id = await form.locator("strong").textContent();
+    assert.match(id, /^[a-f0-9-]{36}$/);
+    await form.getByRole("button", { name: "Concluir" }).click();
+    await readerPage.goto(`${origin}/admin/feedback`);
+    await readerPage.getByText(/Acesso não autorizado/).waitFor();
+
+    const adminPage = await signIn("operador", adminSecret, 1280);
+    const sidebar = adminPage.locator(".sidebar");
+    await sidebar.getByRole("button", { name: "Administração", exact: true }).click();
+    await sidebar.getByRole("link", { name: "Relatos e sugestões", exact: true }).click();
+    await adminPage.getByRole("button", { name: `Ler relato ${id}`, exact: true }).click();
+    const detail = adminPage.getByRole("dialog", { name: "Detalhes do relato" });
+    await detail.getByText(description, { exact: true }).waitFor();
+    const [download] = await Promise.all([
+      adminPage.waitForEvent("download"),
+      detail.getByRole("button", { name: "Baixar anexo" }).click(),
+    ]);
+    assert.equal(download.suggestedFilename(), "anexo-relato.png");
+    const bytes = await readFile(await download.path());
+    assert.equal(bytes.length, png.length);
+    assert.equal(sha256(bytes), sha256(png));
+    console.log(`PASS GG-11 Chromium/Vite: envio 320 px, recibo, negativa administrativa, descarga desktop. PNG: ${bytes.length} bytes, SHA-256 ${sha256(bytes)}.`);
+  } finally {
+    await browser.close();
+  }
+}
+
 let phase = "configuração";
 const browserResponses = [];
 let browserPage;
@@ -118,9 +281,10 @@ const browserOnly = process.env.GG_IDENTITY_TEST_UI === "only";
 try {
   assert.equal(sql("select enabled from private.identity_settings"), "t");
   const adminSecret = password();
+  const protectedSecret = password();
   for (const [index, name] of ["operador", "protegido"].entries()) {
     const response = internal("auth", "/admin/users", "POST", {
-      id: actors[index], email: email(name), password: index === 0 ? adminSecret : password(), email_confirm: true,
+      id: actors[index], email: email(name), password: index === 0 ? adminSecret : protectedSecret, email_confirm: true,
     });
     assert.ok([200, 201].includes(response.status));
     assert.ok(response.data.id === actors[index]);
@@ -170,6 +334,13 @@ try {
     const legacyPath = `/storage/v1${signed.pathname}${signed.search}`;
     await responseOf(legacyPath, {}, [404]);
     await responseOf(legacyPath, { token: admin }, [404]);
+    for (const path of [
+      "object/abc-source-files",
+      "object/action-plan-evidence",
+      "render/image/authenticated/audit-checklist-evidence",
+      "render/image/authenticated/audit-evidence-thumbnails",
+      "object/room-covers",
+    ]) await responseOf(`/storage/v1/${path}/fixture`, {}, [401]);
 
     phase = "cadastro e primeiro acesso";
     const employee = await command("/users", admin, {
@@ -222,6 +393,33 @@ try {
     const readerAccess = (await login("reader", readerDefinitive)).access_token;
     assert.deepEqual(await (await rest("my_access", readerAccess, {})).json(), []);
     await rest("announcements_published", readerAccess, {}, "public");
+
+    phase = "GG-11: reserva, recebimento e download";
+    const image = sharp({ create: { width: 2, height: 2, channels: 3, background: "#496c42" } });
+    const png = await image.clone().png().toBuffer();
+    const jpg = await image.clone().jpeg().toBuffer();
+    const report = await verifyFeedbackStorage({
+      admin, reader: readerAccess, readerId: reader.userId, other: first, png, jpg,
+    });
+    phase = "GG-11: finalidade, admissão e revogação administrativa";
+    await assertFeedbackBarrier(pending.access_token, report.key, png);
+    const unadmitted = internal("auth", "/token?grant_type=password", "POST", {
+      email: email("reader"), password: readerDefinitive,
+    });
+    assert.equal(unadmitted.status, 200);
+    secrets.push(unadmitted.data.access_token, unadmitted.data.refresh_token);
+    await assertFeedbackBarrier(unadmitted.data.access_token, report.key, png);
+    const protectedToken = (await login("protegido", protectedSecret)).access_token;
+    secrets.push(protectedToken);
+    await responseOf(feedbackObject(report.key), { token: protectedToken }, [200]);
+    sql(`update core.user_role_assignments set active=false where user_id='${actors[1]}'`);
+    await feedbackDenied("detail", protectedToken, { p_id: report.id });
+    await responseOf(feedbackObject(report.key), { token: protectedToken }, [400, 403, 404]);
+
+    if (process.env.GG_IDENTITY_TEST_UI === "feedback") {
+      phase = "GG-11: interface no Vite";
+      await verifyFeedbackBrowser(adminSecret, readerDefinitive, png);
+    }
 
     phase = "D5-C: cadastro global da secretaria e solicitante";
     assert.equal(await (await rest("room_booking_admin_context", admin, {}, "public")).json(), true);
@@ -299,6 +497,7 @@ try {
       }, [204]);
       assert.equal(sql(`select active from core.profiles where id='${employee.userId}'`), active ? "t" : "f");
       await assertBarriers(second, file(0));
+      await assertFeedbackBarrier(second, report.key, png);
     }
     grantQuality(employee.userId);
     await assertBarriers(first, file(0));
@@ -323,6 +522,8 @@ try {
     }, 200);
     const newPending = (await login("reader", replacement.temporaryPassword)).access_token;
     await assertBarriers(newPending, file(0));
+    await assertFeedbackBarrier(newPending, report.key, png);
+    console.log("PASS GG-11: RPCs e Storage reais, sem papel, sem/com PNG/JPEG, recibos, hash, auditoria e negativas de sessão, autoria e papel.");
 
     phase = "contrato SDK";
     const apiKey = process.env.GG_IDENTITY_TEST_ANON_KEY;
@@ -507,6 +708,15 @@ try {
       const result = internal("storage", "/object/unit-covers", "DELETE", { prefixes: assets.map((asset) => asset.object_key) });
       assert.ok([200, 204].includes(result.status));
     }
+    const syntheticReports = `select id from feedback.reports where author_id in (${userList})`;
+    const attachmentKeys = sql(`select attachment_key from feedback.reports
+      where author_id in (${userList}) and attachment_key is not null`).split("\n").filter(Boolean);
+    if (attachmentKeys.length) {
+      const result = internal("storage", "/object/feedback-attachments", "DELETE", { prefixes: attachmentKeys });
+      assert.ok([200, 204].includes(result.status));
+      const keys = attachmentKeys.map((key) => `'${key}'`).join(",");
+      assert.equal(sql(`select count(*) from storage.objects where bucket_id='feedback-attachments' and name in (${keys})`), "0");
+    }
     cleanupPhase = "Core";
     const fixtureAudit = `actor_user_id in (${userList})
       or entity_id in (${userList},${unitList}) or unit_id in (${unitList})
@@ -523,6 +733,7 @@ try {
       delete from private.identity_credentials where user_id in (${userList});
       delete from private.identity_operations where target_id in (${userList}) or actor_id in (${userList});
       delete from core.system_audit_log where ${fixtureAudit};
+      delete from feedback.reports where id in (${syntheticReports});
       set constraints all immediate;
       delete from core.units where id in (${unitList});
       alter table core.units enable trigger record_change;
@@ -536,6 +747,7 @@ try {
     }
     assert.equal(sql(`select count(*) from auth.users where id in (${userList})`), "0");
     assert.equal(sql(`select count(*) from core.system_audit_log where ${fixtureAudit}`), "0");
+    assert.equal(sql(`select count(*) from feedback.reports where author_id in (${userList})`), "0");
     console.log("Fixtures GG-05B removidas e ausência das identidades e de sua trilha confirmada.");
   } catch {
     console.error(`A limpeza verificada das fixtures GG-05B falhou na etapa ${cleanupPhase}.`);
