@@ -1,11 +1,11 @@
 # Operação, implantação, incidentes e recuperação — matriz v1
 
-**Status: RUNBOOK DE PREPARAÇÃO / PROD NO-GO**, base main após PR #69 (`fed0e0f`, 20/10/2026).
+**Status: RUNBOOK DE PREPARAÇÃO / PROD NO-GO**, revisão de 25/11/2026. Evidências operacionais da C30 mantêm seus recortes datados.
 Autoridades: [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md), [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md), [Plano Diretor](../planning/PLANO_DIRETOR_2026.md), [Aceite O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md). **Não é uma receita de produção executável.**
 
 ## Adendo operacional — acesso externo STAGING (30/10/2026)
 
-**AS-IS mais recente:** `https://teste.gauchagestao.online` acessível em PC/celular pelo plano Cloudflare Free com Tunnel `gaucha-staging` (Healthy), `cloudflared` como serviço systemd, Caddy HTTP local 4181 e frontend `f9f041e-cloudflare`. Auth/Storage receberam as novas URLs e foram os únicos contêineres recriados; `db`, `rest`, `kong` preservados e saudáveis. Login, consulta de auditoria/histórico preexistente, nova auditoria, envio/visualização/download de foto relatados pelo operador. Evidências e limites no [AS-BUILT de 30/10](C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) e [runbook](C30_STAGING_CLOUDFLARE_RUNBOOK.md). **Não foi homologada produção, RLS negativo, backup/restore independente ou Cloudflare Access**; exposição da tela de login requer revisão de segurança antes de distribuir a URL.
+**Evidência de 30/10:** `https://teste.gauchagestao.online` acessível em PC/celular pelo plano Cloudflare Free com Tunnel `gaucha-staging` (Healthy), `cloudflared` como serviço systemd, Caddy HTTP local 4181 e frontend `f9f041e-cloudflare`. Auth/Storage receberam as novas URLs e foram os únicos contêineres recriados; `db`, `rest`, `kong` preservados e saudáveis. Login, consulta de auditoria/histórico preexistente, nova auditoria, envio/visualização/download de foto relatados pelo operador. Evidências e limites no [AS-BUILT de 30/10](C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) e [runbook](C30_STAGING_CLOUDFLARE_RUNBOOK.md). **Não foi homologada produção, RLS negativo, backup/restore independente ou Cloudflare Access**; exposição da tela de login requer revisão de segurança antes de distribuir a URL.
 
 ## Adendo operacional — C30 STAGING real (22/10/2026)
 
@@ -15,9 +15,9 @@ A fotografia principal desta matriz foi produzida antes da instalação real. **
 
 | Superfície | Operação atualmente demonstrável | Operação necessária para PROD | Risco/limite |
 | --- | --- | --- | --- |
-| Desenvolvimento | npm ci, typecheck/lint/test/build; CLI local isolada | Nenhum dado real | Reset somente local descartável exclusivo |
+| DEV pessoal | Compose `gaucha-gestao-local`, Vite e perfil opt-in Identity, conforme [runbook](DOCKER_LOCAL_STANDARDIZATION.md) | Evidências do DEV por SHA e perfil. A continuidade de Identity tem ensaio próprio pendente | Reusar o ambiente autorizado. Seguir AGENTS.md para operações de dados |
 | Infra CI/laboratório | Compose de 5 serviços; segredos fora do repo; healthcheck/smoke e cleanup allowlist | Configuração persistente segura, TLS/origens, versionamento do runtime, revisão | scripts/ops recusam production |
-| C30 STAGING | Ubuntu Server LTS, cinco serviços persistentes e Caddy com HTTPS somente loopback, observados em 22/10 | Para PROD: aceite físico, SMART/carga, UPS, backup independente, segurança e autorização | STAGING ativo **não equivale** a host aceito para produção; HDD envelhecido e restore atual pendente |
+| C30 STAGING | Ubuntu Server LTS, cinco serviços persistentes e Caddy com publicação de testes via Tunnel observada em 30/10, após o recorte loopback de 22/10 | Para PROD: aceite físico, SMART/carga, UPS, backup independente, segurança e autorização | STAGING ativo **não equivale** a host aceito para produção; HDD envelhecido e restore atual pendente |
 | Publicação web | **STAGING: Cloudflare Tunnel + Caddy 4181 + release Vite dedicada**, HTTPS público de testes validado em 30/10 | **PROD TO-BE:** Workers Static Assets + DNS/WAF/Tunnel e R2, ambientes e rollback | URL pública **não** comprova Cloudflare Access, RLS negativo, backup ou GO produtivo |
 | Banco | Migrations append-only em ambientes isolados; RLS em testes | Plano de migration versionada, backup/rollback, RPO/RTO e recuperação | Não rodar SQL em PROD sem autorização |
 | Curva ABC | Módulo + schema/bucket privados versionados | Homologar XLSX ERP, integridade, download, históricos, RLS e backup de bytes e metadata | Merge de código não é deploy nem aplicação de migrations |
@@ -27,7 +27,7 @@ A fotografia principal desta matriz foi produzida antes da instalação real. **
 
 ## 2. Ambientes e isolamento
 
-**DEV local:** máquina de cada desenvolvedor, dados sintéticos, credenciais locais, projeto exclusivo; não reutilizar volume de outro agente. **DEV compartilhado (Issue #68):** frontend 5173 e API 54341, dois logins independentes, ambiente persistente distinto do teste CLI; RLS, autoria, rede e reinício ainda precisam de evidência. **Não rodar db reset/down -v/migrações exploratórias** na instância compartilhada. A PR #69 na main não significa que a migration ABC já foi aplicada nesse banco. **CI:** efêmera e destrutível somente dentro de seus recursos isolados. **STAGING persistente (C30):** localização e instância já identificadas em 22/10/2026 (ver [AS-BUILT](C30_STAGING_AS_BUILT_20261022.md)); isolamento, hardening, retenção, restauração e aprovação formal continuam em aberto. Não usar dados reais de produção. **PROD:** não existe autorização de provisionamento neste estado.
+**DEV pessoal:** Ubuntu nativo ou Windows/WSL2 com Docker Desktop. **DEV compartilhado (Issue #68):** registro histórico de duas contas independentes. Confirmar versão e autorização para qualquer reuso. **Não rodar db reset/down -v/migrações exploratórias** na instância compartilhada. [Matriz de ambientes](../architecture/STACK_INTEGRATION.md#ambientes-e-topologias). **CI:** efêmera e destrutível somente dentro de seus recursos isolados. **STAGING persistente (C30):** localização e instância já identificadas em 22/10/2026 (ver [AS-BUILT](C30_STAGING_AS_BUILT_20261022.md)); isolamento, hardening, retenção, restauração e aprovação formal continuam em aberto. Não usar dados reais de produção. **PROD:** não existe autorização de provisionamento neste estado.
 
 Recursos existentes na C30, inclusive Windows/WSL2, discos e dados não pertencentes ao projeto, são **intocáveis** até inventário completo, restauração verificável e consentimento. A issue #52 registra ERP deslocado para outro computador e validação operacional relatada, mas **não aprova destruir o volume antigo** nem os demais dados. Não executar prune, down -v, reset, wipe ou inicialização de HD fora de um projeto sintético inequivocamente identificado e autorizado. Para o ensaio sintético, obedecer à [issue #51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51) e ao [PR #62](https://github.com/The-Vonky/Gaucha-Gestao/pull/62).
 
@@ -84,7 +84,7 @@ Etapas obrigatórias antes de declarar operação:
 4. **Medir o ensaio:** início/fim, tempos separados, perda de dados relativa ao último ponto, RPO/RTO observados, falhas, responsáveis, data, SHA, aprovação e plano corretivo.
 5. **Repetir periodicamente:** agenda, alerta em falha, teste de substituição de host, controle da retenção e documentação de incidentes.
 
-**Evidência disponível nesta data:** a issue #51 registra ensaio **sintético a frio** com resultados positivos parciais; PR #62 em Draft. Isto **não** prova backup contínuo, WAL/PITR, restauração remota, replicação de objetos em R2 ou prontidão de produção. Ver [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md) e o [relatório verificável de restauração sintética](../planning/02_RESTORE_DRILL.md). O ensaio foi em snapshot de **17 migrations**, enquanto a main atual inclui **18**, com bucket ABC não abrangido pela prova histórica.
+**Evidência histórica:** a Issue #51, encerrada, e a PR #62, integrada em `f9f041e`, registram ensaio sintético a frio com DR-08 parcial. O recorte usou 17 migrations, anterior ao bucket ABC. O perfil base do DEV tem procedimento próprio. Ainda faltam recuperação integral do DEV com Identity, backup e restauração independentes da C30, retenção, alertas e metas medidas. [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md) · [Relatório sintético](../planning/02_RESTORE_DRILL.md) · [Guia Mestre](../planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md).
 
 ## 6. Resposta inicial a incidente — processo de decisão
 

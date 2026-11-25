@@ -1,6 +1,6 @@
 # Arquitetura desenhada — AS-IS e TO-BE
 
-## Vendas — exportação VEN-05A para revisão (03/11/2026)
+## Vendas — exportação VEN-05A integrada pela PR #98
 
 ```mermaid
 flowchart LR
@@ -18,16 +18,16 @@ flowchart LR
   FINAL --> DOWNLOAD["Download no navegador"]
 ```
 
-[Contrato, permissões e limites](../modules/sales/VEN05A_EXCEL_EXPORT.md).
+[Contrato, permissões e limites](../modules/sales/VEN05A_EXCEL_EXPORT.md) · [PR #98](https://github.com/The-Vonky/Gaucha-Gestao/pull/98).
 Migrations VEN-05A aplicadas somente no notebook autorizado (03–04/11);
 sem STAGING/PROD ou VEN-05B.
 
 O fluxo de autorização de Vendas com catálogo de unidades vazio está no
 [diagrama MEL-01](../modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md#correção-funcional-e-ciclo-das-fixtures).
 
-**Fotografia reconciliada:** main após PR #69 (`fed0e0f`, 20/10/2026). **Produção: NO-GO.**
+**Baseline reconciliada:** `e0b6f5c`, em 25/11/2026. **Produção: NO-GO.**
 **Autoridades:** [ADR-001](../decisions/ADR-001-modular-monolith.md), [ADR-002](../decisions/ADR-002-core-and-module-ownership.md), [ADR-004](../decisions/ADR-004-platform-stack.md), [ADR-005](../decisions/ADR-005-core-authorization.md), [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md).
-Diagramas lógicos, **não diagramas as-built de servidor em produção**. Linhas pontilhadas indicam direção ainda não entregue/validada.
+Diagramas lógicos, **não diagramas as-built de servidor em produção**. Linhas pontilhadas identificam relações opcionais, lógicas ou planejadas conforme o rótulo e a seção.
 
 **Snapshots de STAGING:** o [AS-BUILT 22/10](../operations/C30_STAGING_AS_BUILT_20261022.md) documenta o estado **anterior** ao túnel público. Em **30/10/2026**, foi implantado o [Cloudflare Tunnel → Caddy HTTP loopback 4181 → Supabase](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md), com URL HTTPS externa de testes. Essa topologia **AS-IS** é distinta da topologia **TO-BE de PROD** com Cloudflare Workers Static Assets/R2 desenhada neste arquivo. **PROD NO-GO**.
 
@@ -59,7 +59,8 @@ flowchart TB
     COREUI["Admin — usuários, permissões, papéis, unidades, setores, logs"]
     AUDITUI["Auditorias e relatórios"]
     PLANSUI["Planos de Ação"]
-    ABCUI["Curva ABC — importação e revisões"]
+    ABCUI["Curva ABC — importação, revisões e analytics"]
+    OTHER["Vendas, Salas, Comunicados e Relatos"]
     SHARED["shared — UI / utilidades"]
   end
   SHELL --> AUTHUI
@@ -67,22 +68,31 @@ flowchart TB
   SHELL --> AUDITUI
   SHELL --> PLANSUI
   SHELL --> ABCUI
+  SHELL --> OTHER
+  OTHER --> API
   COREUI --> API["supabase-js"]
   AUDITUI --> API
   PLANSUI --> API
   ABCUI --> API
   AUTHUI --> API
   SHARED -. "consumido internamente" .-> AUDITUI
-  API --> AUTH["GoTrue"]
-  API --> REST["PostgREST — RPCs e tabelas expostas"]
-  API --> STORAGE["Storage API — buckets privados"]
-  AUTH --> DB[("PostgreSQL 17")]
-  REST --> DB
+  API --> KONG["Kong"]
+  KONG -->|"Auth no perfil base"| AUTH["GoTrue"]
+  KONG -->|"REST e GraphQL nos dois perfis"| REST["PostgREST — Data API"]
+  KONG -->|"Storage no perfil base"| STORAGE["Storage API"]
+  KONG -->|"Auth e Storage no perfil estrito"| ID["Core Identity — opt-in no DEV"]
+  ID --> AUTH
+  ID --> STORAGE
+  ID -->|"Contratos SQL internos"| DB[("PostgreSQL 17 · grants, RLS e RPCs")]
+  AUTH --> DB
+  REST -->|"SQL · no perfil estrito, executa public.identity_pre_request()"| DB
   STORAGE --> DB
   STORAGE --> OBJ["Objetos: backend local em CI/lab"]
 ~~~
 
-*Ambientes:* o pipeline de aplicação usa Supabase CLI descartável; o pipeline de infraestrutura valida, isoladamente, um Compose mínimo de **db, kong, auth, rest, storage**. O diagrama acima mostra dependências funcionais, não presume que todos os ambientes já tenham ingress/CDN/Tunnel/R2.
+No perfil estrito, o pre-request SQL avalia a admissão da sessão antes da operação. Grants, RLS e as regras das RPCs continuam aplicando a autorização de domínio. [Rotas do Kong](../../infra/local/config/kong.yml) · [Configuração do ingresso estrito](../../infra/local/config/kong-entrypoint.sh) · [Compose Identity](../../infra/local/compose.identity.yaml) · [Modelo de ameaças](THREAT_MODEL.md#1-ativos-e-limites-de-confiança).
+
+O pipeline de aplicação usa Supabase CLI descartável. O pipeline de infraestrutura valida o Compose base de **db, kong, auth, rest, storage** e mantém um job de integração de Identity. A C30 tem topologia própria conforme seu AS-BUILT. [Mapa de Implementação](IMPLEMENTATION_MAP.md).
 
 ## 3. Infraestrutura prevista para produção (TO-BE, NÃO IMPLANTADA)
 
@@ -116,6 +126,9 @@ flowchart LR
   SHELL --> A["Audit"]
   SHELL --> P["Action Plans"]
   SHELL --> ABC["Curva ABC"]
+  SHELL --> O["Vendas, Salas, Comunicados e Relatos"]
+  O --> C
+  O --> S
   A --> C
   P --> C
   ABC --> C
@@ -123,7 +136,7 @@ flowchart LR
   A --> S["Shared"]
   P --> S
   C --> S
-  FUT["Futuros módulos: ISO, Vendas, Satisfação, Salas, Frota, P×R, Contratos"] -. "após gate de migração" .-> C
+  FUT["Futuros módulos: ISO, Satisfação, Frota, P×R, Contratos"] -. "após gate de migração" .-> C
   A -. "contrato público explícito, sem ler internals" .-> P
 ~~~
 

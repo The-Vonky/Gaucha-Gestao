@@ -1,5 +1,7 @@
 # Evidências nos relatórios de auditoria
 
+A exportação de PDF e Excel com fotos foi integrada pela [PR #125](https://github.com/The-Vonky/Gaucha-Gestao/pull/125) (`de32ef1`). O registro abaixo preserva o ensaio técnico e os limites da homologação visual.
+
 Implementação de 18/11/2026, em branch própria originalmente derivada de `210cf01`. Na finalização autorizada da PR #125, a `main` `cb6344c` (PR #124 já homologada/integrada) foi incorporada pelo merge `ad46590`, sem reescrever histórico. A exportação recebe os textos e a versão do template da RPC existente; não fixa a redação da v1/v2 no frontend. Diagnóstico do audit e integração: [registro técnico da #125](PR125_FINALIZACAO_TECNICA_20261118.md).
 
 ## Comportamento

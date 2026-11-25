@@ -2,7 +2,7 @@
 
 > **Distinção operacional — 30/10/2026:** Cloudflare **DNS Free + Tunnel** já foi usado para acesso **STAGING** da C30 em `teste.gauchagestao.online`, com Caddy servindo frontend e Supabase Storage no HDD. A linha de **Workers Static Assets/R2** na tabela abaixo continua sendo a arquitetura **de produção futura**, não foi implantada por esta migração. Referência: [AS-BUILT C30 Cloudflare](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md). PROD NO-GO.
 
-**Estado:** revisão da `main` após a [PR #69](https://github.com/The-Vonky/Gaucha-Gestao/pull/69), em 20/10/2026. **Produção NO-GO.** Este documento explica decisões existentes; não cria ADRs nem aprova serviços ou custos adicionais. Fontes canônicas: [ADR-001](../decisions/ADR-001-modular-monolith.md), [ADR-002](../decisions/ADR-002-core-and-module-ownership.md), [ADR-004](../decisions/ADR-004-platform-stack.md), [ADR-005](../decisions/ADR-005-core-authorization.md), [ADR-006 proposto](../decisions/ADR-006-infra-v1-reused-hardware.md), [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md).
+**Estado:** baseline `e0b6f5c`, revisada em 25/11/2026. **Produção NO-GO.** Este documento explica decisões existentes; não cria ADRs nem aprova serviços ou custos adicionais. Fontes canônicas: [ADR-001](../decisions/ADR-001-modular-monolith.md), [ADR-002](../decisions/ADR-002-core-and-module-ownership.md), [ADR-004](../decisions/ADR-004-platform-stack.md), [ADR-005](../decisions/ADR-005-core-authorization.md), [ADR-006 proposto](../decisions/ADR-006-infra-v1-reused-hardware.md), [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md).
 
 ## Por que este conjunto de tecnologias?
 
@@ -10,14 +10,14 @@ O projeto prioriza **controle do runtime e dos dados, custo recorrente contido, 
 
 | Tecnologia | Como funciona na Gaúcha Gestão | Motivo/benefício | Alternativas e limites |
 | --- | --- | --- | --- |
-| React 19, TypeScript 5, React Router 7 | SPA modular em `apps/web`: App Shell, Core, Auditoria, Planos e Curva ABC | Componentização e contratos tipados numa aplicação corporativa com módulos | SSR/full-stack não é requerido na v1; **UI não substitui RLS** |
+| React 19, TypeScript 5, React Router 7 | SPA modular em `apps/web`: App Shell, Core, Shared e módulos de negócio | Componentização e contratos tipados numa aplicação corporativa com módulos | SSR/full-stack não é requerido na v1; **UI não substitui RLS** |
 | Vite 6 e Node >=22.12 | DEV e compilação do frontend; build vira assets estáticos | Pipeline enxuto; não requer backend Node executando regras em PROD | Chunk size e desempenho devem ser medidos; não é servidor de negócio |
 | Supabase Auth (GoTrue) | Login/sessão JWT; `AuthProvider` carrega `core.profiles` e `core.my_access` | Autenticação compartilhada sem duplicar identidade por módulo | Operação self-hosted e governança de contas privilegiadas permanecem requisitos. [GG-05B no DEV](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) |
-| PostgreSQL 17, `numeric`, RLS, SQL/RPC | Core, Audit, Action Plans e ABC; integridade, operações atômicas e autorização no banco | Dados, escopo e invariantes checados em camada confiável, sob transação | Requer migrations incrementais e testes SQL/JWT reais; `SECURITY DEFINER` exige revisão rigorosa |
-| PostgREST + supabase-js 2 | Cliente acessa schemas explicitamente expostos (`core`, `audit`, `action_plans`, `abc`) | Dispensa API de negócio Node/FastAPI paralela para os contratos aprovados | RPC e RLS são APIs de segurança: mudanças exigem contratos, escopos e regressão |
-| Storage API Supabase | Buckets privados para evidências, capas e `abc-source-files` | Integra autorização de objetos e fluxos de upload existentes | Banco e bytes não têm transação distribuída; MIME/hash não provam que XLSX foi reprocessado no servidor |
+| PostgreSQL 17, `numeric`, RLS, SQL/RPC | Core e schemas de domínio; integridade, operações atômicas e autorização no banco | Dados, escopo e invariantes checados em camada confiável, sob transação | Requer migrations incrementais e testes SQL/JWT reais; `SECURITY DEFINER` exige revisão rigorosa |
+| PostgREST + supabase-js 2 | Cliente acessa schemas explicitamente expostos e funções de domínio em `public` | Dispensa API de negócio Node/FastAPI paralela para os contratos aprovados | RPC e RLS são APIs de segurança: mudanças exigem contratos, escopos e regressão |
+| Storage API Supabase | Buckets privados de evidências, imagens, XLSX originais e anexos de Relatos | Integra autorização de objetos e fluxos de upload existentes | Banco e bytes não têm transação distribuída; MIME/hash não provam que XLSX foi reprocessado no servidor |
 | Kong | Gateway Auth/REST/Storage do Compose mínimo | Gateway compatível com o baseline self-hosted pinado | Versões/topologia precisam de teste na infra; não expor painéis administrativos |
-| Docker Engine + Compose | Cinco serviços: `db`, `kong`, `auth`, `rest`, `storage` | Topologia simples e reproduzível para host único e CI | Não oferece HA; reset/down -v só em stack **descartável explicitamente identificada** |
+| Docker Engine + Compose | Perfil base: `db`, `kong`, `auth`, `rest`, `storage`. DEV acrescenta Studio, pg_meta, imgproxy e o complemento opt-in Identity | Topologia simples e reproduzível para host único e CI | Não oferece HA; reset/down -v só em stack **descartável explicitamente identificada** |
 | Lenovo ThinkStation C30, Ubuntu Server LTS bare metal | Host **escolhido** para PROD futura, conforme ADR-008 | Evita overhead de VM no inventário de 8 GiB e dedica o host à plataforma | SPOF, RAM/SSD/UPS e capacidade sem aceite; host ainda não equivale a produção |
 | Cloudflare Workers Static Assets + DNS/WAF/Tunnel | Frontend e ingresso seguro **previstos para PROD** | Assets servidos fora do host e API sem portas públicas de entrada | WAF/Tunnel **não autorizam dados**; configuração, redes e disponibilidade ainda não homologadas |
 | Cloudflare R2 | Backend S3 compatível preferido para bytes em PROD **TO-BE** | Desacoplar objeto físico do SSD local | R2 não é backup; cópia independente, retenção, custos e restore precisam de prova |
@@ -47,9 +47,9 @@ flowchart LR
 
 ## Estado, dependências e critérios de evolução
 
-1. **AS-IS de software:** Core v2, Auditoria/Qualidade, Planos de Ação e Curva ABC v1 integrados ao repositório. A Curva ABC não migra histórico do desktop; comparações/exportação/correção manual ficam para briefs futuros.
-2. **AS-IS de infraestrutura:** testes em Supabase CLI e Compose de CI; [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) relata DEV compartilhado com duas contas, com pendências de rede/RLS/autoria. Merge de código **não aplica migrations automaticamente ao DEV existente**.
+1. **AS-IS de software:** A [main integra Core, Identity e os módulos descritos no mapa](IMPLEMENTATION_MAP.md). A Curva ABC inclui comparações dentro de uma unidade. Migração do histórico desktop, exportação em planilha e correção manual têm decisões próprias.
+2. **AS-IS de infraestrutura:** DEV pessoal com Compose e Vite, mais testes em Supabase CLI e Compose descartáveis; [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) relata DEV compartilhado com duas contas, com pendências de rede/RLS/autoria. Merge de código **não aplica migrations automaticamente ao DEV existente**.
 3. **TO-BE antes de produção:** aceitar a C30, identity boundary, P1–P9/O1–O8, metas mensuráveis, Storage e rede, backup separado/restore, observabilidade, homologação e GO humano.
 4. **Quando revisar decisões:** gatilhos de capacidade, SLA/disponibilidade, compliance, burden self-hosted ou demanda justificada por worker, serviço adicional ou HA. Registrar alternativas efetivamente estudadas, custos, limites e evidências em nova issue/ADR; se não houver comparação medida, declarar isso explicitamente.
 
-Para localizar a implementação, consulte [IMPLEMENTATION_MAP](IMPLEMENTATION_MAP.md). Para a sequência futura, [EXECUTION_MAP](../planning/EXECUTION_MAP.md) e [MODULE_BLUEPRINTS](../planning/MODULE_BLUEPRINTS.md).
+Para localizar a implementação, consulte [IMPLEMENTATION_MAP](IMPLEMENTATION_MAP.md). Para a sequência futura, [Guia Mestre GG-01–GG-15](../planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md) e [roadmap de módulos](../migration/MODULE_ROADMAP.md).

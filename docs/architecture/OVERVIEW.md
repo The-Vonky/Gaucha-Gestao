@@ -1,92 +1,26 @@
 # Visão geral da arquitetura
 
-> **Situação STAGING, 30/10/2026:** `teste.gauchagestao.online` funciona via Cloudflare DNS/Tunnel → Caddy HTTP 4181 → Supabase autohospedado na C30, com fluxos básicos de login/auditoria/fotos validados pelo operador ([AS-BUILT](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md)). Não confundir com a arquitetura **TO-BE de PROD** abaixo, que inclui Workers Static Assets/R2 e permanece **NO-GO**.
+A Gaúcha Gestão é um **monólito modular** ([ADR-001](../decisions/ADR-001-modular-monolith.md)). A SPA em `apps/web` reúne shell, navegação, Core web, Shared e os módulos de negócio. PostgreSQL/Supabase executa os contratos de dados. O componente interno `apps/core-identity` acrescenta ao Core o ciclo de credenciais e a admissão de sessões no perfil opt-in do DEV.
 
-## Propósito e estilo
+## Fronteiras do monólito
 
-Consolidar sistemas corporativos internos da Gaúcha Gestão em uma plataforma com fronteiras de domínio e migração gradual. O objetivo não é reunir arquivos numa pasta gigante, mas compartilhar a fundação sem tornar os módulos inseparáveis.
-
-**Decisão arquitetural:** monólito modular ([ADR-001](../decisions/ADR-001-modular-monolith.md)).
-
-~~~text
-Plataforma
-+-- App Shell (navegação / sessão / contexto global)
-+-- Core (identidade / autorização / unidades / setores / logs)
-+-- Shared (primitivas UI / utilitários / contratos)
-+-- Módulos
-    +-- Auditorias (Qualidade)
-    +-- Planos de Ação (transversal)
-    +-- Curva ABC
-    +-- ISO / Vendas / Satisfação / Salas / Frota
-    +-- Planejado×Realizado / Contratos (futuros)
-~~~
-
-## Dependências permitidas e proibidas
-
-~~~text
-PERMITIDO
-Módulo de negócio -> Core ou Shared
-App Shell -> Core ou entrada pública do módulo
-
-PROIBIDO
-Core -> módulo de negócio
-Módulo A -> arquivos internos do módulo B
-Shared -> módulo de negócio
-~~~
-
-Integrações entre módulos devem passar por **contratos públicos**. Acesso direto à tabela/componente interno de outro módulo exige decisão arquitetural.
-
-## O que pertence ao Core
-
-Identidade/perfil, papéis, permissões, unidade, setor, escopo organizacional, eventos sistêmicos e contrato técnico compartilhado de arquivos. Metadados de anexos específicos e acesso a entidades pertencem aos módulos, conforme [DATA_MODEL](DATA_MODEL.md).
-
-Semântica parecida em dois módulos não justifica mover tudo para Core.
+- O **Core** é dono de identidade de aplicação, perfil, organização, papéis, permissões, escopos, referências organizacionais e auditoria sistêmica. GoTrue mantém a identidade Auth. Cada módulo é dono dos seus dados, regras e metadados de anexos.
+- **Shared** contém primitivas de UI e utilitários neutros. O shell compõe as entradas públicas. Módulos podem depender de Core e Shared. Core e Shared ficam livres de dependências de negócio.
+- Módulos trocam dados por contratos públicos. Por exemplo, Auditorias registra a origem rastreável de um plano e consome o contrato público de leitura de Planos de Ação.
+- A autorização efetiva é aplicada por grants, RLS e RPCs PostgreSQL. No perfil estrito, Identity e o pre-request acrescentam a admissão de sessão antes do uso dos contratos. [Autorização](AUTHORIZATION.md) · [Contratos de API](API_CONTRACTS.md).
 
 ## Módulos e estado de implementação
 
-| Domínio | Estado verificado no repositório em 21/10/2026 |
-| --- | --- |
-| Auditoria/Qualidade | v1 integrada ao código, sem homologação P1–P9/O1–O8 |
-| Planos de Ação | Transversal e integrado |
-| Curva ABC | v1 integrada na PR #69, homologação [#70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) aberta |
-| ISO/Propostas ISO, Vendas, Satisfação | Legados; migração futura |
-| Agendamento de Salas | Legado funcional, [AG-00](../briefs/ROOM_BOOKING_V1.md) proposto e não aprovado |
-| Frota | Legado em desenvolvimento |
-| Planejado×Realizado | Legado a revisar antes de migrar |
-| ERP de Contratos | Legado; backup/recuperação exige revisão |
+Na [baseline do Mapa de Implementação](IMPLEMENTATION_MAP.md), estão integrados **Core e Identity**, **Auditorias e Qualidade**, **Planos de Ação**, **Curva ABC**, **Vendas e Maquininhas**, **Agendamento de Salas**, **Comunicados** e **Relatos e sugestões**. O mapa identifica rotas, schemas, evidências automáticas e aceites DEV por recorte. O [roadmap](../migration/MODULE_ROADMAP.md) acompanha as fases pendentes e os domínios ainda planejados.
 
-## Migração incremental
+## Tecnologias e implantação
 
-~~~text
-inventariar comportamento legado
--> definir fronteira do módulo
--> aprovar brief e critérios de aceite
--> reutilizar regras de negócio validadas
--> integrar Core
--> migrar dados controladamente
--> reconciliar com legado
--> homologar e autorizar corte
--> preservar recuperação do legado
-~~~
+- **Aplicação e CI.** React/TypeScript/Vite, GoTrue/Auth, PostgREST, Storage, PostgreSQL 17, Kong e integrações descartáveis. No DEV pessoal, o Compose inclui Studio, pg_meta e imgproxy. Identity é um serviço interno adicional desse perfil. [Stacks e ambientes](STACK_INTEGRATION.md).
+- **STAGING persistente.** Em 30/10/2026, o operador registrou Cloudflare DNS/Tunnel → Caddy → Supabase na C30, com login, auditoria e fotos. O SHA e o ledger implantados exigem verificação própria no inventário GG-01. [AS-BUILT](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md).
+- **PROD planejado.** Workers Static Assets, Cloudflare DNS/WAF/Tunnel, R2, C30 em Ubuntu bare metal e recuperação independente. Consulte as escolhas e os requisitos no [ADR-004](../decisions/ADR-004-platform-stack.md) e [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md).
 
-Um legado “finalizado” não obriga copiar sua arquitetura técnica.
+## Migração incremental e prontidão
 
-## Capacidades antes de múltiplos módulos produtivos
+Cada migração começa com inventário funcional e propriedade reconhecida, passa por brief/contratos aprovados, integração com Core, reconciliação e recuperação, e chega ao corte somente após homologação e autorização específicas. Salas segue a decisão AG-D11 de implementação independente e preservação do legado.
 
-Identidade/sessões, autorização granular, escopo, audit log, navegação, disciplina de migrations, backups/restore, segredos, ambientes e observabilidade precisam ser confiáveis.
-
-A primeira entrega operacional é **Qualidade v1**. Não reimplementar Auditoria, Planos, evidências e relatórios concluídos; consultar [QUALITY_COMPLETION](../modules/audit/QUALITY_COMPLETION_V1.md). O código está integrado, **a produção não**.
-
-## Tecnologias atuais versus futuras
-
-**AS-IS em código/CI:** React/TypeScript/Vite, GoTrue/Auth, PostgREST, Storage API, PostgreSQL 17/RLS e Kong em Compose mínimo de cinco serviços, além de CI Supabase CLI. **Realtime/Supavisor não fazem parte desse perfil.**
-
-**TO-BE produção:** frontend Cloudflare Workers Static Assets, Cloudflare DNS/WAF/Tunnel, R2, ThinkStation C30 Ubuntu bare metal, backup lógico+base/WAL/PITR off-site, Ansible e alertas. A escolha está nos [ADR-004](../decisions/ADR-004-platform-stack.md) e [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md), **sem comprovar implantação**.
-
-Detalhes: [DIAGRAMS](DIAGRAMS.md), [STACK_INTEGRATION](STACK_INTEGRATION.md), [TECHNOLOGY_DECISIONS](TECHNOLOGY_DECISIONS.md).
-
-## Decisões abertas
-
-Backup/PITR e retenção, RPO/RTO, observabilidade/alertas, política de exclusão de evidências, STAGING/PROD, capacidade física da C30 (RAM/SSD) e liberação operacional da identidade privilegiada. A [GG-05B](GG05B_IDENTITY_DESIGN.md#contrato-vigente-no-dev) está integrada e homologada no DEV opt-in. Não reabrir stack aceita para resolver detalhe sem requisito/novo ADR.
-
-**Produção NO-GO** até evidências P1–P9/O1–O8 e liberação humana.
+Qualidade v1 é a primeira entrega operacional do Plano Diretor. A liberação depende de P1–P9/O1–O8 aplicáveis, segurança e recuperação do Identity, inventário e continuidade da C30, proteção do ingresso, observabilidade e GO explícito do mantenedor. Consulte os [gates da fundação](FOUNDATION_GATES.md), [Plano Diretor](../planning/PLANO_DIRETOR_2026.md) e [Guia Mestre](../planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md). **PROD NO-GO.**

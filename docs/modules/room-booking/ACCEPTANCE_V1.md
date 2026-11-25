@@ -2,7 +2,7 @@
 
 **VIGENTE na main.** A [AG-D5-C](D5C_ADMIN_MODES.md), integrada pela PR #129, substitui a expectativa de negar gestão ao administrador global. D5-A e D5-B ficam como histórico. O mantenedor único confere diff, CI e negativas de RLS e RPC para o aceite aplicável.
 
-**Estado:** esta matriz define critérios. As evidências de AG-01 a AG-04 e os ensaios de D5-B mantêm a data e o resultado originais. A homologação funcional registrada na PR #129 abrange AG-D5-C no DEV. O aceite operacional AG-05 e a [Issue #84](https://github.com/The-Vonky/Gaucha-Gestao/issues/84) mantêm escopo próprio, incluindo secretária, responsável e celular real. O módulo é independente do legado (D11).
+**Estado:** esta matriz define critérios. As evidências de AG-01 a AG-04 e os ensaios de D5-B mantêm a data e o resultado originais. A homologação funcional registrada na PR #129 abrange AG-D5-C no DEV. O aceite operacional AG-05 e a [Issue #84](https://github.com/The-Vonky/Gaucha-Gestao/issues/84) mantêm escopo próprio, incluindo secretária, responsável e celular real. O módulo é independente do legado (D11). A [PR #134](https://github.com/The-Vonky/Gaucha-Gestao/pull/134) integrou a regressão atual dos três roteiros. O aceite registrado na PR cobre a integração da regressão.
 
 Cada critério aponta a etapa que o comprova. Registre evidência executada com SHA, ambiente, comando e resultado. O [brief](../../briefs/ROOM_BOOKING_V1.md) define os requisitos de produto.
 

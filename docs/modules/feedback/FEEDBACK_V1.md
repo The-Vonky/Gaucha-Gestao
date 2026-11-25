@@ -1,10 +1,6 @@
 # GG-11 — Relatos e sugestões v1
 
-No DEV com Identity, o ingresso que antes omitia `feedback-attachments` aceita agora
-o upload simples e o download autenticado do adaptador. A mudança está em
-validação pré-merge. [Segurança do Storage](../../architecture/SECURITY.md#storage-privado-e-miniaturas).
-
-Em revisão para homologação. A autorização para o piloto depende do mantenedor.
+A [PR #133](https://github.com/The-Vonky/Gaucha-Gestao/pull/133) integrou a correção de upload e download de `feedback-attachments` no perfil estrito de Identity. O mantenedor homologou a correção no DEV em 25/11/2026 no SHA `8fff2d3`. Aceite integral, retenção e autorização do piloto seguem pendentes. [Segurança do Storage](../../architecture/SECURITY.md#storage-privado-e-miniaturas).
 
 ## Fluxo e autorização
 
@@ -80,8 +76,8 @@ papel operacional a 320 px, recibo, negativa administrativa e consulta e
 download por administrador no desktop. O PNG sintético baixado teve os mesmos
 95 bytes e SHA-256 do original. O ledger tinha 47 migrations, compatíveis
 com o checkout, e as fixtures foram removidas. O ensaio cobre o login
-admitido e o ciclo de Relatos. O aceite do mantenedor e a homologação
-completa de Identity pelo Vite seguem pendentes. [Registro da PR #133](https://github.com/The-Vonky/Gaucha-Gestao/pull/133).
+admitido e o ciclo de Relatos. O aceite DEV da correção foi registrado. A homologação
+completa de Identity pelo Vite e o aceite operacional de Relatos seguem pendentes. [Registro da PR #133](https://github.com/The-Vonky/Gaucha-Gestao/pull/133).
 
 - [Teste de rotas](../../../tests/identity-storage-path.test.ts) cobre as duas
   operações, formato da chave, variantes negadas e rotas dos seis buckets existentes.

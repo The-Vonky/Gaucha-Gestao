@@ -68,7 +68,7 @@ execute validações pertinentes e relate os resultados reais em pt-BR.
 - Não converta ADR **Proposed** em **Accepted** nem declare GO de produção por mera tradução/revisão.
 - Não use segredos nem dados reais em prompts. Nunca mande `env`, JWT, dump ou arquivos corporativos para handover.
 - Confirme as versões e caminhos no código: snapshots históricos podem estar corretos para seu período, mas **não** representam a `main` atual.
-- PR deve passar nos checks exigidos e na revisão humana aplicável; aprovação verbal precisa ser identificada corretamente.
+- PR exige checks do SHA, revisão do diff e aceite explícito do mantenedor. Registre quem revisou, a ausência de segunda revisão humana e o risco residual. Parecer de agente é revisão técnica assistida. Aprovação verbal deve ser identificada como tal e as revisões exigidas para segurança privilegiada seguem seus gates próprios. Para repetições locais, veja [concorrência de testes](LOCAL_FOUNDATION.md#concorrência-em-testes-locais).
 
 ## Relatório de conclusão
 

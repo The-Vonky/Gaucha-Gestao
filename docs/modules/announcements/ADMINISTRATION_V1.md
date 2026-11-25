@@ -1,6 +1,8 @@
-# GG-10 — Proposta técnica e contrato administrativo v1
+# GG-10 — Contrato administrativo v1
 
-## Contrato vigente na branch GG-10/GG-11 — 10/11/2026
+## Contrato vigente da GG-10
+
+A administração e a fonte autenticada foram integradas na PR #103. A [PR #117](https://github.com/The-Vonky/Gaucha-Gestao/pull/117) integrou a vigência exclusiva, o refinamento de categorias/cores e a barra atual. Há evidência técnica no DEV e na CI. Operação institucional exige responsáveis, configuração e aceite no ambiente-alvo.
 
 A administração ordena pelo status derivado `active` antes de paginar, seguido
 de `updated_at DESC, id`. O card destaca **ATIVO** e oferece **Editar**. O
@@ -24,7 +26,7 @@ navegação, independentemente do valor de `show_feedback` no comunicado.
 
 As seções seguintes são o registro histórico da Entrega B.
 
-## Estado local atual — 05/11/2026
+## Estado local registrado em 05/11/2026
 
 O mantenedor autorizou posteriormente desenvolvimento real e aplicação incremental
 no `gaucha-gestao-local`. A migration GG-10 foi aplicada (31→32 migrations), o

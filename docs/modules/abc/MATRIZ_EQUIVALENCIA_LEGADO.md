@@ -88,7 +88,7 @@ Registradas como D13–D19 no [registro de decisões](../../planning/DECISION_RE
 
 | ID | Decisão | Recomendação | Impacto se aprovada |
 | --- | --- | --- | --- |
-| D1 | Aceitar partes inertes de planilhas salvas no Excel (`xl/theme/*`, `docProps/custom.xml`), sem lê-las | Aprovar somente após uma amostra real reexportada; manter recusa de imagens, macros, `calcChain`, vínculos | Nova `parser_version`, testes de rejeição mantidos |
+| D1 | Tema OOXML canônico | PR #81 integrada com aceitação de `xl/theme/theme1.xml` sob tipo e relacionamento canônicos | `erp-curva-realizado-v2` com regressão de rejeição. Homologação [#86](https://github.com/The-Vonky/Gaucha-Gestao/issues/86) pendente |
 | D2 | Suporte a `.xls` | **Não aprovar**: formato binário sem leitor seguro no navegador; o ERP exporta `.xlsx` | — |
 | D3 | Categorias comerciais | Tabelas `abc.categories` e `abc.product_categories` (por código ERP, com vigência e autoria), permissão nova `abc.category.manage`, "Não classificado" explícito; nenhuma inferência por prefixo | Migration, RLS, telas de gestão |
 | D4 | Correção manual de itens | Manter **somente** nova revisão por reexportação; se o negócio exigir ajuste, criar `abc.revision_adjustments` (valor original, ajustado, motivo, autor, data) com `abc.report.adjust`, sem alterar linhas publicadas | Migration, recálculo em leitura, telas |

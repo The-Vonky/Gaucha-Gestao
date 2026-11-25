@@ -1,12 +1,12 @@
 # Gaúcha Gestão — Plano Diretor 2026
 
-> **Adendo de status — 23/11/2026:** a [matriz GG-01–GG-15](GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md#51-estado-atual-das-15-ggs--23112026) registra GG-04 e GG-05 integradas e homologadas no DEV ([#126](https://github.com/The-Vonky/Gaucha-Gestao/pull/126) e [#127](https://github.com/The-Vonky/Gaucha-Gestao/pull/127)) e GG-08–12 integradas. Menções de outubro à ausência de serviço privilegiado no código são **fotografia histórica**. Não houve GO de piloto nem promoção comprovada do HEAD `df113c2` à C30; recuperação, backups, alertas e gates continuam necessários. **PROD NO-GO.**
+> **Revisão documental DOC-03 — 25/11/2026.** Baseline da `main` `e0b6f5c` (PR #134). O [Mapa de Implementação](../architecture/IMPLEMENTATION_MAP.md) descreve software e validações por módulo. A [matriz GG-01–GG-15](GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md#51-matriz-gg-01gg-15) acompanha execução, evidência e dependências. As definições estratégicas e gates deste Plano Diretor permanecem aplicáveis. **PROD NO-GO.**
 
 > **Evidência posterior — 30/10/2026, sem revisão dos gates deste Plano Diretor v1.3:** STAGING na C30 passou a ter acesso HTTPS de testes por [Cloudflare Tunnel](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) em `teste.gauchagestao.online`. Operador validou login, auditoria preservada, fotos, nova auditoria e download em PC/celular. **Não** foram demonstrados backup off-site, restauração independente, matriz negativa de permissões, políticas Cloudflare Access, ensaio de carga ou aceite P1–P9/O1–O8. A proposta de **Workers Static Assets + R2 para PROD** continua futura. **PROD NO-GO**.
 
-Plano diretor técnico, financeiro e de implantação · **Versão 1.3** · 15 de outubro de 2026
+Plano diretor técnico, financeiro e de implantação · **Versão 1.4** · revisão documental de 25 de novembro de 2026
 
-> **Atualização de governança — 10/11/2026:** há **um único desenvolvedor/mantenedor humano**; o antigo segundo desenvolvedor saiu da equipe. O plano de cinco dias e a divisão **Dev A/Dev B** da seção 8 pertencem à versão histórica 1.3 e **não atribuem tarefas, revisões, handovers ou pendências atualmente**. As prioridades atuais estão no [Guia Mestre GG-01–GG-15](GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md), e o fluxo de homologação pré-merge está em [AGENTS.md](../../AGENTS.md). Este esclarecimento não declara os antigos itens concluídos, não altera por inferência gates de segurança ou autoriza operações na C30.
+> **Atualização de governança — 10/11/2026:** há **um único desenvolvedor/mantenedor humano**; o antigo segundo desenvolvedor saiu da equipe. O plano de cinco dias e a divisão **Dev A/Dev B** da versão de outubro pertencem ao planejamento histórico e **não atribuem tarefas, revisões, handovers ou pendências atualmente**. As prioridades atuais estão no [Guia Mestre GG-01–GG-15](GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md), e o fluxo de homologação pré-merge está em [AGENTS.md](../../AGENTS.md). Este esclarecimento não declara os antigos itens concluídos, não altera por inferência gates de segurança ou autoriza operações na C30.
 
 > Fonte canônica: este arquivo. As versões .docx 1.0 e 1.1, distribuídas fora do repositório, ficam superadas. Mudanças entram por PR, com registro na seção 12.
 
@@ -14,17 +14,17 @@ Escopo: Qualidade v1 como primeira entrega operacional; expansão progressiva pa
 
 ## Resumo executivo
 
-Objetivo: consolidar os sistemas internos da Gaúcha Alimentação em uma plataforma modular segura, auditável, recuperável e financeiramente sustentável. Recomenda-se manter o monólito modular aprovado, utilizar frontend estático Cloudflare e backend Supabase self-hosted no perfil mínimo do ADR-006; a Lenovo ThinkStation C30 é o host do projeto, substituindo o servidor legado e a HP ML350 prevista no ADR-004 ([ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md)); a máquina ainda precisa cumprir os critérios de aceite do ADR-008 antes de produção.
+Objetivo: consolidar os sistemas internos da Gaúcha Alimentação em uma plataforma modular segura, auditável, recuperável e financeiramente sustentável. Recomenda-se manter o monólito modular aprovado e a arquitetura de produção planejada no ADR-004, com frontend estático Cloudflare e backend Supabase self-hosted. O perfil mínimo reproduzível do ADR-006 segue Proposed. A Lenovo ThinkStation C30 é o host do projeto, substituindo o servidor legado e a HP ML350 prevista no ADR-004 ([ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md)); a máquina ainda precisa cumprir os critérios de aceite do ADR-008 antes de produção.
 
-Decisão atual: NO-GO para produção. Existe código funcional, Core v2 consolidado na main e CI anterior aprovada; faltam evidências operacionais P1–P9 e O1–O8, metas numéricas de RPO/RTO e carga, restauração independente, comprovação da infraestrutura real e revisão de segurança aplicável, recuperação administrativa emergencial e GO operacional da identidade privilegiada ([D01](DECISION_REGISTER.md)). **Governança da `main`:** proteção técnica adiada pelo responsável para a fase final, com risco conscientemente aceito, sem configuração de ruleset agora; até lá, PR/CI/revisão humana permanecem controles operacionais manuais, sem enforcement automático. A ordem do fechamento deverá ser confirmada antes do GO. Piloto isolado é possível com a máquina atual, mas as medições atuais da C30 não valem como base de capacidade.
+Decisão atual: NO-GO para produção. Core v2, Identity e os módulos registrados no mapa estão integrados à main, com evidência de CI por entrega. Faltam evidências físicas P1–P9 e operacionais O1–O8, metas numéricas de RPO/RTO e carga, restauração independente, comprovação da infraestrutura real e revisão de segurança aplicável, recuperação administrativa emergencial e GO operacional da identidade privilegiada ([D01](DECISION_REGISTER.md)). **Governança da `main`:** proteção técnica adiada pelo responsável para a fase final, com risco conscientemente aceito, sem configuração de ruleset agora; até lá, PR/CI/revisão humana permanecem controles operacionais manuais, sem enforcement automático. A ordem do fechamento deverá ser confirmada antes do GO. A viabilidade do piloto depende de capacidade, isolamento e recuperação demonstrados na C30, além do aceite do escopo escolhido.
 
 ## 1. Objetivos, limites e definição de pronto
 
-- Primeira entrega: Auditorias de Qualidade (9 seções/158 critérios), Planos de Ação, evidências, relatórios XLSX/PDF, administração e autenticação autorizada.
+- Primeira entrega: Auditorias de Qualidade com checklist versionado, Planos de Ação, evidências, relatórios XLSX/PDF, administração e autenticação autorizada.
 
 - Core compartilhado: identidade, RBAC/RLS, unidades, setores, logs administrativos, contratos de arquivos e navegação.
 
-- Expansão futura: ISO, vendas/maquininhas, satisfação, reuniões, frota, planejado × realizado, curva ABC e contratos, sempre migração incremental.
+- Expansão operacional gradual, com gates por módulo. O [roadmap](../migration/MODULE_ROADMAP.md) separa as entregas integradas dos domínios em descoberta.
 
 - Pronto para uso produtivo = commit candidato com CI verde + homologação real P1–P9 + aceite operacional O1–O8 + ausência de bloqueadores críticos + autorização de liberação.
 
@@ -36,43 +36,51 @@ Decisão atual: NO-GO para produção. Existe código funcional, Core v2 consoli
 
 - Metas pendentes de decisão do responsável: RPO técnico, RTO dentro e fora da janela, retenção de backups, logs de auditoria e objetos removidos, número esperado de usuários e unidades e meta de latência p95. Sem elas, os gatilhos da seção 7 e o gate da etapa 8 não são verificáveis.
 
-## 2. Situação do projeto verificada em 15/10/2026
+## 2. Situação e riscos residuais — 25/11/2026
 
-Fontes verificadas: repositório GitHub The-Vonky/Gaucha-Gestao (README, arquitetura, matriz de prontidão Core v2, aceite Qualidade v1, commits recentes), além dos dois inventários enviados da ThinkStation. Revisão 1.1: conferência adicional por clone do main em 15/10/2026 (HEAD aee20ec, 14/10), incluindo ADR-004, ADR-006, BACKUP_RECOVERY e o compose de infra. O histórico documental não é evidência automática do estado do HEAD mais recente.
+| Tema | Estado e condição estratégica |
+| --- | --- |
+| Implementação | `e0b6f5c` contém Core v2 e Identity, Auditorias e Planos, Curva ABC, Vendas, Salas, Comunicados e Relatos. O [mapa](../architecture/IMPLEMENTATION_MAP.md) rastreia os contratos e os recortes de DEV/CI. |
+| Identidade e autorização | A GG-05B opera no DEV opt-in. Revisão aplicável, recuperação emergencial, restore integral e adoção dependem dos gates D01. A matriz GG-06 deve fechar as negativas integradoras da candidata. |
+| Infraestrutura | AS-BUILT de 30/10 e inventário de 05/11 registram C30/STAGING. SHA, ledger, capacidade, isolamento e estado atual dependem de GG-01. Perda de host continua risco da topologia de host único. |
+| Continuidade | Os ensaios sintéticos e do Compose base têm escopos próprios. A C30 requer backup independente, proteção do destino, retenção, alertas e restauração comprovada com RPO/RTO medidos. |
+| Operação e aceite | Ingresso, monitoração, incidentes, release/reversão, P1–P9/O1–O8 e aceite por módulo ainda condicionam o GO. A C30 exige autorização para cada mudança persistente. |
+| Governança | O mantenedor único revisa diff, CI e risco e decide merge e liberação. A proteção técnica da main segue adiada por decisão registrada, com controles manuais de PR, CI e revisão. |
 
-| Tema                         | Evidência obtida                                                                                                                                                           | Situação / ação                                                                                                        |
-|------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| Qualidade v1                 | PR \#18 consolidou Audit, planos, evidências, exportação, UI e login; CI de referência com 236 testes                                                                      | Implementada na baseline histórica; revalidar HEAD exato                                                               |
-| Core v2                      | PR \#38 (integration/core-foundation-v2-wave2) mergeado na main em 13/10 (ac2f548), seguido por \#39 (npm audit completo, incluindo dev) e \#40; o README ainda descrevia o Core v2 fora da main e foi corrigido junto com a v1.2 | Consolidado na main; rodar CI no commit candidato. Os 483 testes citados em 13/10 não foram reexecutados nesta revisão |
-| Identidade privilegiada      | Proposta da PR #24 encerrada sem merge. GG-05B integrada e homologada no DEV pela PR #127.                                                           | P0: revisão aplicável, recuperação administrativa, pacote de adoção e GO do ambiente-alvo                                                    |
-| PRs/commits recentes         | Commit aee20ec: governança/worktrees para paralelismo; e51a9e8: teste de conflitos no checklist (#41)                                                                      | Houve evolução além do snapshot documental; não inferir status de deploy                                               |
-| Infra reproduzível (ADR-006) | ADR-006 (Proposed, 01/10): perfil mínimo com Postgres 17, Kong, GoTrue, PostgREST e Storage; demais serviços omitidos; storage local só para CI e staging descartável      | Base obrigatória para medir host e montar STAGING; não ratifica produção nem escolhe hardware                          |
-| Host | Decisão do responsável em 15/10: a ThinkStation C30 substitui o servidor legado; registrada no ADR-008 | C30 ainda em Windows; aceite condicionado aos critérios do ADR-008 |
-| Aceite físico                | P1–P9 pendentes na matriz consultada                                                                                                                                       | Executar Android+iOS com evidências                                                                                    |
-| Operação                     | O1/O5/O6 parciais; O2 desconhecido; O3/O4/O7/O8 abertos na matriz                                                                                                          | NO-GO até demonstrar ambiente real                                                                                     |
-| Deploy real                  | Nenhum comprovante de produção/restore na documentação consultada                                                                                                          | Não declarar production ready                                                                                          |
-| Governança do repositório | Proteção técnica da `main` adiada para a fase final por decisão do responsável em 15/10/2026 | Risco aceito e ainda aberto; PR, CI e revisão humana obrigatórios por disciplina manual; reavaliar antes do GO (seções 8–9) |
-| Decisões operacionais        | BACKUP_RECOVERY (01/10): responsável do projeto acumula operação e backup/restore; alertas para responsável + supervisor; janela provisória seg–sex 07–18h                 | O1 PARTIAL: RPO/RTO numéricos e retenções pendentes                                                                    |
-
-Limite da auditoria: não foi feita revisão linha a linha de todo o HEAD atual nem execução de testes no servidor; o estado preciso de merges e aceites deve ser confirmado novamente antes do release.
+A [versão de outubro e seus dados de referência](https://github.com/The-Vonky/Gaucha-Gestao/blob/e0b6f5cf563eb66a45a16e03a9137d36211d9ef3/docs/planning/PLANO_DIRETOR_2026.md) preservam o recorte original para auditoria.
 
 ## 3. Inventário técnico da ThinkStation C30
 
-| Item              | Diagnóstico                                                                                                                                                                                                                                  |
-|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Modelo            | Lenovo ThinkStation C30, tipo 1097A58; BIOS A1KT46AUS (2013), UEFI                                                                                                                                                                           |
-| CPU               | Intel Xeon E5-2620 geração original, 6 núcleos/12 threads, 2,00 GHz                                                                                                                                                                          |
-| Memória           | 8 GB DDR3 ECC reportados; 4 × 2 GB Hynix HMT325U7CFR8C, 1333 MHz. O código “U7” indica UDIMM ECC (inferido; confirmar pela etiqueta). Não misturar com RDIMM; com uma única CPU só os slots do soquete 1 ficam ativos (confirmar quantidade) |
-| Disco             | SSD SATA MARKVISION 256 GB; 237,5 GB C:, 46,34 GB livres na primeira coleta (≈19,5% livre, 80,5% ocupado: abaixo da folga mínima da seção 6); health Healthy; 6.054 horas e 30 °C na segunda                                                 |
-| Rede              | Intel 82579LM 1 Gbps ativa e Intel Gigabit CT2 secundária desconectada; IP interno no relatório original                                                                                                                                     |
-| GPU               | NVIDIA Quadro 400, 512 MB; não serve como acelerador de IA moderno                                                                                                                                                                           |
-| Sistema atual     | Windows 11 Pro 23H2; Docker Desktop 4.83.0; WSL2 ativo; Docker 29.6.2                                                                                                                                                                        |
-| Docker atual      | 13 contêineres (11 ativos, 2 não operacionais); engine com 3,799 GiB de RAM disponibilizados. Stack diferente do perfil mínimo de 5 serviços do ADR-006                                                                                      |
-| Falhas observadas | Supabase edge-runtime Exited(255); vector reiniciando. Ambos estão fora do perfil mínimo do ADR-006 e o produto não depende deles: desativar em vez de depurar                                                                               |
-| Recursos          | Memória livre entre ~0,27 e ~1 GB nas capturas (gatilho de RAM da seção 7 já disparado); host submetido a aplicações desktop simultâneas                                                                                                     |
-| Riscos            | Um SSD, sem contingência comprovada, plataforma antiga e provável limitação energética; temperatura de CPU/SMART completo não demonstrados                                                                                                   |
+### Antes da migração para Ubuntu
 
-Capacidade: adequada a homologação e poucos serviços leves; produção pequena depende de monitoramento, RPO/RTO aceitos e teste de carga. Não há base para prometer N usuários simultâneos. As medições atuais refletem Windows + Docker Desktop + aplicativos de desktop + stack completa e não servem como base de capacidade: a medição válida exige Ubuntu Server, host dedicado e o compose do projeto (infra/supabase/docker-compose.yml).
+As duas coletas foram consolidadas no Plano Diretor de **15/10/2026**. O ambiente executava Windows, aplicações de desktop e uma stack Supabase mais ampla que o perfil mínimo do ADR-006.
+
+| Item | Evidência histórica |
+| --- | --- |
+| Modelo | Lenovo ThinkStation C30, tipo 1097A58, BIOS A1KT46AUS (2013) e UEFI. |
+| CPU | Intel Xeon E5-2620 de primeira geração, 6 núcleos/12 threads, 2,00 GHz. |
+| Memória | 8 GB DDR3 ECC reportados, 4 × 2 GB Hynix HMT325U7CFR8C, 1333 MHz. O código sugere ECC UDIMM. O tipo e os slots disponíveis dependem de conferência física. |
+| Disco | Um SSD SATA MARKVISION 256 GB identificado. O volume C: tinha 237,5 GB e 46,34 GB livres na primeira coleta (≈19,5% livre, 80,5% ocupado). A segunda registrou 6.054 horas, 30 °C e saúde Healthy. |
+| Rede e GPU | Intel 82579LM 1 Gbps ativa, Intel Gigabit CT2 desconectada e NVIDIA Quadro 400, 512 MB. |
+| Sistema e Docker | Windows 11 Pro 23H2, Docker Desktop 4.83.0, WSL2 ativo e Docker 29.6.2. O engine dispunha de 3,799 GiB de RAM. Havia 13 contêineres, 11 ativos e 2 não operacionais. |
+| Falhas e recursos | Edge Runtime em `Exited(255)`, Vector reiniciando e RAM livre de ~0,27 a ~1 GB nas capturas. A folga do C: e as leituras de RAM motivaram a reavaliação dos gatilhos da seção 7. |
+
+A carga de desktop, as falhas daqueles contêineres e as leituras pontuais registram o contexto do diagnóstico em Windows. O ensaio de capacidade do ADR-008 exige medições em Ubuntu no perfil proposto para a plataforma.
+
+### Evidências versionadas após a migração
+
+O [AS-BUILT de 30/10/2026](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) registrou STAGING persistente em Ubuntu Server 22.04.5 LTS, com Caddy e Cloudflare Tunnel, checkout `f9f041e`, 18 migrations e banco e objetos de Storage no HDD. Os testes manuais se limitaram aos fluxos registrados de login, auditorias e evidências.
+
+O [inventário inicial GG-01 de 05/11/2026](../operations/C30_GG01_INVENTORY_20261105.md) é a evidência versionada mais recente consultada para o host. O mantenedor executou as consultas e relatou o seguinte:
+
+| Item | Observação de 05/11/2026 |
+| --- | --- |
+| Host e serviços | Ubuntu Server 22.04.5 LTS. Cinco contêineres de `gaucha-staging` e dois de um projeto distinto do ERP de Contratos estavam em execução no mesmo host. A coexistência exige preservar o ERP e conferir o isolamento na preparação operacional. |
+| SSD | MARKVISION de 238,5 GiB com `/` e `/home`. A partição raiz tinha 19% de uso. O SMART reportou PASSED e 6.529 horas. |
+| HDD | MB1000GDUNU de 931,5 GiB. O SMART reportou PASSED e **79.988 horas** de uso, indicador de desgaste acumulado. A saída consultada não trazia os atributos 197/198. A localização de cada mount Docker foi registrada no AS-BUILT e ficou sem reconferência no inventário de novembro. |
+| Versão e continuidade | O checkout permaneceu em `f9f041e`, com 18 migrations no ledger. A configuração do Caddy em disco referenciava a release `f9f041e-cloudflare`. A configuração ativa em memória e os hashes das migrations ficaram sem reconciliação. Os dumps históricos listados no SSD ficaram sem prova de recuperação independente e consistente com Storage. |
+
+**Estado em 25/11/2026:** o estado operacional da C30 segue sem reconfirmação nesta revisão documental. GG-01 deve revalidar versão, serviços, rede, mounts e isolamento com autorização própria. O aceite do [ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.md) exige medir RAM disponível, swap, ocupação, SMART e temperatura da CPU sob carga no perfil definido, aferir a capacidade contra metas de uso e comprovar recuperação. A condição de host dedicado continua aplicável e deve considerar o ERP observado em novembro.
 
 ## 4. Arquitetura e stacks: por que e como
 
@@ -98,7 +106,7 @@ Host decidido ([ADR-008](../decisions/ADR-008-production-host-thinkstation-c30.m
 
 ## 5. Economia: custo mais próximo de zero
 
-Regra: evitar novas licenças e compras até medir gargalos. O piloto pode reutilizar PC, rede, domínio existente (se disponível), GitHub e tiers gratuitos. Gratuidade de armazenamento não elimina eletricidade, conectividade, horas de trabalho, testes nem o custo de risco de parada.
+As faixas abaixo são hipóteses orçamentárias de **outubro de 2026**. A decisão sobre licenças e compras depende de medições e aprovação do mantenedor. O piloto pode reutilizar PC, rede, domínio existente (se disponível), GitHub e tiers gratuitos. Gratuidade de armazenamento não elimina eletricidade, conectividade, horas de trabalho, testes nem o custo de risco de parada.
 
 | Faixa/etapa                  | Custo inicial planejado       | Recorrência ou observação                                                                                                  |
 |------------------------------|-------------------------------|----------------------------------------------------------------------------------------------------------------------------|
@@ -108,52 +116,51 @@ Regra: evitar novas licenças e compras até medir gargalos. O piloto pode reuti
 | Operação mensal              | ~R\$ 75–250/mês como hipótese | Energia + reserva de backup; domínio eventual ~R\$ 40/ano; não inclui mão de obra e falhas                                 |
 | Desenvolvimento interno      | Sem desembolso a terceiro     | Horas da equipe não são custo econômico zero; calcular custo de oportunidade                                               |
 
-Faixas monetárias são orçamento de planejamento em BRL, não cotação de estoque. Não comprar DDR3 ECC, SSD ou nobreak sem conferir compatibilidade, watts e qualidade elétrica; comparar custo total da C30 versus máquina moderna.
+Os cenários são referências em BRL do planejamento de outubro. Qualquer decisão futura sobre DDR3 ECC, SSD ou nobreak requer confirmar compatibilidade, consumo, qualidade elétrica e custo total.
 
 ## 6. Armazenamento externo: preço, limite gratuito e gatilhos
+
+Os preços, franquias e exemplos abaixo são referências do planejamento de **outubro de 2026**. A revisão de novembro preserva esses valores históricos. A decisão de contratação exige cotação própria.
 
 | Serviço                | Franquia / referência                                                                 | Quando aumenta custo                                                                                               |
 |------------------------|---------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
 | Cloudflare R2 Standard | 10 GB-mês + 1 milhão operações A + 10 milhões B gratuitos/mês                         | Acima disso: US\$ 0,015/GB-mês; A US\$ 4,50/milhão; B US\$ 0,36/milhão; sem egress tarifado                        |
-| Backblaze B2           | Primeiros 10 GB gratuitos; modelo proporcional, valores segundo região/tarifa vigente | Quando backup retido exceder franquia; verificar custo exato de cobrança/egress na contratação                     |
+| Backblaze B2           | Primeiros 10 GB gratuitos; modelo proporcional por região e tarifa | Quando backup retido exceder franquia; verificar custo exato de cobrança/egress na contratação                     |
 | Domínio .br            | R\$ 40/ano no Registro.br                                                             | Se ainda não existe domínio adequado                                                                               |
 | Backups                | Retenção implica múltiplas gerações                                                   | Espaço total = dados ativos + histórico + WAL + margem; 10 GB gratuitos podem acabar antes de 10 GB de dados úteis |
 
 Exemplo didático de R2 (somente GB-mês, sem operações): 10 GB ≈ US\$ 0; 50 GB ≈ US\$ 0,60/mês; 100 GB ≈ US\$ 1,35/mês; 500 GB ≈ US\$ 7,35/mês. Usar média mensal, não apenas tamanho no último dia.
 
-Limiares propostos: alertar em 60%/80% do tier gratuito; migrar automaticamente para tier pago sem interromper backup se houver verba aprovada; reduzir uploads/comprimir fotos quando custo por auditoria crescer; proibir exclusão de retenção somente para economizar sem aprovação. Reservar 20–30% de folga de disco local (hoje a C30 tem ≈19,5%) e monitorar WAL diariamente.
+Limiares propostos: alertar em 60%/80% do tier gratuito; migrar automaticamente para tier pago sem interromper backup se houver verba aprovada; reduzir uploads/comprimir fotos quando custo por auditoria crescer; proibir exclusão de retenção somente para economizar sem aprovação. Reservar 20–30% de folga de disco local no planejamento, observando o requisito de ocupação abaixo de 70% do ADR-008 no aceite, e monitorar WAL diariamente. Os ≈19,5% livres pertencem ao volume C: da coleta histórica de Windows da seção 3.
 
-## 7. Upgrades inevitáveis e quando fazer
+<a name="7-upgrades-inevitáveis-e-quando-fazer"></a>
 
-| Gatilho objetivo                                                                                                | Ação necessária                                                                                                 | Prioridade                        |
-|-----------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|-----------------------------------|
-| RAM disponível \< 1 GB de forma persistente, swap sustentado ou OOM (já observado no estado atual, sob Windows) | Remedir após Ubuntu + perfil mínimo; se persistir, ampliar para 16–32 GB ECC compatível; repetir teste de carga | Alta                              |
-| Disco ≥ 70% ocupado (alerta) ou ≥ 80% (crítico); WAL crescendo sem controle. Crítico já atingido hoje (80,5%)   | SSD maior; separar logs/volumes; retenção e alertas; nunca excluir volumes cegamente                            | Alta                              |
-| Ausência de backup externo restaurável                                                                          | Contratar armazenamento externo e validar restore antes de PROD                                                 | Bloqueador                        |
-| Quedas de energia com perda de serviço                                                                          | Nobreak compatível, desligamento seguro e autoteste                                                             | Bloqueador para operação sensível |
-| Latência p95 ou erros fora da meta sob carga real (meta a definir; seção 1)                                     | Otimizar consultas/índices e medir; se CPU saturar, avaliar novo host                                           | Conforme medição                  |
-| RTO depende de peça rara ou indisponibilidade do único host                                                     | Host de contingência ou migração a hardware moderno/cloud                                                       | Alta para sistema crítico         |
-| R2/B2 ultrapassam franquias ou frequência de objetos aumenta                                                    | Aprovar pequeno orçamento recorrente e acompanhar custo por GB e por operação                                   | Sob demanda                       |
+## 7. Gatilhos de capacidade e alternativas
+
+Os limiares técnicos orientam a análise. Qualquer compra, substituição, separação de cargas ou intervenção em discos depende de medições e decisão do mantenedor. Os 80,5% de ocupação do volume C: e as leituras baixas de RAM pertencem às coletas de Windows da seção 3.
+
+| Gatilho objetivo | Avaliação e alternativas condicionadas | Prioridade |
+| --- | --- | --- |
+| RAM disponível < 1 GB de forma persistente, swap sustentado ou OOM | Medir no Ubuntu com o perfil da plataforma e carga representativa. Se o gargalo se confirmar, avaliar 16–32 GB ECC compatível e repetir o teste de carga após eventual mudança aprovada. | Alta |
+| Disco ≥ 70% ocupado (alerta), ≥ 80% (crítico) ou WAL em crescimento sem controle | Medir por volume e conferir mounts, retenção, alertas e previsão de crescimento. Avaliar capacidade adicional ou separação de logs e volumes conforme a causa e a recuperação verificada. | Alta |
+| Ausência de backup independente restaurável | Comprovar cópia consistente e recuperação em destino independente, com tempo e perda medidos, antes de PROD. | Bloqueador |
+| Quedas de energia com perda de serviço | Demonstrar compatibilidade do nobreak, desligamento seguro e autoteste conforme o ADR-008. | Bloqueador para operação sensível |
+| Latência p95 ou erros fora da meta sob carga representativa | Medir e identificar gargalos. Avaliar otimizações ou outro host se a saturação persistir. | Conforme medição |
+| RTO depende de peça rara ou da indisponibilidade do único host | Avaliar contingência ou outro host após medir recuperação e estimar tempo de reposição. | Alta para sistema crítico |
+| R2/B2 ultrapassam as franquias aplicáveis ou cresce a frequência de operações | Projetar custo por GB e por operação com as condições comerciais da contratação. Qualquer verba depende de aprovação. | Sob demanda |
 
 ## 8. Sequência de execução, dependências e marcos
 
-| Ordem | Etapa e tarefas                                                                                                                                                                           | Gate de conclusão                                                                          |
-|-------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
-| 0     | Congelar snapshot: branches/commits/PRs, inventariar dados e serviços, riscos e responsáveis; registrar estado da main (Core v2 já consolidado)                                           | Baseline imutável e checklists abertos                                                     |
-| 1     | Backup consistente do estado atual, cópia externa e restauração isolada                                                                                                                   | Dados recuperáveis; não formatar antes disso                                               |
-| 2     | Fechar gates operacionais D01 de identidade privilegiada, com revisão aplicável e CI do HEAD exato; manter PR/CI/revisão humana como disciplina manual enquanto a proteção da `main` é adiada para a fase final | Sem bloqueadores P0 de identidade/RLS; risco e governança registrados |
-| 3     | Definir metas com o responsável: RPO técnico, RTO dentro/fora da janela, retenções, usuários/unidades esperados e meta de p95                                                             | Metas registradas; base para dimensionar host e testes                                     |
-| 4     | Reinstalar a C30 com Ubuntu Server (só após a etapa 1), dedicada e sem aplicações de desktop; subir o perfil mínimo do ADR-006; medir sob carga contra as metas da etapa 3 | Critérios de aceite do ADR-008 cumpridos; capacidade aceita |
-| 5     | Definir onde roda o STAGING (servidor legado, se mantido, ou a C30 com isolamento e limites registrados); construir com Ubuntu/Compose, Cloudflare e Storage privado | Deploy reproduzível, saudável e acessível por HTTPS |
-| 6     | Homologar Qualidade v1 no STAGING: evidências, XLSX, PDF, Android/iOS e cross-unit                                                                                                        | P1–P9 documentados no ambiente definitivo (execuções em ambiente provisório são repetidas) |
-| 7     | Decidir por ADR a ferramenta de WAL/PITR, o destino off-site e o mecanismo R2 → destino; provisionar PROD isolado com backup WAL/objetos, cofre de segredos, alertas, retenção e proteção | O1–O7 com provas reais                                                                     |
-| 8     | Simular incidentes e rollback; teste de carga; medir latência p95 e RPO/RTO contra as metas da etapa 3                                                                                    | O8 e SLOs demonstrados                                                                     |
-| 9     | Aprovação formal e cutover em janela, monitoração e reversão pronta                                                                                                                       | GO explícito e verificações pós-deploy                                                     |
-| 10    | Operação assistida e migração de módulos um a um                                                                                                                                          | Módulos com gates próprios                                                                 |
+O [Guia Mestre](GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md#7-plano-de-execução-por-etapas-e-dependências) mantém a ordem recomendada, tarefas DEV, autorizações operacionais e dependências detalhadas. A sequência proposta avança com Identity, recuperação e validação de permissões no DEV, e com inventário GG-01 seguido de continuidade GG-02/GG-03 no ambiente autorizado. DOC-04, DOC-05 e as próximas tarefas funcionais dependem de escopo e autorização próprios.
 
-Datas e responsáveis por etapa: pendentes de definição pelo responsável do projeto. A ordem acima registra dependências, não prazos.
+A liberação segue estas dependências estratégicas.
 
-**REGISTRO HISTÓRICO, NÃO VIGENTE (15/10/2026) — Coordenação dos cinco dias (issues #46–#59):** Dev A (`The-Vonky`) — Core/arquitetura/infra, backup/restore e decisões; Dev B — Qualidade v1, P1–P9, regressões e evidências; Matheus — avaliação e montagem física da C30/HD HPE, sem autorização destrutiva presumida. Revisões cruzadas, atualização diária por evidência e limite de uma frente escritora por pessoa são a proposta operacional; horário de revisão até 16h e identidade GitHub de Dev B ainda precisam de confirmação. Proteger a `main` é atividade da fase final, não da etapa 2.
+1. Identificar a candidata por SHA e ledger. Fechar as condições de identidade privilegiada e autorização aplicáveis ao escopo.
+2. Confirmar estado e capacidade real da C30 conforme ADR-008, metas de carga e continuidade e recuperação independente antes de mudança de risco. Reinstalação ou intervenção física requer decisão específica.
+3. Preparar procedimento de release, verificação de ingresso e alertas, reversão e simulação de incidentes. Aplicar ou ensaiar no ambiente aprovado com autoridade própria.
+4. Registrar P1–P9 e O1–O8 e os aceites de domínio aplicáveis. O mantenedor decide sobre piloto ou corte e operação assistida.
+
+Datas, responsáveis e aplicação dessa ordem dependem de decisão registrada. A coordenação Dev A/Dev B do plano de cinco dias está no [Mapa de Execução histórico](EXECUTION_MAP.md).
 
 ## 9. Checklist operacional obrigatório
 
@@ -222,6 +229,7 @@ Fontes locais: Diagnostico_Servidor_2.txt e Texto colado(20261014-181013).txt, f
 | 1.1    | 15/10/2026 | Conferência contra o main (HEAD aee20ec). Core v2 registrado como consolidado (PR \#38); ADR-006 incorporado (perfil mínimo, pendência WAL-G/pgBackRest); medições da C30 reclassificadas como não válidas para capacidade; gatilhos de RAM e disco marcados como já disparados; limiar de disco corrigido (70% alerta / 80% crítico); sequência reordenada (metas antes do host, reinstalação explícita, STAGING antes da homologação P1–P9); segredos de recuperação, mecanismo R2 → destino, proteção da main, metas operacionais e Anexo A adicionados. |
 | 1.2    | 15/10/2026 | Plano movido para o repositório (docs/planning). Host decidido pelo responsável: ThinkStation C30 substitui o servidor legado (ADR-008); comparação com a ML350 removida; etapa 4 passa a ser aceite da C30; destino do servidor legado e local do STAGING registrados como pendências; README corrigido (Core v2 na main). |
 | 1.3    | 15/10/2026 | Registra decisão de adiar proteção técnica da `main` para a fase final com risco aceito e práticas manuais de PR/CI/revisão; corrige sequência de ADR-007; fixa responsabilidades Dev A/Dev B/Matheus e propõe cadência dos cinco dias, sujeita a confirmação. Nenhum ruleset, alteração produtiva ou GO autorizado. |
+| 1.4 | 25/11/2026 | DOC-03 reconcilia implementação, riscos e dependências na baseline `e0b6f5c`. Guia Mestre concentra acompanhamento. A revisão técnica contextualiza os inventários datados da C30 e os gatilhos de capacidade. Decisões de arquitetura e critérios de liberação preservados. |
 
 ## Anexo A — Gates de aceite
 

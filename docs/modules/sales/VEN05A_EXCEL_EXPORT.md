@@ -1,5 +1,7 @@
 # VEN-05A — Exportação Excel autorizada
 
+**Estado vigente:** VEN-05A integrada pela [PR #98](https://github.com/The-Vonky/Gaucha-Gestao/pull/98) (`d9b4735`). Os registros abaixo preservam o ensaio local anterior ao merge. VEN-05B (impressão/PDF), VEN-07 (homologação) e VEN-08 (operação/corte) têm gates próprios. Os papéis vigentes seguem a [GG-04](../../architecture/AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04).
+
 **Correção final de apresentação em 04/11/2026:** somente uma coluna monetária
 por registro/total, com fallback exato na própria célula; exportações à esquerda
 e cadastro isolado à direita. [Registro final](#uma-coluna-monetária-e-ações-separadas--04112026).
@@ -8,12 +10,12 @@ e cadastro isolado à direita. [Registro final](#uma-coluna-monetária-e-ações
 filtros, nomes de arquivo legíveis, planilha com total destacado e coluna
 **Lançado por**. Migration incremental `20261104122256` aplicada somente no
 Supabase local por autorização expressa do mantenedor; dados preservados.
-[Registro desta rodada](#refinamentos-finais--04112026). Sem merge/deploy.
+[Registro desta rodada](#refinamentos-finais--04112026), anterior ao merge da PR #98.
 
 **Atualização operacional de 03/11/2026:** migration aplicada exclusivamente no
 notebook autorizado, com backup validado estruturalmente e quatro fluxos de
 exportação homologados tecnicamente no navegador real. [Registro local](#aplicação-controlada-e-homologação-no-notebook--03112026).
-Aceite/merge da PR #98 continuam pendentes do mantenedor; STAGING/C30/PROD intactos.
+Naquele recorte, a PR #98 aguardava aceite e merge.
 
 **Estado da entrega original em 03/11/2026:** implementada para revisão do mantenedor;
 naquela autorização, sem aplicação persistente, deploy, migração financeira ou cutover.
