@@ -125,7 +125,7 @@ sequenceDiagram
   end
 ~~~
 
-No perfil opt-in, GG-05B fornece cadastro e reset pelo serviço interno de Identity. A alteração de perfis, papéis e atribuições continua no Core, com privilégios auditados. Recuperação emergencial do administrador, recuperação integral do perfil e adoção operacional continuam pendentes. Consulte [ACCESS_GOVERNANCE_V1](ACCESS_GOVERNANCE_V1.md), [ACCESS_GOVERNANCE_READ_V1](../modules/core/ACCESS_GOVERNANCE_READ_V1.md) e [ACCOUNT_LIFECYCLE_V1](ACCOUNT_LIFECYCLE_V1.md).
+No perfil opt-in, GG-05B fornece cadastro e reset pelo serviço interno de Identity. A alteração de perfis, papéis e atribuições continua no Core, com privilégios auditados. Recuperação emergencial do administrador, recuperação integral do perfil e adoção operacional continuam pendentes. Consulte [ACCESS_GOVERNANCE_V1](ACCESS_GOVERNANCE_V1.md), [ACCESS_GOVERNANCE_READ_V1](../modules/core/ACCESS_GOVERNANCE_READ_V1.md) e [ACCOUNT_LIFECYCLE_V1](../history/architecture/ACCOUNT_LIFECYCLE_V1.md).
 
 ## 6. Publicação e conferência da Curva ABC v1 (AS-IS)
 
@@ -188,7 +188,7 @@ sequenceDiagram
   end
 ~~~
 
-Fontes: [MODULE_ROADMAP](../migration/MODULE_ROADMAP.md), [CORE_CONSUMER_CONTRACT_MAP](CORE_CONSUMER_CONTRACT_MAP_V1.md) e [BACKUP_RECOVERY](BACKUP_RECOVERY.md). O nome do legado Registros ISO pode não refletir seu domínio funcional; resolver ownership antes de implementar.
+Fontes: [MODULE_ROADMAP](../migration/MODULE_ROADMAP.md), [mapa de implementação](IMPLEMENTATION_MAP.md) e [BACKUP_RECOVERY](BACKUP_RECOVERY.md). A origem do levantamento está no [inventário histórico de consumidores](../history/architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md). O nome do legado Registros ISO pode não refletir seu domínio funcional; resolver ownership antes de implementar.
 
 ## 8. Falhas que precisam estar nos cenários de teste
 

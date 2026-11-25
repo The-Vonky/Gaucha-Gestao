@@ -4,7 +4,7 @@
 
 **Escopo:** integração lógica atual e implantação futura. **Baseline de código:** `e0b6f5c`, revisada em 25/11/2026. **Não existe produção aprovada neste snapshot.**
 
-> **Atualização operacional 22/10/2026 (não modifica o ADR):** existe STAGING C30 real com Caddy frontend estático e backend Supabase Compose de cinco serviços, com dados/objetos em HDD e TLS interno somente loopback. Ainda **não** é Cloudflare/Workers/R2 produtivo. Código instalado `f9f041e` com 18 migrations, diferente da main mais recente. Detalhes auditáveis no [AS-BUILT](../operations/C30_STAGING_AS_BUILT_20261022.md) e [plano de acesso de testes](../operations/STAGING_PUBLIC_ACCESS_PLAN.md). Esse registro histórico documenta o estado anterior à publicação externa de testes.
+> **Atualização operacional 22/10/2026 (não modifica o ADR):** existe STAGING C30 real com Caddy frontend estático e backend Supabase Compose de cinco serviços, com dados/objetos em HDD e TLS interno somente loopback. Ainda **não** é Cloudflare/Workers/R2 produtivo. Código instalado `f9f041e` com 18 migrations, diferente da main mais recente. Detalhes auditáveis no [AS-BUILT](../history/operations/C30_STAGING_AS_BUILT_20261022.md) e [plano de acesso de testes](../history/operations/STAGING_PUBLIC_ACCESS_PLAN.md). Esse registro histórico documenta o estado anterior à publicação externa de testes.
 
 ## Matriz tecnológica e responsabilidades
 
@@ -77,7 +77,7 @@ sequenceDiagram
 | STAGING persistente | C30 com Caddy e Tunnel registrado no [AS-BUILT de 30/10](../operations/C30_STAGING_CLOUDFLARE_AS_BUILT_20261030.md) | SHA, ledger, rede, capacidade e continuidade atuais exigem GG-01 e autorização. A versão da aplicação é específica do ambiente |
 | PROD | **NO-GO** | Ambiente limpo separado, credenciais específicas, host aceito, backup independente, restauração testada e autorização humana |
 
-O script scripts/ops/apply-migrations.sh e os scripts associados **recusam produção** e exigem projeto/instância de laboratório explícitos. infra/env/production.env.example **não é um deploy pronto**. Siga [infra/README](../../infra/README.md) apenas para CI/STAGING descartáveis e [01_DADOS_LIMPOS](../planning/01_DADOS_LIMPOS.md) para política de PROD futura, ainda sujeita a aprovação.
+O script scripts/ops/apply-migrations.sh e os scripts associados **recusam produção** e exigem projeto/instância de laboratório explícitos. infra/env/production.env.example **não é um deploy pronto**. Siga [infra/README](../../infra/README.md) apenas para CI/STAGING descartáveis e [01_DADOS_LIMPOS](../history/planning/01_DADOS_LIMPOS.md) para política de PROD futura, ainda sujeita a aprovação.
 
 ## Contratos e fronteiras
 

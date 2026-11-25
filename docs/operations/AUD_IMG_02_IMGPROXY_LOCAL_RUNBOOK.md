@@ -1,6 +1,6 @@
 # AUD-IMG-02 · ativação e reversão no notebook
 
-PR #120, branch `codex/aud-img-02-imgproxy`. O mantenedor homologou miniatura, ampliação e download em `gaucha-gestao-local` com fotos reais do Galaxy S24 Ultra de 9 MP e aproximadamente 50 MP. **PROD NO-GO.** [POC de referência](../modules/audit/AUD_IMG_02_STORAGE_IMGPROXY_POC_20261111.md).
+PR #120, branch `codex/aud-img-02-imgproxy`. O mantenedor homologou miniatura, ampliação e download em `gaucha-gestao-local` com fotos reais do Galaxy S24 Ultra de 9 MP e aproximadamente 50 MP. **PROD NO-GO.** [POC de referência](../history/modules/audit/AUD_IMG_02_STORAGE_IMGPROXY_POC_20261111.md).
 
 > **EVIDÊNCIA DATADA da PR #120.** Os comandos de ativação e reversão abaixo descrevem o perfil avaliado. A rotina atual usa o [Compose DEV](DOCKER_LOCAL_STANDARDIZATION.md). Com Identity, a transformação é autenticada e o resgate por assinatura é bloqueado, conforme o [contrato de Storage](../architecture/SECURITY.md#storage-privado-e-miniaturas).
 
@@ -73,7 +73,7 @@ Com a ativação verificada, inicie o Vite com `npm run dev:local`. A flag nativ
 
 ## Reverter
 
-Desligar a flag nativa e reiniciar o Vite. Com ambas as flags desligadas, volta a prévia do original. Para usar os derivados gravados, configurar a flag anterior e seguir o [runbook do executor](AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md).
+Desligar a flag nativa e reiniciar o Vite. Com ambas as flags desligadas, volta a prévia do original. Se a reversão precisar usar os derivados gravados na baseline anterior, confira a flag `VITE_AUDIT_EVIDENCE_THUMBNAILS` e os pré-requisitos no [registro de provisionamento do executor legado](../history/modules/audit/AUD_IMG_02_LOCAL_GO_C_RUNBOOK.md).
 
 ```bash
 python3 infra/local/prepare-audit-imgproxy.py rollback --approve-local --fixture "$fixture"

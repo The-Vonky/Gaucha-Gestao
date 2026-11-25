@@ -59,11 +59,11 @@ Minimizar dependências, usar lockfile e tratar vulnerabilidades conhecidas. Men
 
 ## Login técnico de derivados — PR #101
 
-**EVIDÊNCIA DATADA.** O executor de terminal da PR #101 usa login SQL temporário, emissor com lease e worker isolado. A derivação usa bucket privado próprio, sem fallback automático ao original. O supervisor legado condiciona o processamento ao escopo autorizado e ao corte de novos uploads. A [prova de 05/11](../modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md) registrou a execução e seu alcance. O [contrato do executor](../modules/audit/AUD_IMG_02_LOCAL_EXECUTOR_20261105.md) e a [integração legada](../modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md) conservam os detalhes.
+**EVIDÊNCIA DATADA.** O executor de terminal da PR #101 usa login SQL temporário, emissor com lease e worker isolado. A derivação usa bucket privado próprio, sem fallback automático ao original. O supervisor legado condiciona o processamento ao escopo autorizado e ao corte de novos uploads. A [prova de 05/11](../history/modules/audit/AUD_IMG_02_LOCAL_GO_C_20261105.md) registrou a execução e seu alcance. O [contrato do executor](../history/modules/audit/AUD_IMG_02_LOCAL_EXECUTOR_20261105.md) e a [integração legada](../history/modules/audit/AUD_IMG_02_INTEGRATED_DEV_20261106.md) conservam os detalhes.
 
 ## Comunicados institucionais — GG-10 / Entrega B (05/11/2026, para revisão)
 
-**EVIDÊNCIA DATADA.** O [contrato](../modules/announcements/ADMINISTRATION_V1.md) define gestão global e publicação com período. As tabelas privadas usam RLS restritiva e as RPCs gravam histórico versionado com autoria. O log Core recebe identificador, estado e versão. A [validação de 05/11](../modules/announcements/LOCAL_VALIDATION_20261105.md) cobre negativas e persistência no DEV. No perfil estrito, a leitura publicada exige admissão para a aplicação.
+**EVIDÊNCIA DATADA.** O [contrato](../modules/announcements/ADMINISTRATION_V1.md) define gestão global e publicação com período. As tabelas privadas usam RLS restritiva e as RPCs gravam histórico versionado com autoria. O log Core recebe identificador, estado e versão. A [validação de 05/11](../history/modules/announcements/LOCAL_VALIDATION_20261105.md) cobre negativas e persistência no DEV. No perfil estrito, a leitura publicada exige admissão para a aplicação.
 
 ## Relatos dos funcionários — GG-11
 

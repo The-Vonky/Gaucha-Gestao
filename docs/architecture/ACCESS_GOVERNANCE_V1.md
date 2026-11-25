@@ -23,7 +23,7 @@ Classificação usada no documento:
 
 Fontes de autoridade:
 
-- [Brief desta tarefa](../briefs/CORE_ACCESS_GOVERNANCE_V1.md) e [AGENTS.md](../../AGENTS.md).
+- [Brief desta tarefa](../history/development/core-v2/CORE_ACCESS_GOVERNANCE_V1.md) e [AGENTS.md](../../AGENTS.md).
 - [ADR-005](../decisions/ADR-005-core-authorization.md), [AUTHORIZATION.md](AUTHORIZATION.md), [DATA_MODEL.md](DATA_MODEL.md), [SECURITY.md](SECURITY.md).
 - Core/Admin: `apps/web/src/core/admin/api.ts`, telas `UsersPage.tsx`, `UserAssignments.tsx`, `RolesPage.tsx`, `RoleEditor.tsx`, `LogsPage.tsx`, `OrganizationPage.tsx`, `SectorUnits.tsx` no mesmo diretório e `apps/web/src/shared/errors.ts`.
 - Fundação física: migrations `202609240001_core_foundation.sql`, `202609240003_revocation_authority.sql`, `20261008120000_core_user_directory.sql`; [Unit Cover v1](../modules/core/UNIT_COVER_V1.md).

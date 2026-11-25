@@ -110,7 +110,7 @@ Cada critério aponta a etapa que o comprova. Registre evidência executada com 
 
 ## Interpretação das etapas
 
-A numeração **canônica** é **AG-03: interface completa (inclusive secretaria)**, **AG-04: QA e revisão técnica pelo mantenedor**, **AG-05: homologação humana**. O plano de 19/10 usava AG-04 para a interface da secretária e AG-05 para QA; essa nomenclatura foi corrigida para as etapas futuras. A exigência de revisão independente pertence ao [parecer histórico de 21/10](AG04_AG05_AUDIT_20261021.md). O mantenedor único registra o risco residual e a revisão efetiva conforme [AGENTS.md](../../../AGENTS.md). Os casos F/S/C/T/U acima são **especificações de testes futuros**, não testes automatizados/executados pelo AG-00.
+A numeração **canônica** é **AG-03: interface completa (inclusive secretaria)**, **AG-04: QA e revisão técnica pelo mantenedor**, **AG-05: homologação humana**. O plano de 19/10 usava AG-04 para a interface da secretária e AG-05 para QA; essa nomenclatura foi corrigida para as etapas futuras. A exigência de revisão independente pertence ao [parecer histórico de 21/10](../../history/modules/room-booking/AG04_AG05_AUDIT_20261021.md). O mantenedor único registra o risco residual e a revisão efetiva conforme [AGENTS.md](../../../AGENTS.md). Os casos F/S/C/T/U acima são **especificações de testes futuros**, não testes automatizados/executados pelo AG-00.
 
 ## Regressão e verificação técnica
 

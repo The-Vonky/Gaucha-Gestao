@@ -6,7 +6,7 @@
 
 **Baseline de revisão original:** 02/10/2026, `22334995b5b239274c5c1adc98495357ec0d7980`. Contagens de testes e status antigos são **fotografias históricas**, não o HEAD atual.
 
-Fontes: [conclusão factual da Qualidade](../modules/audit/QUALITY_COMPLETION_V1.md), [aceite P1–P9/O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md), [Plano Diretor](../planning/PLANO_DIRETOR_2026.md). O [Mapa de Implementação](IMPLEMENTATION_MAP.md) acompanha as capacidades integradas, com evidência por ambiente. O [Guia Mestre GG-01–GG-15](../planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md) acompanha os bloqueadores e a próxima ação de cada etapa. **PROD NO-GO.**
+Fontes: [conclusão factual da Qualidade](../history/modules/audit/QUALITY_COMPLETION_V1.md), [aceite P1–P9/O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md), [Plano Diretor](../planning/PLANO_DIRETOR_2026.md). O [Mapa de Implementação](IMPLEMENTATION_MAP.md) acompanha as capacidades integradas, com evidência por ambiente. O [Guia Mestre GG-01–GG-15](../planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md) acompanha os bloqueadores e a próxima ação de cada etapa. **PROD NO-GO.**
 
 ## Objetivo
 
@@ -60,7 +60,7 @@ Falta política/rotina operacional de retenção, monitoramento e expurgo autori
 
 **ARQUITETURA DECIDIDA; PROVA PRODUTIVA PENDENTE.** Backups automatizados, cópias off-site, logical/base+WAL/PITR, ensaios de restore e Ansible para reconstrução são TO-BE.
 
-**Ensaio registrado:** [Issue #51 e DR-01–DR-09](../planning/02_RESTORE_DRILL.md) com 8 PASS/DR-08 PARCIAL no snapshot de 17 migrations, sem ABC. **Não comprova** RPO/RTO, off-site nem host perdido.
+**Ensaio registrado:** [Issue #51 e DR-01–DR-09](../history/operations/02_RESTORE_DRILL.md) com 8 PASS/DR-08 PARCIAL no snapshot de 17 migrations, sem ABC. **Não comprova** RPO/RTO, off-site nem host perdido.
 
 A C30 requer backup e restore independentes. O ensaio do Compose base tem escopo próprio e o DEV com Identity ainda requer recuperação integral comprovada. Faltam ferramenta/destino, retenção, RPO/RTO quantitativos por janela, frequência de drill e runbook produtivo.
 
@@ -74,7 +74,7 @@ Responsável de operação/backup: responsável atual do projeto; alertas ao res
 
 **SOFTWARE FUNCIONAL E HARDENING PRÉ-HOMOLOGAÇÃO INTEGRADOS; ACEITE PENDENTE.**
 
-Fontes: [Audit source](../modules/audit/AUDIT_SOURCE_OF_TRUTH.md), [migração](../modules/audit/MIGRATION_MAP.md), [ADR-003](../decisions/ADR-003-action-plans-transversal-module.md), [briefs](../briefs/). Reabertura está implementada. Planos e evidências estão implementados.
+Fontes: [Audit source](../modules/audit/AUDIT_SOURCE_OF_TRUTH.md), [migração](../history/migration/MIGRATION_MAP.md), [ADR-003](../decisions/ADR-003-action-plans-transversal-module.md), [briefs](../briefs/). Reabertura está implementada. Planos e evidências estão implementados.
 
 Três saídas aprovadas em 29/09: XLSX da inspeção, XLSX histórico da unidade e impressão/PDF (PR #9). Anexos por critério (PR #11), paginação de histórico acima de 1.000 linhas (PR #13) e hardening pré-homologação (PR #14). A CI histórica do SHA `664ed5a` foi aprovada, **não** representa versão atual. P1–P9 e O1–O8 seguem pendentes.
 

@@ -175,7 +175,7 @@ Proposta separada para evolução administrativa, sujeita ao mantenedor:
 
 ## Validação e reversão
 
-[Registro de validação GG-10](GG10_VALIDATION_20261104.md) contém comandos,
+[Registro de validação GG-10](../history/modules/announcements/GG10_VALIDATION_20261104.md) contém comandos,
 SHA, resultados, screenshots sintéticos e pendências. Testes de contrato/hook:
 `tests/announcements.test.tsx`. Prova Chromium:
 `node tests/integration/announcements-browser.mjs` (reutiliza Vite local em 5173;
@@ -188,4 +188,4 @@ a barra também some. Não afeta Auth, RLS, RPCs, migrations ou dados. Nenhum te
 encerra P1–P9/O1–O8 ou autoriza deploy. Merge exige decisão do mantenedor;
 segunda revisão humana não ocorreu.
 
-Refinamento compacto e novas evidências: [validação de 05/11](GG10_COMPACT_VALIDATION_20261105.md).
+Refinamento compacto e novas evidências: [validação de 05/11](../history/modules/announcements/GG10_COMPACT_VALIDATION_20261105.md).

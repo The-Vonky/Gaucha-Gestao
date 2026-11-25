@@ -1,7 +1,7 @@
 # GG-02B — laboratório Restic exclusivamente sintético
 
 **Executado em 06/11/2026: BAK-01–08 PASS com Restic 0.19.1 oficial verificado.**
-O [relatório](../../../docs/operations/GG02B_RESTIC_LOCAL_POC_20261106.md) contém medições, hashes, procedência e limites. BAK-09 físico/off-site permanece BLOCKED. Esta área não é um mecanismo operacional de backup.
+O [relatório](../../../docs/history/operations/GG02B_RESTIC_LOCAL_POC_20261106.md) contém medições, hashes, procedência e limites. BAK-09 físico/off-site permanece BLOCKED. Esta área não é um mecanismo operacional de backup.
 
 ## Dependências e limites
 

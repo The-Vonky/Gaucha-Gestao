@@ -95,4 +95,4 @@ completa de Identity pelo Vite e o aceite operacional de Relatos seguem pendente
 - Incluir o schema e o bucket privado na validação de backup e restore antes de liberar o piloto.
 - Em caso de reversão do frontend, preservar registros e anexos. Correções de banco são incrementais.
 
-[Contrato de Comunicados](../announcements/ADMINISTRATION_V1.md) e [registro de validação](../announcements/GG10_GG11_VALIDATION_20261110.md).
+[Contrato de Comunicados](../announcements/ADMINISTRATION_V1.md) e [registro de validação](../../history/modules/announcements/GG10_GG11_VALIDATION_20261110.md).

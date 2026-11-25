@@ -6,7 +6,7 @@ Adendo VEN-04B: [dashboard independente](VEN04B_DASHBOARD_UI.md) em `/sales/dash
 com navegação entre áreas conforme suas capacidades. MEL-03–06: Lançamentos usa
 `/sales/entries`, `/sales` é entrada condicional e `/sales?…` mantém os filtros
 operacionais por redirecionamento. **Novo lançamento** permanece visível com
-explicação de bloqueios; [contrato atual e evidências](VEN04B_MEL03_06_VALIDATION.md). O restante registra a entrega VEN-04A.
+explicação de bloqueios; [evidências MEL-03–06](../../history/modules/sales/VEN04B_MEL03_06_VALIDATION.md). O restante registra a entrega VEN-04A.
 **Autorização:** pedido expresso de 29/10/2026 para VEN-04A, PR e testes sintéticos
 no notebook `gaucha-gestao-local`. Baseline `95589f7abdc120f4dddda00084a581b52214fd62`,
 merge da [PR #92](https://github.com/The-Vonky/Gaucha-Gestao/pull/92).
@@ -22,7 +22,7 @@ A UI adapta ações; as RPCs continuam sendo a autoridade de autorização.
 **Catálogo vazio (MEL-01):** capacidades globais válidas permitem consultar listas
 vazias e dashboard com total zero. A criação financeira continua exigindo uma unidade
 existente, ativa e autorizada. Nenhuma unidade é criada automaticamente; o cadastro
-organizacional permanece em Administração → Unidades. [Correção e validação](VEN04B_MEL01_LOCAL_CLEANUP.md).
+organizacional permanece em Administração → Unidades. [Correção e validação](../../history/modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md).
 
 - **Consultar:** informe datas inclusivas (opcionais), unidade ou todas as autorizadas,
   Stone/PIX/ambos e selecione **Aplicar filtros**. O histórico inclui unidades inativas.

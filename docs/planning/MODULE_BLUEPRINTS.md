@@ -1,6 +1,6 @@
 # Blueprint dos módulos futuros — planejamento sem suposições
 
-**Status: DISCOVERY / TO-BE.** A arquitetura modular, a sequência e os riscos seguem [MODULE_ROADMAP](../migration/MODULE_ROADMAP.md) e [CORE_CONSUMER_CONTRACT_MAP](../architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md). **Não autoriza iniciar migração nem determina prazo ou custo.**
+**Status: DISCOVERY / TO-BE.** A arquitetura modular, a sequência e os riscos seguem [MODULE_ROADMAP](../migration/MODULE_ROADMAP.md) e o [Mapa de Implementação](../architecture/IMPLEMENTATION_MAP.md). O [inventário histórico de consumidores](../history/architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md) documenta a descoberta em outubro. **Não autoriza iniciar migração nem determina prazo ou custo.**
 
 ## Sequência e situação
 

@@ -27,10 +27,10 @@ A prioridade da Curva ABC foi antecipada em 19/10, antes da integração da PR #
 | **Planejado × Realizado** | Planejado | Validar fontes, fórmulas, competência, precisão, versões e reconciliação. |
 | **ERP de Contratos** | Planejado | Inventário funcional, classificação de dados e anexos, recuperação independente do legado e autorização operacional própria. |
 
-O [blueprint](../planning/MODULE_BLUEPRINTS.md) orienta a descoberta. A sequência histórica de expansão está no [Mapa de Execução arquivado](../planning/EXECUTION_MAP.md). A ordem efetiva depende de brief autorizado, relevância, maturidade do legado, recuperação, contratos Core e capacidade de homologação.
+O [blueprint](../planning/MODULE_BLUEPRINTS.md) orienta a descoberta. A sequência histórica de expansão está no [Mapa de Execução arquivado](../history/planning/EXECUTION_MAP.md). A ordem efetiva depende de brief autorizado, relevância, maturidade do legado, recuperação, contratos Core e capacidade de homologação.
 
 ## Gate para cada módulo novo
 
-Antes da implementação, registrar dono, inventário funcional e de dados, regras/cálculos críticos, classificação, contratos Core, autorização, plano de testes e critérios de aceite. Para um módulo com legado, planejar migração, reconciliação, preservação da origem, backup, restore e rollback. [Contratos para consumidores](../architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md).
+Antes da implementação, registrar dono, inventário funcional e de dados, regras/cálculos críticos, classificação, contratos Core, autorização, plano de testes e critérios de aceite. Para um módulo com legado, planejar migração, reconciliação, preservação da origem, backup, restore e rollback. Consulte os [contratos de leitura do Core](../architecture/CORE_FOUNDATION_V2.md#8-consumo-pelos-módulos-e-contratos-de-leitura) e o [inventário histórico de consumidores](../history/architecture/CORE_CONSUMER_CONTRACT_MAP_V1.md).
 
 Antes do corte, demonstrar equivalência ou diferenças aprovadas, permissões por escopo, reconciliação origem/destino, recuperação verificável e assinatura do responsável. Preservar standalone e dados até decisão autorizada de congelamento/retirada. Para Salas, a decisão AG-D11 prevê preservar a instalação anterior intacta e tratar eventual substituição como operação separada.

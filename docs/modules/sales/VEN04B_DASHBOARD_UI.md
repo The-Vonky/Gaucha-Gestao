@@ -2,17 +2,17 @@
 
 **Refinamentos de usabilidade — 03/11/2026:** diário com seletor independente e legendas
 por traçado/competência, marcadores Stone/PIX, toolbar de 44px e seleção visual de mês/ano.
-[Evidências e limitações atuais](VEN04B_VISUAL_FIDELITY.md#filtros-alinhados-a-lançamentos-e-leitura-do-recorte--03112026-rodada-atual).
+[Evidências e limitações da rodada](../../history/modules/sales/VEN04B_VISUAL_FIDELITY.md#filtros-alinhados-a-lançamentos-e-leitura-do-recorte--03112026-rodada-atual).
 
 **Correção visual — 03/11/2026:** quatro KPIs executivos, Panorama Gaúcha com três
 insights antes dos gráficos, toolbar compacta, SVGs de altura fixa com escala/grade/
 área, ranking, legenda inferior e cores por UUID. Contratos VEN-03 preservados.
-[Comparação, screenshots, testes e pendências](VEN04B_VISUAL_FIDELITY.md).
+[Comparação, screenshots, testes e pendências](../../history/modules/sales/VEN04B_VISUAL_FIDELITY.md).
 Não representa homologação ou avanço de VEN-05–08.
 
 **MEL-01 (30/10/2026):** com zero unidades, capacidades globais existentes permitem
 retornar o estado vazio. Sem criar fixtures permanentes ou conceder novas permissões.
-[Migration incremental e provas locais](VEN04B_MEL01_LOCAL_CLEANUP.md).
+[Migration incremental e provas locais](../../history/modules/sales/VEN04B_MEL01_LOCAL_CLEANUP.md).
 
 **Estado:** integrada à `main` pela [PR #94](https://github.com/The-Vonky/Gaucha-Gestao/pull/94) (`91bd16b`). Homologação VEN-07 e liberação operacional VEN-08 têm aceite próprio.
 
@@ -25,7 +25,7 @@ continha migration. A correção obrigatória anterior ao merge acrescenta
 composição institucional protegida, sem atribuições automáticas nem mudança de RLS/RPC.
 A [GG-04](../../architecture/AUTHORIZATION.md#perfis-institucionais-de-vendas--gg-04)
 define os perfis operacionais vigentes, Sales Manager e Sales Viewer.
-[Histórico da correção VEN-04B](VEN04B_ACCESS_CORRECTION.md).
+[Histórico da correção VEN-04B](../../history/modules/sales/VEN04B_ACCESS_CORRECTION.md).
 
 ## Acesso e componentes
 
@@ -55,7 +55,7 @@ operacional global), todas as unidades autorizadas inativas, ausência de create
 ausência de unidade ativa autorizada. Nunca infere ausência global de catálogo
 restrito. **Cadastrar unidade** leva a `/admin/units` somente com
 `admin.unit.manage` global. Sem acesso operacional, não há controle de cadastro.
-[Validação e screenshots MEL-03–06](VEN04B_MEL03_06_VALIDATION.md).
+[Validação e screenshots MEL-03–06](../../history/modules/sales/VEN04B_MEL03_06_VALIDATION.md).
 O dashboard nunca chama listagem, detalhe ou catálogo operacional. Drill-down de
 dia mostra somente agregados; não descobre lançamentos individuais.
 

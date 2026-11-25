@@ -1,6 +1,6 @@
 # GG-02C — laboratório Restic + Rclone sem conta Google
 
-Somente Linux amd64, Python 3 padrão e usuário comum. Nada é agendado ou instalado globalmente. O backend é o filesystem temporário através de `rclone serve restic --stdio --append-only`, mecanismo oficial; não é um mock do Restic, nem uma emulação do Google Drive. Não abre servidor TCP. [Procedimentos, limites e aprovação da Fase B](../../../docs/operations/GG02C_RCLONE_DRIVE_20261106.md).
+Somente Linux amd64, Python 3 padrão e usuário comum. Nada é agendado ou instalado globalmente. O backend é o filesystem temporário através de `rclone serve restic --stdio --append-only`, mecanismo oficial; não é um mock do Restic, nem uma emulação do Google Drive. Não abre servidor TCP. [Procedimentos, limites e aprovação da Fase B](../../../docs/history/operations/GG02C_RCLONE_DRIVE_20261106.md).
 
 ## Reprodução da Fase A
 

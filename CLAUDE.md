@@ -11,4 +11,4 @@ Este arquivo contém apenas orientações específicas para o Claude. A **fonte 
 - Execute verificações pertinentes e relate as que não foram executadas; não confunda CI com homologação produtiva.
 - Não execute merges, operações destrutivas ou ações em ambientes persistentes sem autorização aplicável.
 
-Leitura inicial: [AGENTS](AGENTS.md) → [portal documental](docs/README.md) → brief/issue e fontes canônicas da tarefa → histórico quando necessário.
+Leitura inicial: [AGENTS](AGENTS.md) → [README](README.md) → [portal documental](docs/README.md) → brief/issue e fontes canônicas da tarefa → [histórico](docs/HISTORY.md) quando necessário.

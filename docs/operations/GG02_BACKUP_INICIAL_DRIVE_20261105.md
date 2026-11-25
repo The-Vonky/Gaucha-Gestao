@@ -75,7 +75,7 @@ O inventário GG-01 evidenciou até 05/11: HDD de 1 TB com aproximadamente 1,4 G
 
 - [Backup e recuperação](../architecture/BACKUP_RECOVERY.md) — princípios e requisitos.
 - [Lacunas de backup da C30](C30_BACKUP_GAPS.md) — sete passos de implementação não executados.
-- [Ensaio isolado de recuperação](../planning/02_RESTORE_DRILL.md) — 17 migrations em laboratório, 8 PASS/1 PARCIAL; não comprova a C30 atual.
+- [Ensaio isolado de recuperação](../history/operations/02_RESTORE_DRILL.md) — 17 migrations em laboratório, 8 PASS/1 PARCIAL; não comprova a C30 atual.
 - [Matriz de operações](OPERATIONS_MATRIX.md), [registro de decisões](../planning/DECISION_REGISTER.md), [Plano Diretor](../planning/PLANO_DIRETOR_2026.md).
 - [GG-01 — inventário de 05/11/2026](https://github.com/The-Vonky/Gaucha-Gestao/pull/104) — PR documental separada, não presumir merge.
 

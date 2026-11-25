@@ -9,7 +9,7 @@
 
 **Revisão de leitura em 25/11/2026, baseline `e0b6f5c`.** O registro preserva a síntese original de 20/10 (`fed0e0f`) e os adendos datados. **Aceita** designa decisão aprovada pela autoridade competente. **Vigente** indica o contrato aplicável hoje. **Substituída** identifica a regra superada por sucessora (D5-B → D5-C). **Revogada** registra retirada de autoridade (D5-A). **Proposta** aguarda aprovação (ADR-006) ou foi encerrada como no caso da PR #24. **Pendente** identifica decisão ou aceite ainda devido. O [Guia Mestre](GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md) acompanha trabalho restante, e os ADRs aceitos e as provas humanas governam o alcance.
 
-> **Adendo de evidência, 22/10/2026:** o STAGING persistente foi instalado na C30 (projeto `gaucha-staging`) e testado por SSH, incluindo HTTPS apenas em loopback. Isso responde **onde o STAGING está operando** para a entrada D06, mas **não** encerra a aprovação formal de isolamento, aceite físico D07, continuidade D02–D04 ou GO D09. Uma URL pública temporária via ngrok é **plano de testes**, não implementação/decisão de produção; ver [AS-BUILT](../operations/C30_STAGING_AS_BUILT_20261022.md), [acesso externo](../operations/STAGING_PUBLIC_ACCESS_PLAN.md) e [lacunas de backup](../operations/C30_BACKUP_GAPS.md).
+> **Adendo de evidência, 22/10/2026:** o STAGING persistente foi instalado na C30 (projeto `gaucha-staging`) e testado por SSH, incluindo HTTPS apenas em loopback. Isso responde **onde o STAGING está operando** para a entrada D06, mas **não** encerra a aprovação formal de isolamento, aceite físico D07, continuidade D02–D04 ou GO D09. Uma URL pública temporária via ngrok é **plano de testes**, não implementação/decisão de produção; ver [AS-BUILT](../history/operations/C30_STAGING_AS_BUILT_20261022.md), [acesso externo](../history/operations/STAGING_PUBLIC_ACCESS_PLAN.md) e [lacunas de backup](../operations/C30_BACKUP_GAPS.md).
 
 ## Decisões arquiteturais confirmadas
 
@@ -84,7 +84,7 @@
 
 ## Evidência recente que muda a leitura de documentos antigos
 
-- [Issue #51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51) relata **ensaio sintético a frio v2 com restore funcional PASS parcial em 19/10**, com [relatório técnico](02_RESTORE_DRILL.md) preparado na [PR #62](https://github.com/The-Vonky/Gaucha-Gestao/pull/62); a issue consta encerrada no GitHub. DR-08 permanece parcial no relatório. Trata-se de laboratório, não demonstra backups on-line, WAL/PITR, destino off-site ou restauração de PROD.
+- [Issue #51](https://github.com/The-Vonky/Gaucha-Gestao/issues/51) relata **ensaio sintético a frio v2 com restore funcional PASS parcial em 19/10**, com [relatório técnico](../history/operations/02_RESTORE_DRILL.md) preparado na [PR #62](https://github.com/The-Vonky/Gaucha-Gestao/pull/62); a issue consta encerrada no GitHub. DR-08 permanece parcial no relatório. Trata-se de laboratório, não demonstra backups on-line, WAL/PITR, destino off-site ou restauração de PROD.
 - [Issue #52](https://github.com/The-Vonky/Gaucha-Gestao/issues/52) informa que ERP de Contratos foi levado para outro computador e que funcionamento foi relatado, **sem** garantia de restauração independente da instância antiga; preservar tudo até autorização de descarte. A inspeção do HD HPE e da C30 ainda está sujeita ao gate.
 - [PR #66](https://github.com/The-Vonky/Gaucha-Gestao/pull/66) **foi integrada à main** em `eaffb4f`.
 - [PR #69](https://github.com/The-Vonky/Gaucha-Gestao/pull/69) **foi integrada à main** em `fed0e0f`; Curva ABC v1 está em código, mas importação das amostras ERP, validações de confiança e homologação aplicável seguem os critérios do módulo. A [Issue #70](https://github.com/The-Vonky/Gaucha-Gestao/issues/70) está encerrada e [D13/#86](https://github.com/The-Vonky/Gaucha-Gestao/issues/86) segue aberta.
@@ -92,7 +92,7 @@
 - [Issue #68](https://github.com/The-Vonky/Gaucha-Gestao/issues/68) está encerrada e registra um recorte histórico de DEV compartilhado com duas contas independentes. Qualquer reuso requer confirmar instância, versão e critérios de acesso. Não é STAGING nem PROD.
 - O histórico original dos documentos de Core v2 é anterior à [PR #38](https://github.com/The-Vonky/Gaucha-Gestao/pull/38) que integrou a onda 2. O [contrato Core v2](../architecture/CORE_FOUNDATION_V2.md) mantém o recorte antigo identificado e registra a integração posterior.
 - [ADR-006](../decisions/ADR-006-infra-v1-reused-hardware.md) mantém Proposed apesar de existir Compose em CI. Documentação de teste e status arquitetural são dimensões diferentes.
-- [01_DADOS_LIMPOS](01_DADOS_LIMPOS.md) é proposta documental, não script de limpeza nem autorização para tocar em produção.
+- [01_DADOS_LIMPOS](../history/planning/01_DADOS_LIMPOS.md) é proposta documental, não script de limpeza nem autorização para tocar em produção.
 
 ## Critérios de débito documental
 
@@ -117,7 +117,7 @@
 
 ## Adendo GG-02C — 06/11/2026
 
-O mantenedor autorizou integração Restic + Rclone em laboratório exclusivamente sintético e preparação documental do Drive. [Procedimento e próxima autorização](../operations/GG02C_RCLONE_DRIVE_20261106.md); [matriz executada](../operations/GG02C_LAB_RESULTS_20261106.md). Backend local via stdio, snapshots, integridade e recuperação secundária lógica comprovados; conta Google não conectada. OAuth/primeira operação na conta, recuperação física em outro PC e custódia externa continuam pendentes. Arquitetura de pacote completo gratuito segue confirmação do mantenedor/PR #106, naquele recorte; a PR #106 foi posteriormente integrada. Não encerra D02/D03/D04/D08/D12, GG-02/GG-03, O3/O4 ou autoriza C30/PROD.
+O mantenedor autorizou integração Restic + Rclone em laboratório exclusivamente sintético e preparação documental do Drive. [Procedimento e próxima autorização](../history/operations/GG02C_RCLONE_DRIVE_20261106.md); [matriz executada](../history/operations/GG02C_LAB_RESULTS_20261106.md). Backend local via stdio, snapshots, integridade e recuperação secundária lógica comprovados; conta Google não conectada. OAuth/primeira operação na conta, recuperação física em outro PC e custódia externa continuam pendentes. Arquitetura de pacote completo gratuito segue confirmação do mantenedor/PR #106, naquele recorte; a PR #106 foi posteriormente integrada. Não encerra D02/D03/D04/D08/D12, GG-02/GG-03, O3/O4 ou autoriza C30/PROD.
 
 ## Adendo AG-01 — 23/10/2026
 
@@ -125,11 +125,11 @@ O responsável instruiu expressamente iniciar codificação de migration, grants
 
 ## Adendo GG-02D — 09/11/2026
 
-A [Issue #113](https://github.com/The-Vonky/Gaucha-Gestao/issues/113) autoriza somente o [ensaio sintético no Drive dedicado](../operations/GG02D_DRIVE_SYNTHETIC_20261109.md), com OAuth interativo pelo mantenedor no Windows e escopo `drive.file`. A execução depende de quota observada, confirmação da conta e pasta UUID. O ensaio físico secundário está BLOCKED pela indisponibilidade de outro computador. D02/D03/D04/D08/D12 e GG-02/GG-03 operacionais continuam abertos.
+A [Issue #113](https://github.com/The-Vonky/Gaucha-Gestao/issues/113) autoriza somente o [ensaio sintético no Drive dedicado](../history/operations/GG02D_DRIVE_SYNTHETIC_20261109.md), com OAuth interativo pelo mantenedor no Windows e escopo `drive.file`. A execução depende de quota observada, confirmação da conta e pasta UUID. O ensaio físico secundário está BLOCKED pela indisponibilidade de outro computador. D02/D03/D04/D08/D12 e GG-02/GG-03 operacionais continuam abertos.
 
 A decisão na [PR #114](https://github.com/The-Vonky/Gaucha-Gestao/pull/114#issuecomment-6750171277) direciona OAuth Desktop próprio com `drive.file` e consentimento External / In production. A [proposta operacional C30](../operations/C30_BACKUP_OPERATIONAL_PLAN.md) mantém os gates e decisões de acesso, agenda, retenção, alertas e recuperação abertos.
 
 
 ## Adendo AG-D5-C — 23/11/2026
 
-O responsável revisou a separação de funções: o administrador global da plataforma deve ter capacidade efetiva de gestão de salas, mas vê dois botões para atuar como **Room Booking Manager** ou **Room Booking Requester**. A alteração é avulsa, fora das GG-01–GG-15, e convive com a GG-05B integrada pela PR #127. A D5-B é superada somente na proibição ao administrador; as demais regras do módulo permanecem. Não criar concessões de gestores automaticamente e não reescrever a migration histórica. A seleção da tela é uma preferência transitória de apresentação, não uma barreira de autorização no servidor. [Especificação e critérios de aceite](../modules/room-booking/D5C_ADMIN_MODES.md).
+O responsável revisou a separação de funções: o administrador global da plataforma deve ter capacidade efetiva de gestão de salas, mas vê dois botões para atuar como **Room Booking Manager** ou **Room Booking Requester**. A alteração é avulsa, fora das GG-01–GG-15, e convive com a GG-05B integrada pela PR #127. A [D5-B histórica](../history/modules/room-booking/D5B_ACCESS.md) é superada somente na proibição ao administrador; as demais regras do módulo permanecem. Não criar concessões de gestores automaticamente e não reescrever a migration histórica. A seleção da tela é uma preferência transitória de apresentação, não uma barreira de autorização no servidor. [Especificação e critérios de aceite](../modules/room-booking/D5C_ADMIN_MODES.md).

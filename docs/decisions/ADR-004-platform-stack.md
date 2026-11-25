@@ -62,7 +62,7 @@ A Gaúcha Gestão utilizará a seguinte stack:
 - observabilidade de host, contêineres, PostgreSQL, serviços Supabase, Tunnel e backup;
 - telemetria de erro do frontend com ferramenta aprovada sob análise de privacidade, como Sentry.
 
-**Esses itens de operação são requisitos TO-BE, não instalações comprovadas.** Evidência atual: [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md) e [restauração sintética](../planning/02_RESTORE_DRILL.md).
+**Esses itens de operação são requisitos TO-BE, não instalações comprovadas.** Evidência atual: [BACKUP_RECOVERY](../architecture/BACKUP_RECOVERY.md) e [restauração sintética](../history/operations/02_RESTORE_DRILL.md).
 
 ## Topologia prevista para produção (TO-BE)
 
