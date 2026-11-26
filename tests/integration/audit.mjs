@@ -1891,15 +1891,22 @@ try {
     ],
     [1, 1],
   );
-  // Audit does not depend on Action Plans.
-  assert.equal(
-    (
-      await db.query(
-        "select count(*)::int n from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('audit','audit_private') and p.prosrc ilike '%action_plan%'",
-      )
-    ).rows[0].n,
-    0,
+  // AUD-DELETE-01: somente o protocolo privado de exclusão dependente cruza
+  // essa fronteira. Nenhuma FK de Audit aponta para Planos de Ação.
+  const dependencies = await db.query(
+    `select n.nspname || '.' || p.proname as name
+     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname in ('audit','audit_private')
+     and (strpos(p.prosrc,'action_plans.')>0 or strpos(p.prosrc,'action_plans_private.')>0)
+     order by 1`,
   );
+  assert.deepEqual(dependencies.rows.map(row => row.name), [
+    "audit.begin_inspection_delete",
+    "audit.finish_inspection_delete",
+    "audit.inspection_delete_impact",
+    "audit_private.guard_deletion_write",
+    "audit_private.inspection_object_namespaces",
+  ]);
   assert.equal(
     (
       await db.query(
