@@ -71,7 +71,7 @@ try {
     }
     if (path.endsWith("/feedback_list")) return json(report ? [{ ...report, summary: report.description }] : []);
     if (path.endsWith("/feedback_detail")) return json(report);
-    if (["/units", "/inspection_summaries", "/plan_summaries"].some(p => path.endsWith(p))) return json([]);
+    if (["/units", "/inspection_summaries_page", "/plan_summaries_page"].some(p => path.endsWith(p))) return json([]);
     throw new Error(`Endpoint não previsto: ${path}`);
   });
   const page = await context.newPage(); page.on("pageerror", error => errors.push(error.message));
