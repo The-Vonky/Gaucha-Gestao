@@ -23,7 +23,7 @@ Digite exatamente `excluir auditoria`. Cancelar antes da confirmação apenas fe
 4. `audit.finish_inspection_delete` consulta o Storage no banco, verifica a eventual pendência operacional e exclui, na mesma transação, evidências dos planos, planos da origem, derivados, evidências do checklist, respostas e inspeção. A trilha administrativa guarda o autorizador, o executor da conclusão, a unidade, a situação anterior, as contagens e o resultado. O inventário de objetos é descartado. Os identificadores de namespaces congelados impedem que uma gravação tardia recrie o alvo.
 5. O cliente recarrega a unidade, preserva o filtro do histórico e invalida o cache volátil de imagens dessa auditoria. Ao abrir painéis, planos ou relatórios, as consultas usam as projeções atuais. Bytes já entregues e exportações anteriores ficam sob controle de seus destinatários.
 
-\`\`\`mermaid
+```mermaid
 flowchart TD
   Preview["Consultar impacto"] --> Start["Confirmar frase e snapshot"]
   Start --> Freeze["Congelar auditoria e inventariar objetos"]
@@ -32,7 +32,7 @@ flowchart TD
   Check -->|Sim| Verify["Operador verifica versões físicas"]
   Verify --> Finish["Concluir exclusão relacional e registrar evento no Core"]
   Check -->|Não| Finish
-\`\`\`
+```
 
 ## Reconciliação excepcional no DEV pessoal
 
