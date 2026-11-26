@@ -51,7 +51,7 @@ describe("Audit API pagination", () => {
     const requests: unknown[] = [];
     http.mockImplementation(async (url: string, options: RequestInit) => {
       const u = new URL(url);
-      expect(u.pathname).toBe("/rest/v1/rpc/inspection_summaries");
+      expect(u.pathname).toBe("/rest/v1/rpc/inspection_summaries_page");
       const args = JSON.parse(String(options.body));
       requests.push(args);
       expect(u.searchParams.has("offset")).toBe(false);

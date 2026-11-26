@@ -35,7 +35,7 @@ export async function summaries(
   const pageSize = 500;
   for (;;) {
     const last: Plan | undefined = rows.at(-1)?.plan;
-    const { data, error } = await db().rpc("plan_summaries", {
+    const { data, error } = await db().rpc("plan_summaries_page", {
       ...filter,
       p_before_created_at: last?.created_at ?? null,
       p_before_id: last?.id ?? null,

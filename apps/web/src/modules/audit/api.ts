@@ -34,7 +34,7 @@ export async function summaries(
   const pageSize = 500;
   for (;;) {
     const last: InspectionSummary | undefined = rows.at(-1);
-    const { data, error } = await db().rpc("inspection_summaries", {
+    const { data, error } = await db().rpc("inspection_summaries_page", {
       ...args,
       p_before_applied_on: last?.applied_on ?? null,
       p_before_created_at: last?.created_at ?? null,

@@ -92,7 +92,7 @@ export type ActionPlansDatabase = {
     Tables: Record<string, never>;
     Views: Record<string, never>;
     Functions: {
-      plan_summaries: {
+      plan_summaries_page: {
         Args: { p_plan?: string; p_inspection?: string; p_before_created_at?: string | null; p_before_id?: string | null };
         Returns: PlanSummary[];
       };

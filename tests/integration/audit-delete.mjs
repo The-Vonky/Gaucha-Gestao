@@ -31,11 +31,11 @@ try {
   fails(await rpc("begin_inspection_delete",confirmation),"40001");
   confirmation.p_snapshot = must(await rpc("inspection_delete_impact")).snapshot;
   phase = "cursores após exclusão da primeira página";
-  const auditPage = (cursor) => api("unit").rpc("inspection_summaries", {
+  const auditPage = (cursor) => api("unit").rpc("inspection_summaries_page", {
     p_unit:A, p_before_applied_on:cursor?.applied_on ?? null,
     p_before_created_at:cursor?.created_at ?? null, p_before_id:cursor?.id ?? null,
   }).limit(1);
-  const planPage = (cursor) => clients.unit.schema("action_plans").rpc("plan_summaries", {
+  const planPage = (cursor) => clients.unit.schema("action_plans").rpc("plan_summaries_page", {
     p_before_created_at:cursor?.created_at ?? null, p_before_id:cursor?.id ?? null,
   }).limit(1);
   const [lastAudit] = must(await auditPage());
@@ -53,7 +53,7 @@ try {
   assert.equal(nextPlan.plan.created_at,followingPlan.plan.created_at);
   assert.ok(nextPlan.plan.id < followingPlan.plan.id);
   assert.deepEqual(must(await planPage(followingPlan.plan)),[]);
-  assert.deepEqual(must(await api("other").rpc("inspection_summaries", {
+  assert.deepEqual(must(await api("other").rpc("inspection_summaries_page", {
     p_unit:A,p_before_applied_on:lastAudit.applied_on,
     p_before_created_at:lastAudit.created_at,p_before_id:lastAudit.id,
   })),[]);

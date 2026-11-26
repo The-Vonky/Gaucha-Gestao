@@ -87,7 +87,7 @@ export type AuditDatabase = {
       inspection_export: { Args: { p_inspection: string }; Returns: InspectionReport };
       unit_history_export: { Args: { p_unit: string; p_from: string | null; p_to: string | null }; Returns: HistoryReport };
       units: { Args: Record<string, never>; Returns: AuditUnit[] };
-      inspection_summaries: {
+      inspection_summaries_page: {
         Args: { p_unit?: string; p_inspection?: string; p_overview?: boolean; p_before_applied_on?: string | null; p_before_created_at?: string | null; p_before_id?: string | null };
         Returns: InspectionSummary[];
       };
