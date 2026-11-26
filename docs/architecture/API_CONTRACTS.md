@@ -28,7 +28,7 @@ A URL pública da API depende do gateway Kong e do ambiente aprovado. O frontend
 | Administração | user_directory, save_role, audit_log_page, role_detail; leitura/gravação autorizada de roles, profiles e assignments | apps/web/src/core/admin/api.ts |
 | Revisão por unidade | unit_access_summary, unit_access_assignments | apps/web/src/core/admin/unit-access-review-api.ts |
 | Capas de unidades | unit_covers, begin_unit_cover_upload, confirm_unit_cover_upload, cancel_unit_cover_upload, set_unit_cover_position, remove_unit_cover | apps/web/src/core/unitCovers.ts |
-| Auditorias | units, inspection_summaries, create_inspection, finalize_inspection, reopen_inspection; leitura de checklist_sections, checklist_items, inspection_answers | apps/web/src/modules/audit/api.ts |
+| Auditorias | [Exclusão definitiva com prévia, confirmação e retomada](../modules/audit/EXCLUSAO_DEFINITIVA.md), units, inspection_summaries, create_inspection, finalize_inspection, reopen_inspection; leitura de checklist_sections, checklist_items, inspection_answers | apps/web/src/modules/audit/api.ts |
 | Evidência de checklist | checklist_evidence, checklist_evidence_pending_count, begin_checklist_evidence_upload, confirm_checklist_evidence_upload, remove_checklist_evidence | apps/web/src/modules/audit/evidence.ts |
 | Planos de ação | plan_summaries, creation_scopes, create_manual_plan, update_plan, set_plan_status, verify_plan | apps/web/src/modules/action-plans/api.ts |
 | Evidências de planos | plan_evidence, begin_evidence_upload, confirm_evidence_upload, remove_evidence | apps/web/src/modules/action-plans/evidence.ts |

@@ -38,6 +38,11 @@ const api = vi.hoisted(() => ({
   summaries: vi.fn(),
   createInspection: vi.fn(),
 }));
+const deletion = vi.hoisted(() => ({
+  pendingDeletions: vi.fn(async () => []),
+  deletionImpact: vi.fn(), beginDeletion: vi.fn(), resumeDeletion: vi.fn(),
+}));
+vi.mock("../apps/web/src/modules/audit/deletion", () => deletion);
 vi.mock("../apps/web/src/modules/audit/api", () => api);
 const evidenceApi=vi.hoisted(()=>({listEvidence:vi.fn(async():Promise<EvidenceRow[]>=>[]),pendingCount:vi.fn(async()=>0),beginUpload:vi.fn(),finishUpload:vi.fn(),removeEvidence:vi.fn(),downloadEvidence:vi.fn(),downloadUrl:vi.fn(async()=>"https://storage.test/image?token=test"),evidenceMessage:vi.fn(()=> "Envio falhou"),retryable:vi.fn(()=>true),ACCEPT:".pdf",FORMATS_HINT:"PDF",formatSize:vi.fn(()=> "1 KB"),typeLabel:vi.fn(()=> "PDF")}));
 vi.mock("../apps/web/src/modules/audit/evidence",()=>evidenceApi);
@@ -759,6 +764,33 @@ describe("unit page", () => {
     expect(follow.getAttribute("href")).toBe("/audit/inspections/d1");
     expect(screen.queryByRole("link", { name: "Continuar" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Nova auditoria" })).toBeNull();
+  });
+  it("exige impacto e confirmação exata e permite cancelar sem iniciar a exclusão", async () => {
+    const counts = { criteria: 158, answered: 10, observations: 2, plans: 1, pending: 0, in_progress: 0,
+      completed: 1, verified: 1, inactive_sources: 1, checklist_evidence: 0, checklist_reservations: 0,
+      derivatives: 0, execution_evidence: 0, verification_evidence: 0, plan_reservations: 0, objects: 0 };
+    deletion.deletionImpact.mockResolvedValue({ id: "d1", unit: "Cozinha Central", status: "finalized",
+      date: "2026-11-26", responsible: "Qualidade", snapshot: "s", counts });
+    deletion.resumeDeletion.mockResolvedValue("completed");
+    renderUnit("/audit/units/A/historico");
+    const open = (await screen.findAllByRole("button", {name: "Excluir"}))[0];
+    open.focus(); fireEvent.click(open);
+    const input = await screen.findByRole<HTMLInputElement>("textbox", {name: /Digite/});
+    const confirm = screen.getByRole<HTMLButtonElement>("button", {name: "Excluir definitivamente"});
+    expect(confirm.disabled).toBe(true);
+    fireEvent.change(input, {target: {value: "Excluir auditoria"}});
+    expect(confirm.disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", {name: "Cancelar"}));
+    expect(deletion.beginDeletion).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(open);
+    fireEvent.click(open);
+    const fresh = await screen.findByRole<HTMLInputElement>("textbox", {name: /Digite/});
+    await screen.findByText(/resultado oficial será perdido/);
+    expect(fresh.value).toBe("");
+    fireEvent.change(fresh, {target: {value: "excluir auditoria"}});
+    fireEvent.click(screen.getByRole("button", {name: "Excluir definitivamente"}));
+    expect(await screen.findByText("Auditoria excluída definitivamente.")).toBeTruthy();
+    expect(deletion.beginDeletion).toHaveBeenCalledWith(expect.any(String), "s", "excluir auditoria");
   });
   it("lists every inspection and the history report on the Histórico tab", async () => {
     renderUnit("/audit/units/A/historico");

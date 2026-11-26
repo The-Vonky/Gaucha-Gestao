@@ -557,7 +557,7 @@ For manual plans:
 - unit/sector may be editable only if authorization is revalidated for both old and new scope and history remains auditable;
 - if this introduces unnecessary complexity, keep unit/sector immutable after creation in v1. Prefer the simpler safe choice.
 
-No hard delete in v1.
+A exclusão independente de planos permanece vedada. O mantenedor autorizou a remoção dependente da auditoria de origem na [AUD-DELETE-01](../modules/audit/EXCLUSAO_DEFINITIVA.md).
 
 ## Authorization and RLS
 

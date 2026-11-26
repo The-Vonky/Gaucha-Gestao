@@ -64,3 +64,7 @@ Vincular os cenários aos testes de regressão e às integrações com JWT real 
 ## Foto da Sala de Reunião — 26/10/2026
 
 **EVIDÊNCIA DATADA.** A versão de 26/10 usou D5-B e URLs assinadas de até 300 s. Na `main`, AG-D5-C autoriza gestão a administrador global e gestor efetivos. Leitura da foto exige leitura da agenda; Identity usa a rota autenticada. O SQL verifica metadata e o browser reconverte a imagem, com os limites de validação física do [contrato de experiência](../modules/room-booking/EXPERIENCE_V1.md#foto-e-storage-privado).
+
+## Uploads interrompidos durante a exclusão
+
+O cliente confirma o snapshot das dependências e usa o JWT apenas nos objetos do inventário privado. Uma publicação física interrompida pode anteceder o registro no catálogo. Reservas e inconsistências exigem verificação operacional antes de concluir. [Procedimento e contrato](../modules/audit/EXCLUSAO_DEFINITIVA.md).

@@ -11,6 +11,9 @@ import {
   Status,
 } from "../../shared/ui";
 import * as api from "./api";
+import { Icon } from "../../shared/icons";
+import { DeleteInspection } from "./DeleteInspection";
+import { pendingDeletions } from "./deletion";
 import { NewInspection } from "./NewInspection";
 import {
   Delta,
@@ -40,13 +43,18 @@ export function UnitPage() {
   const tab = TABS[tabPath];
   const auth = useAuth();
   const [creating, setCreating] = useState(false);
+  const [target, setTarget] = useState<{ id: string; pending: boolean; unit: string }>();
+  const [feedback, setFeedback] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const r = useResource(
     useCallback(async () => {
-      const [units, rows] = await Promise.all([
+      const [units, rows, pending] = await Promise.all([
         api.units(),
         api.summaries({ p_unit: unitId }),
+        pendingDeletions(unitId),
       ]);
-      return { units, unit: units.find((u) => u.id === unitId), rows };
+      return { units, unit: units.find((u) => u.id === unitId), rows, pending };
     }, [unitId]),
   );
   const unit = r.data?.unit;
@@ -62,6 +70,7 @@ export function UnitPage() {
         <Link to="/audit">Auditorias</Link> /{" "}
         <span>{unit?.name ?? "Unidade"}</span>
       </nav>
+      {feedback && <Notice>{feedback}</Notice>}
       {r.loading && <LoadingState label="Carregando unidade…" />}
       {r.error && (
         <Notice error>
@@ -110,10 +119,17 @@ export function UnitPage() {
               canEdit={auth.can("audit.inspection.edit", { unit_id: unitId })}
             />
           ) : (
-            <UnitHistoryTab unit={unit} rows={r.data.rows} />
+            <UnitHistoryTab unit={unit} rows={r.data.rows} pending={r.data.pending} from={from} to={to}
+              setFrom={setFrom} setTo={setTo} onDelete={(id, pending) => {
+                setFeedback(""); setTarget({ id, pending, unit: unitId });
+              }} />
           )}
         </>
       )}
+      {target?.unit === unitId && auth.can("audit.inspection.read", { unit_id: unitId }) &&
+        auth.can("audit.inspection.delete", { unit_id: unitId }) && <DeleteInspection
+          key={target.id} id={target.id} pending={target.pending} onClose={() => setTarget(undefined)}
+          onChange={value => { setFeedback(value); r.reload(); }} />}
       {creating && r.data && (
         <NewInspection
           units={r.data.units}
@@ -303,10 +319,13 @@ function UnitSummary({
   );
 }
 /** Histórico: evolution over time, every inspection as a timeline and the history report. */
-function UnitHistoryTab({ unit, rows }: { unit: AuditUnit; rows: InspectionSummary[] }) {
+function UnitHistoryTab({ unit, rows, pending, from, to, setFrom, setTo, onDelete }: {
+  unit: AuditUnit; rows: InspectionSummary[]; pending: { id: string; applied_on: string }[];
+  from: string; to: string; setFrom: (value: string) => void; setTo: (value: string) => void;
+  onDelete: (id: string, pending: boolean) => void;
+}) {
   const auth = useAuth();
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const canDelete = auth.can("audit.inspection.read", {unit_id: unit.id}) && auth.can("audit.inspection.delete", {unit_id: unit.id});
   const finalized = rows.filter((x) => x.status === "finalized");
   const points = trendPoints(rows);
   return (
@@ -325,7 +344,9 @@ function UnitHistoryTab({ unit, rows }: { unit: AuditUnit; rows: InspectionSumma
       <div className="unit-history-body">
         <section className="unit-timeline-section" aria-labelledby="unit-list-title">
           <h2 id="unit-list-title">Auditorias</h2>
-          {!rows.length && <p className="muted">Nenhuma auditoria registrada para esta unidade.</p>}
+          {pending.map(entry => <Notice key={entry.id}>Exclusão pendente · {formatDate(entry.applied_on)}{" "}
+            {canDelete && <button onClick={() => onDelete(entry.id, true)}>Retomar exclusão</button>}</Notice>)}
+          {!rows.length && !pending.length && <p className="muted">Nenhuma auditoria registrada para esta unidade.</p>}
           <ol className="unit-timeline">
             {rows.map((row) => {
               const previous =
@@ -351,9 +372,14 @@ function UnitHistoryTab({ unit, rows }: { unit: AuditUnit; rows: InspectionSumma
                     <Result summary={row} />
                     {previous && <Delta current={row.final_score} previous={previous.final_score} />}
                   </div>
-                  <Link className="button-link unit-timeline-open" to={`/audit/inspections/${row.id}`}>
+                  <div className="actions unit-timeline-open">
+                  <Link className="button-link" to={`/audit/inspections/${row.id}`}>
                     Abrir
                   </Link>
+                  {canDelete && <button className="inspection-delete-button" onClick={() => onDelete(row.id, false)}>
+                    <Icon name="trash" /> Excluir
+                  </button>}
+                  </div>
                 </li>
               );
             })}

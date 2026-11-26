@@ -208,7 +208,7 @@ Required semantics:
 
 Do not duplicate unit name or user authorization state in Audit.
 
-Do not hard-delete inspections in v1.
+A AUD-DELETE-01 autoriza a exclusão confirmada e integral da auditoria e de seus planos de origem. [Contrato de exclusão](../modules/audit/EXCLUSAO_DEFINITIVA.md).
 
 ### audit.inspection_answers
 
@@ -386,7 +386,7 @@ Re-finalization recomputes the result from current answers.
 
 Out of scope.
 
-Do not add a delete button or hard-delete API.
+A ação Excluir no histórico segue a AUD-DELETE-01.
 
 ## Authorization / RLS
 

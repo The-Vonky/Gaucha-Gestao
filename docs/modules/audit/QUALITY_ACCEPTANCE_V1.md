@@ -114,3 +114,7 @@ Quando um item for executado, substituir apenas seu estado por `PASS`, `FAIL` ou
 | — | — | — | — | — | — |
 
 Não preencher resultados retroativamente sem evidência.
+
+## Homologação da exclusão definitiva
+
+Validar confirmação digitada, escopo, preservação de outra auditoria e plano manual, remoção nos três buckets, retomada e trilha do Core em fixtures sintéticas. O aceite humano continua pendente. [Procedimento e contrato](EXCLUSAO_DEFINITIVA.md).

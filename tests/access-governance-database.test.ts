@@ -339,7 +339,7 @@ describe("Core access governance read v1", { concurrent: false }, () => {
       overlap_evaluated: false,
       role_key: "quality",
       composition_visibility: "available",
-      active_permission_count: 11,
+      active_permission_count: 12,
       inactive_permission_count: 0,
       role_grants_capabilities: true,
       holders_visibility: "available",
@@ -369,7 +369,7 @@ describe("Core access governance read v1", { concurrent: false }, () => {
     const [summary] = await roleSummary(roles.quality);
     expect(summary).toMatchObject({
       composition_visibility: "available",
-      active_permission_count: 11,
+      active_permission_count: 12,
       role_grants_capabilities: true,
       holders_visibility: "restricted",
       holder_count: null,
