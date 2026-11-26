@@ -23,6 +23,10 @@ Digite exatamente `excluir auditoria`. Cancelar antes da confirmação apenas fe
 4. `audit.finish_inspection_delete` consulta o Storage no banco, verifica a eventual pendência operacional e exclui, na mesma transação, evidências dos planos, planos da origem, derivados, evidências do checklist, respostas e inspeção. A trilha administrativa guarda o autorizador, o executor da conclusão, a unidade, a situação anterior, as contagens e o resultado. O inventário de objetos é descartado. Os identificadores de namespaces congelados impedem que uma gravação tardia recrie o alvo.
 5. O cliente recarrega a unidade, preserva o filtro do histórico e invalida o cache volátil de imagens dessa auditoria. Ao abrir painéis, planos ou relatórios, as consultas usam as projeções atuais. Bytes já entregues e exportações anteriores ficam sob controle de seus destinatários.
 
+Histórico e Planos de Ação retomam cada página pela última chave de ordenação retornada.
+Se uma auditoria ou um plano sair da listagem entre requisições, a posição dos demais registros
+não altera esse limite. Uma lista aberta pode conter registros já carregados até a próxima atualização.
+
 ```mermaid
 flowchart TD
   Preview["Consultar impacto"] --> Start["Confirmar frase e snapshot"]

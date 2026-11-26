@@ -12,18 +12,24 @@ import {
   creationScopes,
 } from "../apps/web/src/modules/action-plans/api";
 afterEach(() => http.mockReset());
+const summary = (i: number) => ({
+  plan: { id: String(i).padStart(4, "0"), created_at: "2026-09-30T12:00:00Z" },
+});
+const json = (body: unknown) => new Response(JSON.stringify(body), {
+  headers: { "Content-Type": "application/json" },
+});
 describe("Action Plan API pagination", () => {
   it("measures listing orchestration with 1001 synthetic plans and creation scopes", async () => {
-    const plans = Array.from({ length: 1001 }, (_, i) => ({ plan: { id: String(i) } }));
+    const plans = Array.from({ length: 1001 }, (_, i) => summary(i));
     const scopes = Array.from({ length: 1001 }, (_, i) => ({ unit_id: String(i), sector_id: null }));
-    http.mockImplementation(async (url: string) => {
+    http.mockImplementation(async (url: string, options: RequestInit) => {
       const u = new URL(url);
       const creation = u.pathname.endsWith("creation_scopes");
       await new Promise(resolve => setTimeout(resolve, creation ? 80 : 10));
       const offset = Number(u.searchParams.get("offset") ?? 0);
-      return new Response(JSON.stringify((creation ? scopes : plans).slice(offset, offset + 500)), {
-        headers: { "Content-Type": "application/json" },
-      });
+      if (creation) return json(scopes.slice(offset, offset + 500));
+      const { p_before_id } = JSON.parse(String(options.body));
+      return json(plans.filter(row => !p_before_id || row.plan.id > p_before_id).slice(0, 500));
     });
     const start = performance.now();
     const [before] = await Promise.all([summaries(), creationScopes()]);
@@ -40,21 +46,23 @@ describe("Action Plan API pagination", () => {
     console.info(`Synthetic listing (10ms summaries / 80ms scopes per page): before ${Math.round(beforeMs)}ms / ${beforeCalls} requests; lazy scopes ${Math.round(afterMs)}ms / ${http.mock.calls.length} requests`);
   });
   it("does not lose older plans beyond the Data API limit or discard the inspection filter", async () => {
-    const rows = Array.from({ length: 1001 }, (_, i) => ({
-      plan: { id: String(i) },
-    }));
+    const rows = Array.from({ length: 1001 }, (_, i) => summary(i));
+    const requests: unknown[] = [];
     http.mockImplementation(async (url: string, options: RequestInit) => {
-      expect(JSON.parse(String(options.body))).toEqual({
-        p_inspection: "inspection-id",
-      });
+      const args = JSON.parse(String(options.body));
+      requests.push(args);
       const u = new URL(url);
-      const offset = Number(u.searchParams.get("offset") ?? 0);
+      expect(u.searchParams.has("offset")).toBe(false);
       const limit = Math.min(Number(u.searchParams.get("limit") ?? 1000), 1000);
-      return new Response(JSON.stringify(rows.slice(offset, offset + limit)), {
-        headers: { "Content-Type": "application/json" },
-      });
+      expect(limit).toBe(500);
+      return json(rows.filter(row => !args.p_before_id || row.plan.id > args.p_before_id).slice(0, limit));
     });
     expect(await summaries({ p_inspection: "inspection-id" })).toEqual(rows);
+    expect(requests).toEqual([undefined, rows[499], rows[999]].map(last => ({
+      p_inspection: "inspection-id",
+      p_before_created_at: last?.plan.created_at ?? null,
+      p_before_id: last?.plan.id ?? null,
+    })));
   });
   it("loads every permitted creation scope, using unique ordering", async () => {
     const rows = Array.from({ length: 1001 }, (_, i) => ({
@@ -74,27 +82,24 @@ describe("Action Plan API pagination", () => {
     });
     expect(await creationScopes()).toEqual(rows);
   });
-  it("drops a plan repeated when a new plan shifts the next page", async () => {
-    const first = Array.from({ length: 500 }, (_, i) => ({
-      plan: { id: String(i) },
-    }));
-    const json = (body: unknown) =>
-      new Response(JSON.stringify(body), {
-        headers: { "Content-Type": "application/json" },
-      });
-    http.mockResolvedValueOnce(json(first));
-    http.mockResolvedValueOnce(json([first[499], { plan: { id: "500" } }]));
-    const result = await summaries();
-    expect(result.map((r) => r.plan.id)).toEqual([
-      ...first.map((r) => r.plan.id),
-      "500",
-    ]);
+  it.each(["remoção", "inserção"])("preserva os planos após %s concorrente", async (change) => {
+    const rows = Array.from({ length: 501 }, (_, i) => summary(i + 1));
+    const first = rows.slice(0, 500);
+    http.mockImplementation(async (url: string, options: RequestInit) => {
+      const { p_before_id } = JSON.parse(String(options.body));
+      const offset = Number(new URL(url).searchParams.get("offset") ?? 0);
+      const current = http.mock.calls.length === 1 ? rows :
+        change === "remoção" ? rows.slice(1).filter(row => row.plan.id !== first.at(-1)!.plan.id) : [summary(0), ...rows];
+      const remaining = p_before_id ? current.filter(row => row.plan.id > p_before_id) : current;
+      return json(remaining.slice(offset, offset + 500));
+    });
+    expect(await summaries()).toEqual(rows);
   });
   it("reports a later-page failure rather than presenting incomplete totals", async () => {
     http.mockResolvedValueOnce(
       new Response(
         JSON.stringify(
-          Array.from({ length: 500 }, () => ({ plan: { id: "x" } })),
+          Array.from({ length: 500 }, (_, i) => summary(i)),
         ),
         { headers: { "Content-Type": "application/json" } },
       ),
