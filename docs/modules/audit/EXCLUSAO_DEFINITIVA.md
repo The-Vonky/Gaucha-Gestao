@@ -4,7 +4,7 @@ O mantenedor aprovou a AUD-DELETE-01 em 26/11/2026, inclusive para auditorias fi
 
 ## Histórico da unidade
 
-Em **Auditorias → unidade → Histórico**, use **Excluir** ao lado de **Abrir**. Confira unidade, data, responsável e situação. As contagens incluem as  respostas, observações, reservas, evidências em todos os estados, registros de miniaturas, planos em cada situação e evidências de todas as rodadas. O comentário do critério corresponde ao campo de observação. Os planos verificados já estão incluídos nos concluídos. A exclusão remove atribuições de responsáveis, prazos, tratamentos e verificações. O cadastro de cada responsável é preservado.
+Em **Auditorias → unidade → Histórico**, use **Excluir** ao lado de **Abrir**. Confira unidade, data, responsável e situação. As contagens incluem as respostas, observações, reservas, evidências em todos os estados, registros de miniaturas, planos em cada situação e evidências de todas as rodadas. O comentário do critério corresponde ao campo de observação. Os planos verificados já estão incluídos nos concluídos. A exclusão remove atribuições de responsáveis, prazos, tratamentos e verificações. O cadastro de cada responsável é preservado.
 
 Digite exatamente `excluir auditoria`. Cancelar antes da confirmação apenas fecha o modal. Após confirmar, a remoção é irreversível. Se a conexão cair, volte ao histórico. Uma pessoa que ainda tenha leitura e exclusão na unidade pode retomar a mesma operação, inclusive após revogação do acesso de quem a iniciou. Em caso de conflito antes do início, leia a prévia atualizada e confirme novamente.
 
@@ -22,6 +22,17 @@ Digite exatamente `excluir auditoria`. Cancelar antes da confirmação apenas fe
 3. `audit.inspection_delete_state` entrega lotes de até 100 objetos catalogados. O cliente usa a Storage API com seu JWT. A política de SELECT específica da operação `storage.object.delete_many` e a de DELETE exigem a identidade exata do objeto inventariado e os dois grants atuais. O ingresso estrito existente revalida a sessão. Um novo upload ou uma publicação tardia no namespace congelado é rejeitado. Um lote parcial pode ser repetido.
 4. `audit.finish_inspection_delete` consulta o Storage no banco, verifica a eventual pendência operacional e exclui, na mesma transação, evidências dos planos, planos da origem, derivados, evidências do checklist, respostas e inspeção. A trilha administrativa guarda o autorizador, o executor da conclusão, a unidade, a situação anterior, as contagens e o resultado. O inventário de objetos é descartado. Os identificadores de namespaces congelados impedem que uma gravação tardia recrie o alvo.
 5. O cliente recarrega a unidade, preserva o filtro do histórico e invalida o cache volátil de imagens dessa auditoria. Ao abrir painéis, planos ou relatórios, as consultas usam as projeções atuais. Bytes já entregues e exportações anteriores ficam sob controle de seus destinatários.
+
+\`\`\`mermaid
+flowchart TD
+  Preview["Consultar impacto"] --> Start["Confirmar frase e snapshot"]
+  Start --> Freeze["Congelar auditoria e inventariar objetos"]
+  Freeze --> Remove["Remover objetos pela Storage API"]
+  Remove --> Check{"Há reconciliação pendente?"}
+  Check -->|Sim| Verify["Operador verifica versões físicas"]
+  Verify --> Finish["Concluir exclusão relacional e registrar evento no Core"]
+  Check -->|Não| Finish
+\`\`\`
 
 ## Reconciliação excepcional no DEV pessoal
 

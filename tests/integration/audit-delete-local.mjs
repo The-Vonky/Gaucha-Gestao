@@ -33,6 +33,7 @@ function must(result) {
   return result.data;
 }
 const rpc = async (fn,args={}) => must(await client.schema("audit").rpc(fn,args));
+const planRpc = async (fn,args) => must(await client.schema("action_plans").rpc(fn,args));
 const create = () => rpc("create_inspection",{p_unit:unit,p_applied_on:"2026-11-26",p_previous_visit_on:null});
 const impact = id => rpc("inspection_delete_impact",{p_inspection:id});
 const state = id => rpc("inspection_delete_state",{p_inspection:id});
@@ -73,14 +74,41 @@ try {
   await rpc("remove_checklist_evidence",{p_evidence:own.evidence_id});
   must(await client.schema("audit").from("inspection_answers").update({response:"AP",observation:tag}).eq("inspection_id",target).eq("item_key","item-001"));
   const plan=(await one("select id from action_plans.plans where source_inspection_id=$1",[target])).id;
-  const planFile=must(await client.schema("action_plans").rpc("begin_evidence_upload",{p_plan:plan,p_kind:"execution",p_original_name:"fixture.pdf",p_content_type:"application/pdf",p_size:pdf.length}))[0];
-  must(await client.storage.from("action-plan-evidence").upload(planFile.object_key,pdf,{contentType:"application/pdf"}));
-  must(await client.schema("action_plans").rpc("confirm_evidence_upload",{p_evidence:planFile.evidence_id}));
+  const attachPlan = async kind => {
+    const [file] = await planRpc("begin_evidence_upload", {p_plan:plan,p_kind:kind,
+      p_original_name:"fixture.pdf",p_content_type:"application/pdf",p_size:pdf.length});
+    must(await client.storage.from("action-plan-evidence").upload(file.object_key,pdf,{contentType:"application/pdf"}));
+    await planRpc("confirm_evidence_upload",{p_evidence:file.evidence_id});
+    return file.evidence_id;
+  };
+  const planVersion = async () => (await one("select version from action_plans.plans where id=$1",[plan])).version;
+  await planRpc("update_plan", {p_id:plan,p_version:await planVersion(),p_improvement_point:"Origem do checklist",
+    p_action:"Ação sintética",p_how_to:"Método sintético",p_responsible:"Responsável sintético",p_due_date:"2026-12-01",
+    p_effectiveness_criterion:"Critério sintético",p_monitoring_start:null,p_monitoring_end:null,p_expected_evidence:"PDF"});
+  await planRpc("set_plan_status",{p_id:plan,p_version:await planVersion(),p_status:"in_progress"});
+  const execution=await attachPlan("execution");
+  await planRpc("set_plan_status",{p_id:plan,p_version:await planVersion(),p_status:"completed"});
+  for (let round=1;round<=2;round++) {
+    const verification=await attachPlan("verification");
+    await planRpc("verify_plan",{p_id:plan,p_version:await planVersion(),p_effectiveness:"effective",
+      p_verified_on:"2026-11-26",p_notes:"Rodada sintética "+round,p_expected_evidence_ids:[execution,verification]});
+  }
+  const versionOf = async () => (await one("select version from audit.inspections where id=$1",[target])).version;
+  await db.query("update audit.inspection_answers set response='AT' where inspection_id=$1 and response is null",[target]);
+  const finalize = async () => rpc("finalize_inspection",{p_id:target,p_version:await versionOf(),p_expected_evidence_ids:[]});
+  await finalize();
+  await rpc("reopen_inspection",{p_id:target,p_version:await versionOf()});
+  must(await client.schema("audit").from("inspection_answers").update({response:"AT"}).eq("inspection_id",target).eq("item_key","item-001"));
+  await finalize();
   // Objeto legado sintético órfão do manifesto, mas de UUID de evidência inequívoco.
   const thumb = own.evidence_id+"/img-480-v1/"+"a".repeat(64)+"/"+"b".repeat(64)+".jpg";
   runIn("identity",`const {key}=JSON.parse(require('fs').readFileSync(0));fetch('http://storage:5000/object/audit-evidence-thumbnails/'+key,{method:'POST',headers:{Authorization:'Bearer '+process.env.GG_IDENTITY_AUTH_ADMIN_KEY,'Content-Type':'image/jpeg'},body:Buffer.from([255,216,255,217])}).then(r=>{if(!r.ok)process.exit(1)})`,{key:thumb});
   const snap=await impact(target);
-  assert.equal(snap.counts.objects,3);
+  assert.equal(snap.status,"finalized");
+  assert.equal(snap.counts.objects,5);
+  assert.equal(snap.counts.verified,1);
+  assert.equal(snap.counts.inactive_sources,1);
+  assert.equal(snap.counts.verification_evidence,2);
   const indexed=(await db.query("select * from audit_private.inspection_storage_objects($1)",[target])).rows;
   for (const o of indexed) assert.ok(physicalFile(o.bucket,o.name,o.revision));
   await start(target);
@@ -89,7 +117,7 @@ try {
   for (const bucket of ["action-plan-evidence","audit-checklist-evidence","audit-evidence-thumbnails"]) {
     const names=objects.filter(o=>o.bucket===bucket).map(o=>o.name);
     if(bucket==="audit-checklist-evidence") names.push(keep.object_key);
-    assert.equal(must(await client.storage.from(bucket).remove(names)).length,1);
+    assert.equal(must(await client.storage.from(bucket).remove(names)).length,bucket==="action-plan-evidence" ? 3 : 1);
     if(bucket==="action-plan-evidence") {
       await assert.rejects(finish(target),{code:"55000"});
       await db.query("update core.user_role_assignments set active=false where user_id=$1 and unit_id=$2",[user,unit]);
@@ -148,7 +176,11 @@ try {
     assert.equal((await db.query("select from audit.inspections where id=$1",[ui])).rowCount,0);
     await ctx.close();
   }
-  console.log("PASS Identity, três buckets, órfão físico, retomada, isolamento e Chromium 1280/375.");
+  phase="sessão sem admissão";
+  const beforeRevocation=await create();
+  await db.query("delete from private.identity_admissions where user_id=$1",[user]);
+  await assert.rejects(impact(beforeRevocation),{code:"42501"});
+  console.log("PASS Identity e sessão sem admissão, três buckets, auditoria finalizada e reaberta, reverificação, órfão físico, retomada, isolamento e Chromium 1280/375.");
   console.log("Fixture de homologação: "+tag+" | http://127.0.0.1:5173/audit/units/"+unit+"/historico");
 } catch(error) {
   console.error("Falha AUD-DELETE-01 DEV: "+phase+" ("+(error.code??error.name??"verificação")+")");

@@ -6,6 +6,8 @@ import { createRequire } from "node:module";
 const runtime = createRequire("/app/package.json");
 const { getConfig } = runtime("./dist/config");
 const { SEPARATOR } = runtime("./dist/storage/backend/adapter");
+// Carrega o grafo na mesma ordem do processo Storage, sem iniciar listener.
+runtime("./dist/app");
 const { ObjectAdminDelete } = runtime("./dist/storage/events/objects/object-admin-delete");
 const uuid = "[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}";
 const uuidKey = new RegExp("^" + uuid + "$");

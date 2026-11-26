@@ -31,8 +31,7 @@ function args(v: PlanValues) {
 export async function summaries(
   filter: { p_plan?: string; p_inspection?: string } = {},
 ): Promise<PlanSummary[]> {
-  // Newest first and never deleted: a plan created between pages only shifts
-  // earlier rows forward, so a repeated row is dropped and none is lost.
+  // Deduplicate rows shifted by concurrent changes between page requests.
   const rows = new Map<string, PlanSummary>();
   const pageSize = 500;
   for (let offset = 0; ; offset += pageSize) {
