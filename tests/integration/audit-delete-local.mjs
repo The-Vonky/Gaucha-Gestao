@@ -74,25 +74,28 @@ try {
   await rpc("remove_checklist_evidence",{p_evidence:own.evidence_id});
   must(await client.schema("audit").from("inspection_answers").update({response:"AP",observation:tag}).eq("inspection_id",target).eq("item_key","item-001"));
   const plan=(await one("select id from action_plans.plans where source_inspection_id=$1",[target])).id;
-  const attachPlan = async kind => {
+  const attachPlan = async (plan, kind) => {
     const [file] = await planRpc("begin_evidence_upload", {p_plan:plan,p_kind:kind,
       p_original_name:"fixture.pdf",p_content_type:"application/pdf",p_size:pdf.length});
     must(await client.storage.from("action-plan-evidence").upload(file.object_key,pdf,{contentType:"application/pdf"}));
     await planRpc("confirm_evidence_upload",{p_evidence:file.evidence_id});
     return file.evidence_id;
   };
-  const planVersion = async () => (await one("select version from action_plans.plans where id=$1",[plan])).version;
-  await planRpc("update_plan", {p_id:plan,p_version:await planVersion(),p_improvement_point:"Origem do checklist",
-    p_action:"Ação sintética",p_how_to:"Método sintético",p_responsible:"Responsável sintético",p_due_date:"2026-12-01",
-    p_effectiveness_criterion:"Critério sintético",p_monitoring_start:null,p_monitoring_end:null,p_expected_evidence:"PDF"});
-  await planRpc("set_plan_status",{p_id:plan,p_version:await planVersion(),p_status:"in_progress"});
-  const execution=await attachPlan("execution");
-  await planRpc("set_plan_status",{p_id:plan,p_version:await planVersion(),p_status:"completed"});
-  for (let round=1;round<=2;round++) {
-    const verification=await attachPlan("verification");
-    await planRpc("verify_plan",{p_id:plan,p_version:await planVersion(),p_effectiveness:"effective",
-      p_verified_on:"2026-11-26",p_notes:"Rodada sintética "+round,p_expected_evidence_ids:[execution,verification]});
-  }
+  const prepareVerifiedPlan = async plan => {
+    const planVersion = async () => (await one("select version from action_plans.plans where id=$1",[plan])).version;
+    await planRpc("update_plan", {p_id:plan,p_version:await planVersion(),p_improvement_point:"Origem do checklist",
+      p_action:"Ação sintética",p_how_to:"Método sintético",p_responsible:"Responsável sintético",p_due_date:"2026-12-01",
+      p_effectiveness_criterion:"Critério sintético",p_monitoring_start:null,p_monitoring_end:null,p_expected_evidence:"PDF"});
+    await planRpc("set_plan_status",{p_id:plan,p_version:await planVersion(),p_status:"in_progress"});
+    const execution=await attachPlan(plan,"execution");
+    await planRpc("set_plan_status",{p_id:plan,p_version:await planVersion(),p_status:"completed"});
+    for (let round=1;round<=2;round++) {
+      const verification=await attachPlan(plan,"verification");
+      await planRpc("verify_plan",{p_id:plan,p_version:await planVersion(),p_effectiveness:"effective",
+        p_verified_on:"2026-11-26",p_notes:"Rodada sintética "+round,p_expected_evidence_ids:[execution,verification]});
+    }
+  };
+  await prepareVerifiedPlan(plan);
   const versionOf = async () => (await one("select version from audit.inspections where id=$1",[target])).version;
   await db.query("update audit.inspection_answers set response='AT' where inspection_id=$1 and response is null",[target]);
   const finalize = async () => rpc("finalize_inspection",{p_id:target,p_version:await versionOf(),p_expected_evidence_ids:[]});
@@ -148,6 +151,95 @@ try {
   }
   assert.equal(physicalFile("audit-checklist-evidence",reserved.object_key,version),false);
   await finish(interrupted);
+  phase="AP-01 plano automático verificado";
+  const origin=await create();
+  const keepOrigin=await attach(origin);
+  const sourceKeys=["item-001","item-002"];
+  await db.query("update audit.inspection_answers set response='AP',observation=$2 where inspection_id=$1 and item_key=any($3)",[origin,tag,sourceKeys]);
+  const sourcePlan = async key => (await one("select id from action_plans.plans where source_inspection_id=$1 and source_item_key=$2",[origin,key]))?.id;
+  const automatic=await sourcePlan(sourceKeys[0]);
+  const sibling=await sourcePlan(sourceKeys[1]);
+  await attachPlan(sibling,"execution");
+  const removedFile=await attachPlan(automatic,"execution");
+  await planRpc("remove_evidence",{p_evidence:removedFile});
+  await prepareVerifiedPlan(automatic);
+  await db.query("update audit.inspection_answers set response='AT' where inspection_id=$1 and response is null",[origin]);
+  await rpc("finalize_inspection",{p_id:origin,p_version:(await one("select version from audit.inspections where id=$1",[origin])).version,
+    p_expected_evidence_ids:[keepOrigin.evidence_id]});
+  const originSnapshot = () => one(`select to_jsonb(i) inspection,
+    (select jsonb_agg(to_jsonb(a) order by a.item_key) from audit.inspection_answers a where a.inspection_id=i.id) answers,
+    (select jsonb_agg(to_jsonb(e) order by e.id) from audit.checklist_evidence e where e.inspection_id=i.id) evidence
+    from audit.inspections i where i.id=$1`,[origin]);
+  const originBefore=await originSnapshot();
+  const previewPlan = id => planRpc("plan_delete_impact",{p_plan:id});
+  const startPlan = (id,snapshot) => planRpc("begin_plan_delete",{
+    p_plan:id,p_snapshot:snapshot,p_confirmation:"excluir plano de ação",
+  });
+  const statePlan = id => planRpc("plan_delete_state",{p_plan:id});
+  const finishPlan = id => planRpc("finish_plan_delete",{p_plan:id});
+  const apObjects = async id => (await db.query("select * from action_plans_private.plan_storage_objects($1)",[id])).rows;
+  const observed=await previewPlan(automatic);
+  assert.equal(observed.verified,true);
+  assert.equal(observed.rounds,2);
+  assert.equal(observed.counts.verification_evidence,2);
+  assert.equal(observed.counts.removed_evidence,1);
+  const planFiles=await apObjects(automatic);
+  const [siblingFile]=await apObjects(sibling);
+  assert.equal(planFiles.length,4);
+  for(const o of planFiles) assert.ok(physicalFile(o.bucket,o.name,o.revision));
+  await startPlan(automatic,observed.snapshot);
+  await assert.rejects(start(origin),{code:"55000"});
+  const apBucket=client.storage.from("action-plan-evidence");
+  const names=(await statePlan(automatic)).objects.map(o=>o.name);
+  assert.equal(must(await apBucket.remove([names[0],siblingFile.name])).length,1);
+  await db.query("update core.user_role_assignments set active=false where user_id=$1 and unit_id=$2",[user,unit]);
+  await assert.rejects(statePlan(automatic),{code:"42501"});
+  const denied=await apBucket.remove(names.slice(1));
+  assert.ok(denied.error || denied.data.length===0);
+  await db.query("update core.user_role_assignments set active=true where user_id=$1 and unit_id=$2",[user,unit]);
+  assert.equal(must(await apBucket.remove((await statePlan(automatic)).objects.map(o=>o.name))).length,3);
+  await finishPlan(automatic);
+  for(const o of planFiles) assert.equal(physicalFile(o.bucket,o.name,o.revision),false);
+  assert.deepEqual(await originSnapshot(),originBefore);
+  must(await client.storage.from("audit-checklist-evidence").download(keepOrigin.object_key));
+  assert.equal(await sourcePlan(sourceKeys[1]),sibling);
+  assert.ok(physicalFile(siblingFile.bucket,siblingFile.name,siblingFile.revision));
+  assert.equal((await db.query("select from action_plans.evidence where plan_id=$1",[automatic])).rowCount,0);
+  await rpc("reopen_inspection",{p_id:origin,p_version:originBefore.inspection.version});
+  const setOrigin = (response) => db.query(
+    "update audit.inspection_answers set response=$3, observation='AP-01' where inspection_id=$1 and item_key=$2",
+    [origin,sourceKeys[0],response],
+  );
+  await setOrigin("AP");
+  await setOrigin("NAT");
+  assert.equal(await sourcePlan(sourceKeys[0]),undefined);
+  await setOrigin("AT");
+  await setOrigin("NAT");
+  assert.ok(await sourcePlan(sourceKeys[0]));
+  assert.notEqual(await sourcePlan(sourceKeys[0]),automatic);
+
+  phase="AP-01 reserva e reconciliação física";
+  const manual = () => planRpc("create_manual_plan",{p_unit:unit,p_sector:null,p_improvement_point:"Plano AP-01 "+tag});
+  const orphanPlan=await manual();
+  const [orphan]=await planRpc("begin_evidence_upload",{p_plan:orphanPlan,p_kind:"execution",
+    p_original_name:"fixture.pdf",p_content_type:"application/pdf",p_size:pdf.length});
+  const orphanVersion=randomUUID();
+  runIn("storage",`const {FileBackend}=require('./dist/storage/backend/file');const {key,v}=JSON.parse(require('fs').readFileSync(0));const bytes=Buffer.from('%PDF-1.4 fixture');new FileBackend().uploadObject('stub','stub/action-plan-evidence/'+key,v,require('stream').Readable.from(bytes),'application/pdf','0',undefined,bytes.length).catch(()=>process.exit(1));`,{key:orphan.object_key,v:orphanVersion});
+  assert.ok(physicalFile("action-plan-evidence",orphan.object_key,orphanVersion));
+  const orphanImpact=await previewPlan(orphanPlan);
+  assert.equal(orphanImpact.counts.reservations,1);
+  await startPlan(orphanPlan,orphanImpact.snapshot);
+  assert.deepEqual(await statePlan(orphanPlan),{completed:false,reconcile:true,objects:[]});
+  await assert.rejects(finishPlan(orphanPlan),{code:"55000"});
+  const reconcilePlan = (...extra) => execFileSync("python3",["scripts/audit-delete/reconcile-local.py",orphanPlan,"--plan",...extra],{encoding:"utf8",stdio:["ignore","pipe","pipe"]});
+  for(let attempt=0;;attempt++) {
+    try { assert.match(reconcilePlan(), /encontradas: 1/); reconcilePlan("--apply"); break; }
+    catch(error) { if(attempt>=12) throw error; await new Promise(r=>setTimeout(r,5000)); }
+  }
+  await finishPlan(orphanPlan);
+  assert.equal(physicalFile("action-plan-evidence",orphan.object_key,orphanVersion),false);
+  assert.equal((await db.query("select from action_plans.evidence where plan_id=$1",[orphanPlan])).rowCount,0);
+
   phase="Chromium no Vite";
   browser=await chromium.launch();
   for(const width of [1280,375]) {
@@ -174,6 +266,27 @@ try {
     await dialog.getByRole("button",{name:"Excluir definitivamente"}).click();
     await page.getByText("Auditoria excluída definitivamente.").waitFor();
     assert.equal((await db.query("select from audit.inspections where id=$1",[ui])).rowCount,0);
+    const manualUi=await manual();
+    const url="http://127.0.0.1:5173/action-plans/"+manualUi;
+    await page.goto(url);
+    const deletePlan=page.getByRole("button",{name:"Excluir",exact:true});
+    await deletePlan.focus(); await page.keyboard.press("Enter");
+    const planDialog=page.getByRole("dialog",{name:"Excluir plano de ação"});
+    await planDialog.getByText("Reservas pendentes").waitFor();
+    const confirm=planDialog.getByRole("button",{name:"Excluir definitivamente"});
+    await planDialog.getByRole("textbox").fill("Excluir plano de ação");
+    assert.equal(await confirm.isEnabled(),false);
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await planDialog.getByRole("button",{name:"Cancelar"}).click();
+    assert.ok(await deletePlan.evaluate(e=>e===document.activeElement));
+    assert.ok((await previewPlan(manualUi)).snapshot);
+    await deletePlan.click();
+    assert.equal(await planDialog.getByRole("textbox").inputValue(),"");
+    await planDialog.getByRole("textbox").fill("excluir plano de ação");
+    await confirm.click();
+    await page.getByText("Plano de ação excluído definitivamente.").waitFor();
+    await page.goto(url);
+    await page.getByText("Plano de ação indisponível").waitFor();
     await ctx.close();
   }
   phase="sessão sem admissão";
@@ -181,7 +294,7 @@ try {
   await db.query("delete from private.identity_admissions where user_id=$1",[user]);
   await assert.rejects(impact(beforeRevocation),{code:"42501"});
   console.log("PASS Identity e sessão sem admissão, três buckets, auditoria finalizada e reaberta, reverificação, órfão físico, retomada, isolamento e Chromium 1280/375.");
-  console.log("Fixture de homologação: "+tag+" | http://127.0.0.1:5173/audit/units/"+unit+"/historico");
+  console.log("PASS AP-01 plano automático verificado, preservação da auditoria e do plano irmão, arquivos físicos, reserva órfã, revogação, retomada e Chromium manual 1280/375.");
 } catch(error) {
   console.error("Falha AUD-DELETE-01 DEV: "+phase+" ("+(error.code??error.name??"verificação")+")");
   process.exitCode=1;

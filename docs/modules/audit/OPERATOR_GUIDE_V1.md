@@ -50,9 +50,12 @@ flowchart TD
   EXEC --> ANEX["Anexos de execução / verificação"]
   ANEX --> VER["Verificação de eficácia autorizada"]
   VER --> HIST["Histórico e indicadores"]
+  ORI --> DELETE["Excluir definitivamente com prévia e confirmação"]
 ~~~
 
 No código, os estados são **Pendente, Em andamento, Concluído**; a avaliação de eficácia pode ser **Eficaz, Parcialmente eficaz ou Ineficaz**. Vencido/próximo vencimento são indicadores calculados, não estados adicionais. Transições válidas, exigências e conflitos seguem apps/web/src/modules/action-plans/lifecycle.ts e [ACTION_PLAN_DOMAIN](../../briefs/ACTION_PLAN_DOMAIN_V1.md).
+
+No cabeçalho do plano, use **Excluir** para revisar o impacto e confirmar a exclusão definitiva com `excluir plano de ação`. Se a operação ficar pendente, volte à lista de Planos de Ação e use **Retomar exclusão**. [Procedimento AP-01](EXCLUSAO_DEFINITIVA.md#ap-01--exclusão-definitiva-de-planos-de-ação).
 
 ## Relatórios e suporte
 

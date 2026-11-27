@@ -384,9 +384,7 @@ Re-finalization recomputes the result from current answers.
 
 ### Delete
 
-Out of scope.
-
-A ação Excluir no histórico segue a AUD-DELETE-01.
+A ação Excluir no histórico segue a [AUD-DELETE-01](../modules/audit/EXCLUSAO_DEFINITIVA.md).
 
 ## Authorization / RLS
 

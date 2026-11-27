@@ -178,7 +178,7 @@ beforeAll(async () => {
  grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;`);
   await db.exec(STORAGE_STUB);
   const files = readdirSync("supabase/migrations").sort();
-  const actionPlans = files.filter((f) => f.includes("action_plans") || f.includes("_audit_delete_"));
+  const actionPlans = files.filter((f) => f.includes("action_plans") || f.includes("_audit_delete_") || f.includes("_action_plan_hard_delete"));
   for (const file of files.filter((f) => !actionPlans.includes(f)))
     await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
   const values = Object.values(users)
@@ -273,8 +273,7 @@ describe("Action Plans database", { concurrent: false }, () => {
   });
   it("exposes only the intended schema, functions and source shapes", async () => {
     await db.exec("reset role");
-    // The private schema is not in the Data API; authenticated gets USAGE only so Storage
-    // policies can call the two evidence predicates, which are its only executable functions.
+    // O schema privado concede acesso apenas aos predicados usados pelas políticas RLS.
     const usage = await one<{ exposed: boolean; privateUsage: boolean }>(
       `select has_schema_privilege('authenticated','action_plans','usage') exposed,
        has_schema_privilege('authenticated','action_plans_private','usage') "privateUsage"`,
@@ -283,6 +282,7 @@ describe("Action Plans database", { concurrent: false }, () => {
     const predicates = [
       "can_read_evidence_object",
       "can_upload_evidence_object",
+      "plan_is_intact",
     ];
     const fns = await db.query<{
       nspname: string;
@@ -486,6 +486,46 @@ describe("Action Plans database", { concurrent: false }, () => {
         ).n,
       ).toBe(4),
     );
+  });
+  it("requires read and delete on the same effective plan scope", async () => {
+    await login(users.global);
+    const unitPlan = await manual(A, null);
+    const sectorPlan = await manual(A, S);
+    const otherPlan = await manual(B, U);
+    const impact = (id: string) =>
+      one<{ impact: { snapshot: string } }>("select action_plans.plan_delete_impact($1) impact", [id]);
+    const snapshot = (await impact(sectorPlan)).impact.snapshot;
+    await login(users.writer);
+    await expect(impact(sectorPlan)).rejects.toMatchObject({ code: "42501" });
+    await login(users.inactive);
+    await expect(impact(sectorPlan)).rejects.toMatchObject({ code: "42501" });
+    await login(users.unitA);
+    await expect(impact(otherPlan)).rejects.toMatchObject({ code: "42501" });
+    await asOwner(async () => {
+      await db.exec(`insert into core.role_permissions select id,'action_plan.delete' from core.roles where key='ap-all';
+        delete from core.role_permissions where permission_key='action_plan.read'
+          and role_id=(select id from core.roles where key='ap-all');`);
+    });
+    await login(users.sector);
+    await expect(impact(sectorPlan)).rejects.toMatchObject({ code: "42501" });
+    await asOwner(() => db.exec(`insert into core.role_permissions
+      select id,'action_plan.read' from core.roles where key='ap-all';`));
+    await expect(impact(unitPlan)).rejects.toMatchObject({ code: "42501" });
+    await expect(impact(otherPlan)).rejects.toMatchObject({ code: "42501" });
+    await db.query("select action_plans.begin_plan_delete($1,$2,'excluir plano de ação')", [sectorPlan, snapshot]);
+    expect(await rows("select id from action_plans.plans where id=$1", [sectorPlan])).toEqual([]);
+    await db.query("select action_plans.finish_plan_delete($1)", [sectorPlan]);
+    expect(await plan(sectorPlan)).toBeUndefined();
+    expect(await plan(unitPlan)).toBeDefined();
+    expect(await plan(otherPlan)).toBeDefined();
+    await asOwner(() => db.exec(`delete from core.role_permissions where permission_key='action_plan.delete'
+      and role_id=(select id from core.roles where key='ap-all');`));
+    await login(users.admin);
+    for (const id of [unitPlan, otherPlan]) {
+      const { snapshot } = (await impact(id)).impact;
+      await db.query("select action_plans.begin_plan_delete($1,$2,'excluir plano de ação')", [id, snapshot]);
+      await db.query("select action_plans.finish_plan_delete($1)", [id]);
+    }
   });
   it("applies read scope; sector-only and guessed IDs do not leak", async () => {
     await login(users.global);

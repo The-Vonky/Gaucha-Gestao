@@ -61,3 +61,21 @@ Uma perda externa de catálogo/volume ou versão física antiga sem qualquer ind
 ## Roteiro de homologação
 
 Use a unidade sintética identificada na entrega da PR. Abra o histórico em desktop e em 375 px, confira o impacto e cancele. Abra novamente, confira que o campo está vazio e confirme apenas a auditoria sintética escolhida. Confira o resumo, evolução, painel de Qualidade, planos, URL direta, exportações e os dois eventos nos Logs do sistema. Verifique que outra auditoria e um plano manual da mesma unidade continuam disponíveis.
+
+## AP-01 — exclusão definitiva de planos de ação
+
+No cabeçalho de um plano manual ou automático, abra **Excluir**, revise unidade, setor, situação e contagens e digite `excluir plano de ação`. A prévia inclui evidências de execução, de todas as rodadas de verificação, removidas anteriormente, reservas e objetos catalogados. Cancelar fecha a prévia. A confirmação é irreversível e pode ser retomada por outro operador autorizado.
+
+A ação exige `action_plan.read` e `action_plan.delete` no escopo efetivo. Quality e Platform Administrator recebem a capacidade inicial. Um grant setorial só cobre um plano daquele setor. A operação inclui planos concluídos e verificados. Preserva a auditoria de origem, suas respostas, evidências e pontuação, outros planos, cadastros, os eventos anteriores do Core e backups.
+
+A AP-01 usa a mesma barreira de publicação, inventário por identidade de objeto, lotes pela Storage API com JWT e reconciliação da AUD-DELETE-01. O início congela o plano e seu namespace. Uma exclusão em curso sai das projeções normais e pode ser retomada pela lista ou URL do plano com os grants atuais. Após concluir, o plano desaparece também do acesso direto, do histórico e dos indicadores. Uma exclusão iniciada na auditoria impede iniciar a de um plano vinculado. Se o plano já estiver em exclusão, retome-o antes de confirmar a exclusão da auditoria.
+
+Ao concluir a exclusão de um plano automático ainda em AP/NAT, o banco guarda apenas a chave da resposta para controlar esse ciclo. Edições de observação e alternância entre AP e NAT não recriam o plano. Sair de AP/NAT remove a marca e uma nova entrada em AP/NAT gera outro plano. A exclusão definitiva da auditoria também remove a marca.
+
+Se houver pendência de reconciliação, esgote os lotes pela aplicação. O operador do notebook usa o [mesmo procedimento físico](#reconciliação-excepcional-no-dev-pessoal) com o UUID do plano e a opção `--plan`. Após conferir o escopo e a inspeção, acrescente `--apply` e retome pela aplicação.
+
+```bash
+python3 scripts/audit-delete/reconcile-local.py UUID_DO_PLANO --plan
+```
+
+Para homologar, cancele e reabra o modal de um plano sintético. Confirme a exclusão, confira URL direta, histórico, indicadores e logs do Core. Repita em um plano verificado com evidências e confira a auditoria e os demais planos. Com uma origem em AP/NAT, edite a observação, mude de AP para NAT, depois saia e volte a AP/NAT. Um novo plano deve aparecer somente no último passo.

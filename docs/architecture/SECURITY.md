@@ -39,6 +39,8 @@ Na Curva ABC, o browser interpreta o XLSX e a RPC revalida payload, somas e meta
 
 Os adaptadores no modo estrito usam leitura autenticada para evidências de Auditorias e Planos de Ação, fotos de Salas, capas de unidade, originais ABC e imagens de relatórios. A autorização preserva estado, escopo e limites dos contratos. Bytes já entregues e arquivos exportados permanecem fora do alcance da revogação. [Gateway Identity](../../apps/core-identity/storage.mjs) · [Cliente de Storage privado](../../apps/web/src/core/auth/privateStorage.ts) · [Runbook imgproxy](../operations/AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md) · [Relatórios com evidências](../modules/audit/REPORT_EVIDENCE_EXPORT.md).
 
+O purge definitivo de auditorias e planos usa o JWT do operador e inventário congelado. A RLS autoriza somente a remoção em lote da identidade de objeto inventariada, com leitura e exclusão efetivas no escopo da operação. [Contrato de exclusão](../modules/audit/EXCLUSAO_DEFINITIVA.md).
+
 Para Relatos, a omissão de `feedback-attachments` no ingresso estrito barrava o envio e o download antes das políticas do bucket. O ingresso admite agora apenas upload sem upsert e download autenticado no caminho de objeto com UUID canônico e extensão `.png` ou `.jpg`. A sessão admitida e o JWT do titular continuam obrigatórios. A RLS exige reserva pendente do titular no upload e Platform Administrator global com autoridade atual no download de relato recebido. [Ingresso Identity](../../apps/core-identity/storage.mjs) · [Contrato GG-11 e testes](../modules/feedback/FEEDBACK_V1.md#provas-da-compatibilidade-com-identity).
 
 ## Auditoria sistêmica

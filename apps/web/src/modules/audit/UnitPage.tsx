@@ -376,7 +376,7 @@ function UnitHistoryTab({ unit, rows, pending, from, to, setFrom, setTo, onDelet
                   <Link className="button-link" to={`/audit/inspections/${row.id}`}>
                     Abrir
                   </Link>
-                  {canDelete && <button className="inspection-delete-button" onClick={() => onDelete(row.id, false)}>
+                  {canDelete && <button className="definitive-delete-button" onClick={() => onDelete(row.id, false)}>
                     <Icon name="trash" /> Excluir
                   </button>}
                   </div>

@@ -1,4 +1,5 @@
-import type { DeleteImpact, DeleteState } from "./deletion";
+import type { DeleteState } from "../../shared/storageDeletion";
+import type { DeleteImpact } from "./deletion";
 import type { Classification, Response } from "./scoring";
 import type { HistoryReport, InspectionReport } from "./reporting/types";
 export type Section = {

@@ -1,3 +1,5 @@
+import type { DeleteState } from "../../shared/storageDeletion";
+
 export type PlanStatus = "pending" | "in_progress" | "completed";
 export type Effectiveness = "effective" | "partially_effective" | "ineffective";
 export type Plan = {
@@ -87,6 +89,24 @@ type PlanArgs = {
   p_monitoring_end: string | null;
   p_expected_evidence: string;
 };
+export type PlanDeleteImpact = {
+  title: string;
+  unit: string;
+  sector: string | null;
+  status: PlanStatus;
+  source: Plan["source_type"];
+  verified: boolean;
+  rounds: number;
+  snapshot: string;
+  counts: {
+    execution_evidence: number;
+    verification_evidence: number;
+    removed_evidence: number;
+    reservations: number;
+    objects: number;
+  };
+};
+export type PendingPlanDeletion = { id: string; title: string; unit_name: string };
 export type ActionPlansDatabase = {
   action_plans: {
     Tables: Record<string, never>;
@@ -95,6 +115,17 @@ export type ActionPlansDatabase = {
       plan_summaries_page: {
         Args: { p_plan?: string; p_inspection?: string; p_before_created_at?: string | null; p_before_id?: string | null };
         Returns: PlanSummary[];
+      };
+      plan_delete_impact: { Args: { p_plan: string }; Returns: PlanDeleteImpact };
+      begin_plan_delete: {
+        Args: { p_plan: string; p_snapshot: string; p_confirmation: string };
+        Returns: undefined;
+      };
+      plan_delete_state: { Args: { p_plan: string }; Returns: DeleteState };
+      finish_plan_delete: { Args: { p_plan: string }; Returns: undefined };
+      pending_plan_deletions: {
+        Args: { p_plan?: string; p_inspection?: string; p_after_id?: string };
+        Returns: PendingPlanDeletion[];
       };
       creation_scopes: {
         Args: Record<string, never>;

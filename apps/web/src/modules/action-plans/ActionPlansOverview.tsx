@@ -1,5 +1,5 @@
 import { useCallback, useId, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
 import { hasAnyScope } from "../../core/auth/permissions";
 import { formatDate } from "../../shared/dates";
@@ -14,6 +14,7 @@ import {
   PageTitle,
 } from "../../shared/ui";
 import * as api from "./api";
+import { pendingPlanDeletions } from "./deletion";
 import {
   daysUntilDue,
   isDueSoon,
@@ -44,6 +45,7 @@ const initial: Filters = {
 };
 export function ActionPlansOverview() {
   const auth = useAuth();
+  const { state } = useLocation();
   const [params, setParams] = useSearchParams();
   const inspection = params.get("inspection") ?? "";
   const [filters, setFilters] = useState(initial);
@@ -58,6 +60,10 @@ export function ActionPlansOverview() {
   const r = useResource(
     useCallback(() => api.summaries(inspection ? { p_inspection: inspection } : {}), [inspection]),
   );
+  const mayDelete = hasAnyScope(!!auth.profile?.active, auth.grants, "action_plan.delete");
+  const pending = useResource(useCallback(() => mayDelete
+    ? pendingPlanDeletions(inspection ? { p_inspection: inspection } : {})
+    : Promise.resolve([]), [inspection, mayDelete]));
   const scopes = useResource(
     useCallback(() => creating && canCreate ? api.creationScopes() : Promise.resolve(null), [creating, canCreate]),
   );
@@ -130,6 +136,14 @@ export function ActionPlansOverview() {
           </button>
         )}
       </PageTitle>
+      {state?.deletionFeedback && <Notice>{state.deletionFeedback}</Notice>}
+      {pending.error && <Notice error>
+        {pending.error} <button onClick={pending.reload}>Tentar novamente</button>
+      </Notice>}
+      {pending.data?.map(row => <Notice key={row.id}>
+        Exclusão em andamento · {row.title} · {row.unit_name}.{" "}
+        <Link to={`/action-plans/${row.id}`}>Retomar exclusão</Link>
+      </Notice>)}
       {inspection && (
         <Notice>
           Exibindo os planos gerados por uma auditoria específica.{" "}
