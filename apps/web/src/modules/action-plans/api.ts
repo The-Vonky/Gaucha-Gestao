@@ -4,6 +4,7 @@ import type {
   ActionPlansDatabase,
   CreationScope,
   Effectiveness,
+  ExecutionReport,
   Plan,
   PlanStatus,
   PlanSummary,
@@ -20,7 +21,7 @@ function args(v: PlanValues) {
     p_improvement_point: v.improvement_point,
     p_action: v.action,
     p_how_to: v.how_to,
-    p_responsible: v.responsible,
+    p_responsible_id: v.responsible_id,
     p_due_date: v.due_date,
     p_effectiveness_criterion: v.effectiveness_criterion,
     p_monitoring_start: v.monitoring_start,
@@ -84,6 +85,34 @@ export async function update(row: Plan, values: PlanValues) {
     p_id: row.id,
     p_version: row.version,
     ...args(values),
+  });
+  if (error) throw error;
+}
+export async function searchAssignees(
+  unit: string, sector: string | null, query: string, planId?: string,
+) {
+  const { data, error } = await db().rpc("search_assignees", {
+    p_unit: unit, p_sector: sector, p_query: query, p_plan: planId,
+  });
+  if (error) throw error;
+  return data ?? [];
+}
+export async function executionReports(planId: string): Promise<ExecutionReport[]> {
+  const rows: ExecutionReport[] = [];
+  const pageSize = 100;
+  for (;;) {
+    const { data, error } = await db().rpc("execution_report_history", {
+      p_plan: planId,
+      p_before_version: rows.at(-1)?.version,
+    }).limit(pageSize);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) return rows;
+  }
+}
+export async function saveExecutionReport(row: Plan, report: string) {
+  const { error } = await db().rpc("save_execution_report", {
+    p_plan: row.id, p_version: row.version, p_report: report,
   });
   if (error) throw error;
 }

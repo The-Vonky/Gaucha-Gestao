@@ -51,6 +51,10 @@ Uma pessoa pode ter Qualidade em uma unidade e Vendas em outra. Cada operação 
 
 Escrita operacional revalida o perfil e o escopo atual, incluindo origem e destino em transferência. Criar e transferir exigem unidade de destino ativa. A leitura autorizada inclui o histórico de unidades inativas. O dashboard consulta somente agregados autorizados e resguarda o fechamento global de leitores unitários. Para exportar, cada unidade precisa de `sales.entry.read` e da capacidade de exportação do modo escolhido. Exportar completa percorre o histórico autorizado. Ajustes analíticos exigem também `sales.dashboard.read`. O contrato preserva a precisão monetária e revalida o conjunto autorizado entre páginas e antes de gerar o arquivo. [Operação](../modules/sales/VEN02_OPERATIONS.md) · [Análise](../modules/sales/VEN03_ANALYTICS.md) · [Exportação](../modules/sales/VEN05A_EXCEL_EXPORT.md).
 
+## Delegação de planos de ação
+
+[AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md) combina leitura geral por `action_plan.read` com leitura por atribuição e `action_plan.execute`. A gestão usa `action_plan.write`, a conclusão e a reabertura usam `action_plan.complete`, e a verificação usa `action_plan.verify`. RLS, RPCs e Storage reavaliam perfil, grant e escopo. O perfil Executor, sozinho, não tem leitura geral de Auditorias.
+
 ## Navegação e aplicação no banco
 
 O menu e os Guards usam capacidades efetivas para orientar a navegação. Para autorizar, valide a permissão específica da operação e seu escopo com os helpers do Core e a regra de domínio. Evite verificações genéricas por nome de papel. Restrições explícitas do catálogo e do domínio seguem o contrato aprovado. Cada tabela exposta à Data API exige grants explícitos, RLS ativo e políticas de permissão e escopo. Schemas internos ficam fora da Data API. Funções `SECURITY DEFINER` exigem `search_path` fixo, referências qualificadas e `EXECUTE` restrito. Os [manifests](../../infra/local/compose.yaml) definem os schemas expostos por perfil. O [contrato de integração](API_CONTRACTS.md) aponta os consumidores das APIs.

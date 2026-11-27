@@ -9,7 +9,7 @@ Use somente DEV/STAGING autorizados com dados sintéticos até existir GO de pro
 | Área | Rota inicial no shell | Permissão relevante |
 | --- | --- | --- |
 | Auditorias | /audit | audit.inspection.read |
-| Planos de Ação | /action-plans | action_plan.read |
+| Planos de Ação | /action-plans | action_plan.read ou action_plan.execute por atribuição |
 | Administração de usuários | /admin/users | admin.user.read/manage |
 | Papéis de acesso | /admin/roles | admin.role.read/manage |
 | Catálogo de permissões | /admin/permissions | admin.role.read/manage |
@@ -46,14 +46,17 @@ flowchart TD
   ORI["Criar plano manual ou acessar plano originado em auditoria"] --> FIELDS["Ponto de melhoria, ação, como executar, responsável, prazo, eficácia, evidência esperada"]
   FIELDS --> READY{"Campos exigidos para execução completos?"}
   READY -- "Não" --> FIELDS
-  READY -- "Sim" --> EXEC["Pendente → Em andamento → Concluído, conforme regras"]
-  EXEC --> ANEX["Anexos de execução / verificação"]
-  ANEX --> VER["Verificação de eficácia autorizada"]
+  READY -- "Sim" --> EXEC["Iniciar com responsável cadastrado"]
+  EXEC --> ANEX["Salvar relato e evidências da execução"]
+  ANEX --> COMPLETE["Concluir com autorização"]
+  COMPLETE --> VER["Verificação de eficácia autorizada"]
   VER --> HIST["Histórico e indicadores"]
   ORI --> DELETE["Excluir definitivamente com prévia e confirmação"]
 ~~~
 
 No código, os estados são **Pendente, Em andamento, Concluído**; a avaliação de eficácia pode ser **Eficaz, Parcialmente eficaz ou Ineficaz**. Vencido/próximo vencimento são indicadores calculados, não estados adicionais. Transições válidas, exigências e conflitos seguem apps/web/src/modules/action-plans/lifecycle.ts e [ACTION_PLAN_DOMAIN](../../briefs/ACTION_PLAN_DOMAIN_V1.md).
+
+No planejamento, busque e selecione o responsável cadastrado. Com o plano em andamento, use **Relato da execução** para salvar observações e consultar revisões. [Procedimento AP-02](DELEGACAO_PLANOS_ACAO.md).
 
 No cabeçalho do plano, use **Excluir** para revisar o impacto e confirmar a exclusão definitiva com `excluir plano de ação`. Se a operação ficar pendente, volte à lista de Planos de Ação e use **Retomar exclusão**. [Procedimento AP-01](EXCLUSAO_DEFINITIVA.md#ap-01--exclusão-definitiva-de-planos-de-ação).
 

@@ -62,6 +62,10 @@ Trilha de eventos orientada a append:
 
 Clientes autenticados **não** têm escrita/exclusão direta comum na trilha. **Auditoria sistêmica é diferente do módulo Qualidade > Auditorias.**
 
+## Delegação e relato de planos de ação
+
+`action_plans.plans.responsible_id` referencia `core.profiles.id`. `responsible` guarda o texto legado. `action_plans_private.execution_reports` guarda revisões por `(plan_id, version)` com texto, autor e instante. A exclusão do plano exclui as revisões pela FK em cascata. [AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md)
+
 ## Tipos e propriedade
 
 - **Identificadores:** UUID por padrão; código de negócio estável é separado.

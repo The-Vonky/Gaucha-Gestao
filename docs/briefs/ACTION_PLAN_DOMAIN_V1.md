@@ -1,5 +1,7 @@
 # Implementation Brief — Action Plan Domain v1
 
+> A delegação por UUID, as capacidades de execução/conclusão, os estados legados e o relato seguem o [contrato AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md). As referências a responsável em texto neste brief registram a base anterior.
+
 Status: CLOSED FOR IMPLEMENTATION  
 Date: 2026-09-24  
 Baseline: `main` at or after `936626d13d1697dd88e643aec673a543b57a5ae6`

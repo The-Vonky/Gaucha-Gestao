@@ -188,6 +188,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm audit --prefix apps/core-identity --audit-level=moderate
+      - run: npx playwright install --with-deps chromium
       - name: Validação integrada de identidade no Compose descartável da CI
         run: python3 -B infra/local/rehearse-identity.py
       - name: Remover exclusivamente o Compose descartável da CI

@@ -36,7 +36,8 @@ def main():
     subprocess.run(strict + ["up", "-d", "--build", "--wait", "kong"], check=True)
     local["sql"](credentials, project, "update private.identity_settings set enabled=true;")
     env = {**os.environ, "GG_IDENTITY_TEST_ANON_KEY": local["private_values"](credentials)["ANON_KEY"]}
-    subprocess.run(["node", str(ROOT / "tests/integration/gg05b-identity.mjs"), project], env=env, check=True)
+    for suite in ("gg05b-identity.mjs", "action-plans-delegation.mjs"):
+        subprocess.run(["node", str(ROOT / "tests/integration" / suite), project], env=env, check=True)
 
 
 if __name__ == "__main__":

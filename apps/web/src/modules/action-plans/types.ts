@@ -16,7 +16,8 @@ export type Plan = {
   improvement_point: string;
   action: string;
   how_to: string;
-  responsible: string;
+  responsible: string; // Texto legado.
+  responsible_id: string | null;
   due_date: string | null;
   status: PlanStatus;
   effectiveness_criterion: string;
@@ -44,6 +45,15 @@ export type PlanSummary = {
   item_number: number | null;
   verified_by_name: string | null;
   completed_by_name: string | null;
+  responsible_name: string | null;
+};
+export type Assignee = { id: string; name: string };
+export type ExecutionReport = {
+  version: number;
+  report: string;
+  saved_by: string;
+  saved_by_name: string;
+  saved_at: string;
 };
 export type EvidenceKind = "execution" | "verification";
 export type Evidence = {
@@ -71,7 +81,7 @@ export type PlanValues = {
   improvement_point: string;
   action: string;
   how_to: string;
-  responsible: string;
+  responsible_id: string | null;
   due_date: string | null;
   effectiveness_criterion: string;
   monitoring_start: string | null;
@@ -82,7 +92,7 @@ type PlanArgs = {
   p_improvement_point: string;
   p_action: string;
   p_how_to: string;
-  p_responsible: string;
+  p_responsible_id: string | null;
   p_due_date: string | null;
   p_effectiveness_criterion: string;
   p_monitoring_start: string | null;
@@ -137,6 +147,18 @@ export type ActionPlansDatabase = {
       };
       update_plan: {
         Args: PlanArgs & { p_id: string; p_version: number };
+        Returns: undefined;
+      };
+      search_assignees: {
+        Args: { p_unit: string; p_sector: string | null; p_query: string; p_plan?: string };
+        Returns: Assignee[];
+      };
+      execution_report_history: {
+        Args: { p_plan: string; p_before_version?: number };
+        Returns: ExecutionReport[];
+      };
+      save_execution_report: {
+        Args: { p_plan: string; p_version: number; p_report: string };
         Returns: undefined;
       };
       set_plan_status: {

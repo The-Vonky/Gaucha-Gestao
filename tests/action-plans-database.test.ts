@@ -17,6 +17,8 @@ const users = {
   auditOnly: uid(7),
   empty: uid(8),
   inactive: uid(9),
+  executor: uid(10),
+  replacement: uid(11),
 };
 const A = "10000000-0000-0000-0000-000000000001";
 const B = "10000000-0000-0000-0000-000000000002";
@@ -118,7 +120,7 @@ async function manual(unit: string, sector: string | null, point = "Ponto") {
 const complete = {
   action: "Reinstalar telas",
   how: "Contratar manutenção",
-  responsible: "Equipe de Manutenção",
+  responsible: users.global as string | null,
   due: "2026-10-30",
   criterion: "Sem novos insetos",
   start: null as string | null,
@@ -132,7 +134,7 @@ async function update(
 ) {
   const f = { ...complete, ...over };
   await db.query(
-    "select action_plans.update_plan($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+    "select action_plans.update_plan($1,$2,$3,$4,$5,$6::uuid,$7,$8,$9,$10,$11)",
     [
       id,
       version,
@@ -223,7 +225,11 @@ beforeAll(async () => {
   await db.exec("reset role");
   for (const file of actionPlans)
     await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
-  await db.exec(`update core.units set active=false where id='${C}';
+  await db.exec(`
+ select set_config('request.jwt.claim.sub','',false);
+ ${assign(users.executor, "quality_executor", "sector", A, S)}
+ ${assign(users.replacement, "quality_executor", "unit", A)}
+ update core.units set active=false where id='${C}';
  update core.sectors set active=false where id='${T}';
  update core.profiles set active=false where id='${users.inactive}';`);
 }, 60000);
@@ -280,6 +286,7 @@ describe("Action Plans database", { concurrent: false }, () => {
     );
     expect(usage).toEqual({ exposed: true, privateUsage: true });
     const predicates = [
+      "can_read_plan",
       "can_read_evidence_object",
       "can_upload_evidence_object",
       "plan_is_intact",
@@ -595,7 +602,7 @@ describe("Action Plans database", { concurrent: false }, () => {
     ] as const;
     let v = 1;
     for (const field of fields) {
-      await update(id, v, { [field]: field === "due" ? null : "" });
+      await update(id, v, { [field]: field === "due" || field === "responsible" ? null : "" });
       v++;
       await expect(status(id, v, "in_progress")).rejects.toThrow(/plans_ready/);
     }
@@ -1413,5 +1420,163 @@ describe("Action Plan evidence", { concurrent: false }, () => {
     await expect(
       db.query("select * from action_plans_private.evidence_reconciliation()"),
     ).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe("AP-02 — delegação e relato", { concurrent: false }, () => {
+  const save = (id: string, version: number, report: string) =>
+    db.query("select action_plans.save_execution_report($1,$2,$3)", [id, version, report]);
+  const history = (id: string) => rows("select * from action_plans.execution_report_history($1)", [id]);
+  const direct = (id: string) => rows("select id from action_plans.plans where id=$1", [id]);
+  const search = (sector: string | null, id: string | null = null) =>
+    rows("select id from action_plans.search_assignees($1,$2,'',$3)", [A, sector, id]);
+  const delegate = (id: string, version: number, responsible: string) =>
+    update(id, version, { responsible });
+
+  it("combina leitores independentes com Executor por atribuição e escopo", async () => {
+    await login(users.unitA);
+    const id = await manual(A, S);
+    const unassigned = await manual(A, S);
+    expect(await search(S, id)).toContainEqual({ id: users.executor });
+    expect(await search(null)).not.toContainEqual({ id: users.executor });
+    expect(await search(S)).not.toContainEqual({ id: users.inactive });
+    expect(await search(S)).not.toContainEqual({ id: users.verifier });
+    await expect(status(id, 1, "in_progress")).rejects.toThrow(/eligible assignee/);
+    await expect(delegate(id, 1, users.inactive)).rejects.toThrow(/eligible assignee/);
+    await delegate(id, 1, users.executor);
+    expect(await plan(id)).toMatchObject({ responsible: "", responsible_id: users.executor });
+
+    await login(users.replacement);
+    expect(await direct(id)).toEqual([]);
+    await expect(status(id, 2, "in_progress")).rejects.toThrow(/Forbidden/);
+    await login(users.executor);
+    expect(await direct(id)).toEqual([{ id }]);
+    expect(await direct(unassigned)).toEqual([]);
+    expect(await rows("select * from action_plans.plan_summaries($1)", [unassigned])).toEqual([]);
+    expect(await rows("select * from audit.inspection_summaries()")).toEqual([]);
+    await expect(search(S, id)).rejects.toThrow(/Forbidden/);
+    await expect(manual(A, S)).rejects.toThrow(/Forbidden/);
+    await expect(update(id, 2)).rejects.toThrow(/Forbidden/);
+    await expect(status(id, 2, "completed")).rejects.toThrow(/Forbidden/);
+    await expect(save(id, 2, "Antes do início")).rejects.toThrow(/not in progress/);
+    await expect(beginEvidence(id, "execution")).rejects.toThrow(/not in progress/);
+    await status(id, 2, "in_progress");
+    await expect(status(id, 3, "pending")).rejects.toThrow(/Forbidden/);
+
+    await save(id, 3, "Primeira execução");
+    await expect(save(id, 3, "Versão antiga")).rejects.toThrow(/Concurrent/);
+    await expect(save(id, 4, "a".repeat(2001))).rejects.toThrow(/2000/);
+    await save(id, 4, "Execução revisada");
+    expect(await history(id)).toMatchObject([
+      { version: 5, report: "Execução revisada", saved_by: users.executor },
+      { version: 4, report: "Primeira execução", saved_by: users.executor },
+    ]);
+    expect((await plan(id)).status).toBe("in_progress");
+
+    await db.exec("select set_config('storage.operation','storage.object.upload',false)");
+    const own = await attach(id, users.executor);
+    await login(users.unitA);
+    const fromManager = await attach(id, users.unitA);
+    await login(users.executor);
+    await expect(removeEvidence(fromManager.evidence_id)).rejects.toThrow(/Forbidden/);
+    await removeEvidence(own.evidence_id);
+    const reservation = await beginEvidence(id, "execution");
+
+    await login(users.unitA);
+    await delegate(id, 5, users.replacement);
+    expect(await history(id)).toHaveLength(2);
+    await login(users.executor);
+    expect(await direct(id)).toEqual([]);
+    expect(await listEvidence(id)).toEqual([]);
+    expect(await history(id)).toEqual([]);
+    await expect(db.query(
+      "insert into storage.objects(bucket_id,name,owner_id) values('action-plan-evidence',$1,$2)",
+      [reservation.object_key, users.executor],
+    )).rejects.toThrow(/row-level security/);
+    await expect(confirmEvidence(reservation.evidence_id)).rejects.toThrow(/Forbidden/);
+
+    await asOwner(() => db.exec(`
+      select set_config('request.jwt.claim.sub','',false);
+      insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id)
+      select '${users.executor}',id,'unit','${A}' from core.roles where key='quality_viewer';`));
+    expect(await direct(id)).toEqual([{ id }]);
+    expect(await direct(unassigned)).toEqual([{ id: unassigned }]);
+    expect(await history(id)).toHaveLength(2);
+    await expect(save(id, 6, "Sem atribuição")).rejects.toThrow(/Forbidden/);
+
+    await login(users.replacement);
+    expect(await direct(id)).toEqual([{ id }]);
+    await expect(removeEvidence(fromManager.evidence_id)).rejects.toThrow(/Forbidden/);
+    await asOwner(() => db.exec(`update core.user_role_assignments set active=false where user_id='${users.replacement}'`));
+    expect(await direct(id)).toEqual([]);
+    await expect(save(id, 6, "Grant revogado")).rejects.toThrow(/Forbidden/);
+    await asOwner(() => db.exec(`
+      select set_config('request.jwt.claim.sub','',false);
+      update core.user_role_assignments set active=true where user_id='${users.replacement}';
+      update core.profiles set active=false where id='${users.replacement}';`));
+    expect(await direct(id)).toEqual([]);
+    await expect(beginEvidence(id, "execution")).rejects.toThrow(/Forbidden/);
+    await asOwner(() => db.exec(`
+      select set_config('request.jwt.claim.sub','',false);
+      update core.profiles set active=true where id='${users.replacement}';
+      update core.user_role_assignments set active=true where user_id='${users.replacement}';`));
+
+    await login(users.unitA);
+    await status(id, 6, "completed");
+    await login(users.replacement);
+    expect(await history(id)).toHaveLength(2);
+    await expect(save(id, 7, "Concluído")).rejects.toThrow(/not in progress/);
+    await expect(beginEvidence(id, "execution")).rejects.toThrow(/not in progress/);
+    await expect(status(id, 7, "in_progress")).rejects.toThrow(/Forbidden/);
+    await expect(verify(id, 7)).rejects.toThrow(/Forbidden/);
+    await expect(db.query("select action_plans.plan_delete_impact($1)", [id])).rejects.toThrow(/Forbidden/);
+  });
+
+  it("preserva legados em execução e exclui revisões pelas duas operações existentes", async () => {
+    await login(users.unitA);
+    const legacy = await asOwner(async () => (await one<{ id: string }>(`
+      insert into action_plans.plans(unit_id,source_type,improvement_point,status,action,how_to,
+        responsible,due_date,effectiveness_criterion,expected_evidence)
+      values ($1,'manual','Legado','in_progress','Corrigir','Revisar','Equipe antiga',current_date,'Critério','Foto')
+      returning id`, [A])).id);
+    await save(legacy, 1, "Relato legado");
+    await status(legacy, 2, "completed");
+    expect(await plan(legacy)).toMatchObject({ responsible: "Equipe antiga", responsible_id: null });
+
+    const id = await manual(A, null);
+    await delegate(id, 1, users.unitA);
+    await status(id, 2, "in_progress");
+    const planImpact = async () => (await one<{ snapshot: string }>(
+      "select action_plans.plan_delete_impact($1)->>'snapshot' as snapshot", [id],
+    )).snapshot;
+    const beginPlan = (snapshot: string) => db.query(
+      "select action_plans.begin_plan_delete($1,$2,'excluir plano de ação')", [id, snapshot],
+    );
+    const before = await planImpact();
+    await save(id, 3, "Relato removível");
+    await expect(beginPlan(before)).rejects.toThrow(/Impact changed/);
+    await beginPlan(await planImpact());
+    await expect(save(id, 4, "Exclusão em curso")).rejects.toThrow(/deletion in progress/);
+    expect(await history(id)).toEqual([]);
+    await db.query("select action_plans.finish_plan_delete($1)", [id]);
+
+    const inspection = await createInspection(A);
+    await answer(inspection, "item-001", "AP");
+    const related = (await planFor(inspection, "item-001")).id;
+    await delegate(related, 1, users.unitA);
+    await status(related, 2, "in_progress");
+    await save(related, 3, "Relato de Auditoria");
+    const impact = await one<{ snapshot: string }>(
+      "select audit.inspection_delete_impact($1)->>'snapshot' as snapshot", [inspection],
+    );
+    await db.query("select audit.begin_inspection_delete($1,$2,'excluir auditoria')", [inspection, impact.snapshot]);
+    await expect(save(related, 4, "Exclusão em curso")).rejects.toThrow(/deletion in progress/);
+    expect(await history(related)).toEqual([]);
+    await db.query("select audit.finish_inspection_delete($1)", [inspection]);
+    await asOwner(async () => {
+      expect(await rows("select plan_id from action_plans_private.execution_reports where plan_id in ($1,$2)", [id, related])).toEqual([]);
+      expect(await rows("select id from core.profiles where id=$1", [users.unitA])).toEqual([{ id: users.unitA }]);
+      expect(await rows("select action from core.system_audit_log where action='execution_report_save' and entity_id in ($1,$2)", [id, related])).toHaveLength(2);
+    });
   });
 });

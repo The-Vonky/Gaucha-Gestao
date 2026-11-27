@@ -21,6 +21,7 @@ import {
   isInactiveSource,
   isOverdue,
   queueRank,
+  responsibleName,
 } from "./lifecycle";
 import { NewActionPlan } from "./NewActionPlan";
 import { originLabel, PlanBadges } from "./PlanBadges";
@@ -80,18 +81,20 @@ export function ActionPlansOverview() {
   );
   const term = filters.search.trim().toLocaleLowerCase("pt-BR");
   const visible = operational
-    .filter(
-      ({ plan }) =>
+    .filter((row) => {
+      const { plan } = row;
+      return (
         (!filters.unit || plan.unit_id === filters.unit) &&
         (!filters.sector || plan.sector_id === filters.sector) &&
         (!filters.status || plan.status === filters.status) &&
         (!filters.origin || plan.source_type === filters.origin) &&
         (!filters.overdue || isOverdue(plan)) &&
         (!term ||
-          `${plan.improvement_point} ${plan.responsible}`
+          `${plan.improvement_point} ${responsibleName(row)}`
             .toLocaleLowerCase("pt-BR")
-            .includes(term)),
-    )
+            .includes(term))
+      );
+    })
     .sort(
       (a, b) =>
         queueRank(a.plan) - queueRank(b.plan) ||
@@ -362,7 +365,7 @@ function QueueRow({ summary: x }: { summary: PlanSummary }) {
             {x.unit_name}
             {x.sector_name ? ` / ${x.sector_name}` : ""}
           </span>
-          <span>Responsável: {plan.responsible || "—"}</span>
+          <span>Responsável: {responsibleName(x) || "—"}</span>
         </p>
       </div>
       <div className="ap-row-due">

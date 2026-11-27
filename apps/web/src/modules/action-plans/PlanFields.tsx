@@ -1,5 +1,7 @@
-import { useId, useState } from "react";
-import type { Plan, PlanValues } from "./types";
+import { useCallback, useEffect, useId, useState } from "react";
+import type { Assignee, Plan, PlanValues } from "./types";
+import { useResource } from "../../shared/useResource";
+import { searchAssignees } from "./api";
 import { monitoringDuration, planningDateBounds, planningDateError } from "./planningDates";
 const text = (data: FormData, name: string) =>
   String(data.get(name) ?? "").trim();
@@ -20,7 +22,7 @@ export function readPlanValues(data: FormData, plan?: Plan): PlanValues {
         : text(data, "improvement_point"),
     action: text(data, "action"),
     how_to: text(data, "how_to"),
-    responsible: text(data, "responsible"),
+    responsible_id: text(data, "responsible_id") || null,
     due_date: date(data, "due_date"),
     effectiveness_criterion: text(data, "effectiveness_criterion"),
     monitoring_start: date(data, "monitoring_start"),
@@ -29,7 +31,11 @@ export function readPlanValues(data: FormData, plan?: Plan): PlanValues {
   };
 }
 /** Planning fields. Only the improvement point is required to save a pending plan. */
-export function PlanFields({ plan }: { plan?: Plan }) {
+export function PlanFields({ plan, assigneeName, scope }: {
+  plan?: Plan;
+  assigneeName?: string | null;
+  scope?: { unit: string; sector: string | null };
+}) {
   return (
     <>
       {plan?.source_type !== "checklist" && (
@@ -55,15 +61,12 @@ export function PlanFields({ plan }: { plan?: Plan }) {
         Como fazer
         <textarea name="how_to" maxLength={2000} defaultValue={plan?.how_to} />
       </label>
-      <label>
-        Responsável
-        <input
-          name="responsible"
-          maxLength={200}
-          placeholder="Ex.: Gestora da Unidade, Equipe de Manutenção"
-          defaultValue={plan?.responsible}
-        />
-      </label>
+      <AssigneeField
+        key={scope ? JSON.stringify([scope.unit, scope.sector]) : ""}
+        scope={scope}
+        plan={plan}
+        assigneeName={assigneeName}
+      />
       <label>
         Prazo
         <PlanningDate name="due_date" original={plan?.due_date} />
@@ -87,6 +90,66 @@ export function PlanFields({ plan }: { plan?: Plan }) {
         />
       </label>
     </>
+  );
+}
+function AssigneeField({ scope, plan, assigneeName }: {
+  scope?: { unit: string; sector: string | null };
+  plan?: Plan;
+  assigneeName?: string | null;
+}) {
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<Assignee | undefined>(() =>
+    plan?.responsible_id ? { id: plan.responsible_id, name: assigneeName ?? "Responsável atual" } : undefined,
+  );
+  const unit = scope?.unit;
+  const sector = scope?.sector ?? null;
+  const planId = plan?.id;
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 200);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+  const results = useResource(useCallback(
+    () => unit ? searchAssignees(unit, sector, query, planId) : Promise.resolve([]),
+    [unit, sector, query, planId],
+  ));
+  const candidates = results.data ?? [];
+  const selectedOutsideSearch = selected && !candidates.some((candidate) => candidate.id === selected.id);
+  return (
+    <fieldset className="ap-period">
+      <legend>Responsável</legend>
+      <label>
+        Buscar funcionário
+        <input
+          type="search"
+          value={search}
+          disabled={!unit}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </label>
+      <label>
+        Funcionário responsável
+        <select
+          name="responsible_id"
+          disabled={!unit}
+          value={selected?.id ?? ""}
+          onChange={(event) => setSelected(candidates.find((candidate) => candidate.id === event.target.value))}
+        >
+          <option value="" disabled={!!plan && plan.status !== "pending" && !!selected}>Sem responsável cadastrado</option>
+          {selectedOutsideSearch && <option value={selected.id}>{selected.name}</option>}
+          {candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
+        </select>
+      </label>
+      {!unit && <p className="muted ap-period-hint">Selecione a unidade e o setor do plano.</p>}
+      {unit && results.loading && <p className="muted ap-period-hint" role="status">Buscando funcionários…</p>}
+      {unit && results.error && <p className="ap-period-hint" role="alert">
+        Não foi possível buscar funcionários. <button type="button" onClick={results.reload}>Tentar novamente</button>
+      </p>}
+      {unit && !results.loading && !results.error && candidates.length === 0 && (
+        <p className="muted ap-period-hint" role="status">Nenhum funcionário elegível encontrado.</p>
+      )}
+      {plan?.responsible && <p className="muted ap-period-hint">Responsável legado: {plan.responsible}</p>}
+    </fieldset>
   );
 }
 function PlanningDate({ name, original, value, onChange, min, max, required }: {

@@ -120,3 +120,5 @@ Não preencher resultados retroativamente sem evidência.
 Validar confirmação digitada, escopo, preservação de outra auditoria e plano manual, remoção nos três buckets, retomada e trilha do Core em fixtures sintéticas. O mantenedor concluiu a homologação funcional da AUD-DELETE-01 e homologou a paginação antes de autorizar o merge em 27/11/2026. [PR #138](https://github.com/The-Vonky/Gaucha-Gestao/pull/138) · [Procedimento e contrato](EXCLUSAO_DEFINITIVA.md).
 
 A AP-01 tem aceite próprio no localhost. Use fixtures sintéticas para conferir cancelamento, frase exata, exclusão manual e automática, planos verificados, preservação da auditoria, retomada e o ciclo AP/NAT. [Roteiro da AP-01](EXCLUSAO_DEFINITIVA.md#ap-01--exclusão-definitiva-de-planos-de-ação).
+
+A AP-02 tem [matriz própria de homologação no notebook](DELEGACAO_PLANOS_ACAO.md#homologação-no-notebook). Registre versões, escopos, perfis base/Identity e resultados de desktop e mobile na PR.

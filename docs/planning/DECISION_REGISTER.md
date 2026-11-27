@@ -11,6 +11,11 @@
 
 > **Adendo de evidência, 22/10/2026:** o STAGING persistente foi instalado na C30 (projeto `gaucha-staging`) e testado por SSH, incluindo HTTPS apenas em loopback. Isso responde **onde o STAGING está operando** para a entrada D06, mas **não** encerra a aprovação formal de isolamento, aceite físico D07, continuidade D02–D04 ou GO D09. Uma URL pública temporária via ngrok é **plano de testes**, não implementação/decisão de produção; ver [AS-BUILT](../history/operations/C30_STAGING_AS_BUILT_20261022.md), [acesso externo](../history/operations/STAGING_PUBLIC_ACCESS_PLAN.md) e [lacunas de backup](../operations/C30_BACKUP_GAPS.md).
 
+## Planos de Ação
+
+- **AP-01 — decisão integrada e homologada em 27/11/2026.** A [PR #139](https://github.com/The-Vonky/Gaucha-Gestao/pull/139) foi integrada em `1e894d4`. Quality e Platform Administrator podem excluir definitivamente planos no escopo autorizado, com prévia, confirmação, trilha, remoção de objetos pelo Storage e retomada quando necessária. A auditoria e os cadastros são preservados. [Contrato AP-01](../modules/audit/EXCLUSAO_DEFINITIVA.md#ap-01--exclusão-definitiva-de-planos-de-ação).
+- **AP-02 — aprovada para implementação no DEV.** Delegação por UUID, execução por atribuição, conclusão pela capacidade específica e relato independente. Integração condicionada à homologação e ao aceite do mantenedor. [Contrato AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md).
+
 ## Decisões arquiteturais confirmadas
 
 | ID | Conteúdo | Autoridade | Estado |

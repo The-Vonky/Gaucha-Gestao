@@ -81,7 +81,7 @@ export const destinations: Destination[] = [
     description: "Ações corretivas, execução e verificação de eficácia.",
     icon: "actionPlan",
     group: "Qualidade",
-    permissions: ["action_plan.read"],
+    permissions: ["action_plan.read", "action_plan.execute"],
     scope: "any",
     nested: true,
   },

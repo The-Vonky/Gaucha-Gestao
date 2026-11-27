@@ -96,16 +96,18 @@ flowchart LR
   ORIGIN["Plano manual ou originado em Auditoria"] --> CREATE["create_manual_plan ou contrato integrado do domínio"]
   CREATE --> SCOPE["Escopo / permissões"]
   SCOPE --> EDIT["Atualizar plano e acompanhamento"]
-  EDIT --> STATUS["set_plan_status"]
-  STATUS --> EVI["Evidências de execução/verificação"]
-  EVI --> VERIFY["verify_plan / eficácia"]
+  EDIT --> ASSIGN["Selecionar responsável do Core"]
+  ASSIGN --> STATUS["Iniciar execução"]
+  STATUS --> EVI["Salvar relato e anexar evidências da execução"]
+  EVI --> COMPLETE["Concluir com action_plan.complete"]
+  COMPLETE --> VERIFY["verify_plan / eficácia"]
   VERIFY --> HIST["Histórico rastreável"]
   SCOPE --> DELETE["AP-01: prévia e confirmação em qualquer situação"]
   DELETE --> STORAGE["Congelar e remover objetos; retomar se necessário"]
   STORAGE --> PURGE["Excluir plano e registrar evento no Core"]
 ~~~
 
-O ciclo de vida concreto, transições permitidas, revalidação, conflitos e verificações são regidos por [ACTION_PLAN_DOMAIN_V1](../briefs/ACTION_PLAN_DOMAIN_V1.md) e apps/web/src/modules/action-plans/lifecycle.ts, api.ts e migrations. A [AP-01](../modules/audit/EXCLUSAO_DEFINITIVA.md#ap-01--exclusão-definitiva-de-planos-de-ação) usa a mesma barreira de publicação e o mesmo inventário da exclusão de auditorias.
+A [AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md) define delegação, relato e permissões de execução. O ciclo de vida concreto, transições permitidas, revalidação, conflitos e verificações são regidos por [ACTION_PLAN_DOMAIN_V1](../briefs/ACTION_PLAN_DOMAIN_V1.md) e apps/web/src/modules/action-plans/lifecycle.ts, api.ts e migrations. A [AP-01](../modules/audit/EXCLUSAO_DEFINITIVA.md#ap-01--exclusão-definitiva-de-planos-de-ação) usa a mesma barreira de publicação e o mesmo inventário da exclusão de auditorias.
 
 ## 5. Administração e alterações de acesso (AS-IS, com limite importante)
 

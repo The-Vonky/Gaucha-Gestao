@@ -62,11 +62,13 @@ Uma perda externa de catálogo/volume ou versão física antiga sem qualquer ind
 
 Use a unidade sintética identificada na entrega da PR. Abra o histórico em desktop e em 375 px, confira o impacto e cancele. Abra novamente, confira que o campo está vazio e confirme apenas a auditoria sintética escolhida. Confira o resumo, evolução, painel de Qualidade, planos, URL direta, exportações e os dois eventos nos Logs do sistema. Verifique que outra auditoria e um plano manual da mesma unidade continuam disponíveis.
 
+Após a [AP-02](DELEGACAO_PLANOS_ACAO.md), a conclusão de AUD-DELETE-01 exclui também cada revisão de relato dos planos removidos. A mudança de relato invalida a prévia por versão do plano.
+
 ## AP-01 — exclusão definitiva de planos de ação
 
 No cabeçalho de um plano manual ou automático, abra **Excluir**, revise unidade, setor, situação e contagens e digite `excluir plano de ação`. A prévia inclui evidências de execução, de todas as rodadas de verificação, removidas anteriormente, reservas e objetos catalogados. Cancelar fecha a prévia. A confirmação é irreversível e pode ser retomada por outro operador autorizado.
 
-A ação exige `action_plan.read` e `action_plan.delete` no escopo efetivo. Quality e Platform Administrator recebem a capacidade inicial. Um grant setorial só cobre um plano daquele setor. A operação inclui planos concluídos e verificados. Preserva a auditoria de origem, suas respostas, evidências e pontuação, outros planos, cadastros, os eventos anteriores do Core e backups.
+A exclusão remove também o histórico de relato da execução e o vínculo com o responsável cadastrado. A ação exige `action_plan.read` e `action_plan.delete` no escopo efetivo. Quality e Platform Administrator recebem a capacidade inicial. Um grant setorial só cobre um plano daquele setor. A operação inclui planos concluídos e verificados. Preserva a auditoria de origem, suas respostas, evidências e pontuação, outros planos, cadastros, os eventos anteriores do Core e backups.
 
 A AP-01 usa a mesma barreira de publicação, inventário por identidade de objeto, lotes pela Storage API com JWT e reconciliação da AUD-DELETE-01. O início congela o plano e seu namespace. Uma exclusão em curso sai das projeções normais e pode ser retomada pela lista ou URL do plano com os grants atuais. Após concluir, o plano desaparece também do acesso direto, do histórico e dos indicadores. Uma exclusão iniciada na auditoria impede iniciar a de um plano vinculado. Se o plano já estiver em exclusão, retome-o antes de confirmar a exclusão da auditoria.
 
