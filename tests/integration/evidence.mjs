@@ -73,7 +73,6 @@ const values = {
   p_improvement_point: "Evidência",
   p_action: "Corrigir",
   p_how_to: "Revisar",
-  p_responsible: "Equipe",
   p_due_date: new Date().toISOString().slice(0, 10),
   p_effectiveness_criterion: "Sem falhas",
   p_monitoring_start: null,
@@ -91,6 +90,7 @@ async function plan(unit = A, sector = null, status = "completed") {
   must(
     await ap("global").rpc("update_plan", {
       ...values,
+      p_responsible_id: users.global,
       p_id: id,
       p_version: 1,
     }),

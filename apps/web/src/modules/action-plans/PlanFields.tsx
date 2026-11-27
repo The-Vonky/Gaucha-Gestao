@@ -1,5 +1,6 @@
-import { useId, useState } from "react";
-import type { Plan, PlanValues } from "./types";
+import { useEffect, useId, useRef, useState } from "react";
+import type { Assignee, Plan, PlanValues } from "./types";
+import { searchAssignees } from "./api";
 import { monitoringDuration, planningDateBounds, planningDateError } from "./planningDates";
 const text = (data: FormData, name: string) =>
   String(data.get(name) ?? "").trim();
@@ -20,7 +21,7 @@ export function readPlanValues(data: FormData, plan?: Plan): PlanValues {
         : text(data, "improvement_point"),
     action: text(data, "action"),
     how_to: text(data, "how_to"),
-    responsible: text(data, "responsible"),
+    responsible_id: text(data, "responsible_id") || null,
     due_date: date(data, "due_date"),
     effectiveness_criterion: text(data, "effectiveness_criterion"),
     monitoring_start: date(data, "monitoring_start"),
@@ -29,7 +30,11 @@ export function readPlanValues(data: FormData, plan?: Plan): PlanValues {
   };
 }
 /** Planning fields. Only the improvement point is required to save a pending plan. */
-export function PlanFields({ plan }: { plan?: Plan }) {
+export function PlanFields({ plan, assigneeName, scope }: {
+  plan?: Plan;
+  assigneeName?: string | null;
+  scope?: { unit: string; sector: string | null };
+}) {
   return (
     <>
       {plan?.source_type !== "checklist" && (
@@ -55,15 +60,13 @@ export function PlanFields({ plan }: { plan?: Plan }) {
         Como fazer
         <textarea name="how_to" maxLength={2000} defaultValue={plan?.how_to} />
       </label>
-      <label>
-        Responsável
-        <input
-          name="responsible"
-          maxLength={200}
-          placeholder="Ex.: Gestora da Unidade, Equipe de Manutenção"
-          defaultValue={plan?.responsible}
-        />
-      </label>
+      <AssigneeField
+        key={scope ? JSON.stringify([scope.unit, scope.sector]) : ""}
+        scope={scope}
+        plan={plan}
+        assigneeName={assigneeName}
+      />
+      {plan?.responsible && <p className="muted ap-period-hint">Responsável legado: {plan.responsible}</p>}
       <label>
         Prazo
         <PlanningDate name="due_date" original={plan?.due_date} />
@@ -89,6 +92,131 @@ export function PlanFields({ plan }: { plan?: Plan }) {
     </>
   );
 }
+function AssigneeField({ scope, plan, assigneeName }: {
+  scope?: { unit: string; sector: string | null };
+  plan?: Plan;
+  assigneeName?: string | null;
+}) {
+  const id = useId();
+  const input = useRef<HTMLInputElement>(null);
+  const popup = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  const [active, setActive] = useState(-1);
+  const [selected, setSelected] = useState<Assignee | undefined>(() =>
+    plan?.responsible_id ? { id: plan.responsible_id, name: assigneeName ?? "Responsável atual" } : undefined,
+  );
+  const [result, setResult] = useState<{ query: string; retry: number; rows?: Assignee[] }>();
+  const unit = scope?.unit;
+  const sector = scope?.sector ?? null;
+  const planId = plan?.id;
+  const query = search?.trim() ?? "";
+  useEffect(() => {
+    if (!open || !unit) return;
+    let current = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const rows = await searchAssignees(unit, sector, query, planId);
+        if (current) setResult({ query, retry, rows });
+      } catch {
+        if (current) setResult({ query, retry });
+      }
+    }, query ? 200 : 0);
+    return () => { current = false; window.clearTimeout(timer); };
+  }, [open, unit, sector, planId, query, retry]);
+
+  const matching = result?.query === query && result.retry === retry ? result : undefined;
+  const choices = matching?.rows ?? [];
+  const clearable = !!selected && (!plan || plan.status === "pending") && !query;
+  const options = clearable ? [{ id: "", name: "Sem responsável cadastrado" }, ...choices] : choices;
+  const close = () => {
+    setOpen(false);
+    setSearch(null);
+    setResult(undefined);
+    setActive(-1);
+  };
+  const choose = (option: Assignee) => {
+    setSelected(option.id ? option : undefined);
+    close();
+    input.current?.focus();
+  };
+  useEffect(() => {
+    if (!open || active < 0) return;
+    const option = document.getElementById(`${id}-${active}`);
+    const panel = popup.current;
+    if (!option || !panel) return;
+    const item = option.getBoundingClientRect();
+    const frame = panel.getBoundingClientRect();
+    panel.scrollTop += item.top < frame.top ? item.top - frame.top : Math.max(0, item.bottom - frame.bottom);
+  }, [id, open, active]);
+
+  return (
+    <div className="ap-assignee" onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget)) close();
+    }}>
+      <label htmlFor={id}>Responsável</label>
+      <input type="hidden" name="responsible_id" value={selected?.id ?? ""} />
+      <input
+        id={id}
+        ref={input}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={open}
+        aria-controls={open ? `${id}-results` : undefined}
+        aria-activedescendant={open && options[active] ? `${id}-${active}` : undefined}
+        autoComplete="off"
+        placeholder={unit ? "Buscar funcionário" : "Selecione a unidade e o setor"}
+        disabled={!unit}
+        value={search ?? selected?.name ?? ""}
+        onFocus={() => setOpen(true)}
+        onClick={() => setOpen(true)}
+        onChange={(event) => { setSearch(event.target.value); setActive(-1); setOpen(true); }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            setOpen(true);
+            const direction = event.key === "ArrowDown" ? 1 : -1;
+            setActive(options.length ? (active < 0 && direction < 0 ? options.length - 1 :
+              Math.max(0, Math.min(options.length - 1, active + direction))) : -1);
+          } else if (open && event.key === "Enter") {
+            event.preventDefault();
+            if (options[active]) choose(options[active]);
+          } else if (open && event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            close();
+          }
+        }}
+      />
+      {open && unit && <div ref={popup} className="ap-assignee-popup">
+        <ul id={`${id}-results`} role="listbox" aria-label="Funcionários elegíveis" aria-busy={!matching}>
+          {options.map((option, index) => (
+            <li
+              id={`${id}-${index}`}
+              key={option.id}
+              role="option"
+              aria-selected={index === active}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => choose(option)}
+            >
+              {option.name}
+            </li>
+          ))}
+        </ul>
+        {!matching && <p role="status">Buscando funcionários…</p>}
+        {matching && !matching.rows && <p role="alert">
+          Não foi possível buscar funcionários.{" "}
+          <button type="button" onClick={() => { setRetry(retry + 1); input.current?.focus(); }}>
+            Tentar novamente
+          </button>
+        </p>}
+        {matching?.rows?.length === 0 && <p role="status">Nenhum funcionário elegível encontrado.</p>}
+      </div>}
+    </div>
+  );
+}
+
 function PlanningDate({ name, original, value, onChange, min, max, required }: {
   name: string; original?: string | null; value?: string; onChange?: (value: string) => void;
   min?: string; max?: string; required?: boolean;

@@ -24,6 +24,7 @@ import {
   EFFECTIVENESS_LABELS,
   isOverdue,
   missingForExecution,
+  responsibleName,
   STATUS_LABELS,
 } from "./lifecycle";
 import { originLabel, PlanBadges } from "./PlanBadges";
@@ -143,13 +144,17 @@ export function ActionPlanPage() {
   const plan = s.plan;
   const scope = { unit_id: plan.unit_id, sector_id: plan.sector_id };
   const verified = !!plan.effectiveness;
+  const authenticatedDownload = !auth.can("action_plan.read", scope);
   const canWrite = auth.can("action_plan.write", scope) && !verified;
   const canVerify =
     auth.can("action_plan.verify", scope) && plan.status === "completed";
-  const missing = missingForExecution(plan);
-  // Execution evidence follows write and freezes at verification; verification evidence
-  // follows verify and only the open round (not yet recorded) can change.
-  const canExecutionEvidence = canWrite;
+  const userId = auth.profile?.id;
+  const assignedExecutor = !!userId && plan.responsible_id === userId && auth.can("action_plan.execute", scope);
+  const canStart = (canWrite || assignedExecutor) && !verified;
+  const canComplete = canStart && auth.can("action_plan.complete", scope);
+  const canSaveReport = (canWrite || assignedExecutor) && plan.status === "in_progress";
+  const missing = plan.status === "pending" ? missingForExecution(plan) : [];
+  const canExecutionEvidence = canWrite || canSaveReport;
   const canVerificationEvidence = auth.can("action_plan.verify", scope);
   const openRound = plan.verification_round + 1;
   const rows = evidence.data ?? [];
@@ -188,15 +193,17 @@ export function ActionPlanPage() {
         description={`${s.unit_name}${s.sector_name ? ` / ${s.sector_name}` : ""}`}
       >
         {/* Header actions share the page-action size used across the app. */}
-        {(canWrite || canVerify) && (
+        {(canStart || canVerify) && (
           <>
             {canWrite && (
               <button onClick={() => setEditing(true)}>
                 Editar planejamento
               </button>
             )}
-            {canWrite &&
-              TRANSITIONS[plan.status].map((t) => (
+            {TRANSITIONS[plan.status].filter(({ to }) => {
+              if (to === "completed" || plan.status === "completed") return canComplete;
+              return to === "in_progress" ? canStart : canWrite;
+            }).map((t) => (
                 <button
                   key={t.to}
                   className={t.to === "completed" ? "primary" : undefined}
@@ -254,7 +261,7 @@ export function ActionPlanPage() {
           reverificação.
         </Notice>
       )}
-      {canWrite && plan.status !== "completed" && missing.length > 0 && (
+      {(canStart || canComplete) && missing.length > 0 && (
         <p className="muted">
           Para iniciar a execução ou concluir, preencha: {missing.join(", ")}.
         </p>
@@ -274,9 +281,9 @@ export function ActionPlanPage() {
             <>
               <Field label="Auditoria">
                 {formatDate(s.inspection_applied_on)}
-                {auth.can("audit.inspection.read", {
+                {(assignedExecutor || auth.can("audit.inspection.read", {
                   unit_id: plan.unit_id,
-                }) && (
+                })) && (
                   <>
                     {" "}
                     <Link
@@ -307,7 +314,7 @@ export function ActionPlanPage() {
         <dl className="ap-fields">
           <Field label="O que fazer">{plan.action}</Field>
           <Field label="Como fazer">{plan.how_to}</Field>
-          <Field label="Responsável">{plan.responsible}</Field>
+          <Field label="Responsável">{responsibleName(s)}</Field>
           <Field label="Prazo">
             {plan.due_date ? formatDate(plan.due_date) : ""}
           </Field>
@@ -319,13 +326,20 @@ export function ActionPlanPage() {
             </Field>
           )}
         </dl>
+        <ExecutionReport
+          plan={plan}
+          canEdit={canSaveReport}
+          onSave={(report) => mutate(() => api.saveExecutionReport(plan, report))}
+        />
         <div className="ap-sub">
           <h3>Evidências da execução</h3>
           {withEvidence(() => (
             <>
               <EvidenceList
                 rows={execution}
+                authenticated={authenticatedDownload}
                 onRemove={canExecutionEvidence ? setRemoving : undefined}
+                canRemove={(file) => canWrite || file.created_by === userId}
               />
               {canExecutionEvidence && (
                 <EvidenceUpload
@@ -375,6 +389,7 @@ export function ActionPlanPage() {
               </p>
               <EvidenceList
                 rows={round(openRound)}
+                authenticated={authenticatedDownload}
                 onRemove={canVerificationEvidence ? setRemoving : undefined}
               />
               {canVerificationEvidence &&
@@ -412,6 +427,7 @@ export function ActionPlanPage() {
                 </h3>
                 <EvidenceList
                   rows={round(n)}
+                  authenticated={authenticatedDownload}
                   empty="Nenhuma evidência anexada a esta verificação."
                 />
               </div>
@@ -428,7 +444,7 @@ export function ActionPlanPage() {
               setEditing(false);
             }}
           >
-            <PlanFields plan={plan} />
+            <PlanFields plan={plan} assigneeName={s.responsible_name} scope={{ unit: plan.unit_id, sector: plan.sector_id }} />
           </Form>
         </Modal>
       )}
@@ -456,9 +472,9 @@ export function ActionPlanPage() {
             {withEvidence(() => (
               <>
                 <h4>Execução</h4>
-                <EvidenceList rows={execution} />
+                <EvidenceList rows={execution} authenticated={authenticatedDownload} />
                 <h4>Verificação</h4>
-                <EvidenceList rows={round(openRound)} />
+                <EvidenceList rows={round(openRound)} authenticated={authenticatedDownload} />
               </>
             ))}
           </div>
@@ -549,6 +565,59 @@ export function ActionPlanPage() {
         />
       )}
     </>
+  );
+}
+function ExecutionReport({ plan, canEdit, onSave }: {
+  plan: Plan;
+  canEdit: boolean;
+  onSave: (report: string) => Promise<void>;
+}) {
+  const { id } = plan;
+  const history = useResource(useCallback(() => api.executionReports(id), [id]));
+  const [editing, setEditing] = useState(false);
+  const [current, ...previous] = history.data ?? [];
+  return (
+    <div className="ap-sub">
+      <h3>Relato da execução</h3>
+      {history.loading ? (
+        <p className="muted" role="status">Carregando relato…</p>
+      ) : history.error ? (
+        <Notice error>
+          Não foi possível carregar o relato. <button onClick={history.reload}>Tentar novamente</button>
+        </Notice>
+      ) : (
+        <>
+          {canEdit && editing ? (
+            <Form onCancel={() => setEditing(false)} onSave={async (data) => {
+              await onSave(String(data.get("execution_report") ?? ""));
+              setEditing(false);
+            }}>
+              <label>
+                Relato da execução (opcional)
+                <textarea name="execution_report" rows={4} maxLength={2000} defaultValue={current?.report} />
+              </label>
+            </Form>
+          ) : (
+            <>
+              <p className="ap-report">{current?.report || "Nenhum relato informado."}</p>
+              {canEdit && <button onClick={() => setEditing(true)}>{current ? "Editar relato" : "Registrar relato"}</button>}
+            </>
+          )}
+          {current && <p className="muted">
+            {current.saved_by_name} · {new Date(current.saved_at).toLocaleString("pt-BR")}
+          </p>}
+          {previous.length > 0 && <details>
+            <summary>Histórico do relato</summary>
+            <ul>
+              {previous.map((entry) => <li key={entry.version}>
+                <p className="muted">{entry.saved_by_name} · {new Date(entry.saved_at).toLocaleString("pt-BR")}</p>
+                <p className="ap-report">{entry.report || "Relato em branco."}</p>
+              </li>)}
+            </ul>
+          </details>}
+        </>
+      )}
+    </div>
   );
 }
 function Step({ n, id, title }: { n: number; id: string; title: string }) {

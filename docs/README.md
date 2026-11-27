@@ -20,7 +20,7 @@
 
 - [Visão da arquitetura](architecture/OVERVIEW.md) · [ADRs](decisions/) · [Mapa técnico de implementação](architecture/IMPLEMENTATION_MAP.md) · [Contratos de API](architecture/API_CONTRACTS.md)
 - [Autorização](architecture/AUTHORIZATION.md) · [Segurança](architecture/SECURITY.md) · [Design GG-05B](architecture/GG05B_IDENTITY_DESIGN.md)
-- [Core e governança de acesso](modules/core/ACCESS_GOVERNANCE_READ_V1.md) · [Qualidade e Planos de Ação](modules/audit/OPERATOR_GUIDE_V1.md) · [Checklist e evidências](modules/audit/CHECKLIST_EVIDENCE_V1.md) · [Fotos nos relatórios](modules/audit/REPORT_EVIDENCE_EXPORT.md)
+- [Core e governança de acesso](modules/core/ACCESS_GOVERNANCE_READ_V1.md) · [Qualidade e Planos de Ação](modules/audit/OPERATOR_GUIDE_V1.md) · [Delegação e execução](modules/audit/DELEGACAO_PLANOS_ACAO.md) · [Checklist e evidências](modules/audit/CHECKLIST_EVIDENCE_V1.md) · [Fotos nos relatórios](modules/audit/REPORT_EVIDENCE_EXPORT.md)
 - [Curva ABC](modules/abc/OPERATOR_GUIDE_V1.md) · [Homologação D13](https://github.com/The-Vonky/Gaucha-Gestao/issues/86)
 - [Vendas — operações](modules/sales/VEN02_OPERATIONS.md) · [Lançamentos](modules/sales/VEN04A_OPERATIONS_UI.md) · [Análises](modules/sales/VEN03_ANALYTICS.md) · [Dashboard](modules/sales/VEN04B_DASHBOARD_UI.md) · [Exportação](modules/sales/VEN05A_EXCEL_EXPORT.md)
 - [Agendamento — AG-D5-C](modules/room-booking/D5C_ADMIN_MODES.md) · [Experiência](modules/room-booking/EXPERIENCE_V1.md) · [Matriz de aceite](modules/room-booking/ACCEPTANCE_V1.md) · [Homologação AG-05](https://github.com/The-Vonky/Gaucha-Gestao/issues/84)

@@ -55,7 +55,7 @@ export function InspectionPlans() {
             <p className="muted">Nenhum plano de ação para esta auditoria.</p>
           ) : (
             <ul className="audit-plans">
-              {rows.map(({ plan, item_number }) => (
+              {rows.map(({ plan, item_number, responsible_name }) => (
                 <li key={plan.id}>
                   <div className="audit-plan-main">
                     <Link to={`/action-plans/${plan.id}`}>
@@ -68,7 +68,7 @@ export function InspectionPlans() {
                     <span>
                       {plan.source_type === "manual" ? "Manual" : `Origem ${plan.source_response}`}
                     </span>
-                    <span>Responsável: {plan.responsible || "—"}</span>
+                    <span>Responsável: {responsible_name || plan.responsible || "—"}</span>
                     <span>
                       Prazo: <span className="numeric">{formatDate(plan.due_date)}</span>
                     </span>

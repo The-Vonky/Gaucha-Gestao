@@ -132,9 +132,9 @@ try {
   ]);
   for (const [key, permissions] of Object.entries({
     all: ["read", "create_manual", "write", "verify"],
-    writer: ["read", "write"],
+    writer: ["read", "write", "complete"],
     verifier: ["read", "verify"],
-    "race-status": ["read", "write"],
+    "race-status": ["read", "write", "complete"],
     "race-verify": ["read", "verify"],
   })) {
     const role = (
@@ -280,7 +280,7 @@ try {
     p_improvement_point: "Cannot replace checklist",
     p_action: "Corrigir",
     p_how_to: "Revisar",
-    p_responsible: "Equipe",
+    p_responsible_id: users.global,
     p_due_date: today,
     p_effectiveness_criterion: "Sem falhas",
     p_monitoring_start: null,

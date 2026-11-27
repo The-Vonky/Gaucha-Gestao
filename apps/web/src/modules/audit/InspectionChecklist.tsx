@@ -10,6 +10,7 @@ export function InspectionChecklist() {
     answers,
     results,
     editable,
+    linkedOnly,
     stale,
     confirming,
     finalization,
@@ -71,6 +72,7 @@ export function InspectionChecklist() {
                   editable={editable && !stale}
                   evidenceEditable={editable && !stale && !confirming}
                   evidence={evidence}
+                  authenticatedEvidence={linkedOnly}
                   onChange={onChange}
                   onPending={onPending}
                   onConflict={onConflict}

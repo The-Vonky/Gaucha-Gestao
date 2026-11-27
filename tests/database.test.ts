@@ -463,7 +463,9 @@ describe("PostgreSQL Core migration and RLS", { concurrent: false }, () => {
       )
     ).rows[0];
     expect(detail.role.version).toBe(1);
-    expect(detail.permission_keys).toHaveLength(37);
+    expect(detail.permission_keys).toHaveLength(39);
+    expect(detail.permission_keys).toContain("action_plan.execute");
+    expect(detail.permission_keys).toContain("action_plan.complete");
     expect(detail.permission_keys).toContain("action_plan.delete");
     expect(detail.permission_keys).toContain("audit.inspection.delete");
     expect(detail.permission_keys).toContain("feedback.report.read");

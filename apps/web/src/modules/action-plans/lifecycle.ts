@@ -1,5 +1,5 @@
 import { today } from "../../shared/dates";
-import type { Effectiveness, Plan, PlanStatus } from "./types";
+import type { Effectiveness, Plan, PlanStatus, PlanSummary } from "./types";
 export const STATUS_LABELS: Record<PlanStatus, string> = {
   pending: "Pendente",
   in_progress: "Em andamento",
@@ -38,7 +38,7 @@ const REQUIRED: [keyof Plan, string][] = [
   ["improvement_point", "Ponto de melhoria"],
   ["action", "O que fazer"],
   ["how_to", "Como fazer"],
-  ["responsible", "Responsável"],
+  ["responsible_id", "Responsável cadastrado"],
   ["due_date", "Prazo"],
   ["effectiveness_criterion", "Critério de eficácia"],
   ["expected_evidence", "Evidência esperada"],
@@ -48,6 +48,9 @@ export function missingForExecution(plan: Plan): string[] {
   return REQUIRED.filter(([key]) => !String(plan[key] ?? "").trim()).map(
     ([, label]) => label,
   );
+}
+export function responsibleName({ plan, responsible_name }: PlanSummary) {
+  return responsible_name || plan.responsible;
 }
 export function effectivenessState(plan: Plan): string {
   if (plan.status !== "completed") return "Eficácia não avaliada";

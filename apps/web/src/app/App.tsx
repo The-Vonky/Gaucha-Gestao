@@ -6,9 +6,11 @@ import {
   Route,
   Routes,
   useLocation,
+  useMatch,
 } from "react-router-dom";
 import { client } from "../core/client";
 import { AuthProvider, useAuth } from "../core/auth/AuthProvider";
+import { hasAnyScope } from "../core/auth/permissions";
 import { Login } from "../core/auth/Login";
 import { FirstPassword } from "../core/auth/FirstPassword";
 import { loadPublishedNotices, noPublishedNotices } from "../modules/announcements/api";
@@ -492,7 +494,10 @@ function Guard({ path, children }: { path: string; children: ReactNode }) {
     !!auth.profile?.active,
     auth.grants,
   ).flatMap((g) => g.destinations);
-  return visible.some((d) => d.path === path) ? (
+  const inspection = useMatch("/audit/inspections/:inspectionId/*");
+  const linkedInspection = path === "/audit" && inspection &&
+    hasAnyScope(!!auth.profile?.active, auth.grants, "action_plan.execute");
+  return (linkedInspection || visible.some((d) => d.path === path)) ? (
     children
   ) : (
     <EmptyState

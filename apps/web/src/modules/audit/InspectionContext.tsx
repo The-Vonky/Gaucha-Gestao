@@ -15,6 +15,7 @@ export type InspectionView = {
   answers: Record<string, Answer>;
   results: { overall: Result; sections: Record<string, Result> };
   editable: boolean;
+  linkedOnly: boolean;
   stale: boolean;
   /** A lifecycle confirmation is open (evidence edits pause meanwhile). */
   confirming: boolean;

@@ -4,7 +4,7 @@
 
 ## Fundação e primeira entrega operacional
 
-O Core, Auditorias e Planos de Ação estão integrados. Qualidade v1 permanece como primeira entrega operacional segundo o [Plano Diretor](../planning/PLANO_DIRETOR_2026.md), com evolução funcional no repositório, incluindo a [exclusão de auditorias e planos de ação](../modules/audit/EXCLUSAO_DEFINITIVA.md), e com escopo e gate próprios [P1–P9/O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md). Identity GG-05B existe no DEV opt-in e tem pendências de recuperação, revisão e adoção previstas no [Guia Mestre](../planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md).
+O Core, Auditorias e Planos de Ação estão integrados. Qualidade v1 permanece como primeira entrega operacional segundo o [Plano Diretor](../planning/PLANO_DIRETOR_2026.md), com evolução funcional no repositório, incluindo a [exclusão de auditorias e planos de ação](../modules/audit/EXCLUSAO_DEFINITIVA.md), e com escopo e gate próprios [P1–P9/O1–O8](../modules/audit/QUALITY_ACCEPTANCE_V1.md). A delegação de Planos de Ação segue [AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md) e tem aceite próprio no notebook. Identity GG-05B existe no DEV opt-in e tem pendências de recuperação, revisão e adoção previstas no [Guia Mestre](../planning/GUIA_MESTRE_PREPARACAO_USO_GAUCHA_GESTAO_2026-11-04.md).
 
 ## Módulos integrados com trabalho de homologação ou evolução
 

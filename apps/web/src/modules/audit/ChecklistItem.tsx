@@ -24,12 +24,14 @@ export function ChecklistItem({
   onConflict,
   evidence,
   evidenceEditable=editable,
+  authenticatedEvidence,
 }: {
   item: Item;
   row: Answer;
   editable: boolean;
   evidence?: EvidenceController;
   evidenceEditable?: boolean;
+  authenticatedEvidence?: boolean;
   onChange: (row: Answer) => void;
   onPending?: (key: string, value: boolean) => void;
   onConflict: () => void;
@@ -207,7 +209,7 @@ export function ChecklistItem({
             {evidence.loading || evidence.error ? "Evidências" : `Evidências (${evidenceCount})`}
           </button>
           <div id={`${id}-evidence`} hidden={!showEvidence}>
-            <ChecklistEvidence item={item} editable={evidenceEditable} controller={evidence} visible={showEvidence}/>
+            <ChecklistEvidence item={item} editable={evidenceEditable} controller={evidence} visible={showEvidence} authenticated={authenticatedEvidence}/>
           </div>
         </div>
       )}

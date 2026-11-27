@@ -1,5 +1,7 @@
 # Implementation Brief — Evidence / Storage v1
 
+> O [contrato AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md) define a autorização de evidências por atribuição, as restrições de autoria e a leitura autenticada no Storage para o Executor.
+
 > **Transporte vigente.** O contrato de metadados e autorização permanece aplicável. Os critérios de assinatura abaixo descrevem o **perfil base**. No DEV com Identity, download de evidência usa JWT de sessão admitida, leitura privada autenticada e nome de download no cliente. As políticas de plano e unidade continuam vigentes. [Perfis de Storage](../architecture/SECURITY.md#storage-privado-e-miniaturas).
 
 Status: CLOSED FOR IMPLEMENTATION  
@@ -76,7 +78,7 @@ Decision: one table with an explicit `kind`:
 
 A single untyped attachment list was rejected because the two kinds have **different authority and lifecycle**:
 
-- execution evidence is a planning/execution fact → `action_plan.write`, frozen once the plan is verified (same rule as other execution facts);
+- evidência de execução exige `action_plan.write` ou, para o responsável, `action_plan.execute` com plano em andamento. A verificação congela o conjunto;
 - verification evidence is a verification fact → `action_plan.verify`, bound to the verification round it supports (section 3).
 
 Without `kind`, a writer could remove the verifier's material, or a verifier's upload would be indistinguishable from execution proof. One column preserves the semantics at essentially zero cost. Do not add more kinds in v1.
@@ -173,9 +175,9 @@ begin_evidence_upload ──> pending ──(Storage upload)──> confirm_evid
 
 | Operation | `execution` | `verification` |
 |---|---|---|
-| begin / confirm | `action_plan.write`, plan **not verified** (`effectiveness is null`), any status | `action_plan.verify`, plan `status = 'completed'`, evidence round **open** (`evidence.verification_round = plans.verification_round + 1`) |
-| remove | `action_plan.write`, plan **not verified** | `action_plan.verify`, evidence round **open** |
-| read / download | `action_plan.read` | `action_plan.read` |
+| begin / confirm | `action_plan.write` antes da verificação ou `action_plan.execute` por atribuição em andamento. Confirmação pelo autor da reserva. | `action_plan.verify`, plan `status = 'completed'`, evidence round **open** (`evidence.verification_round = plans.verification_round + 1`) |
+| remove | `action_plan.write` antes da verificação ou `action_plan.execute` por atribuição em andamento, com autoria da evidência. | `action_plan.verify`, evidence round **open** |
+| read / download | `action_plan.read` no escopo ou `action_plan.execute` por atribuição. Download por atribuição exige JWT. | Mesma regra de leitura do plano |
 
 Consequences:
 

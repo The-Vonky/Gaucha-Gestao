@@ -15,6 +15,7 @@ export function NewActionPlan({
   const navigate = useNavigate();
   const units = [...new Map(scopes.map((s) => [s.unit_id, s.unit_name]))];
   const [unit, setUnit] = useState(units.length === 1 ? units[0][0] : "");
+  const [sector, setSector] = useState(UNIT_WIDE);
   const targets = scopes.filter((s) => s.unit_id === unit);
   const unitWide = targets.some((s) => !s.sector_id);
   const sectors = targets.filter((s) => s.sector_id);
@@ -41,7 +42,7 @@ export function NewActionPlan({
               name="unit"
               required
               value={unit}
-              onChange={(e) => setUnit(e.target.value)}
+              onChange={(e) => { setUnit(e.target.value); setSector(UNIT_WIDE); }}
             >
               <option value="">Selecione</option>
               {units.map(([id, name]) => (
@@ -58,7 +59,8 @@ export function NewActionPlan({
                 key={unit}
                 name="sector"
                 required={!unitWide}
-                defaultValue={unitWide ? UNIT_WIDE : undefined}
+                value={sector}
+                onChange={(e) => setSector(e.target.value)}
               >
                 {unitWide ? (
                   <option value={UNIT_WIDE}>Toda a unidade</option>
@@ -73,7 +75,7 @@ export function NewActionPlan({
               </select>
             </label>
           )}
-          <PlanFields />
+          <PlanFields scope={unit && (unitWide || sector) ? { unit, sector: sector || null } : undefined} />
         </Form>
       )}
     </Modal>

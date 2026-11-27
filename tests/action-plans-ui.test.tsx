@@ -37,6 +37,9 @@ const api = vi.hoisted(() => ({
   update: vi.fn(),
   setStatus: vi.fn(),
   verify: vi.fn(),
+  searchAssignees: vi.fn().mockResolvedValue([]),
+  executionReports: vi.fn().mockResolvedValue([]),
+  saveExecutionReport: vi.fn(),
 }));
 vi.mock("../apps/web/src/modules/action-plans/api", () => api);
 const ev = vi.hoisted(() => ({
@@ -54,7 +57,7 @@ vi.mock("../apps/web/src/modules/action-plans/evidence", async (original) => ({
 const auth = vi.hoisted(() => ({ grants: [] as AccessGrant[] }));
 vi.mock("../apps/web/src/core/auth/AuthProvider", () => ({
   useAuth: () => ({
-    profile: { active: true },
+    profile: { id: "staff", active: true },
     grants: auth.grants,
     can: (
       p: string,
@@ -100,6 +103,7 @@ function plan(over: Partial<Plan> = {}): Plan {
     action: "Reinstalar",
     how_to: "Manutenção",
     responsible: "Equipe de Manutenção",
+    responsible_id: "staff",
     due_date: "2999-01-01",
     status: "pending",
     effectiveness_criterion: "Sem insetos",
@@ -128,6 +132,7 @@ const summary = (p: Plan, over: Partial<PlanSummary> = {}): PlanSummary => ({
   item_number: p.source_type === "checklist" ? 7 : null,
   verified_by_name: null,
   completed_by_name: null,
+  responsible_name: null,
   ...over,
 });
 const checklist = (over: Partial<Plan> = {}) =>
@@ -379,7 +384,7 @@ describe("action plans UI", () => {
     ).toBeNull();
   });
   it("shows the verification form only with verify permission on completed plans", async () => {
-    auth.grants = grants("read", "write");
+    auth.grants = grants("read", "write", "complete");
     api.plan.mockResolvedValue(
       summary(plan({ status: "completed", completed_at: "x" })),
     );
@@ -413,7 +418,7 @@ describe("action plans UI", () => {
   });
   it("blocks execution transitions until planning is complete and handles unknown plans", async () => {
     auth.grants = grants("read", "write");
-    api.plan.mockResolvedValue(summary(plan({ action: "", responsible: "" })));
+    api.plan.mockResolvedValue(summary(plan({ action: "", responsible: "", responsible_id: null })));
     open("/action-plans/p1");
     const start = (await screen.findByText(
       "Iniciar execução",
@@ -565,6 +570,7 @@ describe("Action Plan evidence UI", () => {
     expect(
       screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
     ).toEqual([
+      "Relato da execução",
       "Evidências da execução",
       "Verificação planejada",
       "Verificação realizada",

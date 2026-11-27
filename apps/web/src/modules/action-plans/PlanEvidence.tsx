@@ -31,14 +31,14 @@ function FileName({ name }: { name: string }) {
     </strong>
   );
 }
-function Download({ evidence }: { evidence: Evidence }) {
+function Download({ evidence, authenticated }: { evidence: Evidence; authenticated?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   async function open() {
     setBusy(true);
     setError(false);
     try {
-      if (identityEnabled) await downloadPrivateObject(BUCKET, evidence.object_key, evidence.original_name);
+      if (identityEnabled || authenticated) await downloadPrivateObject(BUCKET, evidence.object_key, evidence.original_name);
       else openDownload(await downloadUrl(evidence));
     } catch {
       setError(true);
@@ -69,10 +69,14 @@ function Download({ evidence }: { evidence: Evidence }) {
 export function EvidenceList({
   rows,
   onRemove,
+  canRemove,
+  authenticated,
   empty = "Nenhuma evidência anexada.",
 }: {
   rows: Evidence[];
   onRemove?: (e: Evidence) => void;
+  canRemove?: (e: Evidence) => boolean;
+  authenticated?: boolean;
   empty?: string;
 }) {
   if (!rows.length) return <p className="muted file-empty">{empty}</p>;
@@ -92,8 +96,8 @@ export function EvidenceList({
             </p>
           </div>
           <div className="file-actions">
-            <Download evidence={e} />
-            {onRemove && (
+            <Download evidence={e} authenticated={authenticated} />
+            {onRemove && (!canRemove || canRemove(e)) && (
               <button
                 className="small ghost file-remove"
                 aria-label={`Remover ${e.original_name}`}

@@ -1765,7 +1765,7 @@ try {
         p_improvement_point: "ignored",
         p_action: "Sifonar ralos",
         p_how_to: "Manutenção",
-        p_responsible: "Equipe",
+        p_responsible_id: users.unitA,
         p_due_date: "2026-10-30",
         p_effectiveness_criterion: "Ralos fechados",
         p_monitoring_start: null,
@@ -1784,6 +1784,7 @@ try {
     reactivated: false,
   });
   assert.equal(p.action, "Sifonar ralos");
+  assert.equal(p.responsible_id, users.unitA);
   for (const response of ["AT", "NAP", null]) {
     await setAnswer({ response });
     p = await expectPlan({
@@ -1802,15 +1803,16 @@ try {
     reactivated: false,
   });
   // Verified plan: preserved when the source changes; reactivation after verification is flagged.
-  for (const s of ["in_progress", "completed"])
-    ok(
-      await rpc(
-        "set_plan_status",
-        "unitA",
-        { p_id: planId, p_version: await planVersion(), p_status: s },
-        "action_plans",
-      ),
-    );
+  for (const next of ["in_progress", "completed"]) {
+    ok(await rpc("set_plan_status", "unitA", {
+      p_id: planId, p_version: await planVersion(), p_status: next,
+    }, "action_plans"));
+    if (next === "in_progress") {
+      ok(await rpc("save_execution_report", "unitA", {
+        p_plan: planId, p_version: await planVersion(), p_report: "Ralos conferidos",
+      }, "action_plans"));
+    }
+  }
   ok(
     await rpc(
       "verify_plan",
@@ -1834,6 +1836,10 @@ try {
     reactivated: false,
   });
   assert.deepEqual([p.effectiveness, p.verification_round], ["effective", 1]);
+  const reports = ok(await rpc("execution_report_history", "unitA", { p_plan: planId }, "action_plans"));
+  assert.deepEqual(reports.map(({ report, saved_by }) => ({ report, saved_by })), [
+    { report: "Ralos conferidos", saved_by: users.unitA },
+  ]);
   await setAnswer({ response: "AP" });
   p = await expectPlan({
     active: true,
@@ -1891,8 +1897,8 @@ try {
     ],
     [1, 1],
   );
-  // AUD-DELETE-01 e AP-01: somente o protocolo de exclusão cruza
-  // essa fronteira. Nenhuma FK de Audit aponta para Planos de Ação.
+  // Exclusão definitiva e leitura por vínculo usam contratos de integração.
+  // Nenhuma FK de Audit aponta para Planos de Ação.
   const dependencies = await db.query(
     `select n.nspname || '.' || p.proname as name
      from pg_proc p join pg_namespace n on n.oid=p.pronamespace
@@ -1905,6 +1911,7 @@ try {
     "audit.can_remove_deletion_object",
     "audit.finish_inspection_delete",
     "audit.inspection_delete_impact",
+    "audit_private.can_read_plan_origin",
     "audit_private.guard_deletion_write",
     "audit_private.inspection_object_namespaces",
   ]);

@@ -34,7 +34,7 @@ function sectionStatus(result: Result) {
 }
 /** Overview tab: operational summary of one inspection (data already loaded by the shell). */
 export function InspectionOverview() {
-  const { summary, sections, items, answers, results, editable, evidence, select, plans } =
+  const { summary, sections, items, answers, results, editable, linkedOnly, evidence, select, plans } =
     useInspection();
   const navigate = useNavigate();
   const [allAttention, setAllAttention] = useState(false);
@@ -302,7 +302,7 @@ export function InspectionOverview() {
                               </p>
                             </div>
                             <div className="audit-overview-file-action">
-                              <Download row={row} name={name} filename={row.original_name} />
+                              <Download row={row} name={name} filename={row.original_name} authenticated={linkedOnly} />
                             </div>
                           </li>
                         );
