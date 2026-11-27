@@ -53,7 +53,7 @@ Escrita operacional revalida o perfil e o escopo atual, incluindo origem e desti
 
 ## Delegação de planos de ação
 
-[AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md) combina leitura geral por `action_plan.read` com leitura por atribuição e `action_plan.execute`. A gestão usa `action_plan.write`, a conclusão e a reabertura usam `action_plan.complete`, e a verificação usa `action_plan.verify`. RLS, RPCs e Storage reavaliam perfil, grant e escopo. O perfil Executor, sozinho, não tem leitura geral de Auditorias.
+[AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md) combina leitura geral por `action_plan.read` com leitura por atribuição e `action_plan.execute`. A gestão usa `action_plan.write`, a conclusão e a reabertura usam `action_plan.complete`, e a verificação usa `action_plan.verify`. RLS, RPCs e Storage reavaliam perfil, grant e escopo. O perfil Executor pode consultar o detalhe da auditoria de origem de um plano atribuído e seus anexos originais, mediante nova validação do vínculo. Listagem geral, exportação e alterações de Auditorias seguem seus grants próprios.
 
 ## Navegação e aplicação no banco
 

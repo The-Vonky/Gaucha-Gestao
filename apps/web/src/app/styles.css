@@ -2268,6 +2268,29 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.ap-assignee {
+  position: relative;
+  display: grid;
+  gap: .35rem;
+  min-width: 0;
+}
+.ap-assignee-popup {
+  position: absolute;
+  z-index: 2;
+  inset: 100% 0 auto;
+  max-height: min(12rem, 35dvh);
+  overflow: auto;
+  padding: .25rem;
+  border: 1px solid var(--color-border);
+  border-radius: .5rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+.ap-assignee-popup ul { list-style: none; margin: 0; padding: 0; }
+.ap-assignee-popup li { padding: .55rem .65rem; cursor: pointer; overflow-wrap: anywhere; }
+.ap-assignee-popup li:hover,
+.ap-assignee-popup li[aria-selected="true"] { background: var(--brand-green-50); }
+.ap-assignee-popup p { margin: .45rem .65rem; }
 .ap-period {
   display: flex;
   gap: var(--space-3);

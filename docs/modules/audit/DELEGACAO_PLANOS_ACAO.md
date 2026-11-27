@@ -4,7 +4,7 @@ Escopo aprovado para DEV e homologação no notebook. O contrato se aplica a pla
 
 ## Planejamento e execução
 
-Na criação manual ou em **Editar planejamento**, busque pelo nome e escolha um funcionário. A busca devolve até 50 pares UUID/nome de perfis ativos com acesso efetivo para executar no par unidade/setor. O operador precisa da permissão de criação naquele escopo ou de escrita no plano selecionado. A seleção pode ficar em branco enquanto o plano estiver pendente. A mudança de unidade ou setor na criação limpa a seleção.
+Na criação manual ou em **Editar planejamento**, digite no campo **Responsável** e escolha um funcionário nos resultados logo abaixo. Digitar sem confirmar uma opção preserva a seleção anterior. O painel de resultados abre sobre o formulário. A busca devolve até 50 pares UUID/nome de perfis ativos com acesso efetivo para executar no par unidade/setor. O operador precisa da permissão de criação naquele escopo ou de escrita no plano selecionado. A seleção pode ficar em branco enquanto o plano estiver pendente. A mudança de unidade ou setor na criação limpa a seleção.
 
 Planos novos e planos pendentes legados precisam de um responsável cadastrado elegível para entrar em andamento ou ser concluídos diretamente. A atribuição usa `responsible_id` ligado a `core.profiles`. O nome atual vem do Core e o texto original permanece em `responsible`, sem associação automática. Planos legados em andamento ou concluídos podem ser tratados por quem tem capacidade gerencial. Ao salvar o planejamento de um plano em andamento ou concluído, uma atribuição já existente pode ser substituída por outra elegível. Planos verificados preservam o bloqueio de planejamento.
 
@@ -24,6 +24,12 @@ O papel `quality_executor` contém apenas `action_plan.execute`. O grant de seto
 
 A leitura por atribuição vale para RLS, listagens, detalhe, histórico e evidências. O Storage permite a esse leitor somente download autenticado e exige upload autenticado para operações por atribuição, com nova avaliação do grant e da atribuição. No perfil base, quem tem leitura por escopo conserva o fluxo de URL assinada temporária. O perfil Identity usa download autenticado. Reatribuição, inativação e revogação são reavaliadas nas novas chamadas, inclusive entre reserva, upload e confirmação. O download realizado e o material já entregue ao cliente seguem o comportamento inerente à entrega de arquivos.
 
+## Consulta da auditoria de origem
+
+Em um plano de checklist atribuído, **Origem → Abrir auditoria** abre a visão geral e o checklist em leitura. A autorização exige plano existente, atribuição ao próprio perfil ativo e `action_plan.execute` efetiva no escopo do plano. O vínculo dá acesso ao detalhe, respostas, observações e download ou abertura autenticada das evidências originais. A listagem geral, o histórico da unidade, a exportação e as alterações de auditoria continuam usando seus grants próprios. As permissões independentes dos outros papéis se somam às do Executor.
+
+RLS, RPCs e Storage reavaliam o vínculo nas próximas requisições. Reatribuir, revogar o grant ou iniciar a exclusão do plano retira a leitura por esse vínculo. A leitura permanece disponível se outro plano atribuído da mesma auditoria ou outro grant efetivo ainda a autorizar. A migration incremental acrescenta esse predicado às leituras pertinentes. [Migration de origem](../../../supabase/migrations/20261127143007_action_plans_origin_audit.sql)
+
 ## Compatibilidade, ledger e exclusões
 
 A migration [20261127130631](../../../supabase/migrations/20261127130631_action_plans_delegation.sql) usa o catálogo existente quando já há `action_plan.execute`, `action_plan.complete` ou `quality_executor`. Os grants do papel Executor são reduzidos a `execute`, mantendo os UUIDs dos papéis e suas atribuições. Quando `complete` é introduzida pela AP-02, os papéis personalizados que já tinham `write` conservam a capacidade de concluir. Se `complete` já existia, os grants personalizados de conclusão são preservados conforme cadastrados. Grants novos de `write` conservam a gestão de execução e exigem `complete` para conclusão/reabertura. Revise papéis personalizados e seus escopos ao avaliar a aplicação em outro ambiente.
@@ -39,4 +45,5 @@ AP-01 e AUD-DELETE-01 excluem as revisões de relato junto com o plano por FK em
 - Consulte a fila e o detalhe com outro Executor, com Quality Viewer e com Executor que também tenha leitura independente. Repita após reatribuição, inativação e revogação de grant. Confira também escopo de unidade e setor.
 - Com Quality, confira conflito de versão em duas sessões, consulte o relato e as evidências, conclua e verifique. Confira os bloqueios após conclusão para Executor e após verificação para gestão.
 - Confira o texto dos responsáveis legados em planos em andamento ou concluídos. Exclua fixtures via AP-01 e AUD-DELETE-01 e confira a retirada do relato/histórico e a preservação do cadastro do responsável.
+- Digite, escolha e salve o responsável na criação e na edição em desktop e mobile. Abra a auditoria pelo plano, consulte respostas e observações e baixe uma evidência. Confira a negação de acesso direto a uma auditoria e a um plano da mesma unidade sem atribuição. Repita após reatribuição, exclusão e revogação.
 - Execute no Chromium em desktop e viewport móvel nos perfis base e Identity. Homologação do mantenedor e dispositivos físicos seguem a [matriz da Qualidade](QUALITY_ACCEPTANCE_V1.md).

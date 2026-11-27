@@ -43,7 +43,7 @@ O purge definitivo de auditorias e planos usa o JWT do operador e inventário co
 
 Para Relatos, a omissão de `feedback-attachments` no ingresso estrito barrava o envio e o download antes das políticas do bucket. O ingresso admite agora apenas upload sem upsert e download autenticado no caminho de objeto com UUID canônico e extensão `.png` ou `.jpg`. A sessão admitida e o JWT do titular continuam obrigatórios. A RLS exige reserva pendente do titular no upload e Platform Administrator global com autoridade atual no download de relato recebido. [Ingresso Identity](../../apps/core-identity/storage.mjs) · [Contrato GG-11 e testes](../modules/feedback/FEEDBACK_V1.md#provas-da-compatibilidade-com-identity).
 
-O Executor com leitura exclusivamente por atribuição baixa evidências por requisição autenticada no Storage. Reatribuição, revogação e inativação retiram essa autorização das próximas requisições. [AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md)
+O Executor com leitura exclusivamente por atribuição usa requisição autenticada no Storage para arquivos dos planos e evidências originais da auditoria de origem. Reatribuição, revogação e inativação retiram essa autorização das próximas requisições. [AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md)
 
 ## Auditoria sistêmica
 

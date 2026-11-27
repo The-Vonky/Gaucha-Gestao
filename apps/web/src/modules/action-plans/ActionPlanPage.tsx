@@ -281,9 +281,9 @@ export function ActionPlanPage() {
             <>
               <Field label="Auditoria">
                 {formatDate(s.inspection_applied_on)}
-                {auth.can("audit.inspection.read", {
+                {(assignedExecutor || auth.can("audit.inspection.read", {
                   unit_id: plan.unit_id,
-                }) && (
+                })) && (
                   <>
                     {" "}
                     <Link

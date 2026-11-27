@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { privateImages } from "../../shared/privateImageCache";
 import { AUDIT_STORAGE_TRANSFORMS, AUDIT_THUMBNAILS_ENABLED, imageKey, thumbnailKey, loadStorageThumbnail, loadEvidenceThumbnail, loadEvidenceImage, evidenceThumbnailState, type ImageEvidence } from "./evidenceImages";
 /** Montar um critério não implica visibilidade: só o viewport (ou a ampliação explícita) carrega. */
-export function EvidenceImage({ row, name, expanded = false, onOpenOriginal }: { row: ImageEvidence; name: string; expanded?: boolean; onOpenOriginal?: () => void }) {
+export function EvidenceImage({ row, name, expanded = false, authenticated = false, onOpenOriginal }: { row: ImageEvidence; name: string; expanded?: boolean; authenticated?: boolean; onOpenOriginal?: () => void }) {
   const element = useRef<HTMLSpanElement>(null);
   const [visible, setVisible] = useState(expanded);
   const [loading, setLoading] = useState(false);
@@ -50,13 +50,14 @@ export function EvidenceImage({ row, name, expanded = false, onOpenOriginal }: {
             setFailed(true); setLoading(false); return;
           }
         }
-        await (thumbnail ? loadEvidenceThumbnail : loadEvidenceImage)(evidence);
+        if (thumbnail) await loadEvidenceThumbnail(evidence);
+        else await loadEvidenceImage(evidence, authenticated);
       } catch { if (current) { setFailed(true); setPreparing(false); } }
       finally { if (current) setLoading(false); }
     };
     void refresh();
     return () => { current = false; clearTimeout(timer); };
-  }, [id, inspection_id, object_key, content_type, size_bytes, uploaded_at, visible, attempt, epoch, thumbnail]);
+  }, [id, inspection_id, object_key, content_type, size_bytes, uploaded_at, visible, attempt, epoch, thumbnail, authenticated]);
   const showImage = Boolean(url);
   return <span ref={element} className={showImage && !expanded ? "audit-image-slot audit-evidence-thumbnail" : "audit-image-slot"}>
     {showImage ? <>

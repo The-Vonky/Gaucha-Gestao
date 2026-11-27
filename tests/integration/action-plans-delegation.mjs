@@ -98,7 +98,7 @@ async function createSession(actor) {
 }
 const version = async () => (await get(manager)).version;
 async function login(browserInstance, actor, viewport) {
-  const page = await browserInstance.newPage({ viewport });
+  const page = await browserInstance.newPage({ viewport, hasTouch: viewport.width < 600 });
   await page.goto(origin);
   await page.getByLabel(/E-mail/i).fill(actor.email);
   await page.getByLabel(/^Senha$/i).fill(password);
@@ -166,29 +166,72 @@ try {
     commit;`);
   for (const actor of people) await createSession(actor);
 
-  phase = "planejamento em Chromium desktop";
+  phase = "seleção e edição em Chromium desktop e mobile";
   browser = await chromium.launch();
   const desktop = await login(browser, manager, { width: 1280, height: 900 });
+  const managerMobile = await login(browser, manager, { width: 375, height: 812 });
   const title = `Revisar plano ${tag}`;
-  await desktop.goto(origin + "/action-plans");
-  await desktop.getByRole("button", { name: /Novo plano/ }).click();
-  const form = desktop.getByRole("dialog");
-  await form.getByLabel(/Ponto de melhoria/).fill(title);
-  await form.getByLabel("O que fazer").fill("Ajustar procedimento");
-  await form.getByLabel("Como fazer").fill("Revisar checklist");
-  await form.getByLabel("Prazo").fill(new Date().toISOString().slice(0, 10));
-  await form.getByLabel("Critério de eficácia").fill("Procedimento conferido");
-  await form.getByLabel("Evidência esperada").fill("PDF");
-  await form.getByLabel("Buscar funcionário").fill(executor.name);
-  const select = form.getByLabel("Funcionário responsável");
-  await select.getByRole("option", { name: executor.name }).waitFor({ state: "attached" });
-  await select.selectOption(executor.id);
-  await checkWidth(desktop);
-  await form.getByRole("button", { name: "Salvar", exact: true }).click();
-  await desktop.waitForURL(/\/action-plans\/[0-9a-f-]+$/);
-  plan = desktop.url().split("/").at(-1);
-  await desktop.getByText(executor.name, { exact: true }).waitFor();
-  assert.equal((await get(manager)).responsible_id, executor.id);
+
+  async function selectAssignee(dialog, actor, touch) {
+    const picker = dialog.getByRole("combobox", { name: "Responsável" });
+    const due = dialog.getByLabel("Prazo");
+    const position = async () => (await due.boundingBox()).y - (await picker.boundingBox()).y;
+    await picker.click();
+    const previous = await position();
+    await picker.fill("");
+    await picker.pressSequentially(`${tag} ${actor.name.split(" ").at(-1)}`, { delay: 40 });
+    const option = dialog.getByRole("option", { name: actor.name, exact: true });
+    await option.waitFor();
+    assert.ok(Math.abs(await position() - previous) < 1, "O formulário mudou de posição durante a busca");
+    assert.ok(await picker.evaluate((node) => node === document.activeElement));
+    if (touch) await option.tap();
+    else {
+      await picker.press("ArrowDown");
+      assert.equal(await option.getAttribute("aria-selected"), "true");
+      await picker.press("Enter");
+    }
+    assert.equal(await picker.inputValue(), actor.name);
+    assert.ok(await picker.evaluate((node) => node === document.activeElement));
+    assert.equal(await dialog.getByRole("listbox").count(), 0);
+  }
+  async function createOn(page, name, responsible, touch) {
+    await page.goto(origin + "/action-plans");
+    await page.getByRole("button", { name: /Novo plano/ }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel(/Ponto de melhoria/).fill(name);
+    await dialog.getByLabel("O que fazer").fill("Ajustar procedimento");
+    await dialog.getByLabel("Como fazer").fill("Revisar checklist");
+    await dialog.getByLabel("Prazo").fill(new Date().toISOString().slice(0, 10));
+    await dialog.getByLabel("Critério de eficácia").fill("Procedimento conferido");
+    await dialog.getByLabel("Evidência esperada").fill("PDF");
+    await selectAssignee(dialog, responsible, touch);
+    await checkWidth(page);
+    await dialog.getByRole("button", { name: "Salvar", exact: true }).click();
+    await page.waitForURL(/\/action-plans\/[0-9a-f-]+$/);
+    await page.getByText(responsible.name, { exact: true }).waitFor();
+    return page.url().split("/").at(-1);
+  }
+  async function editOn(page, id, original, responsible, touch) {
+    await page.getByRole("button", { name: "Editar planejamento" }).click();
+    const dialog = page.getByRole("dialog");
+    const picker = dialog.getByRole("combobox", { name: "Responsável" });
+    assert.equal(await picker.inputValue(), original.name);
+    await picker.fill("Busca sem seleção");
+    await picker.press("Tab");
+    assert.equal(await picker.inputValue(), original.name);
+    await selectAssignee(dialog, responsible, touch);
+    await dialog.getByRole("button", { name: "Salvar", exact: true }).click();
+    await page.getByText(responsible.name, { exact: true }).waitFor();
+    const [saved] = await ap(manager, "plan_summaries", { p_plan: id });
+    assert.equal(saved.plan.responsible_id, responsible.id);
+  }
+  plan = await createOn(desktop, title, other, false);
+  assert.equal((await get(manager)).responsible_id, other.id);
+  await editOn(desktop, plan, other, executor, false);
+  const mobilePlan = await createOn(managerMobile, `Planejamento móvel ${tag}`, manager, true);
+  const [mobileSaved] = await ap(manager, "plan_summaries", { p_plan: mobilePlan });
+  assert.equal(mobileSaved.plan.responsible_id, manager.id);
+  await editOn(managerMobile, mobilePlan, manager, other, true);
   assert.equal(await get(other), undefined);
   await expectStatus(rpc(executor, "search_assignees", { p_unit: unit, p_sector: null, p_plan: plan }), 403);
   const status = (actor, state, v) => rpc(actor, "set_plan_status", { p_id: plan, p_version: v, p_status: state });
@@ -271,7 +314,95 @@ try {
     p_notes: "Verificação AP-02", p_expected_evidence_ids: [file.id],
   });
   assert.equal((await get(manager)).effectiveness, "effective");
-  console.log(`PASS AP-02 (${identity ? "Identity" : "base"}): Chromium desktop/375px, REST, RLS, Storage, relato, reatribuição, revogação, conclusão e verificação.`);
+  phase = "auditoria de origem em leitura por atribuição";
+  const auditCall = async (actor, name, payload) => {
+    const response = await expectStatus(rpc(actor, name, payload, "audit"), 200, 204);
+    return response?.json();
+  };
+  const auditRows = async (actor, table, filters) => (await expectStatus(
+    request(`/rest/v1/${table}?${filters}`, { actor, schema: "audit" }), 200,
+  )).json();
+  const prepareOrigin = async (actor) => {
+    const id = await auditCall(manager, "create_inspection", {
+      p_unit: unit, p_applied_on: new Date().toISOString().slice(0, 10), p_previous_visit_on: null,
+    });
+    const observation = `Observação da auditoria ${actor.name}`;
+    await expectStatus(request(`/rest/v1/inspection_answers?inspection_id=eq.${id}&item_key=eq.item-001`, {
+      actor: manager, method: "PATCH", schema: "audit", payload: { response: "AP", observation },
+    }), 204);
+    const [{ plan: source }] = await ap(manager, "plan_summaries", { p_inspection: id });
+    await ap(manager, "update_plan", { ...planning(actor.id, source.version), p_id: source.id });
+    const [file] = await auditCall(manager, "begin_checklist_evidence_upload", {
+      p_inspection: id, p_item_key: "item-001", p_original_name: "origem.pdf",
+      p_content_type: "application/pdf", p_size: pdf.length,
+    });
+    await expectStatus(request(`/storage/v1/object/audit-checklist-evidence/${file.object_key}`, {
+      actor: manager, method: "POST", bytes: pdf,
+    }), 200);
+    await auditCall(manager, "confirm_checklist_evidence_upload", { p_evidence: file.evidence_id });
+    return { id, source: source.id, observation, key: file.object_key };
+  };
+  const linked = await prepareOrigin(executor);
+  const unrelated = await prepareOrigin(other);
+  const audited = await auditRows(executor, "inspections", "select=id");
+  assert.deepEqual(audited, [{ id: linked.id }]);
+  assert.deepEqual(await auditCall(executor, "inspection_summaries", {}), []);
+  assert.equal((await auditCall(executor, "inspection_summaries", { p_inspection: linked.id }))[0].id, linked.id);
+  assert.deepEqual(await auditCall(executor, "inspection_summaries", { p_inspection: unrelated.id }), []);
+  assert.deepEqual(await auditCall(executor, "inspection_summaries", { p_inspection: linked.id, p_overview: true }), []);
+  const answersOf = (actor, id) => auditRows(actor, "inspection_answers",
+    `inspection_id=eq.${id}&item_key=eq.item-001&select=response,observation`);
+  assert.deepEqual(await answersOf(executor, linked.id), [{ response: "AP", observation: linked.observation }]);
+  assert.deepEqual(await answersOf(executor, unrelated.id), []);
+  const metadataOf = (actor, id) => auditCall(actor, "checklist_evidence", { p_inspection: id });
+  assert.equal((await metadataOf(executor, linked.id)).length, 1);
+  assert.deepEqual(await metadataOf(executor, unrelated.id), []);
+  const original = (actor, key) => request(`/storage/v1/object/authenticated/audit-checklist-evidence/${key}`, { actor });
+  assert.deepEqual(Buffer.from(await (await expectStatus(original(executor, linked.key), 200)).arrayBuffer()), pdf);
+  await expectStatus(original(executor, unrelated.key), 400, 401, 403, 404);
+  await expectStatus(request(`/storage/v1/object/sign/audit-checklist-evidence/${linked.key}`, {
+    actor: executor, method: "POST", payload: { expiresIn: 60 },
+  }), 400, 401, 403, 404);
+  await expectStatus(rpc(executor, "inspection_export", { p_inspection: linked.id }, "audit"), 403);
+  await expectStatus(rpc(executor, "unit_history_export", { p_unit: unit }, "audit"), 403);
+  await expectStatus(request(`/rest/v1/inspection_answers?inspection_id=eq.${linked.id}&item_key=eq.item-001`, {
+    actor: executor, method: "PATCH", schema: "audit", payload: { observation: "Alteração indevida" },
+  }), 204);
+  assert.deepEqual(await answersOf(manager, linked.id), [{ response: "AP", observation: linked.observation }]);
+
+  await mobile.goto(`${origin}/action-plans/${linked.source}`);
+  await mobile.getByRole("link", { name: "Abrir auditoria", exact: true }).click();
+  await mobile.locator(".audit-attention-obs").filter({ hasText: linked.observation }).waitFor();
+  await checkWidth(mobile);
+  const auditDownload = mobile.waitForEvent("download");
+  await mobile.getByRole("button", { name: /^Baixar/ }).click();
+  assert.deepEqual(readFileSync(await (await auditDownload).path()), pdf);
+  await mobile.getByRole("link", { name: "Abrir checklist" }).click();
+  await mobile.locator(".audit-observation-text").filter({ hasText: linked.observation }).waitFor();
+  assert.equal(await mobile.locator("input[type=file], .audit-observation textarea").count(), 0);
+  await mobile.goto(`${origin}/audit/inspections/${unrelated.id}`);
+  await mobile.getByText("Auditoria indisponível", { exact: true }).waitFor();
+  await mobile.goto(`${origin}/action-plans/${unrelated.source}`);
+  await mobile.getByText("Plano de ação indisponível", { exact: true }).waitFor();
+  await mobile.goto(`${origin}/audit`);
+  await mobile.getByText("Acesso não autorizado", { exact: true }).waitFor();
+
+  await sql(`update core.user_role_assignments set active=false where user_id='${executor.id}'`);
+  assert.deepEqual(await answersOf(executor, linked.id), []);
+  await expectStatus(original(executor, linked.key), 400, 401, 403, 404);
+  await sql(`update core.user_role_assignments set active=true where user_id='${executor.id}'`);
+  const [{ plan: source }] = await ap(manager, "plan_summaries", { p_plan: linked.source });
+  await ap(manager, "update_plan", { ...planning(other.id, source.version), p_id: source.id });
+  assert.deepEqual(await answersOf(executor, linked.id), []);
+  assert.equal((await answersOf(other, linked.id)).length, 1);
+  const impact = await ap(manager, "plan_delete_impact", { p_plan: source.id });
+  await ap(manager, "begin_plan_delete", { p_plan: source.id, p_snapshot: impact.snapshot, p_confirmation: "excluir plano de ação" });
+  assert.deepEqual(await metadataOf(other, linked.id), []);
+  await expectStatus(original(other, linked.key), 400, 401, 403, 404);
+  await ap(manager, "finish_plan_delete", { p_plan: source.id });
+  assert.deepEqual(await answersOf(other, linked.id), []);
+  assert.equal((await answersOf(manager, linked.id)).length, 1);
+  console.log(`PASS AP-02 (${identity ? "Identity" : "base"}): Chromium desktop/375px, REST, RLS, Storage, relato, reatribuição, revogação, conclusão, verificação e auditoria vinculada.`);
 } catch (error) {
   console.error(`FAIL AP-02 (${phase}) | ${error.message.split("\n")[0]}`);
   process.exitCode = 1;
@@ -282,27 +413,41 @@ try {
     try {
       const ids = people.map(({ id }) => `'${id}'`).join(",");
       // Usa a API de Storage para remover os bytes de qualquer plano desta fixture.
-      const objects = await sql(`select o.name from storage.objects o join action_plans.plans p
-        on split_part(o.name,'/',1)=p.id::text where p.unit_id='${unit}' and o.bucket_id='${bucket}'`);
-      if (objects) {
+      const objects = await sql(`select o.bucket_id,o.name from storage.objects o
+        where (o.bucket_id='${bucket}' and split_part(o.name,'/',1) in
+         (select p.id::text from action_plans.plans p where p.unit_id='${unit}'))
+        or (o.bucket_id='audit-checklist-evidence' and split_part(o.name,'/',1) in
+         (select i.id::text from audit.inspections i where i.unit_id='${unit}'))`);
+      for (const target of [bucket, "audit-checklist-evidence"]) {
+        const keys = objects.split("\n").filter((row) => row.startsWith(target + "|")).map((row) => row.split("|")[1]);
+        if (!keys.length) continue;
         const status = docker(["exec", "-i", `${project}-identity-1`, "node", "--input-type=module", "-e", `
           import {readFileSync} from "node:fs";
-          const response=await fetch("http://storage:5000/object/action-plan-evidence",{
+          const {bucket, prefixes}=JSON.parse(readFileSync(0,"utf8"));
+          const response=await fetch("http://storage:5000/object/"+bucket,{
             method:"DELETE",headers:{Authorization:"Bearer "+process.env.GG_IDENTITY_AUTH_ADMIN_KEY,"Content-Type":"application/json"},
-            body:readFileSync(0,"utf8"),
+            body:JSON.stringify({prefixes}),
           });
           process.stdout.write(String(response.status));
-        `], JSON.stringify({ prefixes: objects.split("\n") }));
+        `], JSON.stringify({ bucket: target, prefixes: keys }));
         assert.ok(["200", "204"].includes(status));
-        const names = objects.split("\n").map((name) => {
+        const names = keys.map((name) => {
           assert.match(name, /^[0-9a-f-]+\/[0-9a-f-]+$/);
           return `'${name}'`;
         }).join(",");
-        assert.equal(await sql(`select count(*) from storage.objects where bucket_id='${bucket}' and name in (${names})`), "0");
+        assert.equal(await sql(`select count(*) from storage.objects where bucket_id='${target}' and name in (${names})`), "0");
       }
       await sql(`begin;
         delete from action_plans.evidence where plan_id in (select id from action_plans.plans where unit_id='${unit}');
         delete from action_plans.plans where unit_id='${unit}';
+        delete from audit_private.deletion_objects where plan_id in (select plan_id from action_plans_private.plan_deletions where unit_id='${unit}');
+        delete from audit_private.deletion_namespaces where plan_id in (select plan_id from action_plans_private.plan_deletions where unit_id='${unit}');
+        delete from action_plans_private.plan_deletions where unit_id='${unit}';
+        delete from audit.checklist_evidence_derivatives where evidence_id in (
+          select e.id from audit.checklist_evidence e join audit.inspections i on i.id=e.inspection_id where i.unit_id='${unit}');
+        delete from audit.checklist_evidence where inspection_id in (select id from audit.inspections where unit_id='${unit}');
+        delete from audit.inspection_answers where inspection_id in (select id from audit.inspections where unit_id='${unit}');
+        delete from audit.inspections where unit_id='${unit}';
         delete from core.user_role_assignments where user_id in (${ids});
         delete from private.identity_credentials where user_id in (${ids});
         delete from core.system_audit_log where unit_id='${unit}' or actor_user_id in (${ids}) or entity_id in (${ids});

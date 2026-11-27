@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, Navigate, NavLink, useParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
+import { hasAnyScope } from "../../core/auth/permissions";
 import { useResource } from "../../shared/useResource";
 import { Icon } from "../../shared/icons";
 import { plural } from "../../shared/plural";
@@ -54,6 +55,7 @@ export function InspectionPage() {
   const [more, setMore] = useState(false);
   const auth = useAuth();
   const evidence = useChecklistEvidence(inspectionId);
+  const canBrowseAudits = hasAnyScope(!!auth.profile?.active, auth.grants, "audit.inspection.read");
   const [review,setReview]=useState<{inspectionId:string;version:number;rows:ChecklistEvidence[]}>();
   const reviewGeneration=useRef(0);
   const [finalPending,setFinalPending]=useState(0);
@@ -224,8 +226,8 @@ export function InspectionPage() {
       <EmptyState
         title="Auditoria indisponível"
         actions={
-          <Link className="button-link quality-return" to="/audit">
-            Voltar para Auditorias
+          <Link className="button-link quality-return" to={canBrowseAudits ? "/audit" : "/action-plans"}>
+            {canBrowseAudits ? "Voltar para Auditorias" : "Voltar para Planos de Ação"}
           </Link>
         }
       >
@@ -236,8 +238,10 @@ export function InspectionPage() {
   const base = `/audit/inspections/${summary.id}`;
   if (!tab || (tab === "plans" && !canPlans)) return <Navigate to={base} replace />;
   const scope = { unit_id: summary.unit_id };
+  const linkedOnly = !auth.can("audit.inspection.read", scope);
   const draft = summary.status === "draft";
-  const editable = draft && auth.can("audit.inspection.edit", scope);
+  const editable = !linkedOnly && draft && auth.can("audit.inspection.edit", scope);
+  const canFinalize = !linkedOnly && draft && auth.can("audit.inspection.finalize", scope);
   const overall = results.overall;
   const remaining = overall.tally.total - overall.tally.answered;
   const current = sections.find((s) => s.key === section) ?? sections[0];
@@ -257,7 +261,7 @@ export function InspectionPage() {
     r.loading || summary.id !== inspectionId ? "Atualizando os dados da auditoria…" : "",
   ].filter(Boolean).join(" ");
   const requestFinalize = async () => {
-    if (!draft || !auth.can("audit.inspection.finalize", scope) || finalizeReasons) return;
+    if (!canFinalize || finalizeReasons) return;
     if (remaining > 0) {
       setIncomplete(true);
       return;
@@ -281,9 +285,10 @@ export function InspectionPage() {
     answers,
     results,
     editable,
+    linkedOnly,
     stale,
     confirming: !!action,
-    finalization: { allowed: draft && auth.can("audit.inspection.finalize", scope), reason: finalizeReasons, request: requestFinalize },
+    finalization: { allowed: canFinalize, reason: finalizeReasons, request: requestFinalize },
     evidence,
     current,
     index,
@@ -303,8 +308,11 @@ export function InspectionPage() {
   return (
     <>
       <nav className="breadcrumb" aria-label="Trilha">
-        <Link to="/audit">Auditorias</Link> /{" "}
-        <Link to={`/audit/units/${summary.unit_id}`}>{summary.unit_name}</Link>{" "}
+        {linkedOnly ? (
+          <><Link to="/action-plans">Planos de Ação</Link> / <span>{summary.unit_name}</span></>
+        ) : (
+          <><Link to="/audit">Auditorias</Link> / <Link to={`/audit/units/${summary.unit_id}`}>{summary.unit_name}</Link></>
+        )}{" "}
         / <span>{formatDate(summary.applied_on)}</span>
       </nav>
       {/* One composition: identity + status, then a single bar with the
@@ -394,8 +402,8 @@ export function InspectionPage() {
             />
           )}
         </section>
-        <div className="audit-hero-actions">
-          {draft && auth.can("audit.inspection.finalize", scope) && (
+        {!linkedOnly && <div className="audit-hero-actions">
+          {canFinalize && (
             <button
               className="primary"
               disabled={!!finalizeReasons}
@@ -421,7 +429,7 @@ export function InspectionPage() {
           <div id={moreId} className="audit-more" data-open={more}>
             <ReportingActions kind="inspection" inspectionId={summary.id} unitId={summary.unit_id} blocked={pending.size > 0 || stale || r.loading} />
           </div>
-        </div>
+        </div>}
       </header>
       <nav className="audit-tabs" aria-label="Auditoria">
         <NavLink end to={base}>

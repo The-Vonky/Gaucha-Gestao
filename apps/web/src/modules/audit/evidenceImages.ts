@@ -30,13 +30,13 @@ export const thumbnailKey = (e: ImageEvidence) => imagePrefix(e.inspection_id) +
 export function reconcileEvidenceImages(inspection: string, rows: ChecklistEvidence[]) {
   privateImages.reconcile(imagePrefix(inspection), new Set(rows.flatMap(e => [imageKey(e), thumbnailKey(e)])));
 }
-export function loadEvidenceImage(e: ImageEvidence) {
+export function loadEvidenceImage(e: ImageEvidence, authenticated = false) {
   return privateImages.load(imageKey(e), async signal => {
     if (!["image/jpeg", "image/png"].includes(e.content_type) || e.size_bytes <= 0 || e.size_bytes > MAX_BYTES)
       throw new Error("Imagem indisponível.");
     // O prazo começa antes da assinatura. O blob nunca prolonga os 60s do link original.
     const expiresAt = Date.now() + PRIVATE_IMAGE_TTL;
-    const response = await readOriginal(e, signal);
+    const response = await readOriginal(e, signal, authenticated);
     return readImage(response, e.content_type, e.size_bytes, MAX_BYTES, expiresAt);
   });
 }
@@ -44,8 +44,8 @@ export function loadEvidenceImage(e: ImageEvidence) {
 const fetchSigned = (url: string, signal: AbortSignal) =>
   fetch(url, { cache: "no-store", signal, credentials: "omit", redirect: "error" });
 
-async function readOriginal(e: ImageEvidence, signal: AbortSignal) {
-  if (identityEnabled) return fetchPrivateObject(BUCKET, e.object_key, signal);
+async function readOriginal(e: ImageEvidence, signal: AbortSignal, authenticated = false) {
+  if (identityEnabled || authenticated) return fetchPrivateObject(BUCKET, e.object_key, signal);
   return fetchSigned(await downloadUrl(e, "Evidência"), signal);
 }
 
