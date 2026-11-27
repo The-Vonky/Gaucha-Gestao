@@ -1897,8 +1897,8 @@ try {
     ],
     [1, 1],
   );
-  // AUD-DELETE-01 e AP-01: somente o protocolo de exclusão cruza
-  // essa fronteira. Nenhuma FK de Audit aponta para Planos de Ação.
+  // Exclusão definitiva e leitura por vínculo usam contratos de integração.
+  // Nenhuma FK de Audit aponta para Planos de Ação.
   const dependencies = await db.query(
     `select n.nspname || '.' || p.proname as name
      from pg_proc p join pg_namespace n on n.oid=p.pronamespace
@@ -1911,6 +1911,7 @@ try {
     "audit.can_remove_deletion_object",
     "audit.finish_inspection_delete",
     "audit.inspection_delete_impact",
+    "audit_private.can_read_plan_origin",
     "audit_private.guard_deletion_write",
     "audit_private.inspection_object_namespaces",
   ]);
