@@ -133,3 +133,7 @@ A decisão na [PR #114](https://github.com/The-Vonky/Gaucha-Gestao/pull/114#issu
 ## Adendo AG-D5-C — 23/11/2026
 
 O responsável revisou a separação de funções: o administrador global da plataforma deve ter capacidade efetiva de gestão de salas, mas vê dois botões para atuar como **Room Booking Manager** ou **Room Booking Requester**. A alteração é avulsa, fora das GG-01–GG-15, e convive com a GG-05B integrada pela PR #127. A [D5-B histórica](../history/modules/room-booking/D5B_ACCESS.md) é superada somente na proibição ao administrador; as demais regras do módulo permanecem. Não criar concessões de gestores automaticamente e não reescrever a migration histórica. A seleção da tela é uma preferência transitória de apresentação, não uma barreira de autorização no servidor. [Especificação e critérios de aceite](../modules/room-booking/D5C_ADMIN_MODES.md).
+
+## AUD-DELETE-01 · 26/11/2026
+
+O mantenedor autorizou exclusão irreversível da auditoria e dos planos originados nela, inclusive verificados, mantendo logs do Core e backups. A exceção física ao fluxo HTTP é a reconciliação operacional de versões órfãs no DEV pessoal. [Procedimento e contrato](../modules/audit/EXCLUSAO_DEFINITIVA.md).

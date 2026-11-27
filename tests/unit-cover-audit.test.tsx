@@ -8,6 +8,11 @@ import { UnitPage } from "../apps/web/src/modules/audit/UnitPage";
 import { UnitCover } from "../apps/web/src/modules/audit/UnitIdentity";
 import { clearUnitCoverCache } from "../apps/web/src/core/unitCovers";
 const api = vi.hoisted(() => ({ units: vi.fn(), summaries: vi.fn(), createInspection: vi.fn() }));
+const deletion = vi.hoisted(() => ({
+  pendingDeletions: vi.fn(async () => []),
+  deletionImpact: vi.fn(), beginDeletion: vi.fn(), resumeDeletion: vi.fn(),
+}));
+vi.mock("../apps/web/src/modules/audit/deletion", () => deletion);
 vi.mock("../apps/web/src/modules/audit/api", () => api);
 vi.mock("../apps/web/src/modules/action-plans/api", () => ({ summaries: vi.fn(async () => []) }));
 vi.mock("../apps/web/src/modules/audit/reporting/api", () => ({ inspectionExport: vi.fn(), historyExport: vi.fn() }));

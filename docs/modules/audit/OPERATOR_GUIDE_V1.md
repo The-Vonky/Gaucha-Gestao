@@ -69,3 +69,7 @@ XLSX de inspeção e histórico e impressão/PDF usam dados autorizados. A expor
 | Suspeita de dado de outra unidade | Não explorar; preservar evidência saneada e escalar incidente de autorização |
 
 Todo teste manual deve registrar aparelho, navegador/versão, data, ambiente, usuário de teste, escopo, passos, esperado/obtido e evidência sem segredos. **Sem teste físico e operação comprovada, nenhuma funcionalidade descrita aqui autoriza uso produtivo.**
+
+## Excluir uma auditoria
+
+O histórico da unidade oferece a ação Excluir para os perfis com capacidade efetiva. Consulte as contagens antes de confirmar. [Procedimento e contrato](EXCLUSAO_DEFINITIVA.md).

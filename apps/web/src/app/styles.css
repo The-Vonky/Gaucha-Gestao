@@ -2743,3 +2743,22 @@ button.file-remove:hover:not(:disabled) {
     opacity: 0.5;
   }
 }
+
+button.inspection-delete-button {
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
+  color: white;
+}
+button.inspection-delete-button:hover:not(:disabled) {
+  background: var(--danger-text);
+  color: white;
+}
+.inspection-delete-counts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2) var(--space-3);
+}
+.inspection-delete-counts dd { margin: 0; text-align: end; }
+@container (max-width: 520px) {
+  .unit-timeline li > .unit-timeline-open { grid-column: 1 / -1; justify-self: start; }
+}

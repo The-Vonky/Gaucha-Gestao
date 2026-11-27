@@ -31,18 +31,18 @@ function args(v: PlanValues) {
 export async function summaries(
   filter: { p_plan?: string; p_inspection?: string } = {},
 ): Promise<PlanSummary[]> {
-  // Newest first and never deleted: a plan created between pages only shifts
-  // earlier rows forward, so a repeated row is dropped and none is lost.
-  const rows = new Map<string, PlanSummary>();
+  const rows: PlanSummary[] = [];
   const pageSize = 500;
-  for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await db()
-      .rpc("plan_summaries", filter)
-      .range(offset, offset + pageSize - 1);
+  for (;;) {
+    const last: Plan | undefined = rows.at(-1)?.plan;
+    const { data, error } = await db().rpc("plan_summaries_page", {
+      ...filter,
+      p_before_created_at: last?.created_at ?? null,
+      p_before_id: last?.id ?? null,
+    }).limit(pageSize);
     if (error) throw error;
-    for (const row of data ?? [])
-      if (!rows.has(row.plan.id)) rows.set(row.plan.id, row);
-    if (!data || data.length < pageSize) return [...rows.values()];
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) return rows;
   }
 }
 export async function plan(id: string) {

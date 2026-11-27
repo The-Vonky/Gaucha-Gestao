@@ -1,3 +1,4 @@
+import type { DeleteImpact, DeleteState } from "./deletion";
 import type { Classification, Response } from "./scoring";
 import type { HistoryReport, InspectionReport } from "./reporting/types";
 export type Section = {
@@ -71,6 +72,11 @@ export type AuditDatabase = {
     };
     Views: Record<string, never>;
     Functions: {
+      inspection_delete_impact: { Args: { p_inspection: string }; Returns: DeleteImpact };
+      pending_inspection_deletions: { Args: { p_unit: string }; Returns: {id: string; applied_on: string}[] };
+      begin_inspection_delete: { Args: { p_inspection: string; p_snapshot: string; p_confirmation: string }; Returns: undefined };
+      inspection_delete_state: { Args: { p_inspection: string }; Returns: DeleteState };
+      finish_inspection_delete: { Args: { p_inspection: string }; Returns: undefined };
       checklist_evidence: { Args:{p_inspection:string;p_item_key?:string|null};Returns:ChecklistEvidence[] };
       checklist_evidence_thumbnail:{Args:{p_evidence:string};Returns:{evidence_id:string;encoder_version:string;derived_object_key:string;mime:string;bytes:number;derived_sha256:string}[]};
       checklist_evidence_thumbnail_state:{Args:{p_evidence:string};Returns:{state:string;reason:string|null;retryable:boolean}[]};
@@ -81,8 +87,8 @@ export type AuditDatabase = {
       inspection_export: { Args: { p_inspection: string }; Returns: InspectionReport };
       unit_history_export: { Args: { p_unit: string; p_from: string | null; p_to: string | null }; Returns: HistoryReport };
       units: { Args: Record<string, never>; Returns: AuditUnit[] };
-      inspection_summaries: {
-        Args: { p_unit?: string; p_inspection?: string; p_overview?: boolean };
+      inspection_summaries_page: {
+        Args: { p_unit?: string; p_inspection?: string; p_overview?: boolean; p_before_applied_on?: string | null; p_before_created_at?: string | null; p_before_id?: string | null };
         Returns: InspectionSummary[];
       };
       create_inspection: {

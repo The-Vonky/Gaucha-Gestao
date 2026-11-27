@@ -30,21 +30,19 @@ export async function units(): Promise<AuditUnit[]> {
 export async function summaries(
   args: { p_unit?: string; p_inspection?: string; p_overview?: boolean } = {},
 ): Promise<InspectionSummary[]> {
-  const rows = new Map<string, InspectionSummary>();
+  const rows: InspectionSummary[] = [];
   const pageSize = 500;
-  for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await db()
-      .rpc("inspection_summaries", args)
-      // Preserve the RPC's newest-first order, with a unique page boundary.
-      .order("applied_on", { ascending: false })
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .range(offset, offset + pageSize - 1);
+  for (;;) {
+    const last: InspectionSummary | undefined = rows.at(-1);
+    const { data, error } = await db().rpc("inspection_summaries_page", {
+      ...args,
+      p_before_applied_on: last?.applied_on ?? null,
+      p_before_created_at: last?.created_at ?? null,
+      p_before_id: last?.id ?? null,
+    }).limit(pageSize);
     if (error) throw error;
-    // A concurrent insertion can shift an already loaded row into the next page.
-    for (const row of data ?? [])
-      if (!rows.has(row.id)) rows.set(row.id, numeric(row));
-    if (!data || data.length < pageSize) return [...rows.values()];
+    rows.push(...(data ?? []).map(numeric));
+    if (!data || data.length < pageSize) return rows;
   }
 }
 export async function inspection(id: string) {

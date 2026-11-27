@@ -92,6 +92,7 @@ jobs:
       - run: node tests/integration/audit.mjs
       # Checklist Evidence: real Storage bytes, two-session PostgreSQL races, desktop/375px.
       - run: node tests/integration/audit-evidence.mjs
+      - run: node tests/integration/audit-delete.mjs
       # Unit Cover v1: real Auth/Storage upload, batch signing, bucket limits and denials.
       - run: node tests/integration/unit-cover.mjs
       # Curva ABC v1: real Auth/Storage upload, RLS by unit, concurrent publishers and log.

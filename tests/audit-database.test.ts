@@ -560,6 +560,69 @@ describe("Audit domain database", { concurrent: false }, () => {
       db.query("delete from audit.inspections where id=$1", [id]),
     ).rejects.toThrow();
   });
+  it("calcula o impacto pelo vínculo de origem e detecta alterações com contagens iguais", async () => {
+    await login(users.unitA);
+    const target = await create(A);
+    const other = await create(A);
+    const impact = async () => (await one<{ impact: {
+      counts: Record<string, number>; snapshot: string
+    } }>("select audit.inspection_delete_impact($1) as impact", [target])).impact;
+    const initial = await impact();
+    expect(initial.counts).toMatchObject({ criteria: 158, answered: 0, plans: 0, objects: 0 });
+    await db.query("update audit.inspection_answers set response='AP', observation='Sintética' where inspection_id = any($1) and item_key='item-001'", [[target, other]]);
+    const before = await impact();
+    expect(before.counts).toMatchObject({ answered: 1, observations: 1, plans: 1, pending: 1 });
+    expect(JSON.stringify(before)).not.toContain("Sintética");
+    await db.query("update audit.inspection_answers set observation='Revisada' where inspection_id=$1 and item_key='item-001'", [target]);
+    const after = await impact();
+    expect(after.counts).toEqual(before.counts);
+    expect(after.snapshot).not.toBe(before.snapshot);
+    await db.query("update audit.inspection_answers set response='AT' where inspection_id=$1 and item_key='item-001'", [target]);
+    expect((await impact()).counts).toMatchObject({ plans: 1, inactive_sources: 1 });
+    await login(users.admin);
+    expect((await impact()).counts.plans).toBe(1);
+    for (const user of [users.reader, users.sector, users.inactive, users.empty]) {
+      await login(user);
+      await expect(impact()).rejects.toMatchObject({ code: "42501" });
+    }
+    await login(users.global);
+    const outside = await create(B);
+    await login(users.unitA);
+    await expect(db.query("select audit.inspection_delete_impact($1)", [outside]))
+      .rejects.toMatchObject({ code: "42501" });
+  });
+  it("congela o conjunto confirmado, permite retomada autorizada e exclui somente a origem", async () => {
+    await login(users.unitA);
+    const target = await create(A);
+    const other = await create(A);
+    const snapshot = async () => (await one<{ s: string }>(
+      "select audit.inspection_delete_impact($1)->>'snapshot' s", [target])).s;
+    const start = (s: string, text = "excluir auditoria") =>
+      db.query("select audit.begin_inspection_delete($1,$2,$3)", [target,s,text]);
+    const finish = () => db.query("select audit.finish_inspection_delete($1)", [target]);
+    const old = await snapshot();
+    await expect(start(old,"EXCLUIR AUDITORIA")).rejects.toMatchObject({code: "22023"});
+    await db.query("update audit.inspection_answers set response='AP' where inspection_id=any($1) and item_key='item-001'", [[other,target]]);
+    await expect(start(old)).rejects.toMatchObject({code: "40001"});
+    const confirmed = await snapshot();
+    await start(confirmed);
+    await start(confirmed);
+    expect(await rows("select * from audit.inspection_summaries(null,$1)", [target])).toEqual([]);
+    expect(await rows("select * from action_plans.plan_summaries(null,$1)", [target])).toEqual([]);
+    await expect(db.query("update audit.inspection_answers set response='AT' where inspection_id=$1 and item_key='item-001'", [target])).rejects.toMatchObject({code: "55000"});
+    await login(users.sector);
+    await expect(finish()).rejects.toMatchObject({code:"42501"});
+    await login(users.admin);
+    await finish();
+    await finish();
+    await db.exec("reset role");
+    for (const [table, column] of [["audit.inspections","id"],["audit.inspection_answers","inspection_id"],["action_plans.plans","source_inspection_id"]]) {
+      expect(await rows(`select 1 from ${table} where ${column}=$1`, [target])).toEqual([]);
+      expect((await rows(`select 1 from ${table} where ${column}=$1`, [other])).length).toBeGreaterThan(0);
+    }
+    expect(await rows("select action from core.system_audit_log where entity_id=$1 and module='audit' order by occurred_at", [target]))
+      .toEqual([{action:"create"},{action:"inspection_delete_start"},{action:"inspection_delete_complete"}]);
+  });
   it("grants execute only on the audit RPCs to authenticated", async () => {
     await db.exec("reset role");
     const fns = await db.query<{

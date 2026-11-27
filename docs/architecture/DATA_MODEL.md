@@ -77,3 +77,7 @@ Perfis, unidades, setores e papéis devem normalmente ser **desativados**, não 
 Migrations são **append-only** após aplicadas em ambiente compartilhado, com fonte versionada única, backup/recuperação para alterações destrutivas, ensaios fora de PROD e regressão de RLS/grants.
 
 Para implementação física atual: [mapa](IMPLEMENTATION_MAP.md) e arquivos `supabase/migrations/`.
+
+## Inventário transitório da exclusão de auditorias
+
+O schema audit_private mantém a operação correlacionada à inspeção, seus objetos e namespaces congelados. O contrato privado dos planos usa exclusivamente a origem do checklist. [Procedimento e contrato](../modules/audit/EXCLUSAO_DEFINITIVA.md).

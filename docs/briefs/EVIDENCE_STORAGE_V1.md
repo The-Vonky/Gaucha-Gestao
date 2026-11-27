@@ -643,3 +643,7 @@ Return only:
 3. tests/validation executed;
 4. real pending issues;
 5. commits.
+
+## Exceção AUD-DELETE-01
+
+O purge dependente da auditoria de origem abrange evidências e reservas de todas as rodadas, inclusive as removidas logicamente. As regras anteriores continuam aplicáveis às demais operações. [Procedimento e contrato](../modules/audit/EXCLUSAO_DEFINITIVA.md).
