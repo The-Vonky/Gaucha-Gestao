@@ -84,9 +84,10 @@ try {
   const prepareVerifiedPlan = async plan => {
     const planVersion = async () => (await one("select version from action_plans.plans where id=$1",[plan])).version;
     await planRpc("update_plan", {p_id:plan,p_version:await planVersion(),p_improvement_point:"Origem do checklist",
-      p_action:"Ação sintética",p_how_to:"Método sintético",p_responsible:"Responsável sintético",p_due_date:"2026-12-01",
+      p_action:"Ação sintética",p_how_to:"Método sintético",p_responsible_id:user,p_due_date:"2026-12-01",
       p_effectiveness_criterion:"Critério sintético",p_monitoring_start:null,p_monitoring_end:null,p_expected_evidence:"PDF"});
     await planRpc("set_plan_status",{p_id:plan,p_version:await planVersion(),p_status:"in_progress"});
+    await planRpc("save_execution_report", {p_plan:plan,p_version:await planVersion(),p_report:"Relato sintético"});
     const execution=await attachPlan(plan,"execution");
     await planRpc("set_plan_status",{p_id:plan,p_version:await planVersion(),p_status:"completed"});
     for (let round=1;round<=2;round++) {
@@ -131,6 +132,7 @@ try {
   await finish(target); await finish(target);
   for (const o of indexed) assert.equal(physicalFile(o.bucket,o.name,o.revision),false);
   assert.equal((await db.query("select id from action_plans.plans where id=$1",[plan])).rowCount,0);
+  assert.equal((await db.query("select from action_plans_private.execution_reports where plan_id=$1",[plan])).rowCount,0);
   assert.equal((await db.query("select id from action_plans.plans where unit_id=$1 and source_type='manual'",[unit])).rowCount,1);
   assert.equal((await db.query("select from audit.inspections where id=$1",[saved])).rowCount,1);
   assert.equal((await db.query("select from storage.objects where bucket_id='audit-checklist-evidence' and name=$1",[keep.object_key])).rowCount,1);
@@ -205,6 +207,8 @@ try {
   assert.equal(await sourcePlan(sourceKeys[1]),sibling);
   assert.ok(physicalFile(siblingFile.bucket,siblingFile.name,siblingFile.revision));
   assert.equal((await db.query("select from action_plans.evidence where plan_id=$1",[automatic])).rowCount,0);
+  assert.equal((await db.query("select from action_plans_private.execution_reports where plan_id=$1",[automatic])).rowCount,0);
+  assert.equal((await db.query("select from core.profiles where id=$1",[user])).rowCount,1);
   await rpc("reopen_inspection",{p_id:origin,p_version:originBefore.inspection.version});
   const setOrigin = (response) => db.query(
     "update audit.inspection_answers set response=$3, observation='AP-01' where inspection_id=$1 and item_key=$2",
