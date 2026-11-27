@@ -6,7 +6,7 @@ export const STORAGE_STUB = `create table auth.sessions(id uuid primary key,user
  $$;
  create schema storage;
  create function storage.allow_only_operation(expected_operation text) returns boolean language sql stable as $$
-  select current_setting('storage.operation',true) = expected_operation
+  select coalesce(current_setting('storage.operation',true) = expected_operation, false)
  $$;
  create table storage.buckets(id text primary key,name text not null,public boolean default false,file_size_limit bigint,allowed_mime_types text[]);
  create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text,owner_id text,metadata jsonb,unique(bucket_id,name));

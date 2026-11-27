@@ -32,9 +32,9 @@ Na Curva ABC, o browser interpreta o XLSX e a RPC revalida payload, somas e meta
 
 ## Storage privado e miniaturas
 
-| Perfil | Leitura de objetos e autorização | Miniaturas de Auditorias |
+| Perfil | Leitura de objetos e autorização | Miniaturas de Auditorias e Planos |
 | --- | --- | --- |
-| Base | Buckets privados. As políticas autorizam o download autenticado ou a emissão de uma URL curta, conforme o adaptador do módulo. Uma URL assinada já entregue pode ser usada até o TTL enquanto o resgate estiver disponível. | Com transformação habilitada, Storage verifica a política do original e emite URL de transformação de até 60 s. imgproxy processa sob demanda sem sobrescrever o original. |
+| Base | Buckets privados. As políticas autorizam o download autenticado ou a emissão de uma URL curta, conforme o adaptador do módulo. Uma URL assinada já entregue pode ser usada até o TTL enquanto o resgate estiver disponível. | Storage revalida a RLS no GET autenticado de Planos e Auditorias por vínculo. No checklist com leitura ordinária e transformação habilitada, Storage emite URL de transformação de até 60 s conforme o grant de leitura. imgproxy gera a resposta sob demanda a partir do objeto original. |
 | DEV com Identity | O ingresso estrito permite operações enumeradas por bucket e caminho, com JWT de sessão admitida para os módulos. Storage reavalia a sessão e as políticas de domínio. O ingresso fecha emissão e resgate por assinatura, inclusive de URLs antigas. O proxy responde com `private, no-store` e `nosniff`. | A transformação nativa usa o caminho de renderização autenticado. O browser pede o derivado sob demanda com JWT; o imgproxy usa a montagem de objetos somente leitura. |
 
 Os adaptadores no modo estrito usam leitura autenticada para evidências de Auditorias e Planos de Ação, fotos de Salas, capas de unidade, originais ABC e imagens de relatórios. A autorização preserva estado, escopo e limites dos contratos. Bytes já entregues e arquivos exportados permanecem fora do alcance da revogação. [Gateway Identity](../../apps/core-identity/storage.mjs) · [Cliente de Storage privado](../../apps/web/src/core/auth/privateStorage.ts) · [Runbook imgproxy](../operations/AUD_IMG_02_IMGPROXY_LOCAL_RUNBOOK.md) · [Relatórios com evidências](../modules/audit/REPORT_EVIDENCE_EXPORT.md).
@@ -43,7 +43,9 @@ O purge definitivo de auditorias e planos usa o JWT do operador e inventário co
 
 Para Relatos, a omissão de `feedback-attachments` no ingresso estrito barrava o envio e o download antes das políticas do bucket. O ingresso admite agora apenas upload sem upsert e download autenticado no caminho de objeto com UUID canônico e extensão `.png` ou `.jpg`. A sessão admitida e o JWT do titular continuam obrigatórios. A RLS exige reserva pendente do titular no upload e Platform Administrator global com autoridade atual no download de relato recebido. [Ingresso Identity](../../apps/core-identity/storage.mjs) · [Contrato GG-11 e testes](../modules/feedback/FEEDBACK_V1.md#provas-da-compatibilidade-com-identity).
 
-O Executor com leitura exclusivamente por atribuição usa requisição autenticada no Storage para arquivos dos planos e evidências originais da auditoria de origem. Reatribuição, revogação e inativação retiram essa autorização das próximas requisições. [AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md)
+O Executor com leitura exclusivamente por atribuição usa requisição autenticada no Storage para arquivos dos planos e evidências da auditoria de origem. As operações admitidas para leitura por vínculo são `storage.object.get_authenticated` e, para JPEG/PNG, `storage.render.image_authenticated`. As verificações incluem referência disponível, perfil ativo, escopo e atribuição intacta. A política de assinatura e a autorização geral de Auditorias conservam os grants próprios. Reatribuição, revogação e inativação valem nas próximas requisições novas com o mesmo JWT. [AP-02 e AP-03](../modules/audit/DELEGACAO_PLANOS_ACAO.md#ap-03--miniaturas-privadas).
+
+O cache volátil de 24 MiB isola sessão, grants, escopo do registro e tipo de leitura, com validade fixa de até 60 s. Mudanças de acesso conhecidas, perda de sessão, remoção e exclusão invalidam blobs e transferências pendentes no cliente. Uma mudança externa ainda sem revalidação pode deixar visível uma imagem já entregue até a expiração. [Contrato e limites do cache](../modules/audit/EVIDENCE_IMAGE_TRAFFIC.md#ap-03--planos-e-auditoria-de-origem).
 
 ## Auditoria sistêmica
 

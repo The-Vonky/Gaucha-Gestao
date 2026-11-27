@@ -13,6 +13,7 @@ describe("ingresso de objetos da GG-05B", () => {
     ["GET", "/storage/render/image/authenticated/audit-evidence-thumbnails/file.jpg"],
     ["POST", "/storage/object/list/audit-evidence-thumbnails"],
     ["POST", "/storage/object/action-plan-evidence/file.pdf"],
+    ["GET", "/storage/render/image/authenticated/action-plan-evidence/file.jpg?width=480&height=480&resize=contain&quality=75&format=origin"],
     ["DELETE", "/storage/object/room-covers"],
   ])("permite %s %s no Storage sob o JWT original", (method, url) => {
     expect(storagePath({ method, url })).toBe(url.slice("/storage".length));
@@ -24,6 +25,8 @@ describe("ingresso de objetos da GG-05B", () => {
     ["POST", "/storage/object/sign/unit-covers"],
     ["PUT", "/storage/object/upload/sign/unit-covers/file.jpg?token=fixture"],
     ["GET", "/storage/render/image/sign/unit-covers/file.jpg?token=fixture"],
+    ["POST", "/storage/object/sign/action-plan-evidence/file.jpg"],
+    ["GET", "/storage/render/image/sign/audit-checklist-evidence/file.jpg?token=fixture"],
     ["GET", "/storage/render/image/public/unit-covers/file.jpg"],
     ["POST", "/storage/upload/resumable"],
     ["GET", "/storage/s3/unit-covers/file.jpg"],

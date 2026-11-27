@@ -45,7 +45,7 @@ try{
   await section.locator('input[type=file]').setInputFiles(dir+'/'+filename);
   await section.getByText('Preparando miniatura…',{exact:true}).waitFor();
   const item=section.locator('.audit-evidence-list .file-item').first();
-  await item.getByRole('img').waitFor();await page.waitForFunction(()=>document.querySelector('.audit-evidence-thumbnail img')?.naturalWidth>0);
+  await item.getByRole('img').waitFor();await page.waitForFunction(()=>document.querySelector('.evidence-image-thumbnail img')?.naturalWidth>0);
   await Promise.all(bodies);
   assert.equal(transfers.filter(t=>t.bucket==='original'&&t.stage.startsWith('list-')).length,0);
   const thumbnail=transfers.find(t=>t.stage===stage&&t.bucket==='thumbnail'&&t.status===200);assert.ok(thumbnail?.bytes<original.length);

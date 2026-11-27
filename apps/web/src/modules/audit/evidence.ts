@@ -1,3 +1,4 @@
+import { invalidateEvidenceImages } from "../../core/auth/evidenceImages";
 import { identityEnabled } from "../../core/auth/identity";
 import { downloadPrivateObject } from "../../core/auth/privateStorage";
 import { client } from "../../core/client";
@@ -44,7 +45,7 @@ export async function removeEvidence(id:string){
  const {error}=await db().rpc("remove_checklist_evidence",{p_evidence:id});
  if(error)throw error;
  // IDs são imutáveis; descarte todos os snapshots desse registro após remoção.
- privateImages.invalidateMatching(key=>key.startsWith("audit:")&&key.includes(":["+JSON.stringify(id)+","));
+ invalidateEvidenceImages("audit:",id);
 }
 export async function downloadUrl(e:Pick<ChecklistEvidence,"object_key"> & Partial<Pick<ChecklistEvidence,"original_name">>,name=e.original_name??"Evidência"){
  if(!client)throw new Error("Configuração indisponível.");

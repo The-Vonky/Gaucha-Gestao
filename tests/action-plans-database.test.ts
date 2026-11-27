@@ -180,7 +180,7 @@ beforeAll(async () => {
  grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;`);
   await db.exec(STORAGE_STUB);
   const files = readdirSync("supabase/migrations").sort();
-  const actionPlans = files.filter((f) => f.includes("action_plans") || f.includes("_audit_delete_") || f.includes("_action_plan_hard_delete"));
+  const actionPlans = files.filter((f) => f.includes("action_plans") || f.includes("_audit_delete_") || f.includes("_action_plan_hard_delete") || f.includes("_ap03_private_evidence_images"));
   for (const file of files.filter((f) => !actionPlans.includes(f)))
     await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
   const values = Object.values(users)

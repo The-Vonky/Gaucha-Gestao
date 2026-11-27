@@ -14,7 +14,8 @@
 ## Planos de Ação
 
 - **AP-01 — decisão integrada e homologada em 27/11/2026.** A [PR #139](https://github.com/The-Vonky/Gaucha-Gestao/pull/139) foi integrada em `1e894d4`. Quality e Platform Administrator podem excluir definitivamente planos no escopo autorizado, com prévia, confirmação, trilha, remoção de objetos pelo Storage e retomada quando necessária. A auditoria e os cadastros são preservados. [Contrato AP-01](../modules/audit/EXCLUSAO_DEFINITIVA.md#ap-01--exclusão-definitiva-de-planos-de-ação).
-- **AP-02 — aprovada para implementação no DEV.** Delegação por UUID, execução por atribuição, conclusão pela capacidade específica e relato independente. Integração condicionada à homologação e ao aceite do mantenedor. [Contrato AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md).
+- **AP-02 — homologada e integrada em 27/11/2026.** A [PR #140](https://github.com/The-Vonky/Gaucha-Gestao/pull/140) entrou em `b120115` com delegação por UUID, execução por atribuição, capacidade específica de conclusão e relato independente. A observação de miniaturas no acesso à Auditoria por vínculo foi encaminhada à AP-03. [Contrato AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md).
+- **AP-03 — aprovada para DEV em 27/11/2026.** Aplicar miniaturas privadas JPEG/PNG nos Planos de Ação e no checklist das Auditorias acessadas por vínculo, com Storage/imgproxy nativo, originais preservados e autorização autenticada a cada requisição por vínculo. Aceite do mantenedor e decisão de merge pendentes. [Contrato AP-03](../modules/audit/DELEGACAO_PLANOS_ACAO.md#ap-03--miniaturas-privadas).
 
 ## Decisões arquiteturais confirmadas
 

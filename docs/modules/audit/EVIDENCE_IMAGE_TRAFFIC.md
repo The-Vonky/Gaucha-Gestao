@@ -1,5 +1,26 @@
 # Tráfego de imagens da Auditoria — MED-01 / AUD-IMG-01–05
 
+## AP-03 — Planos e Auditoria de origem
+
+A miniatura nativa lê JPEG/PNG do bucket original privado quando o cartão entra no viewport. O Storage solicita ao imgproxy até **480 × 480 px**, com largura e altura proporcionais, qualidade 75 e formato de origem. A resposta deve ter o MIME esperado, até **1 MiB** e tamanho estritamente menor que o original. Um JPEG/PNG estático com até **64 KiB** e dimensões de até 480 px pode usar o próprio original após verificações de formato, tamanho e dimensões. Falha apresenta nova tentativa e abertura explícita do original.
+
+Planos de Ação e Auditorias abertas só por vínculo usam JWT no GET do original e da transformação nos perfis base e Identity. O checklist com leitura independente conserva a seleção de transporte do seu perfil e configuração. O cache global de blobs usa **24 MiB** e **60 segundos fixos**, por contexto de sessão e grant, chave do arquivo e tipo de leitura. Remoção conhecida descarta a evidência. Reatribuição e início/retomada de exclusão descartam o cache da aba porque podem afetar os dois módulos. A listagem reconcilia os registros disponíveis e descarta entradas ausentes ou de leitura negada.
+
+Uma revogação ou reatribuição externa é aplicada imediatamente às próximas requisições autenticadas. Na aba que ainda desconhece a mudança, um blob já entregue pode aparecer até revalidação do contexto/listagem, remoção do cache ou fim do TTL. A revalidação de grants ocorre também ao voltar à aba. A retenção de bytes pelo usuário depois da entrega está fora do alcance do cache. [Matriz de homologação](DELEGACAO_PLANOS_ACAO.md#homologação-no-notebook) · [Contrato de segurança](../../architecture/SECURITY.md#storage-privado-e-miniaturas).
+
+### Medição no DEV pessoal — 27/11/2026
+
+Storage v1.72.1, imgproxy v4.0.17 e Chromium em desktop (1280 px) e mobile emulado (375 px). O ensaio usou originais sintéticos de 1600 × 1200 px. A tabela mede o corpo HTTP efetivamente recebido do Storage, com `Accept-Encoding: identity`. O teste conferiu dimensões da miniatura e igualdade dos bytes do original, inclusive na ampliação do navegador.
+
+| Perfil | Evidência | Original (bytes) | Miniatura (bytes) | Redução |
+| --- | --- | ---: | ---: | ---: |
+| Base | Execução e auditoria vinculada, JPG | 1.218.113 | 41.065 | 96,63% |
+| Base | Verificação, PNG | 5.771.480 | 428.428 | 92,58% |
+| Identity | Execução e auditoria vinculada, JPG | 1.218.594 | 41.160 | 96,62% |
+| Identity | Verificação, PNG | 5.771.480 | 428.514 | 92,58% |
+
+Cada par compara o mesmo arquivo em dois GETs. O ambiente usou arquivos sintéticos gerados por execução, por isso os JPGs diferem entre os perfis. A medição cobre o corpo HTTP e exclui cabeçalhos, upload e processamento interno. A suíte verificou execução, rodada aberta e histórica, falha sem download automático, retry, cache, nome e bytes do download, reatribuição, revogação, grants aditivos e exclusões de plano e auditoria. Também verificou o checklist com grant ordinário e por vínculo. [Suíte AP-02/AP-03](../../../tests/integration/action-plans-delegation.mjs).
+
 ## Estado consolidado — 06/11/2026
 
 **EVIDÊNCIA DATADA.** Os resultados medidos usam o executor legado. Para o perfil base atual e o modo estrito de Identity, consulte [Storage privado e miniaturas](../../architecture/SECURITY.md#storage-privado-e-miniaturas).
@@ -38,7 +59,7 @@ O [contrato E3 original](CHECKLIST_EVIDENCE_V1.md#risco-residual-e3--aprovação
 
 - `IntersectionObserver` com margem zero inicia a transferência ao entrar no viewport. Critério fechado não monta imagens. Ao sair do viewport, o `<img>` é desmontado; o blob comprimido pode permanecer no cache. Sem essa API, o usuário pode carregar/ampliar explicitamente.
 - Identidade: inspeção, ID, chave imutável, MIME, tamanho e timestamp de confirmação. Mudanças na referência de `row` ou na numeração de apresentação não repetem efeitos.
-- Miniatura e modal compartilham a mesma transferência em andamento e a mesma blob URL. Reabrir critérios/trocar seções reutiliza bytes disponíveis na mesma sessão.
+- O cache deduplica requisições e reutiliza a blob URL para o mesmo arquivo e tipo de leitura. Miniatura e original têm chaves distintas quando há transformação. Reabrir critérios ou alternar seções reutiliza os bytes que já estiverem disponíveis na mesma sessão.
 - Orçamento LRU de **24 MiB de blobs**, até **duas** transferências simultâneas e **100** pedidos pendentes. Respostas são lidas com limite de bytes do registro e de 10 MiB por objeto; MIME e tamanho incoerentes falham. Timeout de 30s libera pedidos travados. O limite não inclui buffers transitórios, memória de decodificação ou memória interna do browser. Duas respostas podem representar mais 20 MiB transitórios; homologação móvel ainda é necessária.
 - Validade fixa de **até 60s contados antes da assinatura**, nunca renovada por uso. Expiração/evicção revogam a blob URL e retiram imagens montadas. Nova transferência exige retry, nova entrada no viewport ou remontagem. Não existe renovação automática em loop.
 - Login sem acesso carregado, logout, troca de usuário, perfil inativo, falha ao revalidar acesso e mudanças nos grants conhecidos descartam cache e respostas anteriores. Refresh do mesmo contexto preserva bytes; grants em ordem diferente não alteram o contexto.
