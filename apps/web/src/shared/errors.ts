@@ -13,6 +13,8 @@ export function message(error: unknown): string {
     return "Este vínculo possui referências. Preserve-o para manter o histórico.";
   if (code === "23514" || code === "22P02")
     return "Confira os campos e o escopo. Usuário, perfil, unidade e setor precisam estar ativos.";
+  if (code === "55000" && (error as { message?: string }).message === "Related plan deletion in progress")
+    return "Retome a exclusão do plano vinculado em Planos de Ação antes de excluir esta auditoria.";
   if (code === "55000")
     return "Esta operação não é permitida no estado atual do registro.";
   if (code === "42501")

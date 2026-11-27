@@ -644,6 +644,6 @@ Return only:
 4. real pending issues;
 5. commits.
 
-## Exceção AUD-DELETE-01
+## Exceções AUD-DELETE-01 e AP-01
 
-O purge dependente da auditoria de origem abrange evidências e reservas de todas as rodadas, inclusive as removidas logicamente. As regras anteriores continuam aplicáveis às demais operações. [Procedimento e contrato](../modules/audit/EXCLUSAO_DEFINITIVA.md).
+A exclusão da auditoria de origem e a de um plano individual abrangem evidências e reservas de todas as rodadas, inclusive as removidas logicamente. Ambas usam o inventário congelado e a Storage API com o JWT do operador. A AP-01 exige leitura e exclusão efetivas no escopo do plano. A remoção isolada de um anexo continua lógica. [Procedimento e contrato](../modules/audit/EXCLUSAO_DEFINITIVA.md).

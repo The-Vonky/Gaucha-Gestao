@@ -22,7 +22,7 @@ def sql(query):
                "-U", "postgres", "-d", "postgres", data=query)
 
 
-def reconcile(target, apply):
+def reconcile(target, apply, plan):
     endpoint = os.getenv("DOCKER_HOST") or run("context", "inspect", "--format",
                                                  "{{.Endpoints.docker.Host}}")
     if not endpoint.startswith("unix://"):
@@ -34,33 +34,39 @@ def reconcile(target, apply):
     if not run("inspect", "-f", "{{.Config.Image}}", STORAGE).endswith("@" + IMAGE):
         raise ValueError("Revalide a implementação física para esta imagem.")
     # Só o UUID canônico chega ao SQL. Os namespaces vêm do inventário congelado.
-    job = f"""from audit_private.inspection_deletions j
-      where j.inspection_id='{target}' and j.reconciliation_required
+    table, column, objects = (
+        ("action_plans_private.plan_deletions", "plan_id", "action_plans_private.plan_storage_objects")
+        if plan else
+        ("audit_private.inspection_deletions", "inspection_id", "audit_private.inspection_storage_objects")
+    )
+    job = f"""from {table} j
+      where j.{column}='{target}' and j.reconciliation_required
       and j.completed_at is null and not exists
-        (select from audit_private.inspection_storage_objects(j.inspection_id))"""
+        (select from {objects}(j.{column}))"""
     scopes = sql(f"""select jsonb_agg(jsonb_build_array(n.bucket,n.prefix) order by n.bucket,n.prefix)
-      from audit_private.deletion_namespaces n where n.inspection_id in (select j.inspection_id {job});""")
+      from audit_private.deletion_namespaces n where n.{column} in (select j.{column} {job});""")
     if not scopes or not json.loads(scopes):
-        raise ValueError("Retome o lote no histórico. É necessária uma operação pendente sem objetos catalogados.")
+        raise ValueError("Retome o lote na aplicação. É necessária uma operação pendente sem objetos catalogados.")
     program = Path(__file__).with_name("reconcile-storage.mjs").read_text()
     result = run("exec", "-i", STORAGE, "node", "--input-type=module", "-e", program,
                  data=json.dumps({"scopes": json.loads(scopes), "apply": apply}))
     proof = json.loads(result.splitlines()[-1])
     print(f"Versões físicas encontradas: {proof['found']}. Restantes: {proof['remaining']}.")
     if apply and proof["remaining"] == 0:
-        verified = sql(f"""update audit_private.inspection_deletions set verified_at=clock_timestamp()
-          where inspection_id in (select j.inspection_id {job}) returning 'verified';""")
+        verified = sql(f"""update {table} set verified_at=clock_timestamp()
+          where {column} in (select j.{column} {job}) returning 'verified';""")
         if verified != "verified":
             raise ValueError("Estado alterado. Repita a conferência.")
-        print("Verificação física registrada. Retome a exclusão no histórico.")
+        print("Verificação física registrada. Retome a exclusão na aplicação.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("auditoria", type=UUID)
+    parser.add_argument("alvo", type=UUID, help="UUID da auditoria ou do plano de ação")
+    parser.add_argument("--plan", action="store_true", help="reconciliar a exclusão de um plano de ação")
     parser.add_argument("--apply", action="store_true", help="remover versões órfãs confirmadas e verificar")
     args = parser.parse_args()
     try:
-        reconcile(str(args.auditoria), args.apply)
+        reconcile(str(args.alvo), args.apply, args.plan)
     except subprocess.CalledProcessError:
         raise SystemExit("Verificação interrompida. Confira tráfego ativo, caminhos ambíguos e serviços. A operação permanece pendente.") from None

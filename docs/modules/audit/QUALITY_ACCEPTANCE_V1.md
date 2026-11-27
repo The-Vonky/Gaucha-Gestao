@@ -117,4 +117,6 @@ Não preencher resultados retroativamente sem evidência.
 
 ## Homologação da exclusão definitiva
 
-Validar confirmação digitada, escopo, preservação de outra auditoria e plano manual, remoção nos três buckets, retomada e trilha do Core em fixtures sintéticas. O aceite humano continua pendente. [Procedimento e contrato](EXCLUSAO_DEFINITIVA.md).
+Validar confirmação digitada, escopo, preservação de outra auditoria e plano manual, remoção nos três buckets, retomada e trilha do Core em fixtures sintéticas. O mantenedor concluiu a homologação funcional da AUD-DELETE-01 e homologou a paginação antes de autorizar o merge em 27/11/2026. [PR #138](https://github.com/The-Vonky/Gaucha-Gestao/pull/138) · [Procedimento e contrato](EXCLUSAO_DEFINITIVA.md).
+
+A AP-01 tem aceite próprio no localhost. Use fixtures sintéticas para conferir cancelamento, frase exata, exclusão manual e automática, planos verificados, preservação da auditoria, retomada e o ciclo AP/NAT. [Roteiro da AP-01](EXCLUSAO_DEFINITIVA.md#ap-01--exclusão-definitiva-de-planos-de-ação).

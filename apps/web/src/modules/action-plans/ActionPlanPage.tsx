@@ -1,8 +1,10 @@
-import { useCallback, useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useCallback, useRef, useState, type ReactNode } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../core/auth/AuthProvider";
+import { hasAnyScope } from "../../core/auth/permissions";
 import { formatDate, today } from "../../shared/dates";
 import { Icon } from "../../shared/icons";
+import type { DeletionResult } from "../../shared/storageDeletion";
 import { useResource } from "../../shared/useResource";
 import {
   Confirm,
@@ -14,6 +16,8 @@ import {
   PageTitle,
 } from "../../shared/ui";
 import * as api from "./api";
+import { DeletePlan } from "./DeletePlan";
+import { pendingPlanDeletions } from "./deletion";
 import { EvidenceList, EvidenceUpload } from "./PlanEvidence";
 import { listEvidence, removeEvidence } from "./evidence";
 import {
@@ -53,13 +57,22 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 export function ActionPlanPage() {
   const { planId = "" } = useParams();
   const auth = useAuth();
-  const r = useResource(useCallback(() => api.plan(planId), [planId]));
+  const navigate = useNavigate();
+  const mayDelete = hasAnyScope(!!auth.profile?.active, auth.grants, "action_plan.delete");
+  const r = useResource(useCallback(async () => {
+    const summary = await api.plan(planId);
+    const [pending] = !summary && mayDelete ? await pendingPlanDeletions({ p_plan: planId }) : [];
+    return { summary, pending };
+  }, [planId, mayDelete]));
   const evidence = useResource(
     useCallback(() => listEvidence(planId), [planId]),
   );
   const [removing, setRemoving] = useState<Evidence>();
   const [removed, setRemoved] = useState<Evidence>();
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deletionFeedback, setDeletionFeedback] = useState("");
+  const refreshAfterDeletion = useRef(false);
   const [transition, setTransition] = useState<PlanStatus>();
   const [verifying, setVerifying] = useState(false);
   const [evidenceChanged, setEvidenceChanged] = useState(false);
@@ -75,6 +88,24 @@ export function ActionPlanPage() {
     }
     r.reload();
   }
+  function deletionChanged(feedback: string, result?: DeletionResult) {
+    refreshAfterDeletion.current = true;
+    if (result === "completed") {
+      navigate("/action-plans", { replace: true, state: { deletionFeedback: feedback } });
+    } else {
+      setDeletionFeedback(feedback);
+    }
+  }
+  const pending = r.data?.pending;
+  const deleteModal = deleting && <DeletePlan id={planId} pending={!!pending}
+    onClose={() => {
+      setDeleting(false);
+      if (refreshAfterDeletion.current) {
+        refreshAfterDeletion.current = false;
+        r.reload();
+      }
+    }}
+    onChange={deletionChanged} />;
   if (r.loading) return <LoadingState label="Carregando plano de ação…" />;
   if (r.error)
     return (
@@ -82,7 +113,20 @@ export function ActionPlanPage() {
         {r.error} <button onClick={r.reload}>Tentar novamente</button>
       </Notice>
     );
-  if (!r.data)
+  if (pending)
+    return (
+      <>
+        <PageTitle title={pending.title} eyebrow="Plano de ação" description={pending.unit_name}>
+          <button className="definitive-delete-button" onClick={() => setDeleting(true)}>
+            <Icon name="trash" /> Retomar exclusão
+          </button>
+        </PageTitle>
+        <Notice>{deletionFeedback || "A exclusão está em andamento. Retome a operação para concluir."}</Notice>
+        <Link className="button-link quality-return" to="/action-plans">Voltar para Planos de Ação</Link>
+        {deleteModal}
+      </>
+    );
+  if (!r.data?.summary)
     return (
       <EmptyState
         title="Plano de ação indisponível"
@@ -95,7 +139,7 @@ export function ActionPlanPage() {
         O plano não existe ou você não tem acesso a ele.
       </EmptyState>
     );
-  const s = r.data;
+  const s = r.data.summary;
   const plan = s.plan;
   const scope = { unit_id: plan.unit_id, sector_id: plan.sector_id };
   const verified = !!plan.effectiveness;
@@ -176,7 +220,13 @@ export function ActionPlanPage() {
             )}
           </>
         )}
+        {auth.can("action_plan.read", scope) && auth.can("action_plan.delete", scope) && (
+          <button className="definitive-delete-button" onClick={() => setDeleting(true)}>
+            <Icon name="trash" /> Excluir
+          </button>
+        )}
       </PageTitle>
+      {deleteModal}
       <div className="ap-status-strip">
         <PlanBadges plan={plan} />
         <p className="ap-due">

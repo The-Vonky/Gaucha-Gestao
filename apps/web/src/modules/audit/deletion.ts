@@ -1,4 +1,5 @@
 import { client } from "../../core/client";
+import { removeDeletionObjects } from "../../shared/storageDeletion";
 import { privateImages } from "../../shared/privateImageCache";
 import { db } from "./api";
 import { imagePrefix } from "./evidenceImages";
@@ -17,11 +18,6 @@ export type DeleteImpact = {
     execution_evidence: number; verification_evidence: number; plan_reservations: number; objects: number;
   };
 };
-export type DeleteState = {
-  objects: { bucket: string; name: string }[];
-  completed: boolean;
-  reconcile: boolean;
-};
 export async function deletionImpact(id: string) {
   const { data, error } = await db().rpc("inspection_delete_impact", { p_inspection: id });
   if (error || !data) throw error ?? new Error();
@@ -38,27 +34,14 @@ export async function beginDeletion(id: string, snapshot: string, confirmation: 
   });
   if (error) throw error;
 }
-export async function resumeDeletion(id: string): Promise<"completed" | "reconciliation"> {
-  if (!client) throw new Error();
+export function resumeDeletion(id: string) {
   privateImages.invalidateMatching(key => key.startsWith(imagePrefix(id)));
-  let previous = "";
-  for (;;) {
+  return removeDeletionObjects(client?.storage, async () => {
     const { data, error } = await db().rpc("inspection_delete_state", { p_inspection: id });
     if (error || !data) throw error ?? new Error();
-    if (data.completed) return "completed";
-    if (!data.objects.length) {
-      if (data.reconcile) return "reconciliation";
-      const result = await db().rpc("finish_inspection_delete", { p_inspection: id });
-      if (result.error) throw result.error;
-      return "completed";
-    }
-    const bucket = data.objects[0].bucket;
-    const names = data.objects.filter(o => o.bucket === bucket).map(o => o.name);
-    // Um 200 com lista vazia pode indicar revogação. O próximo estado vem do banco.
-    const first = bucket + "/" + names[0];
-    if (previous === first) throw new Error();
-    previous = first;
-    const removed = await client.storage.from(bucket).remove(names);
-    if (removed.error) throw removed.error;
-  }
+    return data;
+  }, async () => {
+    const { error } = await db().rpc("finish_inspection_delete", { p_inspection: id });
+    if (error) throw error;
+  });
 }

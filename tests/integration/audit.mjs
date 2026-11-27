@@ -1891,7 +1891,7 @@ try {
     ],
     [1, 1],
   );
-  // AUD-DELETE-01: somente o protocolo privado de exclusão dependente cruza
+  // AUD-DELETE-01 e AP-01: somente o protocolo de exclusão cruza
   // essa fronteira. Nenhuma FK de Audit aponta para Planos de Ação.
   const dependencies = await db.query(
     `select n.nspname || '.' || p.proname as name
@@ -1902,6 +1902,7 @@ try {
   );
   assert.deepEqual(dependencies.rows.map(row => row.name), [
     "audit.begin_inspection_delete",
+    "audit.can_remove_deletion_object",
     "audit.finish_inspection_delete",
     "audit.inspection_delete_impact",
     "audit_private.guard_deletion_write",

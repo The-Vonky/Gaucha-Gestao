@@ -471,6 +471,8 @@ The normal operational list hides inactive checklist-source plans by default, bu
 
 ### When AP/NAT returns
 
+A reativação descrita abaixo vale para planos que ainda existem. Após a exclusão definitiva de um plano, sair de AP/NAT encerra a supressão daquele ciclo. Uma nova entrada em AP/NAT gera outro plano.
+
 Reactivate the same plan:
 
 - `source_active = true`;
@@ -557,7 +559,7 @@ For manual plans:
 - unit/sector may be editable only if authorization is revalidated for both old and new scope and history remains auditable;
 - if this introduces unnecessary complexity, keep unit/sector immutable after creation in v1. Prefer the simpler safe choice.
 
-A exclusão independente de planos permanece vedada. O mantenedor autorizou a remoção dependente da auditoria de origem na [AUD-DELETE-01](../modules/audit/EXCLUSAO_DEFINITIVA.md).
+A AP-01 permite excluir definitivamente planos manuais e automáticos em qualquer situação, inclusive com eficácia verificada. A operação exige `action_plan.read` e `action_plan.delete` no escopo efetivo do plano. A exclusão independente preserva a auditoria e, para uma origem ainda AP/NAT, suspende a geração enquanto a condição permanecer contínua. [Contrato da AP-01 e da AUD-DELETE-01](../modules/audit/EXCLUSAO_DEFINITIVA.md#ap-01--exclusão-definitiva-de-planos-de-ação).
 
 ## Authorization and RLS
 
@@ -984,7 +986,6 @@ Do not implement in this brief:
 - Sales;
 - Fleet;
 - Action Plan Excel/PDF export;
-- deleting Action Plans;
 - follow-up-plan graph/parent-child workflow;
 - custom user directory;
 - production infrastructure;
