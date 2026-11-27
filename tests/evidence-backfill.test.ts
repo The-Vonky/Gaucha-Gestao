@@ -10,7 +10,7 @@ const user = "00000000-0000-0000-0000-000000000001";
 const unit = "10000000-0000-0000-0000-000000000001";
 const files = readdirSync("supabase/migrations").sort();
 // O contrato de runtime depende do manifesto de evidência; adiar a mesma cadeia.
-const evidence = files.filter((f) => f.includes("evidence") || f.includes("audit_derivative_") || f.includes("_audit_delete_") || f.includes("_action_plan_hard_delete") || f.includes("_action_plans_delegation") || f.includes("_action_plans_origin_audit"));
+const evidence = files.filter((f) => f.includes("evidence") || f.includes("audit_derivative_") || f.includes("_audit_delete_") || f.includes("_action_plan_hard_delete") || f.includes("_action_plans_delegation") || f.includes("_action_plans_origin_"));
 async function one<T>(sql: string, params: unknown[] = []) {
   return (await db.query<T>(sql, params)).rows[0];
 }

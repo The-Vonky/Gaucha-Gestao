@@ -208,7 +208,7 @@ try {
     await checkWidth(page);
     await dialog.getByRole("button", { name: "Salvar", exact: true }).click();
     await page.waitForURL(/\/action-plans\/[0-9a-f-]+$/);
-    await page.getByText(responsible.name, { exact: true }).waitFor();
+    await page.locator(".ap-fields dd").filter({ hasText: responsible.name }).waitFor();
     return page.url().split("/").at(-1);
   }
   async function editOn(page, id, original, responsible, touch) {
@@ -221,7 +221,7 @@ try {
     assert.equal(await picker.inputValue(), original.name);
     await selectAssignee(dialog, responsible, touch);
     await dialog.getByRole("button", { name: "Salvar", exact: true }).click();
-    await page.getByText(responsible.name, { exact: true }).waitFor();
+    await page.locator(".ap-fields dd").filter({ hasText: responsible.name }).waitFor();
     const [saved] = await ap(manager, "plan_summaries", { p_plan: id });
     assert.equal(saved.plan.responsible_id, responsible.id);
   }
@@ -353,6 +353,8 @@ try {
   const answersOf = (actor, id) => auditRows(actor, "inspection_answers",
     `inspection_id=eq.${id}&item_key=eq.item-001&select=response,observation`);
   assert.deepEqual(await answersOf(executor, linked.id), [{ response: "AP", observation: linked.observation }]);
+  const catalog = (actor) => auditRows(actor, "checklist_items", "key=eq.item-001&select=key");
+  assert.deepEqual(await catalog(executor), [{ key: "item-001" }]);
   assert.deepEqual(await answersOf(executor, unrelated.id), []);
   const metadataOf = (actor, id) => auditCall(actor, "checklist_evidence", { p_inspection: id });
   assert.equal((await metadataOf(executor, linked.id)).length, 1);
@@ -370,16 +372,20 @@ try {
   }), 204);
   assert.deepEqual(await answersOf(manager, linked.id), [{ response: "AP", observation: linked.observation }]);
 
+  phase = "link de origem e visão geral";
   await mobile.goto(`${origin}/action-plans/${linked.source}`);
   await mobile.getByRole("link", { name: "Abrir auditoria", exact: true }).click();
   await mobile.locator(".audit-attention-obs").filter({ hasText: linked.observation }).waitFor();
   await checkWidth(mobile);
+  phase = "download da evidência de origem";
   const auditDownload = mobile.waitForEvent("download");
   await mobile.getByRole("button", { name: /^Baixar/ }).click();
   assert.deepEqual(readFileSync(await (await auditDownload).path()), pdf);
+  phase = "checklist de origem em leitura";
   await mobile.getByRole("link", { name: "Abrir checklist" }).click();
   await mobile.locator(".audit-observation-text").filter({ hasText: linked.observation }).waitFor();
   assert.equal(await mobile.locator("input[type=file], .audit-observation textarea").count(), 0);
+  phase = "rotas diretas negadas";
   await mobile.goto(`${origin}/audit/inspections/${unrelated.id}`);
   await mobile.getByText("Auditoria indisponível", { exact: true }).waitFor();
   await mobile.goto(`${origin}/action-plans/${unrelated.source}`);
@@ -387,8 +393,10 @@ try {
   await mobile.goto(`${origin}/audit`);
   await mobile.getByText("Acesso não autorizado", { exact: true }).waitFor();
 
+  phase = "perda do vínculo de origem";
   await sql(`update core.user_role_assignments set active=false where user_id='${executor.id}'`);
   assert.deepEqual(await answersOf(executor, linked.id), []);
+  assert.deepEqual(await catalog(executor), []);
   await expectStatus(original(executor, linked.key), 400, 401, 403, 404);
   await sql(`update core.user_role_assignments set active=true where user_id='${executor.id}'`);
   const [{ plan: source }] = await ap(manager, "plan_summaries", { p_plan: linked.source });
@@ -405,6 +413,8 @@ try {
   console.log(`PASS AP-02 (${identity ? "Identity" : "base"}): Chromium desktop/375px, REST, RLS, Storage, relato, reatribuição, revogação, conclusão, verificação e auditoria vinculada.`);
 } catch (error) {
   console.error(`FAIL AP-02 (${phase}) | ${error.message.split("\n")[0]}`);
+  const location = error.stack?.match(/action-plans-delegation\.mjs:\d+:\d+/)?.[0];
+  if (location) console.error(location);
   process.exitCode = 1;
 } finally {
   await browser?.close();

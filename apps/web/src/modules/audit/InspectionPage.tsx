@@ -221,7 +221,7 @@ export function InspectionPage() {
     return <Notice>Atualizando estado da auditoria…
       {!r.loading && data !== lifecycleTransition.from && <button onClick={reload}>Tentar novamente</button>}
     </Notice>;
-  if (!data || !results)
+  if (!data || !results || !data.sections.length)
     return (
       <EmptyState
         title="Auditoria indisponível"

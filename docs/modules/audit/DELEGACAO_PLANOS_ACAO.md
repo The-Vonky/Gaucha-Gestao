@@ -28,7 +28,7 @@ A leitura por atribuição vale para RLS, listagens, detalhe, histórico e evid�
 
 Em um plano de checklist atribuído, **Origem → Abrir auditoria** abre a visão geral e o checklist em leitura. A autorização exige plano existente, atribuição ao próprio perfil ativo e `action_plan.execute` efetiva no escopo do plano. O vínculo dá acesso ao detalhe, respostas, observações e download ou abertura autenticada das evidências originais. A listagem geral, o histórico da unidade, a exportação e as alterações de auditoria continuam usando seus grants próprios. As permissões independentes dos outros papéis se somam às do Executor.
 
-RLS, RPCs e Storage reavaliam o vínculo nas próximas requisições. Reatribuir, revogar o grant ou iniciar a exclusão do plano retira a leitura por esse vínculo. A leitura permanece disponível se outro plano atribuído da mesma auditoria ou outro grant efetivo ainda a autorizar. A migration incremental acrescenta esse predicado às leituras pertinentes. [Migration de origem](../../../supabase/migrations/20261127143007_action_plans_origin_audit.sql)
+RLS, RPCs e Storage reavaliam o vínculo nas próximas requisições. Reatribuir, revogar o grant ou iniciar a exclusão do plano retira a leitura por esse vínculo. A leitura permanece disponível se outro plano atribuído da mesma auditoria ou outro grant efetivo ainda a autorizar. As migrations incrementais aplicam a regra ao detalhe, às evidências e ao catálogo da versão do checklist usada pela auditoria. [Leitura da origem](../../../supabase/migrations/20261127143007_action_plans_origin_audit.sql) · [Catálogo do checklist](../../../supabase/migrations/20261127143821_action_plans_origin_catalog.sql)
 
 ## Compatibilidade, ledger e exclusões
 
