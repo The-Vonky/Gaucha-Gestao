@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { client } from "../../core/client";
+import { privateImages } from "../../shared/privateImageCache";
 import type {
   ActionPlansDatabase,
   CreationScope,
@@ -87,6 +88,7 @@ export async function update(row: Plan, values: PlanValues) {
     ...args(values),
   });
   if (error) throw error;
+  if (row.responsible_id !== values.responsible_id) privateImages.clear();
 }
 export async function searchAssignees(
   unit: string, sector: string | null, query: string, planId?: string,

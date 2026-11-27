@@ -1,16 +1,20 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { chromium } from "playwright";
 import pg from "pg";
+import sharp from "sharp";
+import { assertEvidenceLayout, evidenceViewportWidths } from "./audit-evidence-layout.mjs";
 
 const project = process.argv[2];
 const ci = process.env.GITHUB_ACTIONS === "true";
-const identity = Boolean(project);
+const identity = Boolean(project) && process.env.GG_AP03_LOCAL_PROFILE !== "base";
+const native = Boolean(project);
 assert.ok(project === "gaucha-gestao-local" ||
   (ci && (!project || /^gg-identity-ci-\d+-\d+$/.test(project))), "Use o DEV pessoal com Identity ou a CI descartável.");
 const local = project === "gaucha-gestao-local";
+assert.ok(process.env.GG_AP03_LOCAL_PROFILE !== "base" || local, "Seleção de perfil exclusiva do DEV pessoal.");
 const origin = "http://127.0.0.1:5173";
 const api = "http://127.0.0.1:54321";
 const tag = randomUUID().slice(0, 8);
@@ -24,7 +28,9 @@ const employee = (label) => ({
 const manager = employee("gerente");
 const executor = employee("executor");
 const other = employee("substituto");
-const people = [manager, executor, other];
+const viewer = employee("consulta");
+const administrator = employee("admin");
+const people = native ? [manager, executor, other, viewer, administrator] : [manager, executor, other];
 const pdf = Buffer.from("%PDF-1.4\nFixture AP-02\n%%EOF");
 const bucket = "action-plan-evidence";
 let db, browser, vite, plan, objectKey, anon, baseConfig;
@@ -34,11 +40,11 @@ function docker(args, input) {
   return execFileSync("docker", args, { input, encoding: "utf8", stdio: ["pipe", "pipe", "ignore"] }).trim();
 }
 async function sql(query) {
-  if (!identity) return (await db.query(query)).rows?.map((row) => Object.values(row).join("|")).join("\n") ?? "";
+  if (!native) return (await db.query(query)).rows?.map((row) => Object.values(row).join("|")).join("\n") ?? "";
   return docker(["exec", "-i", `${project}-db-1`, "psql", "-XqAt", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1"], query);
 }
 async function authAdmin(method, path, payload) {
-  if (!identity) {
+  if (!native) {
     return fetch(`${api}/auth/v1/admin/users${path}`, {
       method,
       headers: {
@@ -60,17 +66,18 @@ async function authAdmin(method, path, payload) {
   `], JSON.stringify({ method, path, payload }));
   return { status: Number(status) };
 }
-function request(path, { actor, method = "GET", schema = "action_plans", payload, bytes } = {}) {
+function request(path, { actor, method = "GET", schema = "action_plans", payload, bytes, mime = "application/pdf" } = {}) {
   return fetch(api + path, {
     method,
     headers: {
       Origin: origin,
       apikey: anon,
+      "Accept-Encoding": "identity",
       ...(actor?.token && { Authorization: `Bearer ${actor.token}` }),
       "Accept-Profile": schema,
       "Content-Profile": schema,
       ...(payload !== undefined && { "Content-Type": "application/json" }),
-      ...(bytes && { "Content-Type": "application/pdf" }),
+      ...(bytes && { "Content-Type": mime, "Cache-Control": "0" }),
     },
     body: bytes ?? (payload === undefined ? undefined : JSON.stringify(payload)),
   });
@@ -119,13 +126,77 @@ async function waitForVite() {
   throw new Error("Vite indisponível.");
 }
 
+const denied = [400, 401, 403, 404];
+const auditBucket = "audit-checklist-evidence";
+const transformQuery = "width=480&height=480&resize=contain&quality=75&format=origin";
+const render = (actor, target, key) =>
+  request(`/storage/v1/render/image/authenticated/${target}/${key}?${transformQuery}`, { actor });
+const object = (actor, target, key) =>
+  request(`/storage/v1/object/authenticated/${target}/${key}`, { actor });
+const signature = (actor, target, key, options = {}) =>
+  request(`/storage/v1/object/sign/${target}/${key}`, {
+    actor, method: "POST", payload: { expiresIn: 60, ...options },
+  });
+const traffic = {};
+async function measure(actor, target, img, label) {
+  const [thumbnail, original] = await Promise.all([
+    expectStatus(render(actor, target, img.key), 200),
+    expectStatus(object(actor, target, img.key), 200),
+  ]);
+  assert.equal(thumbnail.headers.get("content-type"), img.mime);
+  for (const res of [thumbnail, original]) assert.equal(res.headers.get("content-encoding") ?? "identity", "identity");
+  assert.match(thumbnail.headers.get("cache-control") ?? "", /no-store/);
+  const small = Buffer.from(await thumbnail.arrayBuffer());
+  const full = Buffer.from(await original.arrayBuffer());
+  assert.deepEqual(full, img.bytes);
+  const { width, height } = await sharp(small).metadata();
+  assert.ok(width <= 480 && height <= 480);
+  assert.ok(small.length < full.length / 2);
+  traffic[label] = { miniatura: small.length, original: full.length };
+}
+async function preview(page, { name, key, bytes }, alt = name, { cached = true } = {}) {
+  const paths = (response) => {
+    const url = new URL(response.url());
+    return url.pathname.startsWith("/storage/v1/") && url.pathname.endsWith("/" + key);
+  };
+  const enlarge = page.getByRole("button", { name: `Ampliar ${alt}`, exact: true });
+  await page.locator(".file-item").filter({ hasText: alt }).scrollIntoViewIfNeeded();
+  const [response] = await Promise.all([
+    page.waitForResponse(r => paths(r) && r.url().includes("/object/") && r.request().method() === "GET"),
+    enlarge.click(),
+  ]);
+  assert.equal(response.status(), 200);
+  const dialog = page.getByRole("dialog", { name: alt, exact: true });
+  const expanded = dialog.getByRole("img", { name: alt, exact: true });
+  const sha = await expanded.evaluate(async img => {
+    await img.decode();
+    const blob = await fetch(img.src).then(res => res.arrayBuffer());
+    return [...new Uint8Array(await crypto.subtle.digest("SHA-256", blob))]
+      .map(value => value.toString(16).padStart(2, "0")).join("");
+  });
+  assert.equal(sha, createHash("sha256").update(bytes).digest("hex"));
+  await checkWidth(page);
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "hidden" });
+  if (cached) {
+    let gets = 0;
+    const count = r => { if (paths(r)) gets++; };
+    page.on("response", count);
+    await enlarge.click();
+    await dialog.getByRole("img", { name: alt, exact: true }).waitFor();
+    await dialog.getByRole("button", { name: "Fechar" }).click();
+    assert.equal(gets, 0, "Reabertura usa o cache volátil");
+    page.off("response", count);
+  }
+}
+
 try {
-  if (identity) {
+  if (native) {
     for (const service of ["db", "identity", "kong"]) {
       assert.equal(docker(["inspect", "--format", '{{index .Config.Labels "com.docker.compose.project"}}',
         `${project}-${service}-1`]), project);
     }
-    assert.equal(await sql("select enabled from private.identity_settings"), "t");
+    assert.equal(await sql("select enabled from private.identity_settings"), identity ? "t" : "f");
     anon = local ? readFileSync("apps/web/.env.local", "utf8")
       .match(/^VITE_SUPABASE_PUBLISHABLE_KEY=(\S+)$/m)?.[1] : process.env.GG_IDENTITY_TEST_ANON_KEY;
   } else {
@@ -144,6 +215,7 @@ try {
       cwd: "apps/web", stdio: "ignore", env: { ...process.env,
         VITE_SUPABASE_URL: api, VITE_SUPABASE_PUBLISHABLE_KEY: anon,
         VITE_GG_IDENTITY_ENABLED: String(identity),
+        VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS: String(native),
       },
     });
   }
@@ -161,7 +233,8 @@ try {
       update core.profiles set display_name='${actor.name}' where id='${actor.id}';
       ${identity ? `insert into private.identity_credentials(user_id,state,managed) values ('${actor.id}','active',false);` : ""}
       insert into core.user_role_assignments(user_id,role_id,scope_type,unit_id)
-      select '${actor.id}',id,'unit','${unit}' from core.roles where key='${actor === manager ? "quality" : "quality_executor"}';
+      select '${actor.id}',id,${actor === administrator ? "'global',null" : `'unit','${unit}'`}
+      from core.roles where key='${actor === manager ? "quality" : actor === viewer ? "quality_viewer" : actor === administrator ? "platform_administrator" : "quality_executor"}';
     `).join("")}
     commit;`);
   for (const actor of people) await createSession(actor);
@@ -257,8 +330,71 @@ try {
   for (const label of ["Concluir", "Editar planejamento", "Excluir", "Verificar eficácia"])
     assert.equal(await mobile.getByRole("button", { name: label, exact: true }).count(), 0);
 
+  const width = 1600, height = 1200;
+  const pixels = native ? randomBytes(width * height * 3) : null;
+  const picture = async (name, format) => ({
+    name,
+    mime: `image/${format}`,
+    bytes: await sharp(pixels, { raw: { width, height, channels: 3 } }).toFormat(format).toBuffer(),
+  });
+  const uploadPlanImage = async (actor, planId, kind, img) => {
+    const [row] = await ap(actor, "begin_evidence_upload", {
+      p_plan: planId, p_kind: kind, p_original_name: img.name, p_content_type: img.mime, p_size: img.bytes.length,
+    });
+    await expectStatus(render(actor, bucket, row.object_key), ...denied);
+    await expectStatus(request(`/storage/v1/object/${bucket}/${row.object_key}`, {
+      actor, method: "POST", bytes: img.bytes, mime: img.mime,
+    }), 200);
+    await expectStatus(render(actor, bucket, row.object_key), ...denied);
+    await ap(actor, "confirm_evidence_upload", { p_evidence: row.evidence_id });
+    return { ...img, key: row.object_key, id: row.evidence_id };
+  };
+
+  let executionImage;
+  if (native) {
+    phase = "AP-03: miniatura de execução, falha, cache e remoção";
+    executionImage = await uploadPlanImage(executor, plan, "execution", await picture("Execução sintética.jpg", "jpeg"));
+    const removed = await uploadPlanImage(executor, plan, "execution", { ...executionImage, name: "Remover foto.jpg" });
+    const transformRoute = `**/render/image/authenticated/${bucket}/${executionImage.key}?*`;
+    const block = route => route.fulfill({ status: 503, body: "fixture" });
+    let originalGets = 0;
+    mobile.on("request", req => {
+      if (req.method() === "GET" && req.url().includes(`/object/authenticated/${bucket}/${executionImage.key}`)) originalGets++;
+    });
+    await mobile.route(transformRoute, block);
+    await mobile.reload();
+    const imageRow = mobile.locator(".file-item").filter({ hasText: executionImage.name });
+    await imageRow.scrollIntoViewIfNeeded();
+    await imageRow.getByText("Miniatura indisponível.").waitFor();
+    assert.equal(originalGets, 0, "Falha da miniatura não transfere o original grande");
+    await mobile.unroute(transformRoute, block);
+    await imageRow.getByRole("button", { name: "Tentar miniatura novamente" }).click();
+    await preview(mobile, executionImage);
+    assert.equal(originalGets, 1);
+    const attachment = mobile.waitForEvent("download");
+    await imageRow.getByRole("button", { name: `Baixar ${executionImage.name}`, exact: true }).click();
+    const downloadedImage = await attachment;
+    assert.equal(downloadedImage.suggestedFilename(), executionImage.name);
+    assert.deepEqual(readFileSync(await downloadedImage.path()), executionImage.bytes);
+    const removeRow = mobile.locator(".file-item").filter({ hasText: removed.name });
+    await removeRow.scrollIntoViewIfNeeded();
+    await removeRow.getByRole("button", { name: /^Ampliar/ }).waitFor();
+    await removeRow.getByRole("button", { name: "Remover Remover foto.jpg" }).click();
+    await mobile.getByRole("dialog", { name: "Remover evidência" }).getByRole("button", { name: "Confirmar" }).click();
+    await removeRow.waitFor({ state: "detached" });
+    await expectStatus(render(executor, bucket, removed.key), ...denied);
+    await expectStatus(object(executor, bucket, removed.key), ...denied);
+
+    await measure(executor, bucket, executionImage, "plano_execucao_jpg");
+    for (const actor of [manager, viewer, administrator]) await expectStatus(render(actor, bucket, executionImage.key), 200);
+    await expectStatus(render(other, bucket, executionImage.key), ...denied);
+    await expectStatus(render(null, bucket, executionImage.key), ...denied);
+    for (const options of [{}, { transform: { width: 480, height: 480 } }])
+      await expectStatus(signature(executor, bucket, executionImage.key, options), ...denied);
+  }
+
   phase = "grants, download autenticado e reatribuição";
-  const [file] = await ap(manager, "plan_evidence", { p_plan: plan });
+  const file = (await ap(manager, "plan_evidence", { p_plan: plan })).find(e => e.content_type === "application/pdf");
   objectKey = file.object_key;
   const download = (actor) => request(`/storage/v1/object/authenticated/${bucket}/${objectKey}`, { actor });
   assert.deepEqual(Buffer.from(await (await expectStatus(download(executor), 200)).arrayBuffer()), pdf);
@@ -286,6 +422,11 @@ try {
   assert.equal(await get(executor), undefined);
   assert.deepEqual(await ap(executor, "execution_report_history", { p_plan: plan }), []);
   await expectStatus(download(executor), 400, 401, 403, 404);
+  if (native) {
+    await expectStatus(render(executor, bucket, executionImage.key), ...denied);
+    await expectStatus(render(other, bucket, executionImage.key), 200);
+    await expectStatus(render(other, bucket, objectKey), ...denied);
+  }
   await expectStatus(request(`/storage/v1/object/${bucket}/${reserved.object_key}`, {
     actor: executor, method: "POST", bytes: pdf,
   }), 400, 401, 403, 404);
@@ -294,6 +435,7 @@ try {
   await sql(`update core.user_role_assignments set active=false where user_id='${other.id}'`);
   assert.equal(await get(other), undefined);
   await expectStatus(download(other), 400, 401, 403, 404);
+  if (native) await expectStatus(render(other, bucket, executionImage.key), ...denied);
   await sql(`update core.user_role_assignments set active=true where user_id='${other.id}';
              update core.profiles set active=false where id='${other.id}'`);
   await expectStatus(download(other), 400, 401, 403, 404);
@@ -309,11 +451,33 @@ try {
   await desktop.getByRole("button", { name: "Verificar eficácia", exact: true }).waitFor();
   await expectStatus(save(other, await version()), 400, 409, 500);
   await expectStatus(status(other, "in_progress", await version()), 403);
+  const verificationImage = native
+    ? await uploadPlanImage(manager, plan, "verification", await picture("Verificação sintética.png", "png")) : null;
+  if (native) {
+    phase = "AP-03: verificação atual em Chromium desktop";
+    await desktop.reload();
+    await preview(desktop, verificationImage);
+    await measure(viewer, bucket, verificationImage, "plano_verificacao_png");
+  }
   await ap(manager, "verify_plan", {
     p_id: plan, p_version: await version(), p_effectiveness: "effective", p_verified_on: new Date().toISOString().slice(0, 10),
-    p_notes: "Verificação AP-02", p_expected_evidence_ids: [file.id],
+    p_notes: "Verificação AP-02", p_expected_evidence_ids: [file.id, ...native ? [executionImage.id, verificationImage.id] : []],
   });
   assert.equal((await get(manager)).effectiveness, "effective");
+  if (native) {
+    phase = "AP-03: rodada anterior e Quality Viewer";
+    await ap(manager, "verify_plan", {
+      p_id: plan, p_version: await version(), p_effectiveness: "effective", p_verified_on: new Date().toISOString().slice(0, 10),
+      p_notes: "Nova rodada", p_expected_evidence_ids: [file.id, executionImage.id],
+    });
+    const viewerPage = await login(browser, viewer, { width: 1280, height: 900 });
+    await viewerPage.goto(`${origin}/action-plans/${plan}`);
+    const history = viewerPage.getByRole("heading", { name: "Verificação nº 1", exact: true }).locator("..");
+    assert.equal(await viewerPage.getByRole("button", { name: /^Remover/ }).count(), 0);
+    await history.getByRole("button", { name: `Baixar ${verificationImage.name}` }).waitFor();
+    await preview(viewerPage, verificationImage);
+    await viewerPage.close();
+  }
   phase = "auditoria de origem em leitura por atribuição";
   const auditCall = async (actor, name, payload) => {
     const response = await expectStatus(rpc(actor, name, payload, "audit"), 200, 204);
@@ -340,7 +504,19 @@ try {
       actor: manager, method: "POST", bytes: pdf,
     }), 200);
     await auditCall(manager, "confirm_checklist_evidence_upload", { p_evidence: file.evidence_id });
-    return { id, source: source.id, observation, key: file.object_key };
+    let photo;
+    if (native) {
+      const img = await picture("Origem sintética.jpg", "jpeg");
+      const [row] = await auditCall(manager, "begin_checklist_evidence_upload", {
+        p_inspection: id, p_item_key: "item-001", p_original_name: img.name, p_content_type: img.mime, p_size: img.bytes.length,
+      });
+      await expectStatus(request(`/storage/v1/object/${auditBucket}/${row.object_key}`, {
+        actor: manager, method: "POST", bytes: img.bytes, mime: img.mime,
+      }), 200);
+      await auditCall(manager, "confirm_checklist_evidence_upload", { p_evidence: row.evidence_id });
+      photo = { ...img, key: row.object_key };
+    }
+    return { id, source: source.id, observation, key: file.object_key, photo };
   };
   const linked = await prepareOrigin(executor);
   const unrelated = await prepareOrigin(other);
@@ -357,11 +533,28 @@ try {
   assert.deepEqual(await catalog(executor), [{ key: "item-001" }]);
   assert.deepEqual(await answersOf(executor, unrelated.id), []);
   const metadataOf = (actor, id) => auditCall(actor, "checklist_evidence", { p_inspection: id });
-  assert.equal((await metadataOf(executor, linked.id)).length, 1);
+  assert.equal((await metadataOf(executor, linked.id)).length, native ? 2 : 1);
   assert.deepEqual(await metadataOf(executor, unrelated.id), []);
   const original = (actor, key) => request(`/storage/v1/object/authenticated/audit-checklist-evidence/${key}`, { actor });
   assert.deepEqual(Buffer.from(await (await expectStatus(original(executor, linked.key), 200)).arrayBuffer()), pdf);
   await expectStatus(original(executor, unrelated.key), 400, 401, 403, 404);
+  if (native) {
+    await measure(executor, auditBucket, linked.photo, "auditoria_vinculada_jpg");
+    for (const actor of [manager, viewer, administrator]) await expectStatus(render(actor, auditBucket, linked.photo.key), 200);
+    await expectStatus(render(executor, auditBucket, linked.key), ...denied);
+    await expectStatus(render(executor, auditBucket, unrelated.photo.key), ...denied);
+    await expectStatus(object(executor, auditBucket, unrelated.photo.key), ...denied);
+    await expectStatus(render(null, auditBucket, linked.photo.key), ...denied);
+    await expectStatus(signature(executor, auditBucket, linked.photo.key, { transform: { width: 480, height: 480 } }), ...denied);
+    const viewerGrant = randomUUID();
+    await sql(`insert into core.user_role_assignments(id,user_id,role_id,scope_type,unit_id)
+      select '${viewerGrant}','${executor.id}',id,'unit','${unit}' from core.roles where key='quality_viewer'`);
+    await expectStatus(render(executor, auditBucket, unrelated.photo.key), 200);
+    await expectStatus(render(executor, bucket, executionImage.key), 200);
+    await sql(`delete from core.user_role_assignments where id='${viewerGrant}'`);
+    await expectStatus(render(executor, auditBucket, unrelated.photo.key), ...denied);
+    await expectStatus(render(executor, bucket, executionImage.key), ...denied);
+  }
   await expectStatus(request(`/storage/v1/object/sign/audit-checklist-evidence/${linked.key}`, {
     actor: executor, method: "POST", payload: { expiresIn: 60 },
   }), 400, 401, 403, 404);
@@ -379,12 +572,31 @@ try {
   await checkWidth(mobile);
   phase = "download da evidência de origem";
   const auditDownload = mobile.waitForEvent("download");
-  await mobile.getByRole("button", { name: /^Baixar/ }).click();
+  await mobile.getByRole("button", { name: /^Baixar .*\.pdf$/i }).click();
   assert.deepEqual(readFileSync(await (await auditDownload).path()), pdf);
   phase = "checklist de origem em leitura";
   await mobile.getByRole("link", { name: "Abrir checklist" }).click();
   await mobile.locator(".audit-observation-text").filter({ hasText: linked.observation }).waitFor();
   assert.equal(await mobile.locator("input[type=file], .audit-observation textarea").count(), 0);
+  if (native) {
+    phase = "AP-03: auditoria vinculada mobile e regressão de Auditorias desktop";
+    const toggle = page => page.locator('li.audit-item:has([aria-label="Evidências do critério 1"]) .audit-evidence-toggle');
+    const photoName = page => page.getByText(/^Evidência .*\.jpg$/i).textContent();
+    await toggle(mobile).click();
+    await preview(mobile, linked.photo, await photoName(mobile));
+    await desktop.goto(`${origin}/audit/inspections/${linked.id}/checklist`);
+    await toggle(desktop).click();
+    const label = await photoName(desktop);
+    await preview(desktop, linked.photo, label);
+    phase = "AP-03: layout de Auditorias em nove larguras";
+    const card = desktop.locator(".file-item").filter({ hasText: label });
+    for (const width of evidenceViewportWidths) {
+      await desktop.setViewportSize({ width, height: 812 });
+      await card.scrollIntoViewIfNeeded();
+      await card.getByRole("img", { name: label }).waitFor();
+      await assertEvidenceLayout(card);
+    }
+  }
   phase = "rotas diretas negadas";
   await mobile.goto(`${origin}/audit/inspections/${unrelated.id}`);
   await mobile.getByText("Auditoria indisponível", { exact: true }).waitFor();
@@ -398,22 +610,58 @@ try {
   assert.deepEqual(await answersOf(executor, linked.id), []);
   assert.deepEqual(await catalog(executor), []);
   await expectStatus(original(executor, linked.key), 400, 401, 403, 404);
+  if (native) await expectStatus(render(executor, auditBucket, linked.photo.key), ...denied);
   await sql(`update core.user_role_assignments set active=true where user_id='${executor.id}'`);
   const [{ plan: source }] = await ap(manager, "plan_summaries", { p_plan: linked.source });
   await ap(manager, "update_plan", { ...planning(other.id, source.version), p_id: source.id });
   assert.deepEqual(await answersOf(executor, linked.id), []);
   assert.equal((await answersOf(other, linked.id)).length, 1);
+  if (native) {
+    await expectStatus(render(executor, auditBucket, linked.photo.key), ...denied);
+    await expectStatus(render(other, auditBucket, linked.photo.key), 200);
+  }
   const impact = await ap(manager, "plan_delete_impact", { p_plan: source.id });
   await ap(manager, "begin_plan_delete", { p_plan: source.id, p_snapshot: impact.snapshot, p_confirmation: "excluir plano de ação" });
   assert.deepEqual(await metadataOf(other, linked.id), []);
   await expectStatus(original(other, linked.key), 400, 401, 403, 404);
+  if (native) await expectStatus(render(other, auditBucket, linked.photo.key), ...denied);
   await ap(manager, "finish_plan_delete", { p_plan: source.id });
   assert.deepEqual(await answersOf(other, linked.id), []);
   assert.equal((await answersOf(manager, linked.id)).length, 1);
+  if (native) {
+    phase = "AP-03: exclusão de Auditoria";
+    const deleteAudit = await auditCall(manager, "inspection_delete_impact", { p_inspection: linked.id });
+    await auditCall(manager, "begin_inspection_delete", {
+      p_inspection: linked.id, p_snapshot: deleteAudit.snapshot, p_confirmation: "excluir auditoria",
+    });
+    await expectStatus(render(manager, auditBucket, linked.photo.key), ...denied);
+    const purge = (target, keys) => expectStatus(request(`/storage/v1/object/${target}`, {
+      actor: manager, method: "DELETE", payload: { prefixes: keys },
+    }), 200);
+    await purge(auditBucket, [linked.key, linked.photo.key]);
+    await auditCall(manager, "finish_inspection_delete", { p_inspection: linked.id });
+    await expectStatus(render(administrator, auditBucket, linked.photo.key), ...denied);
+
+    phase = "AP-03: exclusão de Plano";
+    const [{ plan: beforeDelete }] = await ap(manager, "plan_summaries", { p_plan: mobilePlan });
+    await ap(manager, "set_plan_status", { p_id: mobilePlan, p_version: beforeDelete.version, p_status: "in_progress" });
+    const image = await uploadPlanImage(manager, mobilePlan, "execution", executionImage);
+    await expectStatus(render(viewer, bucket, image.key), 200);
+    const deletePlan = await ap(manager, "plan_delete_impact", { p_plan: mobilePlan });
+    await ap(manager, "begin_plan_delete", {
+      p_plan: mobilePlan, p_snapshot: deletePlan.snapshot, p_confirmation: "excluir plano de ação",
+    });
+    await expectStatus(render(viewer, bucket, image.key), ...denied);
+    await expectStatus(object(viewer, bucket, image.key), ...denied);
+    await purge(bucket, [image.key]);
+    await ap(manager, "finish_plan_delete", { p_plan: mobilePlan });
+    await expectStatus(render(administrator, bucket, image.key), ...denied);
+    console.log(`PASS AP-03 (${identity ? "Identity" : "base"}): ${JSON.stringify(traffic)} bytes de corpo HTTP.`);
+  }
   console.log(`PASS AP-02 (${identity ? "Identity" : "base"}): Chromium desktop/375px, REST, RLS, Storage, relato, reatribuição, revogação, conclusão, verificação e auditoria vinculada.`);
 } catch (error) {
   console.error(`FAIL AP-02 (${phase}) | ${error.message.split("\n")[0]}`);
-  const location = error.stack?.match(/action-plans-delegation\.mjs:\d+:\d+/)?.[0];
+  const location = error.stack?.match(/action-plans-delegation\.mjs:\d+:\d+/g)?.slice(0, 4).join("\n");
   if (location) console.error(location);
   process.exitCode = 1;
 } finally {
@@ -453,6 +701,9 @@ try {
         delete from audit_private.deletion_objects where plan_id in (select plan_id from action_plans_private.plan_deletions where unit_id='${unit}');
         delete from audit_private.deletion_namespaces where plan_id in (select plan_id from action_plans_private.plan_deletions where unit_id='${unit}');
         delete from action_plans_private.plan_deletions where unit_id='${unit}';
+        delete from audit_private.deletion_objects where inspection_id in (select inspection_id from audit_private.inspection_deletions where unit_id='${unit}');
+        delete from audit_private.deletion_namespaces where inspection_id in (select inspection_id from audit_private.inspection_deletions where unit_id='${unit}');
+        delete from audit_private.inspection_deletions where unit_id='${unit}';
         delete from audit.checklist_evidence_derivatives where evidence_id in (
           select e.id from audit.checklist_evidence e join audit.inspections i on i.id=e.inspection_id where i.unit_id='${unit}');
         delete from audit.checklist_evidence where inspection_id in (select id from audit.inspections where unit_id='${unit}');

@@ -1,12 +1,18 @@
+import { invalidateEvidenceImages } from "../../core/auth/evidenceImages";
 import { client } from "../../core/client";
+import { privateImages } from "../../shared/privateImageCache";
+import { BUCKET, reconcilePlanEvidenceImages } from "./evidenceImages";
 import { message } from "../../shared/errors";
 import { checkFile, FORMATS_HINT, FileValidationError as EvidenceFileError } from "../../shared/evidenceFiles";
 export { ACCEPT, MAX_BYTES, FORMATS_HINT, checkFile, normalizeName, typeLabel, formatSize, FileValidationError as EvidenceFileError } from "../../shared/evidenceFiles";
 import { db } from "./api";
 import type { Evidence, EvidenceKind } from "./types";
-export const BUCKET = "action-plan-evidence";
+export { BUCKET } from "./evidenceImages";
 export async function listEvidence(planId: string): Promise<Evidence[]> {
+  const epoch = privateImages.getAccessVersion();
   const { data, error } = await db().rpc("plan_evidence", { p_plan: planId });
+  if (epoch !== privateImages.getAccessVersion()) throw new Error("A sessão mudou. Recarregue as evidências.");
+  reconcilePlanEvidenceImages(planId, error ? [] : data ?? []);
   if (error) throw error;
   return data ?? [];
 }
@@ -65,6 +71,7 @@ export async function finishUpload(a: Attempt, onStored?: () => void) {
 export async function removeEvidence(id: string) {
   const { error } = await db().rpc("remove_evidence", { p_evidence: id });
   if (error) throw error;
+  invalidateEvidenceImages("action-plan:", id);
 }
 /** 60-second signed URL answered as an attachment with the original name. */
 export async function downloadUrl(e: Evidence) {

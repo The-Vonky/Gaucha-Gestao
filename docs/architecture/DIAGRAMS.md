@@ -75,7 +75,8 @@ flowchart TB
   PLANSUI --> API
   ABCUI --> API
   AUTHUI --> API
-  SHARED -. "consumido internamente" .-> AUDITUI
+  SHARED -. "cache e UI das evidências" .-> AUDITUI
+  SHARED -. "cache e UI das evidências" .-> PLANSUI
   API --> KONG["Kong"]
   KONG -->|"Auth no perfil base"| AUTH["GoTrue"]
   KONG -->|"REST e GraphQL nos dois perfis"| REST["PostgREST — Data API"]
@@ -88,6 +89,8 @@ flowchart TB
   REST -->|"SQL · no perfil estrito, executa public.identity_pre_request()"| DB
   STORAGE --> DB
   STORAGE --> OBJ["Objetos: backend local em CI/lab"]
+  STORAGE -->|"AP-03: render autenticado após RLS"| IMG["imgproxy: transformação sob demanda"]
+  IMG -->|"leitura do original"| OBJ
 ~~~
 
 No perfil estrito, o pre-request SQL avalia a admissão da sessão antes da operação. Grants, RLS e as regras das RPCs continuam aplicando a autorização de domínio. [Rotas do Kong](../../infra/local/config/kong.yml) · [Configuração do ingresso estrito](../../infra/local/config/kong-entrypoint.sh) · [Compose Identity](../../infra/local/compose.identity.yaml) · [Modelo de ameaças](THREAT_MODEL.md#1-ativos-e-limites-de-confiança).

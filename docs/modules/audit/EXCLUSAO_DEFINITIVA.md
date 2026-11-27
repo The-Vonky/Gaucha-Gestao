@@ -62,7 +62,7 @@ Uma perda externa de catálogo/volume ou versão física antiga sem qualquer ind
 
 Use a unidade sintética identificada na entrega da PR. Abra o histórico em desktop e em 375 px, confira o impacto e cancele. Abra novamente, confira que o campo está vazio e confirme apenas a auditoria sintética escolhida. Confira o resumo, evolução, painel de Qualidade, planos, URL direta, exportações e os dois eventos nos Logs do sistema. Verifique que outra auditoria e um plano manual da mesma unidade continuam disponíveis.
 
-Após a [AP-02](DELEGACAO_PLANOS_ACAO.md), a conclusão de AUD-DELETE-01 exclui também cada revisão de relato dos planos removidos. A mudança de relato invalida a prévia por versão do plano.
+Após a [AP-02](DELEGACAO_PLANOS_ACAO.md), a conclusão de AUD-DELETE-01 exclui também cada revisão de relato dos planos removidos. A mudança de relato invalida a prévia por versão do plano. Na AP-03, iniciar ou retomar a exclusão no cliente descarta as imagens em cache. Novas transformações respeitam a retirada de acesso pelo ciclo de exclusão. [Contrato e limites do cache](EVIDENCE_IMAGE_TRAFFIC.md#ap-03--planos-e-auditoria-de-origem).
 
 ## AP-01 — exclusão definitiva de planos de ação
 

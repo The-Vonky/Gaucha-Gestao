@@ -359,19 +359,27 @@ describe("unit cover renewal while mounted", () => {
 });
 
 describe("AuthProvider e cache neutro de imagens privadas", () => {
-  it("preserva acesso estável, invalida grants, logout imediato e troca de usuário", async () => {
+  it("preserva refresh do token e invalida grants, logout e nova sessão", async () => {
     Object.defineProperty(URL,"createObjectURL",{value:vi.fn(()=>"blob:synthetic"),configurable:true});
     Object.defineProperty(URL,"revokeObjectURL",{value:vi.fn(),configurable:true});
     let refresh=()=>{};
     function Probe(){refresh=useAuth().refresh;return null;}
     render(<AuthProvider><Probe/></AuthProvider>);
-    const session=(id:string)=>({user:{id}});
+    const session=(id:string, token=id)=>({user:{id},access_token:token});
     supa.state.grants=[{permission:"audit.inspection.read",scope_type:"global",unit_id:null,sector_id:null}];
     await act(async()=>supa.state.emit("SIGNED_IN",session("a")));
     const load=vi.fn(async()=>({blob:new Blob(["synthetic"]),expiresAt:Date.now()+60_000}));
     await privateImages.load("audit:fixture",load);
     await act(async()=>refresh());await privateImages.load("audit:fixture",load);
+    await act(async()=>supa.state.emit("TOKEN_REFRESHED",session("a","refreshed")));
+    await privateImages.load("audit:fixture",load);
     expect(load).toHaveBeenCalledTimes(1);
+    act(()=>{
+      supa.state.emit("SIGNED_IN",session("a","new-login"));
+      expect(privateImages.peek("audit:fixture")).toBe("");
+    });
+    await act(async()=>{});
+    await privateImages.load("audit:fixture",load);
     supa.state.grants=[];await act(async()=>refresh());
     expect(privateImages.peek("audit:fixture")).toBe("");
     await privateImages.load("audit:fixture",load);

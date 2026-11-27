@@ -1,6 +1,9 @@
 import { identityEnabled } from "../../core/auth/identity";
 import { downloadPrivateObject } from "../../core/auth/privateStorage";
 import { useId, useRef, useState, type DragEvent } from "react";
+import { EvidenceImageModal, EvidenceImageSlot } from "../../shared/EvidenceImage";
+import { isEvidenceImage } from "../../shared/evidenceFiles";
+import { planEvidenceImage } from "./evidenceImages";
 import { Icon } from "../../shared/icons";
 import {
   ACCEPT,
@@ -79,38 +82,50 @@ export function EvidenceList({
   authenticated?: boolean;
   empty?: string;
 }) {
+  const [preview, setPreview] = useState<string>();
+  const selected = rows.find(e => e.id === preview && isEvidenceImage(e.content_type));
   if (!rows.length) return <p className="muted file-empty">{empty}</p>;
   return (
-    <ul className="file-list">
-      {rows.map((e) => (
-        <li key={e.id} className="file-item">
-          <span className="file-icon">
-            <Icon name="file" />
-          </span>
-          <div className="file-body">
-            <FileName name={e.original_name} />
-            <p className="file-meta">
-              {typeLabel(e.content_type)} · {formatSize(e.size_bytes)} ·{" "}
-              {e.uploaded_by_name} ·{" "}
-              {new Date(e.uploaded_at).toLocaleString("pt-BR")}
-            </p>
-          </div>
-          <div className="file-actions">
-            <Download evidence={e} authenticated={authenticated} />
-            {onRemove && (!canRemove || canRemove(e)) && (
-              <button
-                className="small ghost file-remove"
-                aria-label={`Remover ${e.original_name}`}
-                onClick={() => onRemove(e)}
-              >
-                <Icon name="trash" />
-                Remover
-              </button>
-            )}
-          </div>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="file-list">
+        {rows.map(e => {
+          const image = isEvidenceImage(e.content_type);
+          return (
+            <li key={e.id} className={image ? "file-item file-item-image" : "file-item"}>
+              {!image && <span className="file-icon"><Icon name="file" /></span>}
+              <div className={image ? "file-body evidence-image-details" : "file-body"}>
+                {image && <EvidenceImageSlot {...planEvidenceImage(e, false)} name={e.original_name}
+                  onOpenOriginal={() => setPreview(e.id)} />}
+                <div className={image ? "evidence-image-info" : undefined}>
+                  <FileName name={e.original_name} />
+                  <p className="file-meta">
+                    {typeLabel(e.content_type)} · {formatSize(e.size_bytes)} ·{" "}
+                    {e.uploaded_by_name} ·{" "}
+                    {new Date(e.uploaded_at).toLocaleString("pt-BR")}
+                  </p>
+                </div>
+              </div>
+              <div className="file-actions">
+                <Download evidence={e} authenticated={authenticated} />
+                {onRemove && (!canRemove || canRemove(e)) && (
+                  <button
+                    className="small ghost file-remove"
+                    aria-label={`Remover ${e.original_name}`}
+                    onClick={() => onRemove(e)}
+                  >
+                    <Icon name="trash" />
+                    Remover
+                  </button>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {selected && <EvidenceImageModal name={selected.original_name} onClose={() => setPreview(undefined)}>
+        <EvidenceImageSlot key={selected.id} {...planEvidenceImage(selected, true)} name={selected.original_name} expanded />
+      </EvidenceImageModal>}
+    </>
   );
 }
 type Pending = {

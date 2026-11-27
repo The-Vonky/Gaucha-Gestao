@@ -1,3 +1,4 @@
+import { privateImages } from "../../shared/privateImageCache";
 import { client } from "../../core/client";
 import { removeDeletionObjects } from "../../shared/storageDeletion";
 import { db } from "./api";
@@ -14,9 +15,11 @@ export async function beginPlanDeletion(id: string, snapshot: string, confirmati
     p_plan: id, p_snapshot: snapshot, p_confirmation: confirmation,
   });
   if (error) throw error;
+  privateImages.clear();
 }
 
 export function resumePlanDeletion(id: string) {
+  privateImages.clear();
   return removeDeletionObjects(client?.storage, async () => {
     const { data, error } = await db().rpc("plan_delete_state", { p_plan: id });
     if (error || !data) throw error ?? new Error();

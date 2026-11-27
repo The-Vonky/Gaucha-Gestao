@@ -1,16 +1,13 @@
 import { identityEnabled } from "../../core/auth/identity";
 import { fetchPrivateObject } from "../../core/auth/privateStorage";
 import { privateImages, PRIVATE_IMAGE_TTL } from "../../shared/privateImageCache";
-import { MAX_BYTES } from "../../shared/evidenceFiles";
+import { evidenceImageKey, loadNativeThumbnail, loadOriginalImage, originalImageKey, readImage, storageThumbnailKey, THUMBNAIL_MAX_BYTES } from "../../core/auth/evidenceImages";
 import type { ChecklistEvidence } from "./types";
 import { BUCKET, downloadUrl } from "./evidence";
 import { client } from "../../core/client";
 import { db } from "./api";
 export const AUDIT_THUMBNAILS_ENABLED = import.meta.env.VITE_AUDIT_EVIDENCE_THUMBNAILS === "true";
 export const AUDIT_STORAGE_TRANSFORMS = import.meta.env.VITE_AUDIT_EVIDENCE_STORAGE_TRANSFORMS === "true";
-const THUMBNAIL_DIMENSION = 480;
-const THUMBNAIL_MAX_BYTES = 1024 * 1024;
-const SMALL_ORIGINAL_MAX_BYTES = 64 * 1024;
 const SIGNED_URL_SECONDS = PRIVATE_IMAGE_TTL / 1000;
 export const THUMBNAIL_VERSION = "img-480-v1";
 export type ImageEvidence = Pick<ChecklistEvidence, "id" | "inspection_id" | "object_key" | "content_type" | "size_bytes" | "uploaded_at">;
@@ -24,111 +21,34 @@ export async function evidenceThumbnailState(id: string) {
   return { state: row.state as string, reason: row.reason as string | null, retryable: row.retryable as boolean };
 }
 export const imagePrefix = (inspection: string) => `audit:${inspection}:`;
-export const imageKey = (e: ImageEvidence) => imagePrefix(e.inspection_id) + JSON.stringify([e.id, e.object_key, e.content_type, e.size_bytes, e.uploaded_at]);
-export const thumbnailKey = (e: ImageEvidence) => imagePrefix(e.inspection_id) + "thumb:" +
-  (AUDIT_STORAGE_TRANSFORMS ? "storage-480-v1" : THUMBNAIL_VERSION) + ":" + imageKey(e).slice(imagePrefix(e.inspection_id).length);
+export const imageKey = (e: ImageEvidence, authenticated = identityEnabled) =>
+  originalImageKey(imagePrefix(e.inspection_id), e, authenticated);
+const derivedKey = (e: ImageEvidence) => evidenceImageKey(imagePrefix(e.inspection_id), e, THUMBNAIL_VERSION);
+export const thumbnailKey = (e: ImageEvidence, authenticated = identityEnabled, native = AUDIT_STORAGE_TRANSFORMS) =>
+  native
+    ? storageThumbnailKey(imagePrefix(e.inspection_id), e, authenticated)
+    : derivedKey(e);
 export function reconcileEvidenceImages(inspection: string, rows: ChecklistEvidence[]) {
-  privateImages.reconcile(imagePrefix(inspection), new Set(rows.flatMap(e => [imageKey(e), thumbnailKey(e)])));
+  privateImages.reconcile(imagePrefix(inspection), new Set(rows.flatMap(e =>
+    [imageKey(e, false), imageKey(e, true), derivedKey(e), thumbnailKey(e, false, true), thumbnailKey(e, true, true)])));
 }
-export function loadEvidenceImage(e: ImageEvidence, authenticated = false) {
-  return privateImages.load(imageKey(e), async signal => {
-    if (!["image/jpeg", "image/png"].includes(e.content_type) || e.size_bytes <= 0 || e.size_bytes > MAX_BYTES)
-      throw new Error("Imagem indisponível.");
-    // O prazo começa antes da assinatura. O blob nunca prolonga os 60s do link original.
-    const expiresAt = Date.now() + PRIVATE_IMAGE_TTL;
-    const response = await readOriginal(e, signal, authenticated);
-    return readImage(response, e.content_type, e.size_bytes, MAX_BYTES, expiresAt);
-  });
+export function loadEvidenceImage(e: ImageEvidence, authenticated = identityEnabled) {
+  return loadOriginalImage(imageKey(e, authenticated), e, signal => readOriginal(e, signal, authenticated));
 }
 
 const fetchSigned = (url: string, signal: AbortSignal) =>
   fetch(url, { cache: "no-store", signal, credentials: "omit", redirect: "error" });
 
-async function readOriginal(e: ImageEvidence, signal: AbortSignal, authenticated = false) {
-  if (identityEnabled || authenticated) return fetchPrivateObject(BUCKET, e.object_key, signal);
+async function readOriginal(e: ImageEvidence, signal: AbortSignal, authenticated: boolean) {
+  if (authenticated) return fetchPrivateObject(BUCKET, e.object_key, signal);
   return fetchSigned(await downloadUrl(e, "Evidência"), signal);
 }
 
-async function readImage(response: Response, mime: string, expectedBytes: number | null, maxBytes: number, expiresAt: number) {
-  if (!response.ok || response.headers.get("content-type")?.split(";")[0].trim() !== mime) {
-    await response.body?.cancel();
-    throw new Error("Imagem indisponível.");
-  }
-  // Limita também respostas com tamanho incorreto/chunked antes de formar um Blob.
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error("Imagem indisponível.");
-  const chunks: BlobPart[] = [];
-  let bytes = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      bytes += value.byteLength;
-      if (bytes > maxBytes || (expectedBytes !== null && bytes > expectedBytes)) throw new Error("Imagem indisponível.");
-      chunks.push(value as Uint8Array<ArrayBuffer>);
-    }
-    if (bytes === 0 || (expectedBytes !== null && bytes !== expectedBytes)) throw new Error("Imagem indisponível.");
-    return { blob: new Blob(chunks, { type: mime }), expiresAt };
-  } finally { await reader.cancel(); }
-}
-
-function fitsThumbnail(width: number, height: number) {
-  return width > 0 && width <= THUMBNAIL_DIMENSION && height > 0 && height <= THUMBNAIL_DIMENSION;
-}
-
-// Só apresenta o original compacto quando o cabeçalho indica dimensões seguras.
-// PNG animado e JPEG fora dos perfis comuns seguem para transformação.
-async function isCompactPreview(blob: Blob) {
-  const view = new DataView(await blob.arrayBuffer());
-  if (blob.type === "image/png") {
-    if (view.byteLength < 33 || view.getUint32(0) !== 0x89504e47 || view.getUint32(4) !== 0x0d0a1a0a ||
-      view.getUint32(8) !== 13 || view.getUint32(12) !== 0x49484452 ||
-      !fitsThumbnail(view.getUint32(16), view.getUint32(20))) return false;
-    for (let offset = 33; offset + 12 <= view.byteLength;) {
-      const length = view.getUint32(offset);
-      if (length > view.byteLength - offset - 12) return false;
-      const type = view.getUint32(offset + 4);
-      if (type === 0x6163544c) return false; // acTL
-      if (type === 0x49454e44) return length === 0; // IEND
-      offset += length + 12;
-    }
-    return false;
-  }
-  if (view.byteLength < 4 || view.getUint16(0) !== 0xffd8) return false;
-  for (let offset = 2; offset + 4 <= view.byteLength;) {
-    if (view.getUint8(offset++) !== 0xff) return false;
-    while (offset < view.byteLength && view.getUint8(offset) === 0xff) offset++;
-    if (offset + 3 > view.byteLength) return false;
-    const marker = view.getUint8(offset++);
-    if (marker === 0xda || marker === 0xd9) return false; // SOS/EOI antes de SOF
-    const length = view.getUint16(offset);
-    if (length < 2 || offset + length > view.byteLength) return false;
-    if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2)
-      return length >= 8 && fitsThumbnail(view.getUint16(offset + 5), view.getUint16(offset + 3));
-    offset += length;
-  }
-  return false;
-}
-
-export function loadStorageThumbnail(e: ImageEvidence) {
-  return privateImages.load(thumbnailKey(e), async signal => {
-    if (!client || !["image/jpeg", "image/png"].includes(e.content_type) ||
-      !Number.isSafeInteger(e.size_bytes) || e.size_bytes <= 0 || e.size_bytes > MAX_BYTES)
-      throw new Error("Miniatura indisponível.");
-    if (e.size_bytes <= SMALL_ORIGINAL_MAX_BYTES) {
-      const expiresAt = Date.now() + PRIVATE_IMAGE_TTL;
-      const response = await readOriginal(e, signal);
-      const preview = await readImage(response, e.content_type, e.size_bytes, SMALL_ORIGINAL_MAX_BYTES, expiresAt);
-      if (await isCompactPreview(preview.blob)) return preview;
-    }
-    if (signal.aborted) throw new Error("Miniatura indisponível.");
-    const expiresAt = Date.now() + PRIVATE_IMAGE_TTL;
-    const transform = { width: THUMBNAIL_DIMENSION, height: THUMBNAIL_DIMENSION, resize: "contain", quality: 75, format: "origin" } as const;
-    const maxBytes = Math.min(THUMBNAIL_MAX_BYTES, e.size_bytes - 1);
-    if (identityEnabled) {
-      const response = await fetchPrivateObject(BUCKET, e.object_key, signal, transform);
-      return readImage(response, e.content_type, null, maxBytes, expiresAt);
-    }
+export function loadStorageThumbnail(e: ImageEvidence, authenticated = identityEnabled) {
+  return loadNativeThumbnail(thumbnailKey(e, authenticated, true), e, async (signal, transform) => {
+    if (!transform) return readOriginal(e, signal, authenticated);
+    if (authenticated) return fetchPrivateObject(BUCKET, e.object_key, signal, transform);
+    if (!client) throw new Error("Miniatura indisponível.");
     const { data, error } = await client.storage.from(BUCKET).createSignedUrl(e.object_key, SIGNED_URL_SECONDS, { transform });
     if (error || !data?.signedUrl || signal.aborted) throw new Error("Miniatura indisponível.");
     const url = new URL(data.signedUrl);
@@ -136,13 +56,13 @@ export function loadStorageThumbnail(e: ImageEvidence) {
     if ((origin && url.origin !== new URL(origin).origin) ||
       !url.pathname.endsWith(`/render/image/sign/${BUCKET}/${e.object_key}`) || !url.searchParams.has("token"))
       throw new Error("Miniatura indisponível.");
-    return readImage(await fetchSigned(url.href, signal), e.content_type, null, maxBytes, expiresAt);
+    return fetchSigned(url.href, signal);
   });
 }
 
 // Falhas/ausência terminam aqui: jamais chamam downloadUrl do original.
 export function loadEvidenceThumbnail(e: ImageEvidence) {
-  return privateImages.load(thumbnailKey(e), async signal => {
+  return privateImages.load(derivedKey(e), async signal => {
     if (!client || !["image/jpeg", "image/png"].includes(e.content_type)) throw new Error("Miniatura indisponível.");
     const expiresAt = Date.now() + PRIVATE_IMAGE_TTL;
     const { data, error } = await db().rpc("checklist_evidence_thumbnail", { p_evidence: e.id });

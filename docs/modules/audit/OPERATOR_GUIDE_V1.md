@@ -58,6 +58,8 @@ No código, os estados são **Pendente, Em andamento, Concluído**; a avaliaçã
 
 No planejamento, digite em **Responsável** e escolha um funcionário na lista abaixo do campo. No plano de checklist atribuído, use **Abrir auditoria** em Origem para consultar o checklist em leitura e acessar as evidências originais. Com o plano em andamento, use **Relato da execução** para salvar observações e consultar revisões. [Procedimento AP-02](DELEGACAO_PLANOS_ACAO.md).
 
+Clique em uma miniatura JPG/PNG para ampliar o original nas evidências da execução, da verificação e do histórico. No checklist da auditoria de origem, abra **Evidências** no critério para usar a mesma ampliação. **Baixar** mantém o arquivo original. [Miniaturas AP-03](DELEGACAO_PLANOS_ACAO.md#ap-03--miniaturas-privadas).
+
 No cabeçalho do plano, use **Excluir** para revisar o impacto e confirmar a exclusão definitiva com `excluir plano de ação`. Se a operação ficar pendente, volte à lista de Planos de Ação e use **Retomar exclusão**. [Procedimento AP-01](EXCLUSAO_DEFINITIVA.md#ap-01--exclusão-definitiva-de-planos-de-ação).
 
 ## Relatórios e suporte

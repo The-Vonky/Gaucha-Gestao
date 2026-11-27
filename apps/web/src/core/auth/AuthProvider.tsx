@@ -121,9 +121,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!client) return;
     // Supabase emits INITIAL_SESSION; do not await Supabase calls inside its auth callback.
-    const { data } = client.auth.onAuthStateChange((_event, session) => {
-      // Limpa imediatamente, antes de qualquer resposta/microtask da sessão anterior.
-      if (!session || session.user.id !== current.current?.user.id || _event === "SIGNED_OUT") {
+    const { data } = client.auth.onAuthStateChange((event, session) => {
+      // Um novo login do mesmo usuário também invalida os blobs da sessão anterior.
+      const newLogin = event === "SIGNED_IN" && session?.access_token !== current.current?.access_token;
+      if (!session || session.user.id !== current.current?.user.id || event === "SIGNED_OUT" || newLogin) {
         ++sequence.current;
         privateImages.setAccess("");
       }

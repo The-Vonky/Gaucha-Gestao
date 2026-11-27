@@ -51,6 +51,11 @@ describe('miniaturas nativas do Storage',()=>{
    transform:{width:480,height:480,resize:'contain',quality:75,format:'origin'},
   });
   expect(fetch).toHaveBeenCalledWith(signed,expect.objectContaining({cache:'no-store',credentials:'omit',redirect:'error'}));
+  act(()=>visible([{isIntersecting:false}]));
+  expect(screen.queryByRole('img')).toBeNull();
+  act(()=>visible([{isIntersecting:true}]));
+  await screen.findByRole('img');
+  expect(backend.sign).toHaveBeenCalledOnce();
   vi.mocked(fetch).mockResolvedValueOnce(new Response(new Uint8Array(large.size_bytes),{headers:{'content-type':'image/png'}}));
   rerender(<EvidenceImage key="expanded" row={large} name="Original" expanded/>);
   await screen.findByRole('img',{name:'Original'});
@@ -71,12 +76,12 @@ describe('miniaturas nativas do Storage',()=>{
   expect(screen.queryByRole('button', { name: 'Ampliar Evidência 1.png' })).toBeNull();
   fireEvent.load(image);
   const enlarge = screen.getByRole('button', { name: 'Ampliar Evidência 1.png' });
-  expect(enlarge.closest('.audit-evidence-thumbnail')).toBe(image.closest('.audit-evidence-thumbnail'));
-  expect(enlarge.closest('.audit-evidence-thumbnail')).not.toBeNull();
+  expect(enlarge.closest('.evidence-image-thumbnail')).toBe(image.closest('.evidence-image-thumbnail'));
+  expect(enlarge.closest('.evidence-image-thumbnail')).not.toBeNull();
   expect(backend.original).not.toHaveBeenCalled();
   fireEvent.error(image);
   expect(screen.queryByRole('button', { name: 'Ampliar Evidência 1.png' })).toBeNull();
-  expect(screen.getByRole('button', { name: 'Abrir original' }).closest('.audit-evidence-thumbnail')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Abrir original' }).closest('.evidence-image-thumbnail')).toBeNull();
  });
  it.each(['transformação indisponível', 'assinatura negada'])('%s exibe o fallback no cartão e abre o original por clique',async failure=>{
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
@@ -87,8 +92,8 @@ describe('miniaturas nativas do Storage',()=>{
   const status = await screen.findByText('Miniatura indisponível.');
   const open = screen.getByRole('button', { name: 'Abrir original' });
   expect(status.closest('.file-item')).toBe(open.closest('.file-item'));
-  expect(status.closest('.audit-evidence-thumbnail')).toBeNull();
-  expect(open.closest('.audit-evidence-thumbnail')).toBeNull();
+  expect(status.closest('.evidence-image-thumbnail')).toBeNull();
+  expect(open.closest('.evidence-image-thumbnail')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Ampliar Evidência 1.png' })).toBeNull();
   expect(screen.getByRole('button', { name: 'Baixar Evidência 1.png' })).toBeTruthy();
   expect(backend.original).not.toHaveBeenCalled();

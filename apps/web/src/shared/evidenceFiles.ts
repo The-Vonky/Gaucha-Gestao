@@ -131,3 +131,5 @@ export async function checkFile(file: File) {
     );
   return { name, type: TYPES[ext].mime };
 }
+
+export const isEvidenceImage = (mime: string) => mime === JPEG.mime || mime === PNG.mime;

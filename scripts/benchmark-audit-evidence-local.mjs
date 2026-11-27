@@ -71,7 +71,7 @@ try{
    if(count===10&&repetition===1){
     await meter.close();meter=await attachAuditTraffic(page,{appOrigin:origin,storageOrigin:storage});
     await stage('expiry',async()=>{await page.waitForTimeout(61000);await walk(selected.slice(0,1));});
-    await stage('session',async()=>{await page.getByRole('button',{name:'Sair',exact:true}).first().click();await page.getByLabel('Senha',{exact:true}).waitFor();run.assertions.logoutImages=await page.locator('.audit-image-slot img').count();assert.equal(run.assertions.logoutImages,0);await login(page);await navigate();await walk(selected.slice(0,1));});
+    await stage('session',async()=>{await page.getByRole('button',{name:'Sair',exact:true}).first().click();await page.getByLabel('Senha',{exact:true}).waitFor();run.assertions.logoutImages=await page.locator('.evidence-image-slot img').count();assert.equal(run.assertions.logoutImages,0);await login(page);await navigate();await walk(selected.slice(0,1));});
     await stage('offline',async()=>{await context.setOffline(true);run.assertions.offlineFetchFailed=await page.evaluate(()=>fetch('/favicon.svg',{cache:'no-store'}).then(()=>false,()=>true));assert.ok(run.assertions.offlineFetchFailed);await context.setOffline(false);await navigate();await walk(selected.slice(0,1));});
    }
    await page.waitForTimeout(500);if(count===10&&repetition===1)run.extraTraffic=await meter.snapshot();

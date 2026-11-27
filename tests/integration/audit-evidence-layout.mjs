@@ -8,15 +8,15 @@ export async function assertEvidenceLayout(card, { preview = true } = {}) {
     const criterion = row.closest(".audit-item");
     const section = row.closest(".audit-evidence");
     const body = row.querySelector(".file-body");
-    const info = row.querySelector(".audit-evidence-info");
-    const thumbnail = row.querySelector(".audit-evidence-thumbnail");
+    const info = row.querySelector(".evidence-image-info");
+    const thumbnail = row.querySelector(".evidence-image-thumbnail");
     const actions = row.querySelector(".file-actions");
     const [download, remove] = actions.querySelectorAll("button");
     const save = criterion.querySelector(".audit-save");
     const criterionStyle = getComputedStyle(criterion);
     const usefulLeft = box(criterion).left + parseFloat(criterionStyle.paddingLeft);
     const usefulRight = box(criterion).right - parseFloat(criterionStyle.paddingRight);
-    const fallback = row.querySelector(".audit-image-error");
+    const fallback = row.querySelector(".evidence-image-error");
     return {
       width: innerWidth,
       cardWidth: box(row).width,

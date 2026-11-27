@@ -46,7 +46,7 @@ try{
  phase='upload first';await section.locator('input[type=file]').setInputFiles(dir+'/'+files[0].name);
  await section.getByText('Preparando miniatura…',{exact:true}).waitFor();proof.preparingObserved=true;
  const item=n=>section.locator('.audit-evidence-list .file-item').filter({has:page.locator('strong',{hasText:`Evidência ${n}.jpg`})});
- await item(1).getByRole('img').waitFor();await page.waitForFunction(()=>document.querySelector('.audit-evidence-thumbnail img')?.naturalWidth>0);
+ await item(1).getByRole('img').waitFor();await page.waitForFunction(()=>document.querySelector('.evidence-image-thumbnail img')?.naturalWidth>0);
  phase='upload second';await section.locator('input[type=file]').setInputFiles(dir+'/'+files[1].name);
  await item(2).getByText('Imagem já compacta; não foi possível reduzir a miniatura.').waitFor();
  assert.equal(await item(2).locator('img').count(),0);

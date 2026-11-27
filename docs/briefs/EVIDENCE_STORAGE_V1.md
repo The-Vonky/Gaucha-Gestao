@@ -2,6 +2,8 @@
 
 > O [contrato AP-02](../modules/audit/DELEGACAO_PLANOS_ACAO.md) define a autorização de evidências por atribuição, as restrições de autoria e a leitura autenticada no Storage para o Executor.
 
+> **AP-03.** JPEG/PNG têm miniatura privada na execução, na verificação e nas rodadas anteriores, com ampliação explícita do original. A transformação nativa e a ampliação usam requisições autenticadas. PDF, XLSX e DOCX permanecem arquivos para download. Nomes, metadados e bytes originais são preservados. [Contrato de miniaturas](../modules/audit/DELEGACAO_PLANOS_ACAO.md#ap-03--miniaturas-privadas).
+
 > **Transporte vigente.** O contrato de metadados e autorização permanece aplicável. Os critérios de assinatura abaixo descrevem o **perfil base**. No DEV com Identity, download de evidência usa JWT de sessão admitida, leitura privada autenticada e nome de download no cliente. As políticas de plano e unidade continuam vigentes. [Perfis de Storage](../architecture/SECURITY.md#storage-privado-e-miniaturas).
 
 Status: CLOSED FOR IMPLEMENTATION  

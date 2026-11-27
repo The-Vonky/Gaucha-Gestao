@@ -2,7 +2,6 @@ import { client } from "../../core/client";
 import { removeDeletionObjects } from "../../shared/storageDeletion";
 import { privateImages } from "../../shared/privateImageCache";
 import { db } from "./api";
-import { imagePrefix } from "./evidenceImages";
 
 export type DeleteImpact = {
   id: string;
@@ -33,9 +32,10 @@ export async function beginDeletion(id: string, snapshot: string, confirmation: 
     p_inspection: id, p_snapshot: snapshot, p_confirmation: confirmation,
   });
   if (error) throw error;
+  privateImages.clear();
 }
 export function resumeDeletion(id: string) {
-  privateImages.invalidateMatching(key => key.startsWith(imagePrefix(id)));
+  privateImages.clear();
   return removeDeletionObjects(client?.storage, async () => {
     const { data, error } = await db().rpc("inspection_delete_state", { p_inspection: id });
     if (error || !data) throw error ?? new Error();

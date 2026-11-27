@@ -61,7 +61,7 @@ O menu e os Guards usam capacidades efetivas para orientar a navegação. Para a
 
 ## Exportação, arquivos e Realtime
 
-O escopo de leitura limita exportações. Os objetos privados herdam autorização de domínio, de unidade quando aplicável e do estado da referência. Leitura, escrita e remoção exigem as capacidades previstas para cada operação. Conhecer a chave ou o ID do objeto não concede acesso. [Storage no perfil base e no estrito](SECURITY.md#storage-privado-e-miniaturas). Qualquer adoção de Realtime exige inventário e validação das políticas de escopo e RLS aplicáveis à leitura.
+O escopo de leitura limita exportações. Os objetos privados herdam autorização de domínio, de unidade quando aplicável e do estado da referência. Leitura, escrita e remoção exigem as capacidades previstas para cada operação. Conhecer a chave ou o ID do objeto não concede acesso. O Executor exclusivamente por vínculo tem leitura autenticada de original e transformação de imagem por objeto autorizado. [Storage no perfil base e no estrito](SECURITY.md#storage-privado-e-miniaturas). Qualquer adoção de Realtime exige inventário e validação das políticas de escopo e RLS aplicáveis à leitura.
 
 ## Administração e ciclo de vida
 
