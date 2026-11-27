@@ -8,7 +8,7 @@ export async function assertEvidenceLayout(card, { preview = true } = {}) {
     const criterion = row.closest(".audit-item");
     const section = row.closest(".audit-evidence");
     const body = row.querySelector(".file-body");
-    const info = row.querySelector(".audit-evidence-info");
+    const info = row.querySelector(".evidence-image-info");
     const thumbnail = row.querySelector(".evidence-image-thumbnail");
     const actions = row.querySelector(".file-actions");
     const [download, remove] = actions.querySelectorAll("button");

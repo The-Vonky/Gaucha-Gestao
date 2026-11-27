@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { chromium } from "playwright";
 import pg from "pg";
 import sharp from "sharp";
+import { assertEvidenceLayout, evidenceViewportWidths } from "./audit-evidence-layout.mjs";
 
 const project = process.argv[2];
 const ci = process.env.GITHUB_ACTIONS === "true";
@@ -585,7 +586,16 @@ try {
     await preview(mobile, linked.photo, await photoName(mobile));
     await desktop.goto(`${origin}/audit/inspections/${linked.id}/checklist`);
     await toggle(desktop).click();
-    await preview(desktop, linked.photo, await photoName(desktop));
+    const label = await photoName(desktop);
+    await preview(desktop, linked.photo, label);
+    phase = "AP-03: layout de Auditorias em nove larguras";
+    const card = desktop.locator(".file-item").filter({ hasText: label });
+    for (const width of evidenceViewportWidths) {
+      await desktop.setViewportSize({ width, height: 812 });
+      await card.scrollIntoViewIfNeeded();
+      await card.getByRole("img", { name: label }).waitFor();
+      await assertEvidenceLayout(card);
+    }
   }
   phase = "rotas diretas negadas";
   await mobile.goto(`${origin}/audit/inspections/${unrelated.id}`);

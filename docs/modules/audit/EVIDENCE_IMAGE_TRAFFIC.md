@@ -19,7 +19,7 @@ Storage v1.72.1, imgproxy v4.0.17 e Chromium em desktop (1280 px) e mobile emula
 | Identity | Execução e auditoria vinculada, JPG | 1.218.594 | 41.160 | 96,62% |
 | Identity | Verificação, PNG | 5.771.480 | 428.514 | 92,58% |
 
-Cada par compara o mesmo arquivo em dois GETs. O ambiente usou arquivos sintéticos gerados por execução, por isso os JPGs diferem entre os perfis. A medição cobre o corpo HTTP e exclui cabeçalhos, upload e processamento interno. A suíte verificou execução, rodada aberta e histórica, falha sem download automático, retry, cache, nome e bytes do download, reatribuição, revogação, grants aditivos e exclusões de plano e auditoria. Também verificou o checklist com grant ordinário e por vínculo. [Suíte AP-02/AP-03](../../../tests/integration/action-plans-delegation.mjs).
+Cada par compara o mesmo arquivo em dois GETs. O ambiente usou arquivos sintéticos gerados por execução, por isso os JPGs diferem entre os perfis. A medição cobre o corpo HTTP e exclui cabeçalhos, upload e processamento interno. A suíte verificou execução, rodada aberta e histórica, falha sem download automático, retry, cache, nome e bytes do download, reatribuição, revogação, grants aditivos e exclusões de plano e auditoria. Também verificou o checklist com grant ordinário e por vínculo, com conferência do layout em nove larguras no perfil Identity. [Suíte AP-02/AP-03](../../../tests/integration/action-plans-delegation.mjs).
 
 ## Estado consolidado — 06/11/2026
 
