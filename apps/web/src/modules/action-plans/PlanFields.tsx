@@ -127,16 +127,16 @@ function AssigneeField({ scope, plan, assigneeName }: {
           onChange={(event) => setSearch(event.target.value)}
         />
       </label>
+      <input type="hidden" name="responsible_id" value={selected?.id ?? ""} />
       <label>
         Funcionário responsável
         <select
-          name="responsible_id"
           disabled={!unit}
           value={selected?.id ?? ""}
           onChange={(event) => setSelected(candidates.find((candidate) => candidate.id === event.target.value))}
         >
           <option value="" disabled={!!plan && plan.status !== "pending" && !!selected}>Sem responsável cadastrado</option>
-          {selectedOutsideSearch && <option value={selected.id}>{selected.name}</option>}
+          {selectedOutsideSearch && <option value={selected.id} disabled>{selected.name}</option>}
           {candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
         </select>
       </label>

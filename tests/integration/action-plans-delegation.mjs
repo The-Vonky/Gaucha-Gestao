@@ -205,7 +205,11 @@ try {
   await mobile.getByRole("button", { name: "Salvar", exact: true }).click();
   await mobile.getByText("Relato AP-02 em andamento", { exact: true }).waitFor();
   await mobile.locator('input[type="file"]').setInputFiles({ name: "execucao.pdf", mimeType: "application/pdf", buffer: pdf });
-  await mobile.getByRole("button", { name: "Baixar execucao.pdf" }).waitFor();
+  const downloaded = mobile.waitForEvent("download");
+  await mobile.getByRole("button", { name: "Baixar execucao.pdf" }).click();
+  const attachment = await downloaded;
+  assert.equal(attachment.suggestedFilename(), "execucao.pdf");
+  assert.deepEqual(readFileSync(await attachment.path()), pdf);
   await checkWidth(mobile);
   for (const label of ["Concluir", "Editar planejamento", "Excluir", "Verificar eficácia"])
     assert.equal(await mobile.getByRole("button", { name: label, exact: true }).count(), 0);
@@ -290,6 +294,11 @@ try {
           process.stdout.write(String(response.status));
         `], JSON.stringify({ prefixes: objects.split("\n") }));
         assert.ok(["200", "204"].includes(status));
+        const names = objects.split("\n").map((name) => {
+          assert.match(name, /^[0-9a-f-]+\/[0-9a-f-]+$/);
+          return `'${name}'`;
+        }).join(",");
+        assert.equal(await sql(`select count(*) from storage.objects where bucket_id='${bucket}' and name in (${names})`), "0");
       }
       await sql(`begin;
         delete from action_plans.evidence where plan_id in (select id from action_plans.plans where unit_id='${unit}');

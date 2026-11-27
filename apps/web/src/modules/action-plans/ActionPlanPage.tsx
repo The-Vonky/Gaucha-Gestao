@@ -193,7 +193,7 @@ export function ActionPlanPage() {
         description={`${s.unit_name}${s.sector_name ? ` / ${s.sector_name}` : ""}`}
       >
         {/* Header actions share the page-action size used across the app. */}
-        {(canStart || canWrite || canComplete || canVerify) && (
+        {(canStart || canVerify) && (
           <>
             {canWrite && (
               <button onClick={() => setEditing(true)}>
